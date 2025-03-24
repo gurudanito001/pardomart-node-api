@@ -1,0 +1,47 @@
+
+@baseUrl = http://localhost:5000
+
+# @name verifyEmail
+POST {{baseUrl}}/auth/verifyEmail HTTP/1.1
+Content-Type: "application/json"
+{
+  "email": "gurudanito001@gmail.com",
+}
+###
+
+
+# @name createEmployee
+POST {{baseUrl}}/employee HTTP/1.1
+Content-Type: "application/json"
+
+{
+  "companyId": "e70d795d-dbca-422d-bb30-9953fb8aca78",
+  "branchId": "37845b4b-2d4f-4e89-ba8f-44c810365d58",
+  "staffCadre": ["admin"],
+  "firstName": "Daniel",
+  "lastName": "Nwokocha",
+  "email": "daniel@email.com",
+  "password": "password1234"
+}
+
+###
+
+@employeeId = 939dfd7d-ea5e-46a0-994c-46815c9f892b
+
+# @name getEmployee
+GET {{baseUrl}}/employee/{{employeeId}} HTTP/1.1
+
+###
+
+# @name updateEmployee
+PATCH  {{baseUrl}}/employee/{{employeeId}} HTTP/1.1
+Content-Type: "application/json"
+
+{
+  "code": "test-code-updated"
+}
+
+###
+
+# @name deleteEmployee
+DELETE  {{baseUrl}}/employee/{{employeeId}}

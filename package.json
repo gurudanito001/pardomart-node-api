@@ -1,0 +1,57 @@
+{
+  "name": "lta-project",
+  "version": "1.0.0",
+  "description": "therapy application backend",
+  "main": "build/app.js",
+  "scripts": {
+    "build": "npx tsc -p .",
+    "start": "node .",
+    "dev": "npx nodemon src/app.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "node.js",
+    "express",
+    "api",
+    "typescript"
+  ],
+  "author": "Daniel Nwokocha",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "@types/bcrypt": "^5.0.2",
+    "axios": "^1.7.9",
+    "bcrypt": "^5.1.1",
+    "cloudinary": "^2.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "googleapis": "^144.0.0",
+    "helmet": "^7.1.0",
+    "http-status": "^1.7.4",
+    "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.2",
+    "moment": "^2.30.1",
+    "morgan": "^1.10.0",
+    "nodemailer": "^6.9.14",
+    "socket.io": "^4.8.1",
+    "ts-node": "^10.9.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/dotenv": "^8.2.0",
+    "@types/express": "^4.17.21",
+    "@types/helmet": "^4.0.0",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/morgan": "^1.9.9",
+    "@types/nodemailer": "^6.4.15",
+    "node-ts": "^6.0.1",
+    "nodemon": "^3.1.4",
+    "prisma": "^5.22.0",
+    "typescript": "^5.5.2"
+  },
+  "optionalDependencies": {
+    "bufferutil": "^4.0.9",
+    "utf-8-validate": "^6.0.5"
+  }
+}

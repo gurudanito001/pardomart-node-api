@@ -1,0 +1,100 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // or mysql, sqlite, etc. based on your actual database
+  url      = env("DATABASE_URL")
+}
+
+model Verification {
+    mobileNumber  String   @id
+    code          String
+    expiresAt     DateTime
+}
+
+model User {
+  id               String    @id @default(uuid())
+  name             String
+  email            String
+  mobileNumber     String    @unique
+  mobileVerified   Boolean   @default(false)
+  dynamicMediaUrls Json?
+  active           Boolean   @default(true)
+  language         String?
+  notification     Json?
+  rememberToken    String?
+  referralCode     String?
+  role             Role     @default(CUSTOMER)
+  vendors          Vendor[]  @relation("Vendor")
+  supportMessages  Support[] @relation("SupportMessages")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model Vendor {
+  id               String     @id @default(uuid())
+  name             String?
+  tagline          String?
+  details          String?
+  meta             Json?
+  mediaurls        Json?
+  minimumOrder     Int?
+  deliveryFee      Float?
+  area             String?
+  address          String?
+  longitude        Float?
+  latitude         Float?
+  isVerified       Boolean    @default(false)
+  user             User       @relation("Vendor", fields: [userId], references: [id], onDelete: Restrict)
+  userId           String
+  categories       Category[] @relation("VendorCategories")
+  ratings          Float?
+  ratingsCount     Int?
+  favouriteCount   Int?
+  isFavourite      Boolean?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+}
+
+model Category {
+  id               String     @id @default(uuid())
+  slug             String
+  title            String
+  sortOrder        Int
+  dynamicMediaUrls Json?
+  parentId         Int?
+  isSelected       Boolean?
+  vendors          Vendor[]   @relation("VendorCategories")
+}
+
+model Support {
+  id        String    @id @default(uuid())
+  user      User?       @relation("SupportMessages", fields: [userId], references: [id])
+  userId    String?
+  name      String
+  email     String
+  message   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Setting {
+  id        String    @id @default(uuid())
+  key       String
+  value     String
+  type      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+
+enum Role {
+  ADMIN
+  VENDOR
+  DELIVERY
+  CUSTOMER
+}
