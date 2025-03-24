@@ -2,6 +2,7 @@
 import { PrismaClient, User } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import { generateToken } from '../utils/auth'; //create this file.
+import * as userModel from '../models/user.models';
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -10,7 +11,9 @@ interface CheckUserFilters {
   mobileNumber: string;
 }
 
-
+export const checkUserExistence = async (filters: CheckUserFilters): Promise<User | null> => {
+  return userModel.checkUserExistence(filters);
+};
 export const checkUser = async (filters: CheckUserFilters) => {
   return prisma.user.findUnique({
     where: {

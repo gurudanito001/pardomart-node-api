@@ -5,6 +5,24 @@ import * as userService from '../services/user.service'
 import { generateVerificationCode, sendVerificationCode } from '../utils/verification'; // Create this file.
 
 
+
+export const checkUserExistence = async (req: Request, res: Response) => {
+  try {
+    const { mobileNumber } = req.body;
+    const user = await authService.checkUserExistence({ mobileNumber });
+
+    if (user) {
+      res.json({ exists: true });
+    } else {
+      res.json({ exists: false });
+    }
+  } catch (error) {
+    console.error('Error checking user existence:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+
 export const registerUser = async (req: Request, res: Response) => {
   try {
     const newUser = await userService.createUser(req.body);

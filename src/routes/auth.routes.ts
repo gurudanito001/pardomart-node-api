@@ -5,6 +5,7 @@ import * as authController from '../controllers/auth.controllers';
 const router = Router();
 
 // Authentication Routes
+router.post('/check-existence', authController.checkUserExistence);
 router.post('/register', authController.registerUser);
 router.post('/resendVerification', authController.resendVerificationCode);
 router.post('/register/verify', authController.verifyRegistrationCode);

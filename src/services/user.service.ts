@@ -1,7 +1,14 @@
 // user.service.ts
 import * as userModel from '../models/user.models'; // Import functions from user.model.ts
-import { Verification } from '@prisma/client';
+import { Verification, User } from '@prisma/client';
 import { GetUserFilters, CreateUserPayload, UpdateUserPayload } from '../models/user.models'; // Import types
+
+
+interface CheckUserFilters {
+  mobileNumber: string;
+}
+
+
 
 export const getAllUsers = async (filters: GetUserFilters) => {
   return userModel.getAllUsers(filters);
