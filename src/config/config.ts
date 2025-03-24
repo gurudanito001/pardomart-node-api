@@ -10,9 +10,9 @@ dotenv.config();
 interface ENV {
   DATABASE_URL: string | undefined;
   environment: string | undefined;
+  SECRET: string | undefined;
   /* SERVER_PORT: number | undefined;
   ACCESS_TOKEN_EXPIRY: number | undefined;
-  SECRET: string | undefined;
   cloudinary_cloud_name: string | undefined;
   cloudinary_api_key: string | undefined;
   cloudinary_api_secret: string | undefined;
@@ -23,8 +23,8 @@ interface ENV {
 interface Config {
   DATABASE_URL: string;
   environment: string
-  /* SECRET: string;
-  SERVER_PORT: number;
+  SECRET: string;
+  /* SERVER_PORT: number;
   ACCESS_TOKEN_EXPIRY: number;
   cloudinary_cloud_name: string;
   cloudinary_api_key: string;
@@ -39,8 +39,8 @@ const getConfig = (): ENV => {
   return {
     DATABASE_URL: process.env.DATABASE_URL,
     environment: process.env.environment,
-    /* SECRET: process.env.SECRET,
-    SERVER_PORT: Number(process.env.SERVER_PORT),
+    SECRET: process.env.SECRET,
+    /* SERVER_PORT: Number(process.env.SERVER_PORT),
     ACCESS_TOKEN_EXPIRY: Number(process.env.ACCESS_TOKEN_EXPIRY),
     cloudinary_cloud_name: process.env.cloudinary_cloud_name,
     cloudinary_api_key: process.env.cloudinary_api_key,

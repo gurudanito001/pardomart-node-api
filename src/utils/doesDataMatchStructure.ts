@@ -16,6 +16,5 @@ export const doesDataMatchStructure = (data: any, structure: any) =>{
       result = false;
     }
   }
-
   return result
 }
