@@ -14,15 +14,8 @@ interface CheckUserFilters {
 export const checkUserExistence = async (filters: CheckUserFilters): Promise<User | null> => {
   return userModel.checkUserExistence(filters);
 };
-export const checkUser = async (filters: CheckUserFilters) => {
-  return prisma.user.findUnique({
-    where: {
-      mobileNumber: filters.mobileNumber,
-    },
-  });
-};
 
-export const verifyRegistrationCode = async (mobileNumber: string, verificationCode: string): Promise<User | null> => {
+/* export const verifyRegistrationCode = async (mobileNumber: string, verificationCode: string): Promise<User | null> => {
   const storedVerification = await prisma.verification.findUnique({
     where: { mobileNumber },
   });
@@ -43,7 +36,7 @@ export const verifyRegistrationCode = async (mobileNumber: string, verificationC
   });
 
   return updatedUser;
-};
+}; */
 
 export const storeVerificationCode = async (mobileNumber: string, verificationCode: string) => {
   // Store verification code and timestamp in a temporary database or cache
@@ -70,6 +63,11 @@ export const verifyCodeAndLogin = async (mobileNumber: string, verificationCode:
   if (!user) {
     return null;
   }
+
+  await prisma.user.update({
+    where: { mobileNumber },
+    data: { mobileVerified: true },
+  });
 
   const token = generateToken(user.id, user.role);
 

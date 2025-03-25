@@ -28,7 +28,7 @@ model User {
   notification     Json?
   rememberToken    String?
   referralCode     String?
-  role             Role     @default(CUSTOMER)
+  role             Role     
   vendors          Vendor[]  @relation("Vendor")
   supportMessages  Support[] @relation("SupportMessages")
   createdAt        DateTime  @default(now())
@@ -93,8 +93,8 @@ model Setting {
 
 
 enum Role {
-  ADMIN
-  VENDOR
-  DELIVERY
-  CUSTOMER
+  admin
+  vendor
+  delivery
+  customer
 }

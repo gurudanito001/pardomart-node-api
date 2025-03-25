@@ -6,7 +6,7 @@ import { generateVerificationCode, sendVerificationCode } from '../utils/verific
 
 
 
-export const checkUserExistence = async (req: Request, res: Response) => {
+/* export const checkUserExistence = async (req: Request, res: Response) => {
   try {
     const { mobileNumber } = req.body;
     const user = await authService.checkUserExistence({ mobileNumber });
@@ -20,7 +20,7 @@ export const checkUserExistence = async (req: Request, res: Response) => {
     console.error('Error checking user existence:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
-};
+}; */
 
 
 export const registerUser = async (req: Request, res: Response) => {
@@ -31,7 +31,7 @@ export const registerUser = async (req: Request, res: Response) => {
     await authService.storeVerificationCode(newUser?.mobileNumber, verificationCode);
     await sendVerificationCode(newUser?.mobileNumber, verificationCode);
 
-    res.json({ message: 'Verification code sent', user: newUser });
+    res.json({ message: 'Verification code sent' });
   } catch (error) {
     console.error('Error registering user:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -43,7 +43,7 @@ export const resendVerificationCode = async (req: Request, res: Response) => {
     const { mobileNumber } = req.body;
 
     // Check if the user exists
-    const userExists = await authService.checkUser({ mobileNumber });
+    const userExists = await authService.checkUserExistence({ mobileNumber });
     if (!userExists) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -59,7 +59,7 @@ export const resendVerificationCode = async (req: Request, res: Response) => {
   }
 };
 
-export const verifyRegistrationCode = async (req: Request, res: Response) => {
+/* export const verifyRegistrationCode = async (req: Request, res: Response) => {
   try {
     const { mobileNumber, verificationCode } = req.body;
     const user = await authService.verifyRegistrationCode(mobileNumber, verificationCode);
@@ -73,25 +73,25 @@ export const verifyRegistrationCode = async (req: Request, res: Response) => {
     console.error('Error verifying registration code:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
-};
+}; */
 
 export const initiateLogin = async (req: Request, res: Response) => {
   try {
     const { mobileNumber } = req.body;
-    const userExists = await authService.checkUser({ mobileNumber });
+    const userExists = await authService.checkUserExistence({ mobileNumber });
 
     if (!userExists) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.json({ exists: false });
     }
 
     const verificationCode = generateVerificationCode();
     await authService.storeVerificationCode(mobileNumber, verificationCode);
     await sendVerificationCode(mobileNumber, verificationCode);
 
-    res.json({ message: 'Verification code sent' });
+    res.json({ exists: true });
   } catch (error) {
     console.error('Error initiating login:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: `Internal server error ${error}` });
   }
 };
 
@@ -101,11 +101,12 @@ export const verifyCodeAndLogin = async (req: Request, res: Response) => {
     const user = await authService.verifyCodeAndLogin(mobileNumber, verificationCode);
 
     if (!user) {
-      return res.status(401).json({ error: 'Invalid verification code' });
+      return res.status(401).json({ error: 'Invalid verification' });
     }
+    // TODO: Handle error when the code has expired
     res.json(user); // user object containing token.
   } catch (error) {
     console.error('Error verifying code and logging in:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: `Internal server error ${error}` });
   }
 };
