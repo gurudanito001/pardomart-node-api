@@ -33,9 +33,3 @@ export const updateUser = async (payload: UpdateUserPayload) => {
 export const deleteUser = async (userId: string) => {
   return userModel.deleteUser(userId);
 };
-
-
-
-/* export const createSupport = async (payload: any) => {
-    return userModel.createSupport(payload);
-} */

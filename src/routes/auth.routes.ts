@@ -1,16 +1,16 @@
 import { Router } from 'express';
 import * as authController from '../controllers/auth.controllers'; 
+import { validate, validateRegisterUser, validateLogin, validateVerifyAndLogin, validateResendVerification } from '../middlewares/validation.middleware';
+
 
 // New Router instance
 const router = Router();
 
 // Authentication Routes
-//router.post('/check-existence', authController.checkUserExistence);
-//router.post('/register/verify', authController.verifyRegistrationCode);
-router.post('/register', authController.registerUser);
-router.post('/resendVerification', authController.resendVerificationCode);
-router.post('/initiateLogin', authController.initiateLogin);
-router.post('/verifyAndLogin', authController.verifyCodeAndLogin);
+router.post('/register', validate(validateRegisterUser), authController.registerUser);
+router.post('/resendVerification',validate(validateResendVerification), authController.resendVerificationCode);
+router.post('/initiateLogin',validate(validateLogin), authController.initiateLogin);
+router.post('/verifyAndLogin',validate(validateVerifyAndLogin), authController.verifyCodeAndLogin);
 
 
 export default router;

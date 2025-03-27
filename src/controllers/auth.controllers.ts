@@ -6,22 +6,6 @@ import { generateVerificationCode, sendVerificationCode } from '../utils/verific
 
 
 
-/* export const checkUserExistence = async (req: Request, res: Response) => {
-  try {
-    const { mobileNumber } = req.body;
-    const user = await authService.checkUserExistence({ mobileNumber });
-
-    if (user) {
-      res.json({ exists: true });
-    } else {
-      res.json({ exists: false });
-    }
-  } catch (error) {
-    console.error('Error checking user existence:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-}; */
-
 
 export const registerUser = async (req: Request, res: Response) => {
   try {
@@ -31,7 +15,7 @@ export const registerUser = async (req: Request, res: Response) => {
     await authService.storeVerificationCode(newUser?.mobileNumber, verificationCode);
     await sendVerificationCode(newUser?.mobileNumber, verificationCode);
 
-    res.json({ message: 'Verification code sent' });
+    res.status(201).json({ message: 'Verification code sent' });
   } catch (error) {
     console.error('Error registering user:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -52,28 +36,12 @@ export const resendVerificationCode = async (req: Request, res: Response) => {
     await authService.storeVerificationCode(mobileNumber, verificationCode);
     await sendVerificationCode(mobileNumber, verificationCode);
 
-    res.json({ message: 'Verification code resent' });
+    res.status(200).json({ message: 'Verification code resent' });
   } catch (error) {
     console.error('Error resending verification code:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
-
-/* export const verifyRegistrationCode = async (req: Request, res: Response) => {
-  try {
-    const { mobileNumber, verificationCode } = req.body;
-    const user = await authService.verifyRegistrationCode(mobileNumber, verificationCode);
-
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid verification code' });
-    }
-
-    res.json({ message: 'Verification successful', user });
-  } catch (error) {
-    console.error('Error verifying registration code:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-}; */
 
 export const initiateLogin = async (req: Request, res: Response) => {
   try {
@@ -81,14 +49,14 @@ export const initiateLogin = async (req: Request, res: Response) => {
     const userExists = await authService.checkUserExistence({ mobileNumber });
 
     if (!userExists) {
-      return res.json({ exists: false });
+      return res.status(200).json({ exists: false });
     }
 
     const verificationCode = generateVerificationCode();
     await authService.storeVerificationCode(mobileNumber, verificationCode);
     await sendVerificationCode(mobileNumber, verificationCode);
 
-    res.json({ exists: true });
+    res.status(200).json({ exists: true });
   } catch (error) {
     console.error('Error initiating login:', error);
     res.status(500).json({ error: `Internal server error ${error}` });
@@ -104,7 +72,7 @@ export const verifyCodeAndLogin = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Invalid verification' });
     }
     // TODO: Handle error when the code has expired
-    res.json(user); // user object containing token.
+    res.status(200).json(user); // user object containing token.
   } catch (error) {
     console.error('Error verifying code and logging in:', error);
     res.status(500).json({ error: `Internal server error ${error}` });

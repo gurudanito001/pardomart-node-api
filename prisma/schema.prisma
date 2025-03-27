@@ -37,39 +37,21 @@ model User {
 
 model Vendor {
   id               String     @id @default(uuid())
-  name             String?
+  user             User       @relation("Vendor", fields: [userId], references: [id], onDelete: Restrict)
+  userId           String
+  name             String
   tagline          String?
   details          String?
-  meta             Json?
-  mediaurls        Json?
-  minimumOrder     Int?
-  deliveryFee      Float?
-  area             String?
+  image            String?
   address          String?
   longitude        Float?
   latitude         Float?
   isVerified       Boolean    @default(false)
-  user             User       @relation("Vendor", fields: [userId], references: [id], onDelete: Restrict)
-  userId           String
-  categories       Category[] @relation("VendorCategories")
-  ratings          Float?
-  ratingsCount     Int?
-  favouriteCount   Int?
-  isFavourite      Boolean?
+  meta             Json?
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 }
 
-model Category {
-  id               String     @id @default(uuid())
-  slug             String
-  title            String
-  sortOrder        Int
-  dynamicMediaUrls Json?
-  parentId         Int?
-  isSelected       Boolean?
-  vendors          Vendor[]   @relation("VendorCategories")
-}
 
 model Support {
   id        String    @id @default(uuid())

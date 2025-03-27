@@ -1,57 +1,39 @@
 // models/vendor.model.ts
-import { PrismaClient, Vendor, Category } from '@prisma/client';
+import { PrismaClient, Vendor } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-interface CreateVendorPayload {
-  name?: string;
+export interface CreateVendorPayload {
+  userId: string;
+  name: string;
   tagline?: string;
   details?: string;
-  meta?: any;
-  mediaurls?: any;
-  minimumOrder?: number;
-  deliveryFee?: number;
-  area?: string;
+  image?: string;
   address?: string;
   longitude?: number;
   latitude?: number;
-  userId: string;
-  categories?: string[];
+  meta?: any;
 }
 
-interface UpdateVendorPayload {
-  id: string;
+
+
+export interface UpdateVendorPayload {
   name?: string;
   tagline?: string;
   details?: string;
-  meta?: any;
-  mediaurls?: any;
-  minimumOrder?: number;
-  deliveryFee?: number;
-  area?: string;
+  image?: string;
   address?: string;
   longitude?: number;
   latitude?: number;
-  categories?: string[];
   isVerified?: boolean;
-  ratings?: number;
-  ratingsCount?: number;
-  favouriteCount?: number;
-  isFavourite?: boolean;
+  meta?: any;
 }
 
 export const createVendor = async (payload: CreateVendorPayload): Promise<Vendor> => {
-  const categoryIds = payload.categories ? payload.categories.map((id) => ({ id })) : [];
   return prisma.vendor.create({
     data: {
-      ...payload,
-      categories: {
-        connect: categoryIds,
-      },
-    },
-    include: {
-      categories: true,
-    },
+      ...payload
+    }
   });
 };
 
@@ -59,47 +41,15 @@ export const getVendorById = async (id: string): Promise<Vendor | null> => {
   return prisma.vendor.findUnique({
     where: { id },
     include: {
-      categories: true,
       user: true,
     },
   });
 };
 
-export const getAllVendors = async (userId?: string): Promise<Vendor[]> => {
-  const whereClause = userId ? { userId: userId } : {};
+export const getAllVendors = async (): Promise<Vendor[]> => {
 
   return prisma.vendor.findMany({
-    where: whereClause,
     include: {
-      categories: true,
-      user: true,
-    },
-  });
-};
-
-export const updateVendor = async (payload: UpdateVendorPayload): Promise<Vendor> => {
-  const categoryIds = payload.categories ? payload.categories.map((id) => ({ id })) : [];
-
-  return prisma.vendor.update({
-    where: { id: payload.id },
-    data: {
-      ...payload,
-      categories: {
-        set: categoryIds,
-      },
-    },
-    include: {
-      categories: true,
-      user: true,
-    },
-  });
-};
-
-export const deleteVendor = async (id: string): Promise<Vendor> => {
-  return prisma.vendor.delete({
-    where: { id },
-    include: {
-      categories: true,
       user: true,
     },
   });
@@ -109,8 +59,24 @@ export const getVendorsByUserId = async (userId: string): Promise<Vendor[]> => {
   return prisma.vendor.findMany({
     where: { userId },
     include: {
-      categories: true,
       user: true,
     },
   });
 };
+
+export const updateVendor = async (id: string, payload: UpdateVendorPayload): Promise<Vendor> => {
+
+  return prisma.vendor.update({
+    where: { id },
+    data: {
+      ...payload
+    },
+  });
+};
+
+export const deleteVendor = async (id: string): Promise<Vendor> => {
+  return prisma.vendor.delete({
+    where: { id }
+  });
+};
+
