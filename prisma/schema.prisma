@@ -40,6 +40,7 @@ model Vendor {
   user             User       @relation("Vendor", fields: [userId], references: [id], onDelete: Restrict)
   userId           String
   name             String
+  email            String?
   tagline          String?
   details          String?
   image            String?
@@ -48,8 +49,22 @@ model Vendor {
   latitude         Float?
   isVerified       Boolean    @default(false)
   meta             Json?
+  openingHours     VendorOpeningHours[] 
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
+}
+
+model VendorOpeningHours {
+  id        String   @id @default(uuid())
+  vendor    Vendor   @relation( fields: [vendorId], references: [id], onDelete: Cascade)
+  vendorId  String
+  day       Days 
+  open      String? 
+  close     String? 
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  @@unique([vendorId, day]) // Add the unique constraint here
 }
 
 
@@ -79,4 +94,14 @@ enum Role {
   vendor
   delivery
   customer
+}
+
+enum Days {
+  monday
+  tuesday
+  wednesday
+  thursday
+  friday
+  saturday
+  sunday
 }

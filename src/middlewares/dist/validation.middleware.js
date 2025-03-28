@@ -36,8 +36,9 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.validateCreateVendor = exports.validateVerifyAndLogin = exports.validateResendVerification = exports.validateLogin = exports.validateRegisterUser = exports.validate = void 0;
+exports.validateCreateOrUpdateVendorOpeningHours = exports.validateCreateVendor = exports.validateVerifyAndLogin = exports.validateResendVerification = exports.validateLogin = exports.validateRegisterUser = exports.validate = void 0;
 var express_validator_1 = require("express-validator");
+var client_1 = require("@prisma/client");
 // Generic validation middleware
 exports.validate = function (validations) {
     return function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
@@ -75,14 +76,41 @@ exports.validateVerifyAndLogin = [
     express_validator_1.check('verificationCode').notEmpty().withMessage('Verification code is required'),
 ];
 exports.validateCreateVendor = [
-    express_validator_1.check('userId').notEmpty().withMessage('UserId is required'),
-    express_validator_1.check('name').isString().withMessage('Name must be a string'),
-    express_validator_1.check('tagline').optional().isString().withMessage('Tagline must be a string'),
-    express_validator_1.check('details').optional().isString().withMessage('Details must be a string'),
-    express_validator_1.check('image').optional().isString().withMessage('Image must be a string'),
-    express_validator_1.check('address').optional().isString().withMessage('Address must be a string'),
-    express_validator_1.check('longitude').optional().isNumeric().withMessage('Longitude must be a number'),
-    express_validator_1.check('latitude').optional().isNumeric().withMessage('Latitude must be a number'),
-    express_validator_1.check('meta').optional().isObject().withMessage('Meta must be an object'),
+    express_validator_1.body('userId').notEmpty().withMessage('User ID is required'),
+    express_validator_1.body('name').notEmpty().withMessage('Name is required'),
+    express_validator_1.body('email').optional().isEmail().withMessage('Invalid email format'),
+    express_validator_1.body('tagline').optional().isString().withMessage('Tagline must be a string'),
+    express_validator_1.body('details').optional().isString().withMessage('Details must be a string'),
+    express_validator_1.body('image').optional().isString().withMessage('Image must be a string'),
+    express_validator_1.body('address').optional().isString().withMessage('Address must be a string'),
+    express_validator_1.body('longitude').optional().isNumeric().withMessage('Longitude must be a number'),
+    express_validator_1.body('latitude').optional().isNumeric().withMessage('Latitude must be a number'),
+    express_validator_1.body('meta').optional().isObject().withMessage('Meta must be an object'),
+    express_validator_1.body('categories').optional().isArray().withMessage('Categories must be an array'),
+];
+exports.validateCreateOrUpdateVendorOpeningHours = [
+    express_validator_1.body('vendorId').notEmpty().withMessage('Vendor ID is required'),
+    express_validator_1.body('day')
+        .notEmpty()
+        .withMessage('Day is required')
+        .isIn(Object.values(client_1.Days))
+        .withMessage("Day must be one of: " + Object.values(client_1.Days).join(', ')),
+    express_validator_1.body('open')
+        .optional()
+        .custom(function (value) {
+        if (value === null || /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(value)) {
+            return true;
+        }
+        throw new Error('Open time must be in HH:MM format or null');
+    }),
+    express_validator_1.body('close')
+        .optional()
+        .custom(function (value) {
+        if (value === null || /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(value)) {
+            return true;
+        }
+        throw new Error('Close time must be in HH:MM format or null');
+    }),
+    express_validator_1.body('id').optional().isUUID().withMessage('Id must be a valid UUID'),
 ];
 // Add more validation chains as needed

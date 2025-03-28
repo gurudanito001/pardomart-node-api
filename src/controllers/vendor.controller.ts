@@ -17,6 +17,7 @@ export const createVendor = async (req: AuthenticatedRequest, res: Response) => 
   }
 };
 
+
 export const getVendorById = async (req: Request, res: Response) => {
   try {
     const vendor = await vendorService.getVendorById(req.params.id);
