@@ -2,7 +2,9 @@ import { Router } from 'express';
 import authRouter from './auth.routes';
 import usersRouter from './users.routes';
 import vendorRouter from './vendor.routes';
-import vendorOpeningHours from './vendorOpeningHours.routes'
+import vendorOpeningHoursRouter from './vendorOpeningHours.routes';
+import productRouter from './product.routes';
+import categoryRouter from './category.routes'
 
 // Create a new Router instance
 const router = Router();
@@ -11,6 +13,8 @@ const router = Router();
 router.use('/api/v1/auth', authRouter);
 router.use('/api/v1/users', usersRouter);
 router.use('/api/v1/vendors', vendorRouter);
-router.use('/api/v1/openingHours', vendorOpeningHours);
+router.use('/api/v1/openingHours', vendorOpeningHoursRouter);
+router.use('/api/v1/product', productRouter);
+router.use('/api/v1/category', categoryRouter);
 
 export default router;

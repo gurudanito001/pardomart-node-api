@@ -69,6 +69,7 @@ export const getVendorById = async (id: string): Promise<Vendor | null> => {
     where: { id },
     include: {
       user: true,
+      openingHours: true,
     },
   });
 };

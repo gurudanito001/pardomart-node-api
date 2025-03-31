@@ -1,15 +1,4 @@
 "use strict";
-var __assign = (this && this.__assign) || function () {
-    __assign = Object.assign || function(t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-            s = arguments[i];
-            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-                t[p] = s[p];
-        }
-        return t;
-    };
-    return __assign.apply(this, arguments);
-};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -47,86 +36,58 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteVendor = exports.updateVendor = exports.getVendorsByUserId = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
-// models/vendor.model.ts
+exports.deleteCategory = exports.updateCategory = exports.getAllCategories = exports.getCategoryById = exports.createCategory = exports.createCategoriesBulk = void 0;
+// models/category.model.ts
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
-exports.createVendor = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
-    var vendor, openingHoursData, data;
+exports.createCategoriesBulk = function (names) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0: return [4 /*yield*/, prisma.vendor.create({
-                    data: __assign({}, payload)
-                })];
-            case 1:
-                vendor = _a.sent();
-                openingHoursData = Object.values(client_1.Days).map(function (day) { return ({
-                    vendorId: vendor === null || vendor === void 0 ? void 0 : vendor.id,
-                    day: day,
-                    open: '09:00',
-                    close: '18:00'
-                }); });
-                return [4 /*yield*/, prisma.vendorOpeningHours.createMany({
-                        data: openingHoursData
-                    })];
-            case 2:
-                _a.sent();
-                return [4 /*yield*/, prisma.vendor.findUnique({
-                        where: {
-                            id: vendor.id
-                        },
-                        include: {
-                            openingHours: true
-                        }
-                    })];
-            case 3:
-                data = _a.sent();
-                return [2 /*return*/, data];
-        }
+        return [2 /*return*/, prisma.category.createMany({
+                data: names.map(function (name) { return ({ name: name }); }),
+                skipDuplicates: true
+            }).then(function () { return prisma.category.findMany({ where: { name: { "in": names } } }); })];
     });
 }); };
-exports.getVendorById = function (id) { return __awaiter(void 0, void 0, Promise, function () {
+exports.createCategory = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.vendor.findUnique({
+        return [2 /*return*/, prisma.category.create({
+                data: payload
+            })];
+    });
+}); };
+exports.getCategoryById = function (id) { return __awaiter(void 0, void 0, Promise, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, prisma.category.findUnique({
                 where: { id: id },
                 include: {
-                    user: true,
-                    openingHours: true
+                    products: true
                 }
             })];
     });
 }); };
-exports.getAllVendors = function () { return __awaiter(void 0, void 0, Promise, function () {
+exports.getAllCategories = function () { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.vendor.findMany({
+        return [2 /*return*/, prisma.category.findMany({
                 include: {
-                    user: true,
-                    openingHours: true
+                    products: true
                 }
             })];
     });
 }); };
-exports.getVendorsByUserId = function (userId) { return __awaiter(void 0, void 0, Promise, function () {
+exports.updateCategory = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.vendor.findMany({
-                where: { userId: userId },
+        return [2 /*return*/, prisma.category.update({
+                where: { id: payload.id },
+                data: payload,
                 include: {
-                    user: true
+                    products: true
                 }
             })];
     });
 }); };
-exports.updateVendor = function (id, payload) { return __awaiter(void 0, void 0, Promise, function () {
+exports.deleteCategory = function (id) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.vendor.update({
-                where: { id: id },
-                data: __assign({}, payload)
-            })];
-    });
-}); };
-exports.deleteVendor = function (id) { return __awaiter(void 0, void 0, Promise, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.vendor["delete"]({
+        return [2 /*return*/, prisma.category["delete"]({
                 where: { id: id }
             })];
     });
