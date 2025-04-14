@@ -47,47 +47,53 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteVendorProduct = exports.deleteProduct = exports.updateVendorProduct = exports.updateProductBase = exports.getVendorProductsByCategory = exports.getAllVendorProducts = exports.getAllProducts = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.createVendorProductWithBarcode = exports.createVendorProduct = exports.createProduct = void 0;
+exports.deleteVendorProduct = exports.deleteProduct = exports.updateVendorProduct = exports.updateProductBase = exports.getVendorProductsByCategory = exports.getAllVendorProducts = exports.getAllProducts = exports.getVendorProductsByTagIds = exports.getProductsByTagIds = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.createVendorProductWithBarcode = exports.createVendorProduct = exports.createProduct = void 0;
 // models/product.model.ts
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
 exports.createProduct = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
-    var _a;
-    return __generator(this, function (_b) {
+    var _a, _b;
+    return __generator(this, function (_c) {
         return [2 /*return*/, prisma.product.create({
                 data: __assign(__assign({}, payload), { categories: {
                         connect: (_a = payload.categoryIds) === null || _a === void 0 ? void 0 : _a.map(function (id) { return ({ id: id }); })
+                    }, tags: {
+                        connect: (_b = payload.tagIds) === null || _b === void 0 ? void 0 : _b.map(function (id) { return ({ id: id }); })
                     } }),
                 include: {
-                    categories: true
+                    categories: true,
+                    tags: true
                 }
             })];
     });
 }); };
 exports.createVendorProduct = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
-    var _a;
-    return __generator(this, function (_b) {
+    var _a, _b;
+    return __generator(this, function (_c) {
         return [2 /*return*/, prisma.vendorProduct.create({
                 data: __assign(__assign({}, payload), { categories: {
                         connect: (_a = payload.categoryIds) === null || _a === void 0 ? void 0 : _a.map(function (id) { return ({ id: id }); })
+                    }, tags: {
+                        connect: (_b = payload.tagIds) === null || _b === void 0 ? void 0 : _b.map(function (id) { return ({ id: id }); })
                     } }),
                 include: {
                     product: true,
-                    categories: true
+                    categories: true,
+                    tags: true
                 }
             })];
     });
 }); };
 exports.createVendorProductWithBarcode = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
     var product, productId, newProduct, vendorProductPayload;
-    var _a, _b;
-    return __generator(this, function (_c) {
-        switch (_c.label) {
+    var _a, _b, _c, _d;
+    return __generator(this, function (_e) {
+        switch (_e.label) {
             case 0: return [4 /*yield*/, prisma.product.findUnique({
                     where: { barcode: payload.barcode }
                 })];
             case 1:
-                product = _c.sent();
+                product = _e.sent();
                 if (!!product) return [3 /*break*/, 3];
                 return [4 /*yield*/, prisma.product.create({
                         data: {
@@ -98,19 +104,23 @@ exports.createVendorProductWithBarcode = function (payload) { return __awaiter(v
                             attributes: payload.attributes,
                             categories: {
                                 connect: (_a = payload.categoryIds) === null || _a === void 0 ? void 0 : _a.map(function (id) { return ({ id: id }); })
+                            },
+                            tags: {
+                                connect: (_b = payload.tagIds) === null || _b === void 0 ? void 0 : _b.map(function (id) { return ({ id: id }); })
                             }
                         },
                         include: {
-                            categories: true
+                            categories: true,
+                            tags: true
                         }
                     })];
             case 2:
-                newProduct = _c.sent();
+                newProduct = _e.sent();
                 productId = newProduct.id;
                 return [3 /*break*/, 4];
             case 3:
                 productId = product.id;
-                _c.label = 4;
+                _e.label = 4;
             case 4:
                 vendorProductPayload = {
                     vendorId: payload.vendorId,
@@ -125,14 +135,18 @@ exports.createVendorProductWithBarcode = function (payload) { return __awaiter(v
                     isAvailable: payload.isAvailable,
                     attributes: payload.attributes,
                     categories: {
-                        connect: (_b = payload.categoryIds) === null || _b === void 0 ? void 0 : _b.map(function (id) { return ({ id: id }); })
+                        connect: (_c = payload.categoryIds) === null || _c === void 0 ? void 0 : _c.map(function (id) { return ({ id: id }); })
+                    },
+                    tags: {
+                        connect: (_d = payload.tagIds) === null || _d === void 0 ? void 0 : _d.map(function (id) { return ({ id: id }); })
                     }
                 };
                 return [2 /*return*/, prisma.vendorProduct.create({
                         data: vendorProductPayload,
                         include: {
                             product: true,
-                            categories: true
+                            categories: true,
+                            tags: true
                         }
                     })];
         }
@@ -143,7 +157,8 @@ exports.getProductByBarcode = function (barcode) { return __awaiter(void 0, void
         return [2 /*return*/, prisma.product.findUnique({
                 where: { barcode: barcode },
                 include: {
-                    categories: true
+                    categories: true,
+                    tags: true
                 }
             })];
     });
@@ -155,7 +170,43 @@ exports.getVendorProductByBarcode = function (barcode, vendorId) { return __awai
                     vendorId: vendorId,
                     product: { barcode: barcode }
                 },
-                include: { product: true }
+                include: { product: true, categories: true, tags: true }
+            })];
+    });
+}); };
+exports.getProductsByTagIds = function (tagIds) { return __awaiter(void 0, void 0, Promise, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, prisma.product.findMany({
+                where: {
+                    tags: {
+                        some: {
+                            id: {
+                                "in": tagIds
+                            }
+                        }
+                    }
+                },
+                include: {
+                    tags: true
+                }
+            })];
+    });
+}); };
+exports.getVendorProductsByTagIds = function (tagIds) { return __awaiter(void 0, void 0, Promise, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, prisma.vendorProduct.findMany({
+                where: {
+                    tags: {
+                        some: {
+                            id: {
+                                "in": tagIds
+                            }
+                        }
+                    }
+                },
+                include: {
+                    tags: true
+                }
             })];
     });
 }); };
@@ -164,6 +215,7 @@ exports.getAllProducts = function () { return __awaiter(void 0, void 0, Promise,
         return [2 /*return*/, prisma.product.findMany({
                 include: {
                     categories: true,
+                    tags: true,
                     vendorProducts: true
                 }
             })];
@@ -174,7 +226,8 @@ exports.getAllVendorProducts = function (vendorId) { return __awaiter(void 0, vo
         return [2 /*return*/, prisma.vendorProduct.findMany({
                 where: { vendorId: vendorId },
                 include: {
-                    product: true
+                    product: true,
+                    tags: true
                 }
             })];
     });
@@ -193,7 +246,8 @@ exports.getVendorProductsByCategory = function (vendorId, categoryId) { return _
                     }
                 },
                 include: {
-                    product: true
+                    product: true,
+                    tags: true
                 }
             })];
     });

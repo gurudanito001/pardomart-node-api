@@ -4,6 +4,7 @@
 // controllers/product.controller.ts
 import { Request, Response } from 'express';
 import * as productService from '../services/product.service';
+import { Prisma } from '@prisma/client';
 
 export const createProduct = async (req: Request, res: Response) => {
   try {
@@ -29,10 +30,17 @@ export const createVendorProductWithBarcode = async (req: Request, res: Response
   try {
     const vendorProduct = await productService.createVendorProductWithBarcode(req.body);
     res.status(201).json(vendorProduct);
-  } catch (error) {
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error?.code === 'P2002') {
+      // Construct a user-friendly error message
+      return res.status(409).json({
+        error: 'This product is already listed by this vendor.',
+      });
+    }
     console.error('Error creating vendor product with barcode:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
+
 };
 
 export const getProductByBarcode = async (req: Request, res: Response) => {
@@ -65,6 +73,43 @@ export const getVendorProductByBarcode = async (req: Request, res: Response) => 
     res.json(vendorProduct);
   } catch (error) {
     console.error('Error getting vendor product by barcode:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const getProductsByTagIds = async (req: Request, res: Response) => {
+  try {
+    const { tagIds } = req.query;
+
+    if (!tagIds || typeof tagIds === 'string') {
+      return res.status(400).json({ error: 'tagIds query parameter is required and must be an array' });
+    }
+
+    const tagIdsArray = (tagIds as string[]).map(String);
+
+    const products = await productService.getProductsByTagIds(tagIdsArray);
+    res.json(products);
+  } catch (error) {
+    console.error('Error getting products by tag IDs:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+
+export const getVendorProductsByTagIds = async (req: Request, res: Response) => {
+  try {
+    const { tagIds } = req.query;
+
+    if (!tagIds || typeof tagIds === 'string') {
+      return res.status(400).json({ error: 'tagIds query parameter is required and must be an array' });
+    }
+
+    const tagIdsArray = (tagIds as string[]).map(String);
+
+    const vendorProducts = await productService.getVendorProductsByTagIds(tagIdsArray);
+    res.json(vendorProducts);
+  } catch (error) {
+    console.error('Error getting vendor products by tag IDs:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

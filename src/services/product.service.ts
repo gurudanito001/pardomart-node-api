@@ -47,6 +47,14 @@ export const getAllVendorProducts = async (vendorId: string): Promise<VendorProd
   return productModel.getAllVendorProducts(vendorId);
 };
 
+export const getProductsByTagIds = async (tagIds: string[]): Promise<Product[]> => {
+  return productModel.getProductsByTagIds(tagIds);
+};
+
+export const getVendorProductsByTagIds = async (tagIds: string[]): Promise<VendorProduct[]> => {
+  return productModel.getVendorProductsByTagIds(tagIds);
+};
+
 export const deleteProduct = async (id: string): Promise<Product> => {
   return productModel.deleteProduct(id);
 };

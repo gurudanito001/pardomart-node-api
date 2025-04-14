@@ -12,6 +12,8 @@ router.post('/vendor/barcode', productController.createVendorProductWithBarcode)
 router.get('/barcode', productController.getProductByBarcode);
 router.get('/vendor/barcode', productController.getVendorProductByBarcode);
 router.get('/vendor/category', productController.getVendorProductsByCategory);
+router.get('/tags/ids', productController.getProductsByTagIds);
+router.get('/vendor/tags/ids', productController.getVendorProductsByTagIds);
 router.patch('/:id', productController.updateProductBase);
 router.patch('/vendor/:id', productController.updateVendorProduct);
 router["delete"]('/:id', productController.deleteProduct);

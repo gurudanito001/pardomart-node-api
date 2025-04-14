@@ -11,6 +11,7 @@ interface CreateProductPayload {
   attributes?: any;
   meta?: any;
   categoryIds: string[];
+  tagIds?: string[];
 }
 
 interface CreateVendorProductPayload {
@@ -26,6 +27,7 @@ interface CreateVendorProductPayload {
   name: string;
   description?: string;
   categoryIds: string[];
+  tagIds?: string[];
 }
 
 
@@ -40,6 +42,8 @@ interface UpdateVendorProductPayload {
   attributes?: any;
   name?: string;
   description?: string;
+  categoryIds?: string[];
+  tagIds?: string[];
 }
 
 interface UpdateProductBasePayload {
@@ -51,6 +55,7 @@ interface UpdateProductBasePayload {
   attributes?: any;
   meta?: any;
   categoryIds?: string[];
+  tagIds?: string[];
 }
 
 
@@ -61,9 +66,13 @@ export const createProduct = async (payload: CreateProductPayload): Promise<Prod
       categories: {
         connect: payload.categoryIds?.map((id) => ({ id })),
       },
+      tags: {
+        connect: payload.tagIds?.map((id) => ({ id })),
+      },
     },
     include: {
       categories: true,
+      tags: true
     },
   });
 };
@@ -75,10 +84,14 @@ export const createVendorProduct = async (payload: CreateVendorProductPayload): 
       categories: {
         connect: payload.categoryIds?.map((id) => ({ id })),
       },
+      tags: {
+        connect: payload.tagIds?.map((id) => ({ id })),
+      },
     },
     include: {
       product: true,
       categories: true,
+      tags: true
     },
   });
 };
@@ -103,9 +116,13 @@ export const createVendorProductWithBarcode = async (
         categories: {
           connect: payload.categoryIds?.map((id: string) => ({ id })),
         },
+        tags: {
+          connect: payload.tagIds?.map((id: string) => ({ id })),
+        },
       },
       include: {
         categories: true,
+        tags: true
       },
     });
     productId = newProduct.id;
@@ -128,6 +145,9 @@ export const createVendorProductWithBarcode = async (
     categories: {
       connect: payload.categoryIds?.map((id: string) => ({ id })),
     },
+    tags: {
+      connect: payload.tagIds?.map((id: string) => ({ id })),
+    },
   };
 
   return prisma.vendorProduct.create({
@@ -135,6 +155,7 @@ export const createVendorProductWithBarcode = async (
     include: {
       product: true,
       categories: true,
+      tags: true
     },
   });
 };
@@ -145,6 +166,7 @@ export const getProductByBarcode = async (barcode: string): Promise<Product | nu
     where: { barcode },
     include: {
       categories: true,
+      tags: true
     },
   });
 };
@@ -155,7 +177,42 @@ export const getVendorProductByBarcode = async (barcode: string, vendorId: strin
       vendorId: vendorId,
       product: { barcode },
     },
-    include: { product: true },
+    include: { product: true, categories: true, tags: true },
+  });
+};
+
+export const getProductsByTagIds = async (tagIds: string[]): Promise<Product[]> => {
+  return prisma.product.findMany({
+    where: {
+      tags: {
+        some: {
+          id: {
+            in: tagIds,
+          },
+        },
+      },
+    },
+    include: {
+      tags: true,
+    },
+  });
+};
+
+
+export const getVendorProductsByTagIds = async (tagIds: string[]): Promise<VendorProduct[]> => {
+  return prisma.vendorProduct.findMany({
+    where: {
+      tags: {
+        some: {
+          id: {
+            in: tagIds,
+          },
+        },
+      },
+    },
+    include: {
+      tags: true,
+    },
   });
 };
 
@@ -163,6 +220,7 @@ export const getAllProducts = async (): Promise<Product[]> => {
   return prisma.product.findMany({
     include: {
       categories: true,
+      tags: true,
       vendorProducts: true,
     },
   });
@@ -173,6 +231,7 @@ export const getAllVendorProducts = async (vendorId: string): Promise<VendorProd
     where: { vendorId },
     include: {
       product: true,
+      tags: true
     },
   });
 };
@@ -194,6 +253,7 @@ export const getVendorProductsByCategory = async (
     },
     include: {
       product: true,
+      tags: true
     },
   });
 };

@@ -43,11 +43,14 @@ model Product {
   images      String[]
   attributes  Json?
   meta        Json?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
   vendorProducts     VendorProduct[]
   categoryIds String[]
   categories  Category[] 
+  isAlcohol   Boolean  @default(false)
+  isAgeRestricted Boolean  @default(false)
+  tags        Tag[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model VendorProduct {
@@ -60,22 +63,31 @@ model VendorProduct {
   name          String
   description   String?
   discountedPrice Float?
-  sku           String?
   images        String[]
   stock         Int?
   isAvailable   Boolean   @default(true)
+  isAlcohol   Boolean  @default(false)
+  isAgeRestricted Boolean  @default(false)
   attributes    Json?
+  categoryIds String[]
+  categories  Category[]
+  tags        Tag[]
   @@unique([vendorId, productId])
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  categoryIds String[]
-  categories  Category[]
 }
 
 model Category {
   id       String    @id @default(uuid())
   name     String    @unique
   products Product[]
+  vendorProducts VendorProduct[]
+}
+
+model Tag {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  products  Product[]
   vendorProducts VendorProduct[]
 }
 

@@ -47,8 +47,9 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteVendorProduct = exports.deleteProduct = exports.getVendorProductsByCategory = exports.getAllVendorProducts = exports.getAllProducts = exports.updateVendorProduct = exports.updateProductBase = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.createVendorProductWithBarcode = exports.createVendorProduct = exports.createProduct = void 0;
+exports.deleteVendorProduct = exports.deleteProduct = exports.getVendorProductsByCategory = exports.getAllVendorProducts = exports.getAllProducts = exports.updateVendorProduct = exports.updateProductBase = exports.getVendorProductsByTagIds = exports.getProductsByTagIds = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.createVendorProductWithBarcode = exports.createVendorProduct = exports.createProduct = void 0;
 var productService = require("../services/product.service");
+var client_1 = require("@prisma/client");
 exports.createProduct = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var product, error_1;
     return __generator(this, function (_a) {
@@ -102,6 +103,12 @@ exports.createVendorProductWithBarcode = function (req, res) { return __awaiter(
                 return [3 /*break*/, 3];
             case 2:
                 error_3 = _a.sent();
+                if (error_3 instanceof client_1.Prisma.PrismaClientKnownRequestError && (error_3 === null || error_3 === void 0 ? void 0 : error_3.code) === 'P2002') {
+                    // Construct a user-friendly error message
+                    return [2 /*return*/, res.status(409).json({
+                            error: 'This product is already listed by this vendor.'
+                        })];
+                }
                 console.error('Error creating vendor product with barcode:', error_3);
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
@@ -163,8 +170,58 @@ exports.getVendorProductByBarcode = function (req, res) { return __awaiter(void 
         }
     });
 }); };
+exports.getProductsByTagIds = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var tagIds, tagIdsArray, products, error_6;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                tagIds = req.query.tagIds;
+                if (!tagIds || typeof tagIds === 'string') {
+                    return [2 /*return*/, res.status(400).json({ error: 'tagIds query parameter is required and must be an array' })];
+                }
+                tagIdsArray = tagIds.map(String);
+                return [4 /*yield*/, productService.getProductsByTagIds(tagIdsArray)];
+            case 1:
+                products = _a.sent();
+                res.json(products);
+                return [3 /*break*/, 3];
+            case 2:
+                error_6 = _a.sent();
+                console.error('Error getting products by tag IDs:', error_6);
+                res.status(500).json({ error: 'Internal server error' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+exports.getVendorProductsByTagIds = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var tagIds, tagIdsArray, vendorProducts, error_7;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                tagIds = req.query.tagIds;
+                if (!tagIds || typeof tagIds === 'string') {
+                    return [2 /*return*/, res.status(400).json({ error: 'tagIds query parameter is required and must be an array' })];
+                }
+                tagIdsArray = tagIds.map(String);
+                return [4 /*yield*/, productService.getVendorProductsByTagIds(tagIdsArray)];
+            case 1:
+                vendorProducts = _a.sent();
+                res.json(vendorProducts);
+                return [3 /*break*/, 3];
+            case 2:
+                error_7 = _a.sent();
+                console.error('Error getting vendor products by tag IDs:', error_7);
+                res.status(500).json({ error: 'Internal server error' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
 exports.updateProductBase = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var product, error_6;
+    var product, error_8;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -175,8 +232,8 @@ exports.updateProductBase = function (req, res) { return __awaiter(void 0, void 
                 res.json(product);
                 return [3 /*break*/, 3];
             case 2:
-                error_6 = _a.sent();
-                console.error('Error updating product base:', error_6);
+                error_8 = _a.sent();
+                console.error('Error updating product base:', error_8);
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -184,7 +241,7 @@ exports.updateProductBase = function (req, res) { return __awaiter(void 0, void 
     });
 }); };
 exports.updateVendorProduct = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var vendorProduct, error_7;
+    var vendorProduct, error_9;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -195,8 +252,8 @@ exports.updateVendorProduct = function (req, res) { return __awaiter(void 0, voi
                 res.json(vendorProduct);
                 return [3 /*break*/, 3];
             case 2:
-                error_7 = _a.sent();
-                console.error('Error updating vendor product:', error_7);
+                error_9 = _a.sent();
+                console.error('Error updating vendor product:', error_9);
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -204,7 +261,7 @@ exports.updateVendorProduct = function (req, res) { return __awaiter(void 0, voi
     });
 }); };
 exports.getAllProducts = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var products, error_8;
+    var products, error_10;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -215,8 +272,8 @@ exports.getAllProducts = function (req, res) { return __awaiter(void 0, void 0, 
                 res.json(products);
                 return [3 /*break*/, 3];
             case 2:
-                error_8 = _a.sent();
-                console.error('Error getting all products:', error_8);
+                error_10 = _a.sent();
+                console.error('Error getting all products:', error_10);
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -224,7 +281,7 @@ exports.getAllProducts = function (req, res) { return __awaiter(void 0, void 0, 
     });
 }); };
 exports.getAllVendorProducts = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var vendorId, vendorProducts, error_9;
+    var vendorId, vendorProducts, error_11;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -239,8 +296,8 @@ exports.getAllVendorProducts = function (req, res) { return __awaiter(void 0, vo
                 res.json(vendorProducts);
                 return [3 /*break*/, 3];
             case 2:
-                error_9 = _a.sent();
-                console.error('Error getting vendor products:', error_9);
+                error_11 = _a.sent();
+                console.error('Error getting vendor products:', error_11);
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -248,7 +305,7 @@ exports.getAllVendorProducts = function (req, res) { return __awaiter(void 0, vo
     });
 }); };
 exports.getVendorProductsByCategory = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, vendorId, categoryId, vendorProducts, error_10;
+    var _a, vendorId, categoryId, vendorProducts, error_12;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -263,8 +320,8 @@ exports.getVendorProductsByCategory = function (req, res) { return __awaiter(voi
                 res.json(vendorProducts);
                 return [3 /*break*/, 3];
             case 2:
-                error_10 = _b.sent();
-                console.error('Error getting vendor products by category:', error_10);
+                error_12 = _b.sent();
+                console.error('Error getting vendor products by category:', error_12);
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -272,7 +329,7 @@ exports.getVendorProductsByCategory = function (req, res) { return __awaiter(voi
     });
 }); };
 exports.deleteProduct = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var product, error_11;
+    var product, error_13;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -283,8 +340,8 @@ exports.deleteProduct = function (req, res) { return __awaiter(void 0, void 0, v
                 res.json(product);
                 return [3 /*break*/, 3];
             case 2:
-                error_11 = _a.sent();
-                console.error('Error deleting product:', error_11);
+                error_13 = _a.sent();
+                console.error('Error deleting product:', error_13);
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -292,7 +349,7 @@ exports.deleteProduct = function (req, res) { return __awaiter(void 0, void 0, v
     });
 }); };
 exports.deleteVendorProduct = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var vendorProduct, error_12;
+    var vendorProduct, error_14;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -303,8 +360,8 @@ exports.deleteVendorProduct = function (req, res) { return __awaiter(void 0, voi
                 res.json(vendorProduct);
                 return [3 /*break*/, 3];
             case 2:
-                error_12 = _a.sent();
-                console.error('Error deleting vendor product:', error_12);
+                error_14 = _a.sent();
+                console.error('Error deleting vendor product:', error_14);
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
