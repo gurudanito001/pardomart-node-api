@@ -194,6 +194,7 @@ export const getProductsByTagIds = async (tagIds: string[]): Promise<Product[]> 
     },
     include: {
       tags: true,
+      categories: true
     },
   });
 };
@@ -212,6 +213,7 @@ export const getVendorProductsByTagIds = async (tagIds: string[]): Promise<Vendo
     },
     include: {
       tags: true,
+      categories: true
     },
   });
 };
@@ -231,7 +233,8 @@ export const getAllVendorProducts = async (vendorId: string): Promise<VendorProd
     where: { vendorId },
     include: {
       product: true,
-      tags: true
+      tags: true,
+      categories: true
     },
   });
 };
@@ -253,7 +256,8 @@ export const getVendorProductsByCategory = async (
     },
     include: {
       product: true,
-      tags: true
+      tags: true,
+      categories: true
     },
   });
 };

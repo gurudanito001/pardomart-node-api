@@ -187,7 +187,8 @@ exports.getProductsByTagIds = function (tagIds) { return __awaiter(void 0, void 
                     }
                 },
                 include: {
-                    tags: true
+                    tags: true,
+                    categories: true
                 }
             })];
     });
@@ -205,7 +206,8 @@ exports.getVendorProductsByTagIds = function (tagIds) { return __awaiter(void 0,
                     }
                 },
                 include: {
-                    tags: true
+                    tags: true,
+                    categories: true
                 }
             })];
     });
@@ -227,7 +229,8 @@ exports.getAllVendorProducts = function (vendorId) { return __awaiter(void 0, vo
                 where: { vendorId: vendorId },
                 include: {
                     product: true,
-                    tags: true
+                    tags: true,
+                    categories: true
                 }
             })];
     });
@@ -247,7 +250,8 @@ exports.getVendorProductsByCategory = function (vendorId, categoryId) { return _
                 },
                 include: {
                     product: true,
-                    tags: true
+                    tags: true,
+                    categories: true
                 }
             })];
     });
