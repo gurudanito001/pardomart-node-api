@@ -3,14 +3,16 @@ import { PrismaClient, User, Role, Verification } from '@prisma/client'; // Assu
 const prisma = new PrismaClient();
 
 
-interface CheckUserFilters {
+export interface CheckUserFilters {
   mobileNumber: string;
+  role: Role
 }
 
 export const checkUserExistence = async (filters: CheckUserFilters): Promise<User | null> => {
   return prisma.user.findUnique({
     where: {
       mobileNumber: filters.mobileNumber,
+      role: filters.role
     },
   });
 };

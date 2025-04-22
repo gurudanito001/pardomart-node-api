@@ -63,10 +63,19 @@ exports.validateRegisterUser = [
     express_validator_1.check('name').notEmpty().withMessage('Name is required'),
     express_validator_1.check('email').isEmail().withMessage('Invalid email format'),
     express_validator_1.check('mobileNumber').notEmpty().withMessage('Mobile number is required'),
-    express_validator_1.check('role').notEmpty().withMessage('Role is required'),
+    express_validator_1.check('role')
+        .notEmpty()
+        .withMessage('Role is required')
+        .isIn(['customer', 'vendor', 'delivery', 'admin'])
+        .withMessage('Role must be one of: customer, vendor, delivery, or admin'),
 ];
 exports.validateLogin = [
     express_validator_1.check('mobileNumber').notEmpty().withMessage('Mobile number is required'),
+    express_validator_1.check('role')
+        .notEmpty()
+        .withMessage('Role is required')
+        .isIn(['customer', 'vendor', 'delivery', 'admin'])
+        .withMessage('Role must be one of: customer, vendor, delivery, or admin'),
 ];
 exports.validateResendVerification = [
     express_validator_1.check('mobileNumber').notEmpty().withMessage('Mobile number is required'),
@@ -74,9 +83,14 @@ exports.validateResendVerification = [
 exports.validateVerifyAndLogin = [
     express_validator_1.check('mobileNumber').notEmpty().withMessage('Mobile number is required'),
     express_validator_1.check('verificationCode').notEmpty().withMessage('Verification code is required'),
+    express_validator_1.check('role')
+        .notEmpty()
+        .withMessage('Role is required')
+        .isIn(['customer', 'vendor', 'delivery', 'admin'])
+        .withMessage('Role must be one of: customer, vendor, delivery, or admin'),
 ];
 exports.validateCreateVendor = [
-    express_validator_1.body('userId').notEmpty().withMessage('User ID is required'),
+    //body('userId').notEmpty().withMessage('User ID is required'),
     express_validator_1.body('name').notEmpty().withMessage('Name is required'),
     express_validator_1.body('email').optional().isEmail().withMessage('Invalid email format'),
     express_validator_1.body('tagline').optional().isString().withMessage('Tagline must be a string'),

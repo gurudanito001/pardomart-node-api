@@ -12,6 +12,6 @@ router.get('/:id', authenticate, vendorController.getVendorById);
 router.get('/', authenticate, vendorController.getAllVendors);
 router.patch('/:id', authenticate, vendorController.updateVendor);
 router.delete('/:id', authenticate, vendorController.deleteVendor);
-router.get('/user/:userId', authenticate, vendorController.getVendorsByUserId);
+router.get('/user', authenticate, vendorController.getVendorsByUserId);
 
 export default router;

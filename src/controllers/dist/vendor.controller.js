@@ -159,7 +159,7 @@ exports.getVendorsByUserId = function (req, res) { return __awaiter(void 0, void
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, vendorService.getVendorsByUserId(req.params.userId)];
+                return [4 /*yield*/, vendorService.getVendorsByUserId(req.userId)];
             case 1:
                 vendors = _a.sent();
                 res.status(200).json(vendors);

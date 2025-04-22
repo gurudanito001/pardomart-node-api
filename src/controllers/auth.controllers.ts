@@ -24,10 +24,10 @@ export const registerUser = async (req: Request, res: Response) => {
 
 export const resendVerificationCode = async (req: Request, res: Response) => {
   try {
-    const { mobileNumber } = req.body;
+    const { mobileNumber, role } = req.body;
 
     // Check if the user exists
-    const userExists = await authService.checkUserExistence({ mobileNumber });
+    const userExists = await authService.checkUserExistence({ mobileNumber, role });
     if (!userExists) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -45,8 +45,8 @@ export const resendVerificationCode = async (req: Request, res: Response) => {
 
 export const initiateLogin = async (req: Request, res: Response) => {
   try {
-    const { mobileNumber } = req.body;
-    const userExists = await authService.checkUserExistence({ mobileNumber });
+    const { mobileNumber, role } = req.body;
+    const userExists = await authService.checkUserExistence({ mobileNumber, role });
 
     if (!userExists) {
       return res.status(200).json({ exists: false });
@@ -65,8 +65,8 @@ export const initiateLogin = async (req: Request, res: Response) => {
 
 export const verifyCodeAndLogin = async (req: Request, res: Response) => {
   try {
-    const { mobileNumber, verificationCode } = req.body;
-    const user = await authService.verifyCodeAndLogin(mobileNumber, verificationCode);
+    const { mobileNumber, verificationCode, role } = req.body;
+    const user = await authService.verifyCodeAndLogin(mobileNumber, verificationCode, role);
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid verification' });

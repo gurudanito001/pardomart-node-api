@@ -62,9 +62,9 @@ export const deleteVendor = async (req: Request, res: Response) => {
   }
 };
 
-export const getVendorsByUserId = async (req: Request, res: Response) => {
+export const getVendorsByUserId = async (req: Request | any, res: Response) => {
   try {
-    const vendors = await vendorService.getVendorsByUserId(req.params.userId);
+    const vendors = await vendorService.getVendorsByUserId(req.userId);
     res.status(200).json(vendors);
   } catch (error) {
     console.error('Error getting vendors by userId:', error);

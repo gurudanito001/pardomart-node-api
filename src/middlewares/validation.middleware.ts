@@ -22,11 +22,20 @@ export const validateRegisterUser = [
   check('name').notEmpty().withMessage('Name is required'),
   check('email').isEmail().withMessage('Invalid email format'),
   check('mobileNumber').notEmpty().withMessage('Mobile number is required'),
-  check('role').notEmpty().withMessage('Role is required'),
+  check('role')
+    .notEmpty()
+    .withMessage('Role is required')
+    .isIn(['customer', 'vendor', 'delivery', 'admin'])
+    .withMessage('Role must be one of: customer, vendor, delivery, or admin'),
 ];
 
 export const validateLogin = [
   check('mobileNumber').notEmpty().withMessage('Mobile number is required'),
+  check('role')
+    .notEmpty()
+    .withMessage('Role is required')
+    .isIn(['customer', 'vendor', 'delivery', 'admin'])
+    .withMessage('Role must be one of: customer, vendor, delivery, or admin'),
 ];
 
 export const validateResendVerification = [
@@ -36,10 +45,15 @@ export const validateResendVerification = [
 export const validateVerifyAndLogin = [
   check('mobileNumber').notEmpty().withMessage('Mobile number is required'),
   check('verificationCode').notEmpty().withMessage('Verification code is required'),
+  check('role')
+    .notEmpty()
+    .withMessage('Role is required')
+    .isIn(['customer', 'vendor', 'delivery', 'admin'])
+    .withMessage('Role must be one of: customer, vendor, delivery, or admin'),
 ];
 
 export const validateCreateVendor = [
-  body('userId').notEmpty().withMessage('User ID is required'),
+  //body('userId').notEmpty().withMessage('User ID is required'),
   body('name').notEmpty().withMessage('Name is required'),
   body('email').optional().isEmail().withMessage('Invalid email format'),
   body('tagline').optional().isString().withMessage('Tagline must be a string'),
