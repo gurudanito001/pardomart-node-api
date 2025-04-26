@@ -84,6 +84,14 @@ export const getAllVendors = async (): Promise<Vendor[]> => {
   });
 };
 
+export const getAllVendorsWithCoordinates = async (): Promise<
+  Pick<Vendor, 'id' | 'name' | 'longitude' | 'latitude'>[]
+> => {
+  return prisma.vendor.findMany({
+  });
+};
+
+
 export const getVendorsByUserId = async (userId: string): Promise<Vendor[]> => {
   return prisma.vendor.findMany({
     where: { userId },

@@ -52,7 +52,7 @@ var client_1 = require("@prisma/client"); // Assuming you're using @prisma/clien
 var prisma = new client_1.PrismaClient();
 exports.checkUserExistence = function (filters) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.user.findUnique({
+        return [2 /*return*/, prisma.user.findFirst({
                 where: {
                     mobileNumber: filters.mobileNumber,
                     role: filters.role

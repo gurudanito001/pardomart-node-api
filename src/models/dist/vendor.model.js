@@ -47,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteVendor = exports.updateVendor = exports.getVendorsByUserId = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
+exports.deleteVendor = exports.updateVendor = exports.getVendorsByUserId = exports.getAllVendorsWithCoordinates = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
 // models/vendor.model.ts
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
@@ -104,6 +104,11 @@ exports.getAllVendors = function () { return __awaiter(void 0, void 0, Promise, 
                     openingHours: true
                 }
             })];
+    });
+}); };
+exports.getAllVendorsWithCoordinates = function () { return __awaiter(void 0, void 0, Promise, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, prisma.vendor.findMany({})];
     });
 }); };
 exports.getVendorsByUserId = function (userId) { return __awaiter(void 0, void 0, Promise, function () {

@@ -9,7 +9,7 @@ export interface CheckUserFilters {
 }
 
 export const checkUserExistence = async (filters: CheckUserFilters): Promise<User | null> => {
-  return prisma.user.findUnique({
+  return prisma.user.findFirst({
     where: {
       mobileNumber: filters.mobileNumber,
       role: filters.role

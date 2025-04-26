@@ -1,4 +1,15 @@
 "use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -36,9 +47,24 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
+exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getVendorsByProximity = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
 // services/vendor.service.ts
 var vendorModel = require("../models/vendor.model");
+var toRadians = function (degrees) {
+    return degrees * (Math.PI / 180);
+};
+var calculateDistance = function (lat1, lon1, lat2, lon2) {
+    var R = 6371; // Radius of the Earth in km
+    var dLat = toRadians(lat2 - lat1);
+    var dLon = toRadians(lon2 - lon1);
+    var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRadians(lat1)) *
+            Math.cos(toRadians(lat2)) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+};
 exports.createVendor = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
         return [2 /*return*/, vendorModel.createVendor(payload)];
@@ -52,6 +78,25 @@ exports.getVendorById = function (id) { return __awaiter(void 0, void 0, Promise
 exports.getAllVendors = function () { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
         return [2 /*return*/, vendorModel.getAllVendors()];
+    });
+}); };
+exports.getVendorsByProximity = function (customerLatitude, customerLongitude) { return __awaiter(void 0, void 0, Promise, function () {
+    var vendors, vendorsWithDistance;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, vendorModel.getAllVendorsWithCoordinates()];
+            case 1:
+                vendors = _a.sent();
+                console.log("All vendors", vendors);
+                vendorsWithDistance = vendors.map(function (vendor) {
+                    var distance = calculateDistance(customerLatitude, customerLongitude, vendor.latitude, vendor.longitude);
+                    return __assign(__assign({}, vendor), { distance: distance });
+                });
+                // Sort vendors by distance in ascending order
+                vendorsWithDistance.sort(function (a, b) { return a.distance - b.distance; });
+                console.log(vendorsWithDistance);
+                return [2 /*return*/, vendorsWithDistance];
+        }
     });
 }); };
 exports.updateVendor = function (id, payload) { return __awaiter(void 0, void 0, Promise, function () {

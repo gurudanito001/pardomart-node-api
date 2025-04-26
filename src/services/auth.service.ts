@@ -32,16 +32,15 @@ export const verifyCodeAndLogin = async (mobileNumber: string, verificationCode:
     return null;
   }
 
-  const user = await prisma.user.findUnique({
+  const user = await prisma.user.findFirst({
     where: { mobileNumber, role },
   });
 
   if (!user) {
     return null;
   }
-
   await prisma.user.update({
-    where: { mobileNumber, role },
+    where: { id: user.id },
     data: { mobileVerified: true },
   });
 

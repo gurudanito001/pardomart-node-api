@@ -11,5 +11,6 @@ router.get('/:id', auth_middleware_1.authenticate, vendorController.getVendorByI
 router.get('/', auth_middleware_1.authenticate, vendorController.getAllVendors);
 router.patch('/:id', auth_middleware_1.authenticate, vendorController.updateVendor);
 router["delete"]('/:id', auth_middleware_1.authenticate, vendorController.deleteVendor);
-router.get('/user', auth_middleware_1.authenticate, vendorController.getVendorsByUserId);
+router.get('/getvendorsby/userId', auth_middleware_1.authenticate, vendorController.getVendorsByUserId);
+router.get('/findVendors/nearby', auth_middleware_1.authenticate, vendorController.getVendorsByProximity);
 exports["default"] = router;

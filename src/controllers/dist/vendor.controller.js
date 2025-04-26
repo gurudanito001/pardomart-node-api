@@ -47,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
+exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getAllVendors = exports.getVendorsByProximity = exports.getVendorById = exports.createVendor = void 0;
 var vendorService = require("../services/vendor.service");
 exports.createVendor = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var vendor, error_1;
@@ -92,8 +92,41 @@ exports.getVendorById = function (req, res) { return __awaiter(void 0, void 0, v
         }
     });
 }); };
+exports.getVendorsByProximity = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, latitude, longitude, customerLatitude, customerLongitude, nearbyVendors, error_3;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _b.trys.push([0, 2, , 3]);
+                _a = req.query, latitude = _a.latitude, longitude = _a.longitude;
+                if (!latitude || !longitude) {
+                    return [2 /*return*/, res
+                            .status(400)
+                            .json({ error: 'Latitude and longitude are required.' })];
+                }
+                customerLatitude = parseFloat(latitude);
+                customerLongitude = parseFloat(longitude);
+                if (isNaN(customerLatitude) || isNaN(customerLongitude)) {
+                    return [2 /*return*/, res
+                            .status(400)
+                            .json({ error: 'Invalid latitude or longitude format.' })];
+                }
+                return [4 /*yield*/, vendorService.getVendorsByProximity(customerLatitude, customerLongitude)];
+            case 1:
+                nearbyVendors = _b.sent();
+                res.json(nearbyVendors);
+                return [3 /*break*/, 3];
+            case 2:
+                error_3 = _b.sent();
+                console.error('Error listing vendors by proximity:', error_3);
+                res.status(500).json({ error: 'Internal server error.' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
 exports.getAllVendors = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var vendors, error_3;
+    var vendors, error_4;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -104,8 +137,8 @@ exports.getAllVendors = function (req, res) { return __awaiter(void 0, void 0, v
                 res.status(200).json(vendors);
                 return [3 /*break*/, 3];
             case 2:
-                error_3 = _a.sent();
-                console.error('Error getting all vendors:', error_3);
+                error_4 = _a.sent();
+                console.error('Error getting all vendors:', error_4);
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -113,7 +146,7 @@ exports.getAllVendors = function (req, res) { return __awaiter(void 0, void 0, v
     });
 }); };
 exports.updateVendor = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var id, vendor, error_4;
+    var id, vendor, error_5;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -125,8 +158,8 @@ exports.updateVendor = function (req, res) { return __awaiter(void 0, void 0, vo
                 res.status(200).json(vendor);
                 return [3 /*break*/, 3];
             case 2:
-                error_4 = _a.sent();
-                console.error('Error updating vendor:', error_4);
+                error_5 = _a.sent();
+                console.error('Error updating vendor:', error_5);
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -134,7 +167,7 @@ exports.updateVendor = function (req, res) { return __awaiter(void 0, void 0, vo
     });
 }); };
 exports.deleteVendor = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var vendor, error_5;
+    var vendor, error_6;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -145,8 +178,8 @@ exports.deleteVendor = function (req, res) { return __awaiter(void 0, void 0, vo
                 res.status(200).json(vendor);
                 return [3 /*break*/, 3];
             case 2:
-                error_5 = _a.sent();
-                console.error('Error deleting vendor:', error_5);
+                error_6 = _a.sent();
+                console.error('Error deleting vendor:', error_6);
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -154,7 +187,7 @@ exports.deleteVendor = function (req, res) { return __awaiter(void 0, void 0, vo
     });
 }); };
 exports.getVendorsByUserId = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var vendors, error_6;
+    var vendors, error_7;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -165,8 +198,8 @@ exports.getVendorsByUserId = function (req, res) { return __awaiter(void 0, void
                 res.status(200).json(vendors);
                 return [3 /*break*/, 3];
             case 2:
-                error_6 = _a.sent();
-                console.error('Error getting vendors by userId:', error_6);
+                error_7 = _a.sent();
+                console.error('Error getting vendors by userId:', error_7);
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];

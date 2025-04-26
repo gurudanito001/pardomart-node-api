@@ -77,7 +77,7 @@ exports.verifyCodeAndLogin = function (mobileNumber, verificationCode, role) { r
                 if (!storedVerification || storedVerification.code !== verificationCode || storedVerification.expiresAt < new Date()) {
                     return [2 /*return*/, null];
                 }
-                return [4 /*yield*/, prisma.user.findUnique({
+                return [4 /*yield*/, prisma.user.findFirst({
                         where: { mobileNumber: mobileNumber, role: role }
                     })];
             case 2:
@@ -86,7 +86,7 @@ exports.verifyCodeAndLogin = function (mobileNumber, verificationCode, role) { r
                     return [2 /*return*/, null];
                 }
                 return [4 /*yield*/, prisma.user.update({
-                        where: { mobileNumber: mobileNumber, role: role },
+                        where: { id: user.id },
                         data: { mobileVerified: true }
                     })];
             case 3:

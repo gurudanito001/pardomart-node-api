@@ -12,6 +12,7 @@ router.get('/:id', authenticate, vendorController.getVendorById);
 router.get('/', authenticate, vendorController.getAllVendors);
 router.patch('/:id', authenticate, vendorController.updateVendor);
 router.delete('/:id', authenticate, vendorController.deleteVendor);
-router.get('/user', authenticate, vendorController.getVendorsByUserId);
+router.get('/getvendorsby/userId', authenticate, vendorController.getVendorsByUserId);
+router.get('/findVendors/nearby', authenticate, vendorController.getVendorsByProximity);
 
 export default router;

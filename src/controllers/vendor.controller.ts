@@ -31,6 +31,37 @@ export const getVendorById = async (req: Request, res: Response) => {
   }
 };
 
+export const getVendorsByProximity = async (req: Request, res: Response) => {
+  try {
+    const { latitude, longitude } = req.query;
+
+    if (!latitude || !longitude) {
+      return res
+        .status(400)
+        .json({ error: 'Latitude and longitude are required.' });
+    }
+
+    const customerLatitude = parseFloat(latitude as string);
+    const customerLongitude = parseFloat(longitude as string);
+
+    if (isNaN(customerLatitude) || isNaN(customerLongitude)) {
+      return res
+        .status(400)
+        .json({ error: 'Invalid latitude or longitude format.' });
+    }
+
+    const nearbyVendors = await vendorService.getVendorsByProximity(
+      customerLatitude,
+      customerLongitude
+    );
+
+    res.json(nearbyVendors);
+  } catch (error) {
+    console.error('Error listing vendors by proximity:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+};
+
 export const getAllVendors = async (req: Request, res: Response) => {
   try {
     const vendors = await vendorService.getAllVendors();
