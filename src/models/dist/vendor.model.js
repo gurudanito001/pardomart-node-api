@@ -47,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteVendor = exports.updateVendor = exports.getVendorsByUserId = exports.getAllVendorsWithCoordinates = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
+exports.deleteVendor = exports.updateVendor = exports.getVendorsByUserId = exports.getFullListOfVendors = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
 // models/vendor.model.ts
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
@@ -96,28 +96,56 @@ exports.getVendorById = function (id) { return __awaiter(void 0, void 0, Promise
             })];
     });
 }); };
-exports.getAllVendors = function () { return __awaiter(void 0, void 0, Promise, function () {
+exports.getAllVendors = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+    var skip, takeVal, vendors, totalCount, totalPages;
     return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.vendor.findMany({
-                include: {
-                    user: true,
-                    openingHours: true
-                }
-            })];
+        switch (_a.label) {
+            case 0:
+                skip = ((parseInt(pagination.page)) - 1) * parseInt(pagination.take);
+                takeVal = parseInt(pagination.take);
+                return [4 /*yield*/, prisma.vendor.findMany({
+                        where: __assign({}, (filters === null || filters === void 0 ? void 0 : filters.name) && {
+                            name: {
+                                contains: filters === null || filters === void 0 ? void 0 : filters.name,
+                                mode: 'insensitive'
+                            }
+                        }),
+                        skip: skip,
+                        take: takeVal,
+                        orderBy: {
+                            createdAt: "desc"
+                        }
+                    })];
+            case 1:
+                vendors = _a.sent();
+                return [4 /*yield*/, prisma.vendor.count({
+                        where: __assign({}, (filters === null || filters === void 0 ? void 0 : filters.name) && {
+                            name: {
+                                contains: filters === null || filters === void 0 ? void 0 : filters.name,
+                                mode: 'insensitive'
+                            }
+                        })
+                    })];
+            case 2:
+                totalCount = _a.sent();
+                totalPages = Math.ceil(totalCount / parseInt(pagination.take));
+                return [2 /*return*/, { page: parseInt(pagination.page), totalPages: totalPages, pageSize: takeVal, totalCount: totalCount, data: vendors }];
+        }
     });
 }); };
-exports.getAllVendorsWithCoordinates = function () { return __awaiter(void 0, void 0, Promise, function () {
+exports.getFullListOfVendors = function () { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.vendor.findMany({})];
+        return [2 /*return*/, prisma.vendor.findMany({
+                where: {
+                // isVerified: true
+                }
+            })];
     });
 }); };
 exports.getVendorsByUserId = function (userId) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
         return [2 /*return*/, prisma.vendor.findMany({
-                where: { userId: userId },
-                include: {
-                    user: true
-                }
+                where: { userId: userId }
             })];
     });
 }); };

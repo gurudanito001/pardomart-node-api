@@ -281,26 +281,28 @@ exports.getAllProducts = function (req, res) { return __awaiter(void 0, void 0, 
     });
 }); };
 exports.getAllVendorProducts = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var vendorId, vendorProducts, error_11;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
+    var _a, name, vendorId, categoryIds, tagIds, productId, page, take, vendorProducts, error_11;
+    var _b, _c, _d, _e;
+    return __generator(this, function (_f) {
+        switch (_f.label) {
             case 0:
-                _a.trys.push([0, 2, , 3]);
-                vendorId = req.query.vendorId;
-                if (!vendorId) {
-                    return [2 /*return*/, res.status(400).json({ error: 'vendorId is required' })];
-                }
-                return [4 /*yield*/, productService.getAllVendorProducts(vendorId)];
+                _a = req.query, name = _a.name, vendorId = _a.vendorId, categoryIds = _a.categoryIds, tagIds = _a.tagIds, productId = _a.productId;
+                page = ((_c = (_b = req === null || req === void 0 ? void 0 : req.query) === null || _b === void 0 ? void 0 : _b.page) === null || _c === void 0 ? void 0 : _c.toString()) || "1";
+                take = ((_e = (_d = req === null || req === void 0 ? void 0 : req.query) === null || _d === void 0 ? void 0 : _d.size) === null || _e === void 0 ? void 0 : _e.toString()) || "20";
+                _f.label = 1;
             case 1:
-                vendorProducts = _a.sent();
-                res.json(vendorProducts);
-                return [3 /*break*/, 3];
+                _f.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, productService.getAllVendorProducts({ name: name, vendorId: vendorId, categoryIds: categoryIds, tagIds: tagIds, productId: productId }, { page: page, take: take })];
             case 2:
-                error_11 = _a.sent();
+                vendorProducts = _f.sent();
+                res.json(vendorProducts);
+                return [3 /*break*/, 4];
+            case 3:
+                error_11 = _f.sent();
                 console.error('Error getting vendor products:', error_11);
                 res.status(500).json({ error: 'Internal server error' });
-                return [3 /*break*/, 3];
-            case 3: return [2 /*return*/];
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
         }
     });
 }); };

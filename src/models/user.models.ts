@@ -26,8 +26,10 @@ export interface GetUserFilters {
   // Add other filter fields as needed
 }
 
-export const getAllUsers = async (filters: GetUserFilters = {}): Promise<User[]> => {
-  return prisma.user.findMany({
+export const getAllUsers = async (filters: GetUserFilters, pagination: {page: string, take: string}) => {
+  const skip = ( (parseInt(pagination.page) ) - 1) * parseInt(pagination.take) 
+  const takeVal = parseInt(pagination.take)
+  const users = await prisma.user.findMany({
     where: {
       ...(filters.mobileVerified !== undefined && { mobileVerified: filters.mobileVerified }), // Assuming mobileVerified maps to verified filter
       ...(filters.active !== undefined && { active: filters.active }),
@@ -35,10 +37,25 @@ export const getAllUsers = async (filters: GetUserFilters = {}): Promise<User[]>
       ...(filters.language && { language: filters.language }),
       // Add other filter conditions here
     },
+    skip: skip,
+    take: takeVal,
     orderBy: {
-      createdAt: 'desc',
+      createdAt: "desc"
+    }
+  });
+
+  const totalCount = await prisma.user.count({
+    where: {
+      ...(filters.mobileVerified !== undefined && { mobileVerified: filters.mobileVerified }), // Assuming mobileVerified maps to verified filter
+      ...(filters.active !== undefined && { active: filters.active }),
+      ...(filters.role && { role: filters.role }),
+      ...(filters.language && { language: filters.language }),
+      // Add other filter conditions here
     },
   });
+
+  const totalPages = Math.ceil( totalCount / parseInt(pagination.take));
+  return {page: parseInt(pagination.page), totalPages, pageSize: takeVal, totalCount, data: users}
 };
 
 export const getAllVerificationCodes = async (): Promise<Verification[]> => {

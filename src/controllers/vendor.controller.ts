@@ -1,6 +1,7 @@
 // controllers/vendor.controller.ts
 import { Request, Response } from 'express';
 import * as vendorService from '../services/vendor.service';
+import { getVendorsFilters } from '../models/vendor.model';
 
 interface AuthenticatedRequest extends Request {
   userId?: string;
@@ -31,23 +32,19 @@ export const getVendorById = async (req: Request, res: Response) => {
   }
 };
 
-export const getVendorsByProximity = async (req: Request, res: Response) => {
+/* export const getVendorsByProximity = async (req: Request, res: Response) => {
   try {
     const { latitude, longitude } = req.query;
 
     if (!latitude || !longitude) {
-      return res
-        .status(400)
-        .json({ error: 'Latitude and longitude are required.' });
+      return res.status(400).json({ error: 'Latitude and longitude are required.' });
     }
 
     const customerLatitude = parseFloat(latitude as string);
     const customerLongitude = parseFloat(longitude as string);
 
     if (isNaN(customerLatitude) || isNaN(customerLongitude)) {
-      return res
-        .status(400)
-        .json({ error: 'Invalid latitude or longitude format.' });
+      return res.status(400).json({ error: 'Invalid latitude or longitude format.' });
     }
 
     const nearbyVendors = await vendorService.getVendorsByProximity(
@@ -60,11 +57,14 @@ export const getVendorsByProximity = async (req: Request, res: Response) => {
     console.error('Error listing vendors by proximity:', error);
     res.status(500).json({ error: 'Internal server error.' });
   }
-};
+}; */
 
 export const getAllVendors = async (req: Request, res: Response) => {
+  const {name, latitude, longitude}: getVendorsFilters = req.query;
+  const page = req?.query?.page?.toString() || "1";
+  const take = req?.query?.size?.toString() || "20"; 
   try {
-    const vendors = await vendorService.getAllVendors();
+    const vendors = await vendorService.getAllVendors({name, latitude, longitude}, {page, take});
     res.status(200).json(vendors);
   } catch (error) {
     console.error('Error getting all vendors:', error);

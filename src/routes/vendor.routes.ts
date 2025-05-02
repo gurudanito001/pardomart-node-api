@@ -8,11 +8,12 @@ import { validate, validateCreateVendor } from '../middlewares/validation.middle
 const router = express.Router();
 
 router.post('/', authenticate, validate(validateCreateVendor), vendorController.createVendor);
-router.get('/:id', authenticate, vendorController.getVendorById);
-router.get('/', authenticate, vendorController.getAllVendors);
+router.get('/:id', vendorController.getVendorById);
+router.get('/', vendorController.getAllVendors);
+//router.get('/findVendors/nearby', vendorController.getVendorsByProximity);
+router.get('/getvendorsby/userId', authenticate, vendorController.getVendorsByUserId);
 router.patch('/:id', authenticate, vendorController.updateVendor);
 router.delete('/:id', authenticate, vendorController.deleteVendor);
-router.get('/getvendorsby/userId', authenticate, vendorController.getVendorsByUserId);
-router.get('/findVendors/nearby', authenticate, vendorController.getVendorsByProximity);
+
 
 export default router;

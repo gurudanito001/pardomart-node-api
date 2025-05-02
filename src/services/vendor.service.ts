@@ -2,7 +2,7 @@
 import * as vendorModel from '../models/vendor.model';
 import { Vendor } from '@prisma/client';
 
-interface VendorWithDistance extends Pick<Vendor, 'id' | 'name' | 'longitude' | 'latitude'> {
+interface VendorWithDistance extends Vendor {
   distance: number;
 }
 
@@ -37,30 +37,39 @@ export const getVendorById = async (id: string): Promise<Vendor | null> => {
   return vendorModel.getVendorById(id);
 };
 
-export const getAllVendors = async (): Promise<Vendor[]> => {
-  return vendorModel.getAllVendors();
-};
 
-export const getVendorsByProximity = async (
-  customerLatitude: number,
-  customerLongitude: number
-): Promise<VendorWithDistance[]> => {
-  const vendors = await vendorModel.getAllVendorsWithCoordinates();
-  console.log("All vendors", vendors)
-  const vendorsWithDistance: VendorWithDistance[] = vendors.map((vendor) => {
-    const distance = calculateDistance(
-      customerLatitude,
-      customerLongitude,
-      vendor.latitude!,
-      vendor.longitude!
-    );
-    return { ...vendor, distance };
-  });
+export const getAllVendors = async (filters: vendorModel.getVendorsFilters, pagination: {page: string, take: string}) => {
+  const vendors = await vendorModel.getAllVendors(filters, pagination);
+  //console.log("All vendors", vendors)
+  if(filters.latitude && filters.longitude){
+    const customerLatitude = parseFloat(filters.latitude);
+    const customerLongitude = parseFloat(filters.longitude);
 
-  // Sort vendors by distance in ascending order
-  vendorsWithDistance.sort((a, b) => a.distance - b.distance);
-  console.log(vendorsWithDistance);
-  return vendorsWithDistance;
+     if (!isNaN(customerLatitude) && !isNaN(customerLongitude)) {
+       const vendorsWithDistance: VendorWithDistance[] = vendors.data.map((vendor) => {
+         const distance = calculateDistance(
+           customerLatitude,
+           customerLongitude,
+           vendor.latitude!,
+           vendor.longitude!
+         );
+         return { ...vendor, distance };
+       });
+
+        // Sort vendors by distance in ascending order
+        vendorsWithDistance.sort((a, b) => a.distance - b.distance);
+        console.log(vendorsWithDistance);
+        return {
+            data: vendorsWithDistance,
+            total: vendors.totalCount, // Ensure you return total from the original query
+            page: parseInt(pagination.page),
+            pageSize: parseInt(pagination.take),
+            totalPages: Math.ceil(vendors.totalCount / parseInt(pagination.take)),
+        };
+    }
+  }
+  
+  return vendors
 };
 
 export const updateVendor = async (id: string, payload: vendorModel.UpdateVendorPayload): Promise<Vendor> => {

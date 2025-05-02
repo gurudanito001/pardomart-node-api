@@ -10,8 +10,8 @@ interface CheckUserFilters {
 
 
 
-export const getAllUsers = async (filters: GetUserFilters) => {
-  return userModel.getAllUsers(filters);
+export const getAllUsers = async (filters: GetUserFilters, pagination: {page: string, take: string}) => {
+  return userModel.getAllUsers(filters, pagination);
 };
 
 export const getAllVerificationCodes = async (): Promise<Verification[]> => {

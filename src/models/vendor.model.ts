@@ -17,8 +17,6 @@ export interface CreateVendorPayload {
   meta?: any;
 }
 
-
-
 export interface UpdateVendorPayload {
   name?: string;
   email?: string;
@@ -74,30 +72,63 @@ export const getVendorById = async (id: string): Promise<Vendor | null> => {
   });
 };
 
-export const getAllVendors = async (): Promise<Vendor[]> => {
 
-  return prisma.vendor.findMany({
-    include: {
-      user: true,
-      openingHours: true
+export interface getVendorsFilters {
+  name?: string,
+  longitude?: string,
+  latitude?: string
+}
+
+export const getAllVendors = async (filters: getVendorsFilters, pagination: {page: string, take: string}) => {
+  const skip = ( (parseInt(pagination.page) ) - 1) * parseInt(pagination.take) 
+  const takeVal = parseInt(pagination.take)
+
+  const vendors = await prisma.vendor.findMany({
+    where: {
+      //isVerified: true,
+      ...filters?.name && {
+        name: {
+          contains: filters?.name, // Case-insensitive search
+          mode: 'insensitive',
+        }
+      },
+    },
+    skip: skip,
+    take: takeVal,
+    orderBy: {
+      createdAt: "desc"
+    }
+  });
+
+  const totalCount = await prisma.vendor.count({
+    where: {
+      //isVerified: true,
+      ...filters?.name && {
+        name: {
+          contains: filters?.name, // Case-insensitive search
+          mode: 'insensitive',
+        }
+      },
     },
   });
+
+  const totalPages = Math.ceil( totalCount / parseInt(pagination.take));
+  return {page: parseInt(pagination.page), totalPages, pageSize: takeVal, totalCount, data: vendors}
 };
 
-export const getAllVendorsWithCoordinates = async (): Promise<
-  Pick<Vendor, 'id' | 'name' | 'longitude' | 'latitude'>[]
-> => {
+
+export const getFullListOfVendors = async ()=> {
   return prisma.vendor.findMany({
+    where: {
+      // isVerified: true
+    }
   });
 };
 
 
 export const getVendorsByUserId = async (userId: string): Promise<Vendor[]> => {
   return prisma.vendor.findMany({
-    where: { userId },
-    include: {
-      user: true,
-    },
+    where: { userId, /* isVerified: true */ },
   });
 };
 

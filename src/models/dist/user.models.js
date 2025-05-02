@@ -60,19 +60,33 @@ exports.checkUserExistence = function (filters) { return __awaiter(void 0, void 
             })];
     });
 }); };
-exports.getAllUsers = function (filters) {
-    if (filters === void 0) { filters = {}; }
-    return __awaiter(void 0, void 0, Promise, function () {
-        return __generator(this, function (_a) {
-            return [2 /*return*/, prisma.user.findMany({
-                    where: __assign(__assign(__assign(__assign({}, (filters.mobileVerified !== undefined && { mobileVerified: filters.mobileVerified })), (filters.active !== undefined && { active: filters.active })), (filters.role && { role: filters.role })), (filters.language && { language: filters.language })),
-                    orderBy: {
-                        createdAt: 'desc'
-                    }
-                })];
-        });
+exports.getAllUsers = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+    var skip, takeVal, users, totalCount, totalPages;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                skip = ((parseInt(pagination.page)) - 1) * parseInt(pagination.take);
+                takeVal = parseInt(pagination.take);
+                return [4 /*yield*/, prisma.user.findMany({
+                        where: __assign(__assign(__assign(__assign({}, (filters.mobileVerified !== undefined && { mobileVerified: filters.mobileVerified })), (filters.active !== undefined && { active: filters.active })), (filters.role && { role: filters.role })), (filters.language && { language: filters.language })),
+                        skip: skip,
+                        take: takeVal,
+                        orderBy: {
+                            createdAt: "desc"
+                        }
+                    })];
+            case 1:
+                users = _a.sent();
+                return [4 /*yield*/, prisma.user.count({
+                        where: __assign(__assign(__assign(__assign({}, (filters.mobileVerified !== undefined && { mobileVerified: filters.mobileVerified })), (filters.active !== undefined && { active: filters.active })), (filters.role && { role: filters.role })), (filters.language && { language: filters.language }))
+                    })];
+            case 2:
+                totalCount = _a.sent();
+                totalPages = Math.ceil(totalCount / parseInt(pagination.take));
+                return [2 /*return*/, { page: parseInt(pagination.page), totalPages: totalPages, pageSize: takeVal, totalCount: totalCount, data: users }];
+        }
     });
-};
+}); };
 exports.getAllVerificationCodes = function () { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
         return [2 /*return*/, prisma.verification.findMany()];

@@ -5,6 +5,7 @@
 import { Request, Response } from 'express';
 import * as productService from '../services/product.service';
 import { Prisma } from '@prisma/client';
+import { getVendorProductsFilters } from '../models/product.model';
 
 export const createProduct = async (req: Request, res: Response) => {
   try {
@@ -145,12 +146,11 @@ export const getAllProducts = async (req: Request, res: Response) => {
 };
 
 export const getAllVendorProducts = async (req: Request, res: Response) => {
+  const {name, vendorId, categoryIds, tagIds, productId}: getVendorProductsFilters = req.query;
+  const page = req?.query?.page?.toString() || "1";
+  const take = req?.query?.size?.toString() || "20"; 
   try {
-    const { vendorId } = req.query;
-    if (!vendorId) {
-      return res.status(400).json({ error: 'vendorId is required' });
-    }
-    const vendorProducts = await productService.getAllVendorProducts(vendorId as string);
+    const vendorProducts = await productService.getAllVendorProducts({name, vendorId, categoryIds, tagIds, productId}, {page, take});
     res.json(vendorProducts);
   } catch (error) {
     console.error('Error getting vendor products:', error);

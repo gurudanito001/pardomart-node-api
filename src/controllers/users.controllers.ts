@@ -1,13 +1,17 @@
 import { Request, Response } from 'express';
 import * as userService from '../services/user.service'; // Assuming you have a user.service.ts file
 import { User } from '@prisma/client'; // Import User type
+import { GetUserFilters } from '../models/user.models';
 
 // User Controllers
 
 
 export const getAllUsers = async (req: Request, res: Response) => {
+  const {mobileVerified, active, role, language}: GetUserFilters = req.query;
+  const page = req?.query?.page?.toString() || "1";
+  const take = req?.query?.size?.toString() || "20"; 
   try {
-    const users = await userService.getAllUsers(req.query); // Pass query params for filtering
+    const users = await userService.getAllUsers({mobileVerified, active, role, language}, {page, take}); // Pass query params for filtering
     res.status(200).json(users);
   } catch (error) {
     console.error('Error getting all users:', error);

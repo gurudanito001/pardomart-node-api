@@ -47,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getVendorsByProximity = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
+exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
 // services/vendor.service.ts
 var vendorModel = require("../models/vendor.model");
 var toRadians = function (degrees) {
@@ -75,27 +75,35 @@ exports.getVendorById = function (id) { return __awaiter(void 0, void 0, Promise
         return [2 /*return*/, vendorModel.getVendorById(id)];
     });
 }); };
-exports.getAllVendors = function () { return __awaiter(void 0, void 0, Promise, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, vendorModel.getAllVendors()];
-    });
-}); };
-exports.getVendorsByProximity = function (customerLatitude, customerLongitude) { return __awaiter(void 0, void 0, Promise, function () {
-    var vendors, vendorsWithDistance;
+exports.getAllVendors = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+    var vendors, customerLatitude_1, customerLongitude_1, vendorsWithDistance;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4 /*yield*/, vendorModel.getAllVendorsWithCoordinates()];
+            case 0: return [4 /*yield*/, vendorModel.getAllVendors(filters, pagination)];
             case 1:
                 vendors = _a.sent();
-                console.log("All vendors", vendors);
-                vendorsWithDistance = vendors.map(function (vendor) {
-                    var distance = calculateDistance(customerLatitude, customerLongitude, vendor.latitude, vendor.longitude);
-                    return __assign(__assign({}, vendor), { distance: distance });
-                });
-                // Sort vendors by distance in ascending order
-                vendorsWithDistance.sort(function (a, b) { return a.distance - b.distance; });
-                console.log(vendorsWithDistance);
-                return [2 /*return*/, vendorsWithDistance];
+                //console.log("All vendors", vendors)
+                if (filters.latitude && filters.longitude) {
+                    customerLatitude_1 = parseFloat(filters.latitude);
+                    customerLongitude_1 = parseFloat(filters.longitude);
+                    if (!isNaN(customerLatitude_1) && !isNaN(customerLongitude_1)) {
+                        vendorsWithDistance = vendors.data.map(function (vendor) {
+                            var distance = calculateDistance(customerLatitude_1, customerLongitude_1, vendor.latitude, vendor.longitude);
+                            return __assign(__assign({}, vendor), { distance: distance });
+                        });
+                        // Sort vendors by distance in ascending order
+                        vendorsWithDistance.sort(function (a, b) { return a.distance - b.distance; });
+                        console.log(vendorsWithDistance);
+                        return [2 /*return*/, {
+                                data: vendorsWithDistance,
+                                total: vendors.totalCount,
+                                page: parseInt(pagination.page),
+                                pageSize: parseInt(pagination.take),
+                                totalPages: Math.ceil(vendors.totalCount / parseInt(pagination.take))
+                            }];
+                    }
+                }
+                return [2 /*return*/, vendors];
         }
     });
 }); };

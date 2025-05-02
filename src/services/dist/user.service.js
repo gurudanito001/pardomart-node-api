@@ -39,9 +39,9 @@ exports.__esModule = true;
 exports.deleteUser = exports.updateUser = exports.createUser = exports.getUserById = exports.getAllVerificationCodes = exports.getAllUsers = void 0;
 // user.service.ts
 var userModel = require("../models/user.models"); // Import functions from user.model.ts
-exports.getAllUsers = function (filters) { return __awaiter(void 0, void 0, void 0, function () {
+exports.getAllUsers = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.getAllUsers(filters)];
+        return [2 /*return*/, userModel.getAllUsers(filters, pagination)];
     });
 }); };
 exports.getAllVerificationCodes = function () { return __awaiter(void 0, void 0, Promise, function () {

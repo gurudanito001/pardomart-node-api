@@ -84,9 +84,9 @@ exports.getAllProducts = function () { return __awaiter(void 0, void 0, Promise,
         return [2 /*return*/, productModel.getAllProducts()];
     });
 }); };
-exports.getAllVendorProducts = function (vendorId) { return __awaiter(void 0, void 0, Promise, function () {
+exports.getAllVendorProducts = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, productModel.getAllVendorProducts(vendorId)];
+        return [2 /*return*/, productModel.getAllVendorProducts(filters, pagination)];
     });
 }); };
 exports.getProductsByTagIds = function (tagIds) { return __awaiter(void 0, void 0, Promise, function () {

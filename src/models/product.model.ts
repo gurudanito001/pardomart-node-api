@@ -181,6 +181,96 @@ export const getVendorProductByBarcode = async (barcode: string, vendorId: strin
   });
 };
 
+
+export interface getVendorProductsFilters {
+  vendorId?: string,
+  productId?: string,
+  tagIds?: string[],
+  categoryIds?: string[],
+  name?: string,
+}
+
+export const getAllVendorProducts = async (filters: getVendorProductsFilters, pagination: { page: string, take: string }) => {
+  const skip = ((parseInt(pagination.page)) - 1) * parseInt(pagination.take)
+  const takeVal = parseInt(pagination.take)
+
+  const vendorProducts = await prisma.vendorProduct.findMany({
+    where: {
+      ...filters?.name && {
+        name: {
+          contains: filters?.name, // Case-insensitive search
+          mode: 'insensitive',
+        }
+      },
+      ...filters?.tagIds && {
+        tags: {
+          some: {
+            id: {
+              in: filters?.tagIds,
+            },
+          },
+        }
+      },
+      ...filters?.categoryIds && {
+        product: {
+          categories: {
+            some: {
+              id: {
+                in: filters?.categoryIds,
+              },
+            },
+          },
+        }
+      },
+      ...filters?.vendorId && { vendorId: filters?.vendorId },
+      ...filters?.productId && { productId: filters?.productId },
+    },
+    skip: skip,
+    take: takeVal,
+  });
+
+
+  const totalCount = await prisma.vendorProduct.count({
+    where: {
+      ...filters?.name && {
+        name: {
+          contains: filters?.name, // Case-insensitive search
+          mode: 'insensitive',
+        }
+      },
+      ...filters?.tagIds && {
+        tags: {
+          some: {
+            id: {
+              in: filters?.tagIds,
+            },
+          },
+        }
+      },
+      ...filters?.categoryIds && {
+        product: {
+          categories: {
+            some: {
+              id: {
+                in: filters?.categoryIds,
+              },
+            },
+          },
+        }
+      },
+      ...filters?.vendorId && { vendorId: filters?.vendorId },
+      ...filters?.productId && { productId: filters?.productId },
+    },
+  });
+
+  const totalPages = Math.ceil( totalCount / parseInt(pagination.take));
+  return {page: parseInt(pagination.page), totalPages, pageSize: takeVal, totalCount, data: vendorProducts}
+};
+
+
+
+
+
 export const getProductsByTagIds = async (tagIds: string[]): Promise<Product[]> => {
   return prisma.product.findMany({
     where: {
@@ -228,17 +318,6 @@ export const getAllProducts = async (): Promise<Product[]> => {
   });
 };
 
-export const getAllVendorProducts = async (vendorId: string): Promise<VendorProduct[]> => {
-  return prisma.vendorProduct.findMany({
-    where: { vendorId },
-    include: {
-      product: true,
-      tags: true,
-      categories: true
-    },
-  });
-};
-
 export const getVendorProductsByCategory = async (
   vendorId: string,
   categoryId: string
@@ -261,6 +340,10 @@ export const getVendorProductsByCategory = async (
     },
   });
 };
+
+
+
+
 
 export const updateProductBase = async (payload: UpdateProductBasePayload): Promise<Product> => {
   return prisma.product.update({
