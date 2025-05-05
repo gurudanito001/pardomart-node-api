@@ -50,19 +50,19 @@ exports.__esModule = true;
 exports.deleteCategory = exports.updateCategory = exports.getAllCategories = exports.getCategoryById = exports.createCategory = exports.createCategoriesBulk = void 0;
 var categoryService = require("../services/category.service");
 exports.createCategoriesBulk = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var names, categories, error_1;
+    var categories, createdCategories, error_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                names = req.body.names;
-                if (!names || !Array.isArray(names) || names.length === 0) {
-                    return [2 /*return*/, res.status(400).json({ error: 'Names array is required and must not be empty' })];
+                categories = req.body.categories;
+                if (!categories || !Array.isArray(categories) || categories.length === 0) {
+                    return [2 /*return*/, res.status(400).json({ error: 'Category list is required and must not be empty' })];
                 }
-                return [4 /*yield*/, categoryService.createCategoriesBulk(names)];
+                return [4 /*yield*/, categoryService.createCategoriesBulk(categories)];
             case 1:
-                categories = _a.sent();
-                res.status(201).json(categories);
+                createdCategories = _a.sent();
+                res.status(201).json(createdCategories);
                 return [3 /*break*/, 3];
             case 2:
                 error_1 = _a.sent();
@@ -117,22 +117,25 @@ exports.getCategoryById = function (req, res) { return __awaiter(void 0, void 0,
     });
 }); };
 exports.getAllCategories = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var categories, error_4;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
+    var _a, parentId, type, name, categories, error_4;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
             case 0:
-                _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, categoryService.getAllCategories()];
+                _a = req === null || req === void 0 ? void 0 : req.query, parentId = _a.parentId, type = _a.type, name = _a.name;
+                _b.label = 1;
             case 1:
-                categories = _a.sent();
-                res.json(categories);
-                return [3 /*break*/, 3];
+                _b.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, categoryService.getAllCategories({ parentId: parentId, type: type, name: name })];
             case 2:
-                error_4 = _a.sent();
+                categories = _b.sent();
+                res.json(categories);
+                return [3 /*break*/, 4];
+            case 3:
+                error_4 = _b.sent();
                 console.error('Error getting all categories:', error_4);
                 res.status(500).json({ error: 'Internal server error' });
-                return [3 /*break*/, 3];
-            case 3: return [2 /*return*/];
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
         }
     });
 }); };

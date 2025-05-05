@@ -14,8 +14,8 @@ export const getTagById = async (id: string): Promise<Tag | null> => {
   return tagModel.getTagById(id);
 };
 
-export const getAllTags = async (): Promise<Tag[]> => {
-  return tagModel.getAllTags();
+export const getAllTags = async (filters: tagModel.TagFilters): Promise<Tag[]> => {
+  return tagModel.getAllTags(filters);
 };
 
 export const updateTag = async (id: string, name: string): Promise<Tag> => {

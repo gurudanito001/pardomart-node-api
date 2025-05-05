@@ -206,6 +206,9 @@ exports.getAllVendorProducts = function (filters, pagination) { return __awaiter
                                 }
                             }
                         }), (filters === null || filters === void 0 ? void 0 : filters.vendorId) && { vendorId: filters === null || filters === void 0 ? void 0 : filters.vendorId }), (filters === null || filters === void 0 ? void 0 : filters.productId) && { productId: filters === null || filters === void 0 ? void 0 : filters.productId }),
+                        include: {
+                            categories: true
+                        },
                         skip: skip,
                         take: takeVal
                     })];

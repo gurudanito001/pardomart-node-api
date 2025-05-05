@@ -22,8 +22,21 @@ export const getTagById = async (id: string): Promise<Tag | null> => {
   });
 };
 
-export const getAllTags = async (): Promise<Tag[]> => {
-  return prisma.tag.findMany();
+
+export interface TagFilters {
+  name?: string
+}
+export const getAllTags = async (filters: TagFilters): Promise<Tag[]> => {
+  return prisma.tag.findMany({
+    where: {
+      ...filters?.name && {
+        name: {
+          contains: filters?.name, // Case-insensitive search
+          mode: 'insensitive',
+        }
+      },
+    }
+  });
 };
 
 export const updateTag = async (id: string, name: string): Promise<Tag> => {

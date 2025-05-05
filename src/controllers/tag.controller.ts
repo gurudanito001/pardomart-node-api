@@ -1,6 +1,7 @@
 // controllers/tag.controller.ts
 import { Request, Response } from 'express';
 import * as tagService from '../services/tag.service';
+import { TagFilters } from '../models/tag.model';
 
 export const createTag = async (req: Request, res: Response) => {
   try {
@@ -42,8 +43,9 @@ export const getTagById = async (req: Request, res: Response) => {
 };
 
 export const getAllTags = async (req: Request, res: Response) => {
+  const {name}: TagFilters = req?.query;
   try {
-    const tags = await tagService.getAllTags();
+    const tags = await tagService.getAllTags({name});
     res.json(tags);
   } catch (error) {
     console.error('Error getting all tags:', error);

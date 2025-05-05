@@ -6,6 +6,7 @@ import vendorOpeningHoursRouter from './vendorOpeningHours.routes';
 import productRouter from './product.routes';
 import categoryRouter from './category.routes'
 import tagRouter from './tag.routes';
+import generalSearchRouter from './generalSearch.routes'
 
 // Create a new Router instance
 const router = Router();
@@ -18,5 +19,6 @@ router.use('/api/v1/openingHours', vendorOpeningHoursRouter);
 router.use('/api/v1/product', productRouter);
 router.use('/api/v1/category', categoryRouter);
 router.use('/api/v1/tags', tagRouter);
+router.use('/api/v1/generalSearch', generalSearchRouter);
 
 export default router;

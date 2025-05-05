@@ -82,6 +82,10 @@ model VendorProduct {
 model Category {
   id       String    @id @default(uuid())
   name     String    @unique
+  description  String?
+  parent   Category? @relation("Subcategories", fields: [parentId], references: [id])
+  parentId String?
+  children Category[]  @relation("Subcategories")
   products Product[]
   vendorProducts VendorProduct[]
 }

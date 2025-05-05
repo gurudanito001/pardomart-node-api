@@ -106,22 +106,25 @@ exports.getTagById = function (req, res) { return __awaiter(void 0, void 0, void
     });
 }); };
 exports.getAllTags = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var tags, error_4;
+    var name, tags, error_4;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, tagService.getAllTags()];
+                name = (req === null || req === void 0 ? void 0 : req.query).name;
+                _a.label = 1;
             case 1:
+                _a.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, tagService.getAllTags({ name: name })];
+            case 2:
                 tags = _a.sent();
                 res.json(tags);
-                return [3 /*break*/, 3];
-            case 2:
+                return [3 /*break*/, 4];
+            case 3:
                 error_4 = _a.sent();
                 console.error('Error getting all tags:', error_4);
                 res.status(500).json({ error: 'Internal server error' });
-                return [3 /*break*/, 3];
-            case 3: return [2 /*return*/];
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
         }
     });
 }); };

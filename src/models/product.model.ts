@@ -225,6 +225,9 @@ export const getAllVendorProducts = async (filters: getVendorProductsFilters, pa
       ...filters?.vendorId && { vendorId: filters?.vendorId },
       ...filters?.productId && { productId: filters?.productId },
     },
+    include: {
+      categories: true
+    },
     skip: skip,
     take: takeVal,
   });

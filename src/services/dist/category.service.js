@@ -39,9 +39,9 @@ exports.__esModule = true;
 exports.deleteCategory = exports.updateCategory = exports.getAllCategories = exports.getCategoryById = exports.createCategory = exports.createCategoriesBulk = void 0;
 // services/category.service.ts
 var categoryModel = require("../models/category.model");
-exports.createCategoriesBulk = function (names) { return __awaiter(void 0, void 0, Promise, function () {
+exports.createCategoriesBulk = function (categories) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, categoryModel.createCategoriesBulk(names)];
+        return [2 /*return*/, categoryModel.createCategoriesBulk(categories)];
     });
 }); };
 exports.createCategory = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
@@ -54,9 +54,9 @@ exports.getCategoryById = function (id) { return __awaiter(void 0, void 0, Promi
         return [2 /*return*/, categoryModel.getCategoryById(id)];
     });
 }); };
-exports.getAllCategories = function () { return __awaiter(void 0, void 0, Promise, function () {
+exports.getAllCategories = function (filters) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, categoryModel.getAllCategories()];
+        return [2 /*return*/, categoryModel.getAllCategories(filters)];
     });
 }); };
 exports.updateCategory = function (payload) { return __awaiter(void 0, void 0, Promise, function () {

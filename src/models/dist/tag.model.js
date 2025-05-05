@@ -1,4 +1,15 @@
 "use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -62,9 +73,16 @@ exports.getTagById = function (id) { return __awaiter(void 0, void 0, Promise, f
             })];
     });
 }); };
-exports.getAllTags = function () { return __awaiter(void 0, void 0, Promise, function () {
+exports.getAllTags = function (filters) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.tag.findMany()];
+        return [2 /*return*/, prisma.tag.findMany({
+                where: __assign({}, (filters === null || filters === void 0 ? void 0 : filters.name) && {
+                    name: {
+                        contains: filters === null || filters === void 0 ? void 0 : filters.name,
+                        mode: 'insensitive'
+                    }
+                })
+            })];
     });
 }); };
 exports.updateTag = function (id, name) { return __awaiter(void 0, void 0, Promise, function () {

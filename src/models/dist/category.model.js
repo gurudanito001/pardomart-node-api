@@ -1,4 +1,15 @@
 "use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -40,12 +51,33 @@ exports.deleteCategory = exports.updateCategory = exports.getAllCategories = exp
 // models/category.model.ts
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
-exports.createCategoriesBulk = function (names) { return __awaiter(void 0, void 0, Promise, function () {
+exports.createCategoriesBulk = function (categories) { return __awaiter(void 0, void 0, Promise, function () {
+    var categoryData, createdCategories;
     return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.category.createMany({
-                data: names.map(function (name) { return ({ name: name }); }),
-                skipDuplicates: true
-            }).then(function () { return prisma.category.findMany({ where: { name: { "in": names } } }); })];
+        switch (_a.label) {
+            case 0:
+                categoryData = categories.map(function (cat) { return ({
+                    name: cat.name,
+                    description: cat.description,
+                    parentId: cat.parentId
+                }); });
+                return [4 /*yield*/, prisma.category.createMany({
+                        data: categoryData,
+                        skipDuplicates: true
+                    })];
+            case 1:
+                _a.sent();
+                return [4 /*yield*/, prisma.category.findMany({
+                        where: {
+                            name: {
+                                "in": categories.map(function (c) { return c.name; })
+                            }
+                        }
+                    })];
+            case 2:
+                createdCategories = _a.sent();
+                return [2 /*return*/, createdCategories];
+        }
     });
 }); };
 exports.createCategory = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
@@ -65,12 +97,15 @@ exports.getCategoryById = function (id) { return __awaiter(void 0, void 0, Promi
             })];
     });
 }); };
-exports.getAllCategories = function () { return __awaiter(void 0, void 0, Promise, function () {
+exports.getAllCategories = function (filters) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
         return [2 /*return*/, prisma.category.findMany({
-                include: {
-                    products: true
-                }
+                where: __assign(__assign(__assign(__assign({}, ((filters === null || filters === void 0 ? void 0 : filters.parentId) && { parentId: filters === null || filters === void 0 ? void 0 : filters.parentId })), (((filters === null || filters === void 0 ? void 0 : filters.type) === "top" && !(filters === null || filters === void 0 ? void 0 : filters.parentId)) && { parentId: null })), (((filters === null || filters === void 0 ? void 0 : filters.type) === "sub" && !(filters === null || filters === void 0 ? void 0 : filters.parentId)) && { parentId: { not: null } })), (filters === null || filters === void 0 ? void 0 : filters.name) && {
+                    name: {
+                        contains: filters === null || filters === void 0 ? void 0 : filters.name,
+                        mode: 'insensitive'
+                    }
+                })
             })];
     });
 }); };

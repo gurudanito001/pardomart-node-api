@@ -54,9 +54,9 @@ exports.getTagById = function (id) { return __awaiter(void 0, void 0, Promise, f
         return [2 /*return*/, tagModel.getTagById(id)];
     });
 }); };
-exports.getAllTags = function () { return __awaiter(void 0, void 0, Promise, function () {
+exports.getAllTags = function (filters) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, tagModel.getAllTags()];
+        return [2 /*return*/, tagModel.getAllTags(filters)];
     });
 }); };
 exports.updateTag = function (id, name) { return __awaiter(void 0, void 0, Promise, function () {

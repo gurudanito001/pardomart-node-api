@@ -3,8 +3,8 @@ import * as categoryModel from '../models/category.model';
 import { Category } from '@prisma/client';
 
 
-export const createCategoriesBulk = async (names: string[]): Promise<Category[]> => {
-  return categoryModel.createCategoriesBulk(names);
+export const createCategoriesBulk = async (categories: { name: string; description: string, parentId?: string }[]): Promise<Category[]> => {
+  return categoryModel.createCategoriesBulk(categories);
 };
 
 export const createCategory = async (payload: any): Promise<Category> => {
@@ -15,8 +15,8 @@ export const getCategoryById = async (id: string): Promise<Category | null> => {
   return categoryModel.getCategoryById(id);
 };
 
-export const getAllCategories = async (): Promise<Category[]> => {
-  return categoryModel.getAllCategories();
+export const getAllCategories = async (filters: categoryModel.CategoryFilters): Promise<Category[]> => {
+  return categoryModel.getAllCategories(filters);
 };
 
 export const updateCategory = async (payload: any): Promise<Category> => {

@@ -1,17 +1,18 @@
 // controllers/category.controller.ts
 import { Request, Response } from 'express';
 import * as categoryService from '../services/category.service';
+import { CategoryFilters } from '../models/category.model';
 
 export const createCategoriesBulk = async (req: Request, res: Response) => {
   try {
-    const { names } = req.body;
+    const {categories} = req.body;
 
-    if (!names || !Array.isArray(names) || names.length === 0) {
-      return res.status(400).json({ error: 'Names array is required and must not be empty' });
+    if (!categories || !Array.isArray(categories) || categories.length === 0) {
+      return res.status(400).json({ error: 'Category list is required and must not be empty' });
     }
 
-    const categories = await categoryService.createCategoriesBulk(names);
-    res.status(201).json(categories);
+    const createdCategories = await categoryService.createCategoriesBulk(categories);
+    res.status(201).json(createdCategories);
   } catch (error) {
     console.error('Error creating categories in bulk:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -42,8 +43,11 @@ export const getCategoryById = async (req: Request, res: Response) => {
 };
 
 export const getAllCategories = async (req: Request, res: Response) => {
+  //let parentId: string | undefined;
+  const {parentId, type, name}: CategoryFilters  = req?.query;
+
   try {
-    const categories = await categoryService.getAllCategories();
+    const categories = await categoryService.getAllCategories({ parentId, type, name });
     res.json(categories);
   } catch (error) {
     console.error('Error getting all categories:', error);
@@ -63,6 +67,7 @@ export const updateCategory = async (req: Request, res: Response) => {
 
 export const deleteCategory = async (req: Request, res: Response) => {
   try {
+
     const category = await categoryService.deleteCategory(req.params.id);
     res.json(category);
   } catch (error) {
