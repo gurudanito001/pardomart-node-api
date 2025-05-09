@@ -6,6 +6,6 @@ const router = express.Router();
 router.get('/', getVendorsCategoriesAndProductsController);
 router.get('/vendor/:vendorId', getVendorCategoriesWithProductsController);
 router.get('/category/:categoryId', getCategoryDetailsWithRelatedDataController);
-router.get('/product/:productId', getStoresByProductIdController);
+router.get('/product/', getStoresByProductIdController);
 
 export default router;

@@ -400,38 +400,51 @@ export const getCategoryDetailsWithRelatedData = async ({
 
 
 interface StoreWithProducts {
-  vendor: Vendor;
+  vendor: Vendor & { distance?: number }; // Embed distance in Vendor
   products: VendorProduct[];
-  distance?: number; // Add distance property
 }
 
 export const getStoresByProductId = async (
-  productId: string,
+  searchTerm: string,  // Changed to searchTerm
   userLatitude: number,
   userLongitude: number
 ): Promise<{ stores: StoreWithProducts[] }> => {
   try {
-    // 1. Find the VendorProducts for the given productId.  This will give us the vendors.
+    // 1. Find the VendorProducts for the given searchTerm.
     const vendorProducts = await prisma.vendorProduct.findMany({
-      where: { productId: productId },
+      where: {
+        product: {  // Assuming there's a relation to a Product model
+          name: {
+            contains: searchTerm, // Use 'contains' for searching
+            mode: 'insensitive'  //  case-insensitive search
+          }
+        }
+      },
       include: {
         vendor: true,
+        product: true // Include the product in the result
       },
     });
 
     if (!vendorProducts || vendorProducts.length === 0) {
-      return { stores: [] }; // Return empty array if no vendors sell the product
+      return { stores: [] };
     }
 
     // 2.  Create a map of vendors, and vendorProducts
-    const vendorProductMap = new Map<string, { vendor: Vendor; products: VendorProduct[] }>();
-    const initialVendorId = vendorProducts[0].vendorId;
+     const vendorProductMap = new Map<string, { vendor: Vendor & { distance?: number }; products: VendorProduct[] }>();
 
-     // Add vendors and products to the map.
+    // Add vendors and products to the map.  Calculate distance here.
     vendorProducts.forEach((vProduct) => {
+      const distance = getDistance(
+        { latitude: userLatitude, longitude: userLongitude },
+        { latitude: vProduct.vendor.latitude || 0, longitude: vProduct.vendor.longitude || 0 }
+      );
+
+      const vendorWithDistance = { ...vProduct.vendor, distance }; // Create a new object
+
       if (!vendorProductMap.has(vProduct.vendorId)) {
         vendorProductMap.set(vProduct.vendorId, {
-          vendor: vProduct.vendor,
+          vendor: vendorWithDistance,
           products: [vProduct],
         });
       } else {
@@ -442,35 +455,35 @@ export const getStoresByProductId = async (
     //3. Convert the map to an array
     const storesWithProducts = Array.from(vendorProductMap.values());
 
-    //4. Fetch products for each vendor.
-     await Promise.all(
+    //4. Fetch other products for each vendor.
+    await Promise.all(
       storesWithProducts.map(async (store) => {
         const otherProducts = await prisma.vendorProduct.findMany({
           where: {
             vendorId: store.vendor.id,
-            productId: { not: productId }, // Exclude the selected product
+            product: {
+              name: {
+                not: {
+                  contains: searchTerm,
+                },
+                mode: 'insensitive' // Move mode here
+              },
+            },
           },
-          take: 4, // Limit to 4 other products
+          take: 4,
         });
         store.products.push(...otherProducts);
       })
     );
 
-    // 5. Calculate distances and sort by proximity
-    const storesWithDistance = storesWithProducts.map((store) => {
-      const distance = getDistance(
-        { latitude: userLatitude, longitude: userLongitude },
-        { latitude: store.vendor.latitude || 0, longitude: store.vendor.longitude || 0 }
-      );
-      return { ...store, distance };
-    });
-
     // Sort by distance (closest first)
-    storesWithDistance.sort((a, b) => a.distance! - b.distance!);
+    storesWithProducts.sort((a, b) => a.vendor.distance! - b.vendor.distance!);
 
-    //Re-arrange the products.  The  product that the user selected should be the first.
-    const sortedStores = storesWithDistance.map(store => {
-        const sortedProducts = store.products.sort(a => a.productId === productId ? -1 : 1);
+    //Re-arrange the products.  The product that matches the search term should be the first.
+    const sortedStores = storesWithProducts.map(store => {
+        const sortedProducts = store.products.sort(a => 
+            a.name.toLowerCase().includes(searchTerm.toLowerCase()) ? -1 : 1
+        );
         return { ...store, products: sortedProducts };
     });
 
@@ -480,6 +493,7 @@ export const getStoresByProductId = async (
     throw error;
   }
 };
+
 
 
 

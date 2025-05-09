@@ -108,13 +108,13 @@ exports.getCategoryDetailsWithRelatedDataService = function (_a) {
     });
 };
 // Service Function
-exports.getStoresByProductIdService = function (productId, userLatitude, userLongitude) { return __awaiter(void 0, void 0, void 0, function () {
+exports.getStoresByProductIdService = function (searchTerm, userLatitude, userLongitude) { return __awaiter(void 0, void 0, void 0, function () {
     var result, error_4;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, generalSearch_model_1.getStoresByProductId(productId, userLatitude, userLongitude)];
+                return [4 /*yield*/, generalSearch_model_1.getStoresByProductId(searchTerm, userLatitude, userLongitude)];
             case 1:
                 result = _a.sent();
                 return [2 /*return*/, result];

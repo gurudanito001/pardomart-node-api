@@ -155,19 +155,19 @@ exports.getCategoryDetailsWithRelatedDataController = function (req, res) { retu
 }); };
 // Controller Function
 exports.getStoresByProductIdController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var productId, _a, latitude, longitude, userLatitude, userLongitude, result, error_4;
+    var _a, search, latitude, longitude, userSearchTerm, userLatitude, userLongitude, result, error_4;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
-                productId = req.params.productId;
-                _a = req.query, latitude = _a.latitude, longitude = _a.longitude;
+                _a = req.query, search = _a.search, latitude = _a.latitude, longitude = _a.longitude;
                 // Input validation
-                if (!productId) {
-                    return [2 /*return*/, res.status(400).json({ error: 'Product ID is required' })];
+                if (!search) {
+                    return [2 /*return*/, res.status(400).json({ error: 'Search Term is required' })];
                 }
                 if (!latitude || !longitude) {
                     return [2 /*return*/, res.status(400).json({ error: 'Latitude and Longitude are required' })];
                 }
+                userSearchTerm = search.toString();
                 userLatitude = parseFloat(latitude);
                 userLongitude = parseFloat(longitude);
                 if (isNaN(userLatitude) || isNaN(userLongitude)) {
@@ -176,7 +176,7 @@ exports.getStoresByProductIdController = function (req, res) { return __awaiter(
                 _b.label = 1;
             case 1:
                 _b.trys.push([1, 3, , 4]);
-                return [4 /*yield*/, generalSearch_service_1.getStoresByProductIdService(productId, userLatitude, userLongitude)];
+                return [4 /*yield*/, generalSearch_service_1.getStoresByProductIdService(userSearchTerm, userLatitude, userLongitude)];
             case 2:
                 result = _b.sent();
                 res.json(result);

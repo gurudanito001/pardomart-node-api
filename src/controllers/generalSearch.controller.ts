@@ -97,17 +97,18 @@ export const getCategoryDetailsWithRelatedDataController = async (req: Request, 
 
 // Controller Function
 export const getStoresByProductIdController = async (req: Request, res: Response) => {
-  const { productId } = req.params;
-  const { latitude, longitude } = req.query;
+  //const { productId } = req.params;
+  const {search, latitude, longitude } = req.query;
 
   // Input validation
-  if (!productId) {
-    return res.status(400).json({ error: 'Product ID is required' });
+  if (!search) {
+    return res.status(400).json({ error: 'Search Term is required' });
   }
   if (!latitude || !longitude) {
     return res.status(400).json({ error: 'Latitude and Longitude are required' });
   }
 
+  const userSearchTerm = search.toString();
   const userLatitude = parseFloat(latitude as string);
   const userLongitude = parseFloat(longitude as string);
 
@@ -116,7 +117,7 @@ export const getStoresByProductIdController = async (req: Request, res: Response
     }
 
   try {
-    const result = await getStoresByProductIdService(productId, userLatitude, userLongitude);
+    const result = await getStoresByProductIdService(userSearchTerm, userLatitude, userLongitude);
     res.json(result);
   } catch (error: any) {
     // Handle errors from the service

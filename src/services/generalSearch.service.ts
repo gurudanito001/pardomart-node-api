@@ -61,12 +61,12 @@ export const getCategoryDetailsWithRelatedDataService = async ({
 
 // Service Function
 export const getStoresByProductIdService = async (
-  productId: string,
+  searchTerm: string,
   userLatitude: number,
   userLongitude: number
 ) => {
   try {
-    const result = await getStoresByProductId(productId, userLatitude, userLongitude);
+    const result = await getStoresByProductId(searchTerm, userLatitude, userLongitude);
     return result;
   } catch (error: any) {
     // Handle errors (e.g., logging, specific error types)

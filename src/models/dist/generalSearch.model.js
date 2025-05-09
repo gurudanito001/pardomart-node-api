@@ -365,30 +365,40 @@ exports.getCategoryDetailsWithRelatedData = function (_a) {
         });
     });
 };
-exports.getStoresByProductId = function (productId, userLatitude, userLongitude) { return __awaiter(void 0, void 0, Promise, function () {
-    var vendorProducts, vendorProductMap_1, initialVendorId, storesWithProducts, storesWithDistance, sortedStores, error_4;
+exports.getStoresByProductId = function (searchTerm, // Changed to searchTerm
+userLatitude, userLongitude) { return __awaiter(void 0, void 0, Promise, function () {
+    var vendorProducts, vendorProductMap_1, storesWithProducts, sortedStores, error_4;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 3, , 4]);
                 return [4 /*yield*/, prisma.vendorProduct.findMany({
-                        where: { productId: productId },
+                        where: {
+                            product: {
+                                name: {
+                                    contains: searchTerm,
+                                    mode: 'insensitive' //  case-insensitive search
+                                }
+                            }
+                        },
                         include: {
-                            vendor: true
+                            vendor: true,
+                            product: true // Include the product in the result
                         }
                     })];
             case 1:
                 vendorProducts = _a.sent();
                 if (!vendorProducts || vendorProducts.length === 0) {
-                    return [2 /*return*/, { stores: [] }]; // Return empty array if no vendors sell the product
+                    return [2 /*return*/, { stores: [] }];
                 }
                 vendorProductMap_1 = new Map();
-                initialVendorId = vendorProducts[0].vendorId;
-                // Add vendors and products to the map.
+                // Add vendors and products to the map.  Calculate distance here.
                 vendorProducts.forEach(function (vProduct) {
+                    var distance = geolib_1.getDistance({ latitude: userLatitude, longitude: userLongitude }, { latitude: vProduct.vendor.latitude || 0, longitude: vProduct.vendor.longitude || 0 });
+                    var vendorWithDistance = __assign(__assign({}, vProduct.vendor), { distance: distance }); // Create a new object
                     if (!vendorProductMap_1.has(vProduct.vendorId)) {
                         vendorProductMap_1.set(vProduct.vendorId, {
-                            vendor: vProduct.vendor,
+                            vendor: vendorWithDistance,
                             products: [vProduct]
                         });
                     }
@@ -397,7 +407,7 @@ exports.getStoresByProductId = function (productId, userLatitude, userLongitude)
                     }
                 });
                 storesWithProducts = Array.from(vendorProductMap_1.values());
-                //4. Fetch products for each vendor.
+                //4. Fetch other products for each vendor.
                 return [4 /*yield*/, Promise.all(storesWithProducts.map(function (store) { return __awaiter(void 0, void 0, void 0, function () {
                         var otherProducts;
                         var _a;
@@ -406,7 +416,14 @@ exports.getStoresByProductId = function (productId, userLatitude, userLongitude)
                                 case 0: return [4 /*yield*/, prisma.vendorProduct.findMany({
                                         where: {
                                             vendorId: store.vendor.id,
-                                            productId: { not: productId }
+                                            product: {
+                                                name: {
+                                                    not: {
+                                                        contains: searchTerm
+                                                    },
+                                                    mode: 'insensitive' // Move mode here
+                                                }
+                                            }
                                         },
                                         take: 4
                                     })];
@@ -418,16 +435,14 @@ exports.getStoresByProductId = function (productId, userLatitude, userLongitude)
                         });
                     }); }))];
             case 2:
-                //4. Fetch products for each vendor.
+                //4. Fetch other products for each vendor.
                 _a.sent();
-                storesWithDistance = storesWithProducts.map(function (store) {
-                    var distance = geolib_1.getDistance({ latitude: userLatitude, longitude: userLongitude }, { latitude: store.vendor.latitude || 0, longitude: store.vendor.longitude || 0 });
-                    return __assign(__assign({}, store), { distance: distance });
-                });
                 // Sort by distance (closest first)
-                storesWithDistance.sort(function (a, b) { return a.distance - b.distance; });
-                sortedStores = storesWithDistance.map(function (store) {
-                    var sortedProducts = store.products.sort(function (a) { return a.productId === productId ? -1 : 1; });
+                storesWithProducts.sort(function (a, b) { return a.vendor.distance - b.vendor.distance; });
+                sortedStores = storesWithProducts.map(function (store) {
+                    var sortedProducts = store.products.sort(function (a) {
+                        return a.name.toLowerCase().includes(searchTerm.toLowerCase()) ? -1 : 1;
+                    });
                     return __assign(__assign({}, store), { products: sortedProducts });
                 });
                 return [2 /*return*/, { stores: sortedStores }];
