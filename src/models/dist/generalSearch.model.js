@@ -117,7 +117,7 @@ var searchVendors = function (keyword, latitude, longitude) { return __awaiter(v
                 vendorsWithDistance = vendors.map(function (vendor) {
                     var distance = geolib_1.getDistance({ latitude: latitude, longitude: longitude }, { latitude: vendor.latitude || 0, longitude: vendor.longitude || 0 } //handle null lat/long
                     );
-                    return __assign(__assign({}, vendor), { distance: distance });
+                    return __assign(__assign({}, vendor), { distance: distance / 1000 });
                 });
                 // Sort vendors by distance (closest first)
                 vendorsWithDistance.sort(function (a, b) { return a.distance - b.distance; });
@@ -241,7 +241,7 @@ exports.getProductsByCategoryId = function (categoryId, page, take, vendorId, us
                         delete item.product.vendor;
                         return __assign(__assign({}, item.product), { vendor: {
                                 name: item.vendor.name,
-                                distance: distance
+                                distance: distance / 1000
                             } });
                     })
                         .sort(function (a, b) { return a.vendor.distance - b.vendor.distance; }); // Sort by distance
@@ -294,7 +294,7 @@ var getStoresByCategoryOrChildren = function (categoryId, userLatitude, userLong
                 vendors = _a.sent();
                 storesWithDistance = userLatitude && userLongitude
                     ? vendors.map(function (vendor) { return (__assign(__assign({}, vendor), { distance: vendor.latitude && vendor.longitude
-                            ? geolib_1.getDistance({ latitude: userLatitude, longitude: userLongitude }, { latitude: vendor.latitude || 0, longitude: vendor.longitude || 0 })
+                            ? geolib_1.getDistance({ latitude: userLatitude, longitude: userLongitude }, { latitude: vendor.latitude || 0, longitude: vendor.longitude || 0 }) / 1000
                             : Infinity })); }).sort(function (a, b) { return a.distance - b.distance; }) // Sort by distance
                     : vendors;
                 return [2 /*return*/, storesWithDistance];

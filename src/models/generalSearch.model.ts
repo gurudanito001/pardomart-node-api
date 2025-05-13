@@ -103,7 +103,7 @@ const searchVendors = async (
       { latitude, longitude },
       { latitude: vendor.latitude || 0, longitude: vendor.longitude || 0 } //handle null lat/long
     );
-    return { ...vendor, distance };
+    return { ...vendor, distance: distance / 1000 };
   });
 
   // Sort vendors by distance (closest first)
@@ -247,7 +247,7 @@ export const getProductsByCategoryId = async (
           ...item.product,
           vendor: {
             name: item.vendor.name,
-            distance,
+            distance: distance / 1000,
           },
         };
       })
@@ -308,7 +308,7 @@ const getStoresByCategoryOrChildren = async (categoryId: string, userLatitude?: 
           ? getDistance(
             { latitude: userLatitude, longitude: userLongitude },
             { latitude: vendor.latitude || 0, longitude: vendor.longitude || 0 }
-          )
+          ) / 1000
           : Infinity,
       })).sort((a, b) => a.distance! - b.distance!) // Sort by distance
       : vendors;
