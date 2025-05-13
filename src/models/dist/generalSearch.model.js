@@ -395,7 +395,7 @@ userLatitude, userLongitude) { return __awaiter(void 0, void 0, Promise, functio
                 // Add vendors and products to the map.  Calculate distance here.
                 vendorProducts.forEach(function (vProduct) {
                     var distance = geolib_1.getDistance({ latitude: userLatitude, longitude: userLongitude }, { latitude: vProduct.vendor.latitude || 0, longitude: vProduct.vendor.longitude || 0 });
-                    var vendorWithDistance = __assign(__assign({}, vProduct.vendor), { distance: distance }); // Create a new object
+                    var vendorWithDistance = __assign(__assign({}, vProduct.vendor), { distance: distance / 1000 }); // Create a new object
                     if (!vendorProductMap_1.has(vProduct.vendorId)) {
                         vendorProductMap_1.set(vProduct.vendorId, {
                             vendor: vendorWithDistance,

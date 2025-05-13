@@ -440,7 +440,7 @@ export const getStoresByProductId = async (
         { latitude: vProduct.vendor.latitude || 0, longitude: vProduct.vendor.longitude || 0 }
       );
 
-      const vendorWithDistance = { ...vProduct.vendor, distance }; // Create a new object
+      const vendorWithDistance = { ...vProduct.vendor, distance: distance / 1000 }; // Create a new object
 
       if (!vendorProductMap.has(vProduct.vendorId)) {
         vendorProductMap.set(vProduct.vendorId, {
