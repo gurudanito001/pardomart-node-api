@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import * as vendorService from '../services/vendor.service';
 import { getVendorsFilters } from '../models/vendor.model';
 
-interface AuthenticatedRequest extends Request {
+export interface AuthenticatedRequest extends Request {
   userId?: string;
   userRole?: string;
 }

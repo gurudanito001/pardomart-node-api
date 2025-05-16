@@ -36,36 +36,80 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteUser = exports.updateUser = exports.createUser = exports.getUserById = exports.getAllVerificationCodes = exports.getAllUsers = void 0;
-// user.service.ts
-var userModel = require("../models/user.model"); // Import functions from user.model.ts
-exports.getAllUsers = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+exports.deleteCartItem = exports.updateCartItemsWithOrderId = exports.updateCartItem = exports.getCartItemsByCartId = exports.getCartItemByCartId = exports.getCartItemById = exports.createCartItem = void 0;
+var client_1 = require("@prisma/client");
+var prisma = new client_1.PrismaClient();
+exports.createCartItem = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.getAllUsers(filters, pagination)];
+        return [2 /*return*/, prisma.cartItem.create({
+                data: payload,
+                include: {
+                    vendorProduct: true
+                }
+            })];
     });
 }); };
-exports.getAllVerificationCodes = function () { return __awaiter(void 0, void 0, Promise, function () {
+exports.getCartItemById = function (id) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.getAllVerificationCodes()];
+        return [2 /*return*/, prisma.cartItem.findUnique({
+                where: { id: id },
+                include: {
+                    vendorProduct: true
+                }
+            })];
     });
 }); };
-exports.getUserById = function (userId) { return __awaiter(void 0, void 0, void 0, function () {
+exports.getCartItemByCartId = function (cartId, vendorProductId) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.getUserById(userId)];
+        return [2 /*return*/, prisma.cartItem.findFirst({
+                where: {
+                    cartId: cartId,
+                    vendorProductId: vendorProductId
+                }
+            })];
     });
 }); };
-exports.createUser = function (payload) { return __awaiter(void 0, void 0, void 0, function () {
+exports.getCartItemsByCartId = function (cartId) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.createUser(payload)];
+        return [2 /*return*/, prisma.cartItem.findMany({
+                where: {
+                    cartId: cartId
+                },
+                include: {
+                    vendorProduct: true
+                }
+            })];
     });
 }); };
-exports.updateUser = function (payload) { return __awaiter(void 0, void 0, void 0, function () {
+exports.updateCartItem = function (id, payload) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.updateUser(payload)];
+        return [2 /*return*/, prisma.cartItem.update({
+                where: { id: id },
+                data: payload,
+                include: {
+                    vendorProduct: true
+                }
+            })];
     });
 }); };
-exports.deleteUser = function (userId) { return __awaiter(void 0, void 0, void 0, function () {
+exports.updateCartItemsWithOrderId = function (cartId, orderId) { return __awaiter(void 0, void 0, Promise, function () {
+    var result;
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.deleteUser(userId)];
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, prisma.cartItem.updateMany({
+                    where: { cartId: cartId },
+                    data: { orderId: orderId }
+                })];
+            case 1:
+                result = _a.sent();
+                return [2 /*return*/, result.count];
+        }
+    });
+}); };
+exports.deleteCartItem = function (id) { return __awaiter(void 0, void 0, Promise, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, prisma.cartItem["delete"]({
+                where: { id: id }
+            })];
     });
 }); };

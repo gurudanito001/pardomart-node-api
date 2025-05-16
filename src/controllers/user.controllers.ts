@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import * as userService from '../services/user.service'; // Assuming you have a user.service.ts file
 import { User } from '@prisma/client'; // Import User type
-import { GetUserFilters } from '../models/user.models';
+import { GetUserFilters } from '../models/user.model';
 
 // User Controllers
 

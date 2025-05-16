@@ -31,6 +31,12 @@ model User {
   role             Role     
   vendors          Vendor[]  @relation("Vendor")
   supportMessages  Support[] @relation("SupportMessages")
+  orderShoppers    Order[] @relation("OrderShopper")
+  orderDeliverers  Order[] @relation("OrderDeliverer")
+
+
+  orders           Order[]
+  carts            Cart[] 
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -74,9 +80,57 @@ model VendorProduct {
   categoryIds String[]
   categories  Category[]
   tags        Tag[]
+  cartItems     CartItem[] //Opposite relation to CartItem
   @@unique([vendorId, productId])
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+model Cart {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items      CartItem[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model CartItem {
+  id              String    @id @default(uuid())
+  cartId          String
+  cart            Cart      @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  vendorProductId String
+  vendorProduct   VendorProduct @relation(fields: [vendorProductId], references: [id])
+  quantity        Int
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  orderId         String?
+  order           Order?    @relation(fields: [orderId], references: [id])
+}
+
+//extend the order model
+model Order {
+  id                  String    @id @default(uuid())
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendorId            String // Add this field
+  vendor            Vendor @relation(fields: [vendorId], references: [id])
+  totalAmount         Float
+  deliveryFee         Float?    // Add delivery fee
+  serviceFee          Float?    // Platform service fee
+  paymentMethod       PaymentMethods  @default(credit_card)  // e.g., "credit_card", "wallet", "cash"
+  paymentStatus       PaymentStatus   @default(pending) // e.g., "pending", "paid", "failed"
+  orderStatus         OrderStatus    @default(pending)// e.g., "pending", "processing", "shipped", "delivered", "cancelled"
+  deliveryAddress     String?    // Consider a separate Address model for more complex scenarios
+  deliveryInstructions  String? // Customer's delivery instructions
+  shoppingHandlerId   String?   // ID of the User handling the shopping (Role: SHOPPER)
+  shopper             User?     @relation("OrderShopper", fields: [shoppingHandlerId], references: [id])
+  deliveryHandlerId String?   // ID of the User handling the delivery (Role: DELIVERY)
+  deliverer           User?     @relation("OrderDeliverer", fields: [deliveryHandlerId], references: [id])
+  scheduledDeliveryTime DateTime? //when the customer wants the order delivered
+  orderItems          CartItem[] // Use CartItem to store order details
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 }
 
 model Category {
@@ -113,6 +167,7 @@ model Vendor {
   meta             Json?
   openingHours     VendorOpeningHours[] 
   vendorProducts   VendorProduct[]
+  orders           Order[]
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 }
@@ -157,6 +212,7 @@ enum Role {
   vendor
   delivery
   customer
+  shopper
 }
 
 enum Days {
@@ -167,4 +223,24 @@ enum Days {
   friday
   saturday
   sunday
+}
+
+enum PaymentMethods {
+  credit_card
+  wallet
+  cash
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+}
+
+enum OrderStatus {
+  pending
+  processing
+  shipped
+  delivered
+  cancelled
 }

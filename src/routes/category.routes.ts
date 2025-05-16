@@ -1,6 +1,6 @@
 // routes/category.routes.ts
 import express from 'express';
-import * as categoryController from '../controllers/category.controller';
+import * as categoryController from '../controllers/category.controllers';
 
 const router = express.Router();
 

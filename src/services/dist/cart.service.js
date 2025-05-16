@@ -36,36 +36,46 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteUser = exports.updateUser = exports.createUser = exports.getUserById = exports.getAllVerificationCodes = exports.getAllUsers = void 0;
-// user.service.ts
-var userModel = require("../models/user.model"); // Import functions from user.model.ts
-exports.getAllUsers = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+exports.deleteCartService = exports.getCartByUserIdService = exports.getCartByIdService = exports.createCartService = void 0;
+var cartModel = require("../models/cart.model"); // Adjust the path if needed
+// --- Cart Service Functions ---
+/**
+ * Creates a new cart for a user.
+ * @param userId - The ID of the user for whom the cart is created.
+ * @returns The newly created cart.
+ */
+exports.createCartService = function (userId) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.getAllUsers(filters, pagination)];
+        return [2 /*return*/, cartModel.createCart({ userId: userId })]; // Initialize with empty items
     });
 }); };
-exports.getAllVerificationCodes = function () { return __awaiter(void 0, void 0, Promise, function () {
+/**
+ * Retrieves a cart by its ID.
+ * @param id - The ID of the cart to retrieve.
+ * @returns The cart, or null if not found.
+ */
+exports.getCartByIdService = function (id) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.getAllVerificationCodes()];
+        return [2 /*return*/, cartModel.getCartById(id)];
     });
 }); };
-exports.getUserById = function (userId) { return __awaiter(void 0, void 0, void 0, function () {
+/**
+ * Retrieves the cart for a specific user.
+ * @param userId - The ID of the user whose cart is to be retrieved.
+ * @returns The user's cart, or null if not found.
+ */
+exports.getCartByUserIdService = function (userId) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.getUserById(userId)];
+        return [2 /*return*/, cartModel.getCartByUserId(userId)];
     });
 }); };
-exports.createUser = function (payload) { return __awaiter(void 0, void 0, void 0, function () {
+/**
+ * Deletes a cart by its ID.
+ * @param id - The ID of the cart to delete.
+ * @returns The deleted cart.
+ */
+exports.deleteCartService = function (id) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.createUser(payload)];
-    });
-}); };
-exports.updateUser = function (payload) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.updateUser(payload)];
-    });
-}); };
-exports.deleteUser = function (userId) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.deleteUser(userId)];
+        return [2 /*return*/, cartModel.deleteCart(id)];
     });
 }); };

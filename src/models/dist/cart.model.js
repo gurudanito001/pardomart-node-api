@@ -36,36 +36,50 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteUser = exports.updateUser = exports.createUser = exports.getUserById = exports.getAllVerificationCodes = exports.getAllUsers = void 0;
-// user.service.ts
-var userModel = require("../models/user.model"); // Import functions from user.model.ts
-exports.getAllUsers = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+exports.deleteCart = exports.getCartById = exports.getCartByUserId = exports.createCart = void 0;
+var client_1 = require("@prisma/client");
+var prisma = new client_1.PrismaClient();
+exports.createCart = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.getAllUsers(filters, pagination)];
+        return [2 /*return*/, prisma.cart.create({
+                data: {
+                    userId: payload.userId
+                }
+            })];
     });
 }); };
-exports.getAllVerificationCodes = function () { return __awaiter(void 0, void 0, Promise, function () {
+exports.getCartByUserId = function (userId) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.getAllVerificationCodes()];
+        return [2 /*return*/, prisma.cart.findFirst({
+                where: { userId: userId },
+                include: {
+                    items: {
+                        include: {
+                            vendorProduct: true
+                        }
+                    }
+                }
+            })];
     });
 }); };
-exports.getUserById = function (userId) { return __awaiter(void 0, void 0, void 0, function () {
+exports.getCartById = function (id) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.getUserById(userId)];
+        return [2 /*return*/, prisma.cart.findUnique({
+                where: { id: id },
+                include: {
+                    items: {
+                        include: {
+                            vendorProduct: true
+                        }
+                    }
+                }
+            })];
     });
 }); };
-exports.createUser = function (payload) { return __awaiter(void 0, void 0, void 0, function () {
+exports.deleteCart = function (id) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.createUser(payload)];
-    });
-}); };
-exports.updateUser = function (payload) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.updateUser(payload)];
-    });
-}); };
-exports.deleteUser = function (userId) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.deleteUser(userId)];
+        return [2 /*return*/, prisma.cart["delete"]({
+                where: { id: id }
+            })];
     });
 }); };

@@ -40,7 +40,7 @@ exports.verifyCodeAndLogin = exports.storeVerificationCode = exports.checkUserEx
 // services/auth.service.ts
 var client_1 = require("@prisma/client");
 var auth_1 = require("../utils/auth"); //create this file.
-var userModel = require("../models/user.models");
+var userModel = require("../models/user.model");
 var prisma = new client_1.PrismaClient();
 var JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 exports.checkUserExistence = function (filters) { return __awaiter(void 0, void 0, Promise, function () {

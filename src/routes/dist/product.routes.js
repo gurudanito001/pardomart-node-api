@@ -2,7 +2,7 @@
 exports.__esModule = true;
 // routes/product.routes.ts
 var express_1 = require("express");
-var productController = require("../controllers/product.controller");
+var productController = require("../controllers/product.controllers");
 var router = express_1["default"].Router();
 router.get('/', productController.getAllProducts);
 router.get('/vendor', productController.getAllVendorProducts);

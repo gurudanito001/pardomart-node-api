@@ -1,7 +1,7 @@
 // user.service.ts
-import * as userModel from '../models/user.models'; // Import functions from user.model.ts
+import * as userModel from '../models/user.model'; // Import functions from user.model.ts
 import { Verification, User } from '@prisma/client';
-import { GetUserFilters, CreateUserPayload, UpdateUserPayload } from '../models/user.models'; // Import types
+import { GetUserFilters, CreateUserPayload, UpdateUserPayload } from '../models/user.model'; // Import types
 
 
 interface CheckUserFilters {

@@ -36,36 +36,65 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteUser = exports.updateUser = exports.createUser = exports.getUserById = exports.getAllVerificationCodes = exports.getAllUsers = void 0;
-// user.service.ts
-var userModel = require("../models/user.model"); // Import functions from user.model.ts
-exports.getAllUsers = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+exports.deleteCartItemController = exports.updateCartItemController = exports.getCartItemByIdController = void 0;
+var cartItem_service_1 = require("../services/cartItem.service");
+exports.getCartItemByIdController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var cartItem, error_1;
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.getAllUsers(filters, pagination)];
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                return [4 /*yield*/, cartItem_service_1.getCartItemByIdService(req.params.id)];
+            case 1:
+                cartItem = _a.sent();
+                if (!cartItem) {
+                    return [2 /*return*/, res.status(404).json({ error: 'Cart item not found' })];
+                }
+                res.json(cartItem);
+                return [3 /*break*/, 3];
+            case 2:
+                error_1 = _a.sent();
+                res.status(500).json({ error: error_1.message || 'Internal server error' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
     });
 }); };
-exports.getAllVerificationCodes = function () { return __awaiter(void 0, void 0, Promise, function () {
+exports.updateCartItemController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var cartItem, error_2;
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.getAllVerificationCodes()];
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                return [4 /*yield*/, cartItem_service_1.updateCartItemService(req.params.id, req.body)];
+            case 1:
+                cartItem = _a.sent();
+                res.json(cartItem);
+                return [3 /*break*/, 3];
+            case 2:
+                error_2 = _a.sent();
+                res.status(500).json({ error: error_2.message || 'Internal server error' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
     });
 }); };
-exports.getUserById = function (userId) { return __awaiter(void 0, void 0, void 0, function () {
+exports.deleteCartItemController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var cartItem, error_3;
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.getUserById(userId)];
-    });
-}); };
-exports.createUser = function (payload) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.createUser(payload)];
-    });
-}); };
-exports.updateUser = function (payload) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.updateUser(payload)];
-    });
-}); };
-exports.deleteUser = function (userId) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.deleteUser(userId)];
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                return [4 /*yield*/, cartItem_service_1.deleteCartItemService(req.params.id)];
+            case 1:
+                cartItem = _a.sent();
+                res.json(cartItem);
+                return [3 /*break*/, 3];
+            case 2:
+                error_3 = _a.sent();
+                res.status(500).json({ error: error_3.message || 'Internal server error' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
     });
 }); };

@@ -36,36 +36,26 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteUser = exports.updateUser = exports.createUser = exports.getUserById = exports.getAllVerificationCodes = exports.getAllUsers = void 0;
-// user.service.ts
-var userModel = require("../models/user.model"); // Import functions from user.model.ts
-exports.getAllUsers = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+exports.deleteCartItemService = exports.updateCartItemService = exports.getCartItemByIdService = exports.createCartItemService = void 0;
+var cartItemModel = require("../models/cartItem.model"); // Adjust the path if needed
+// --- CartItem Service Functions ---
+exports.createCartItemService = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.getAllUsers(filters, pagination)];
+        return [2 /*return*/, cartItemModel.createCartItem(payload)];
     });
 }); };
-exports.getAllVerificationCodes = function () { return __awaiter(void 0, void 0, Promise, function () {
+exports.getCartItemByIdService = function (id) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.getAllVerificationCodes()];
+        return [2 /*return*/, cartItemModel.getCartItemById(id)];
     });
 }); };
-exports.getUserById = function (userId) { return __awaiter(void 0, void 0, void 0, function () {
+exports.updateCartItemService = function (id, payload) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.getUserById(userId)];
+        return [2 /*return*/, cartItemModel.updateCartItem(id, payload)];
     });
 }); };
-exports.createUser = function (payload) { return __awaiter(void 0, void 0, void 0, function () {
+exports.deleteCartItemService = function (id) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.createUser(payload)];
-    });
-}); };
-exports.updateUser = function (payload) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.updateUser(payload)];
-    });
-}); };
-exports.deleteUser = function (userId) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.deleteUser(userId)];
+        return [2 /*return*/, cartItemModel.deleteCartItem(id)];
     });
 }); };

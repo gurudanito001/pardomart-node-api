@@ -2,8 +2,8 @@
 import { PrismaClient, User, Role } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import { generateToken } from '../utils/auth'; //create this file.
-import * as userModel from '../models/user.models';
-import { CheckUserFilters } from '../models/user.models';
+import * as userModel from '../models/user.model';
+import { CheckUserFilters } from '../models/user.model';
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';

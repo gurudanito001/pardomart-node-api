@@ -1,12 +1,15 @@
 import { Router } from 'express';
 import authRouter from './auth.routes';
-import usersRouter from './users.routes';
+import usersRouter from './user.routes';
 import vendorRouter from './vendor.routes';
 import vendorOpeningHoursRouter from './vendorOpeningHours.routes';
 import productRouter from './product.routes';
 import categoryRouter from './category.routes'
 import tagRouter from './tag.routes';
 import generalSearchRouter from './generalSearch.routes'
+import cartItemRouter from './cartItem.routes';
+import cartRouter from './cart.routes';
+import orderRouter from './order.routes'
 
 // Create a new Router instance
 const router = Router();
@@ -20,5 +23,8 @@ router.use('/api/v1/product', productRouter);
 router.use('/api/v1/category', categoryRouter);
 router.use('/api/v1/tags', tagRouter);
 router.use('/api/v1/generalSearch', generalSearchRouter);
+router.use('/api/v1/cartItem', cartItemRouter);
+router.use('/api/v1/cart', cartRouter);
+router.use('/api/v1/order', orderRouter);
 
 export default router;

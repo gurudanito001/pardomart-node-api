@@ -1,6 +1,6 @@
 // routes/tag.routes.ts
 import express from 'express';
-import * as tagController from '../controllers/tag.controller';
+import * as tagController from '../controllers/tag.controllers';
 
 const router = express.Router();
 

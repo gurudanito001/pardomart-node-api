@@ -1,6 +1,6 @@
 // routes/vendorOpeningHours.routes.ts
 import express from 'express';
-import * as vendorOpeningHoursController from '../controllers/vendorOpeningHours.controller';
+import * as vendorOpeningHoursController from '../controllers/vendorOpeningHours.controllers';
 import { authenticate } from '../middlewares/auth.middleware';
 import { validate, validateCreateOrUpdateVendorOpeningHours } from '../middlewares/validation.middleware';
 

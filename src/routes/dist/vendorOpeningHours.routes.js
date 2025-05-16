@@ -2,7 +2,7 @@
 exports.__esModule = true;
 // routes/vendorOpeningHours.routes.ts
 var express_1 = require("express");
-var vendorOpeningHoursController = require("../controllers/vendorOpeningHours.controller");
+var vendorOpeningHoursController = require("../controllers/vendorOpeningHours.controllers");
 var auth_middleware_1 = require("../middlewares/auth.middleware");
 var validation_middleware_1 = require("../middlewares/validation.middleware");
 var router = express_1["default"].Router();

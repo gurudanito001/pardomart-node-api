@@ -1,6 +1,6 @@
 // routes/product.routes.ts
 import express from 'express';
-import { getVendorCategoriesWithProductsController, getVendorsCategoriesAndProductsController, getCategoryDetailsWithRelatedDataController, getStoresByProductIdController } from '../controllers/generalSearch.controller';
+import { getVendorCategoriesWithProductsController, getVendorsCategoriesAndProductsController, getCategoryDetailsWithRelatedDataController, getStoresByProductIdController } from '../controllers/generalSearch.controllers';
 
 const router = express.Router();
 router.get('/', getVendorsCategoriesAndProductsController);
