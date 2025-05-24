@@ -37,9 +37,9 @@ interface StoreWithDistance extends Vendor {
   distance?: number;
 }
 
-interface CategoryWithProducts {
-  category: Category;
-  products?: ProductWithVendor[];
+interface CategoriesWithProducts {
+  parentCategories: Category[],
+  subCategories: any
 }
 
 // 1. Product Search Function
@@ -134,17 +134,20 @@ export const getVendorsCategoriesAndProducts = async (
 
 
 export const getVendorCategoriesWithProducts = async (
-  vendorId: string
-): Promise<CategoryWithProducts[]> => {
+  vendorId: string,
+  parentCategoryId: string
+): Promise<CategoriesWithProducts> => {
   try {
+
     // 1. Find categories that have products from the specified vendor.
-    const categories = await prisma.category.findMany({
+    const subCategories = await prisma.category.findMany({
       where: {
         vendorProducts: {
           some: {
             vendorId: vendorId,
           },
         },
+        ...( parentCategoryId && {parentId: parentCategoryId})
       },
       include: {
         vendorProducts: {
@@ -152,18 +155,48 @@ export const getVendorCategoriesWithProducts = async (
             vendorId: vendorId,
           },
           take: 5, // Limit to 5 products per category
-          
         },
       },
     });
 
-    // 2.  Map the result to the desired CategoryWithProducts format
-    const categoriesWithProducts: CategoryWithProducts[] = categories.map(category => ({
-      category: category, // Include the category itself
+    // 2. List of parent categories that these sub categories belong to
+    let parentCategoriesIds: string[] = [];
+    let parentCategories = [];
+    subCategories.forEach( item =>{
+      if(item?.parentId){
+        parentCategoriesIds.push(item.parentId);
+      }
+    })
+    parentCategoriesIds = [...new Set(parentCategoriesIds) ];
+    
+    for (const categoryId of parentCategoriesIds) {
+      try {
+        const category = await prisma.category.findUnique({
+          where: { id: categoryId }
+        });
+        if (category) {
+          parentCategories.push(category)
+        }
+      } catch (error) {
+        console.error(`Error fetching category with ID ${categoryId}:`, error);
+      }
+    }
+
+    // .  Map the result to the desired CategoryWithProducts format
+    /* const categoriesWithProducts: CategoriesWithProducts = {
+      parentCategories,
+      subCategories
+    } */
+
+    // 3.  Map the result to the desired CategoriesWithProducts format
+    const categoriesWithProducts = subCategories.map(category => ({
+      category: {...category, vendorProducts: null}, 
+      products: category.vendorProducts
     }));
+    
 
 
-    return categoriesWithProducts;
+    return {parentCategories, subCategories: categoriesWithProducts};
   } catch (error) {
     console.error(
       'Error fetching categories with products for vendor:',
@@ -258,62 +291,103 @@ export const getProductsByCategoryId = async (
   return { products: productsWithVendor, totalPages: Math.ceil(totalCount / take), currentPage: page };
 };
 
-const getStoresByCategoryOrChildren = async (categoryId: string, userLatitude?: number, userLongitude?: number, vendorId?:string) : Promise<StoreWithDistance[]> =>{
-      const category = await prisma.category.findUnique({
-      where: { id: categoryId },
-      include: { children: true },
-    });
 
-       if (!category) {
-      throw new Error('Category not found');
-    }
-    const categoryIds = [categoryId, ...category.children.map(c => c.id)];
+export interface StoreWithLimitedProducts {
+  store: Vendor & { distance?: number  }; // Store details plus optional distance
+  products: VendorProduct[]; // Max 5 products belonging to the category
+}
 
-    // 1. Find distinct vendor IDs that have products in the given category or its children.
-    const vendorIds = await prisma.vendorProduct.findMany({
-      where: {
-        categories: {
-          some: {
-            id: {
-              in: categoryIds,
+const getStoresByCategoryOrChildren = async (categoryId: string, userLatitude?: number, userLongitude?: number, vendorId?: string): Promise<StoreWithLimitedProducts[]> => {
+  const category = await prisma.category.findUnique({
+    where: { id: categoryId },
+    include: { children: true },
+  });
+
+  if (!category) {
+    throw new Error('Category not found');
+  }
+  // Get all relevant category IDs (parent and children)
+  const categoryIds = [categoryId, ...category.children.map(c => c.id)];
+
+  // 1. Find distinct vendor IDs that have products in the given category or its children.
+  // This step ensures we only fetch vendors who actually have relevant products.
+  const vendorIdsHavingProducts = await prisma.vendorProduct.findMany({
+    where: {
+      categories: {
+        some: {
+          id: {
+            in: categoryIds,
+          },
+        },
+      },
+      ...(vendorId ? { vendorId: vendorId } : {}), // Filter by specific vendor if provided
+    },
+    distinct: ['vendorId'],
+    select: {
+      vendorId: true,
+    },
+  });
+
+  const uniqueVendorIds = vendorIdsHavingProducts.map((v) => v.vendorId);
+
+  // 2. Fetch the vendors AND their relevant products using nested include
+  const vendorsWithProducts = await prisma.vendor.findMany({
+    where: {
+      id: {
+        in: uniqueVendorIds, // Only include vendors that have relevant products
+      },
+    },
+    include: {
+      vendorProducts: { // Include vendor's products
+        where: { // Filter these products
+          categories: {
+            some: {
+              id: {
+                in: categoryIds, // Products must belong to the specified categories
+              },
             },
           },
         },
-        ...(vendorId ? { vendorId: vendorId } : {}),
-      },
-      distinct: ['vendorId'],
-      select: {
-        vendorId: true,
-      },
-    });
-
-    const uniqueVendorIds = vendorIds.map((v) => v.vendorId);
-
-    // 2. Fetch the vendors
-    let vendors = await prisma.vendor.findMany({
-      where: {
-        id: {
-          in: uniqueVendorIds,
+        take: 5, // Limit to a maximum of 5 products per store
+        orderBy: {
+          createdAt: 'desc', // Example: Order by creation date. Adjust as needed (e.g., popularity)
         },
       },
-    });
+    },
+  });
 
-    //console.log(vendors, vendorIds, categoryIds, "stores that have product in this cat 222")
+  //console.log(vendors, vendorIds, categoryIds, "stores that have product in this cat 222")
 
-    // 3. Calculate distances and sort by proximity if user location is provided
-    const storesWithDistance: StoreWithDistance[] = userLatitude && userLongitude
-      ? vendors.map((vendor) => ({
-        ...vendor,
-        distance: vendor.latitude && vendor.longitude
-          ? getDistance(
-            { latitude: userLatitude, longitude: userLongitude },
-            { latitude: vendor.latitude || 0, longitude: vendor.longitude || 0 }
-          ) / 1000
-          : Infinity,
-      })).sort((a, b) => a.distance! - b.distance!) // Sort by distance
-      : vendors;
+  // 3. Calculate distances and format the output as per the desired shape
+  const storesWithFormattedProducts: StoreWithLimitedProducts[] = vendorsWithProducts.map((vendor) => {
+    let distance: number  = Infinity;
+    if (userLatitude && userLongitude && vendor.latitude !== null && vendor.longitude !== null) {
+      // Ensure vendor.latitude and vendor.longitude are not null before calculating
+      distance = getDistance(
+        { latitude: userLatitude, longitude: userLongitude },
+        { latitude: vendor.latitude, longitude: vendor.longitude }
+      ) / 1000; // Convert to kilometers
+    }
 
-    return storesWithDistance;
+    // Destructure vendorProducts to separate them from the rest of the vendor properties
+    const { vendorProducts, ...storeDetails } = vendor;
+
+    return {
+      store: {
+        ...storeDetails, // All original vendor details
+        distance: distance, // Add the calculated distance
+      },
+      products: vendorProducts, // The filtered and limited products
+    };
+  });
+
+
+  // 4. Sort the results by distance if user location is provided
+  if (userLatitude && userLongitude) {
+    storesWithFormattedProducts.sort((a, b) => a.store.distance! - b.store.distance!);
+  }
+
+  return storesWithFormattedProducts;
 }
 
 
@@ -342,13 +416,7 @@ export const getCategoryDetailsWithRelatedData = async ({
   take = 10,
 }: CategoryDetailsWithRelatedData): Promise<{
   category: Category;
-  children?: CategoryWithProducts[];
-  products?: {
-    products: ProductWithVendor[];
-    totalPages: number;
-    currentPage: number;
-  };
-  stores: StoreWithDistance[];
+  stores: StoreWithLimitedProducts[];
 }> => {
   try {
     const category = await prisma.category.findUnique({
@@ -359,36 +427,11 @@ export const getCategoryDetailsWithRelatedData = async ({
     if (!category) {
       throw new Error('Category not found');
     }
-
-    let children: CategoryWithProducts[] | undefined;
-    let products: { products: ProductWithVendor[]; totalPages: number; currentPage: number } | undefined;
-    let stores: StoreWithDistance[] = [];
-
-    if (category.children.length > 0) {
-      // Fetch subcategories and products for each child
-      children = await Promise.all(
-        category.children.map(async (child): Promise<CategoryWithProducts> => {
-          const childProducts = await getProductsByCategoryId(child.id, 1, 5, vendorId, userLatitude, userLongitude); //limit 5
-          return {
-            category: child,
-            products: childProducts.products,
-          };
-        })
-      );
-      stores = await getStoresByCategoryOrChildren(categoryId, userLatitude, userLongitude, vendorId);
-
-    } else {
-      // Fetch products directly under the category
-      const productResult = await getProductsByCategoryId(categoryId, page, take, vendorId, userLatitude, userLongitude);
-      products = {
-        products: productResult.products,
-        totalPages: productResult.totalPages || 0,
-        currentPage: productResult.currentPage || 0,
-      };
-      stores = await getStoresByCategoryOrChildren(categoryId, userLatitude, userLongitude, vendorId);
-    }
-
-    return { category: {id: category.id, name: category.name, description: category.description, parentId: category.parentId }, children, products, stores };
+    
+    let stores: StoreWithLimitedProducts[] = [];
+    stores = await getStoresByCategoryOrChildren(categoryId, userLatitude, userLongitude, vendorId);
+    
+    return { category: {id: category.id, name: category.name, description: category.description, parentId: category.parentId }, stores };
   } catch (error) {
     console.error('Error in getCategoryDetailsWithRelatedData:', error);
     throw error;

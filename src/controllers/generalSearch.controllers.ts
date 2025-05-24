@@ -41,13 +41,14 @@ export const getVendorsCategoriesAndProductsController = async (req: Request, re
 
 export const getVendorCategoriesWithProductsController = async (req: Request, res: Response) => {
   const { vendorId } = req.params;
+  const {parentCategoryId} = req.query as {parentCategoryId: string}
 
    if (!vendorId) {
     return res.status(400).json({ error: 'Vendor ID is required' });
   }
 
   try {
-    const results = await getVendorCategoriesWithProductsService(vendorId);
+    const results = await getVendorCategoriesWithProductsService(vendorId, parentCategoryId);
     res.json(results);
   } catch (error: any) {
     // Handle errors from the service (e.g., database errors)

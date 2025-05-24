@@ -47,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteVendorProduct = exports.deleteProduct = exports.updateVendorProduct = exports.updateProductBase = exports.getVendorProductsByCategory = exports.getAllProducts = exports.getVendorProductsByTagIds = exports.getProductsByTagIds = exports.getAllVendorProducts = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.createVendorProductWithBarcode = exports.createVendorProduct = exports.createProduct = void 0;
+exports.deleteVendorProduct = exports.deleteProduct = exports.updateVendorProduct = exports.updateProductBase = exports.getVendorProductById = exports.getVendorProductsByCategory = exports.getAllProducts = exports.getVendorProductsByTagIds = exports.getProductsByTagIds = exports.getAllVendorProducts = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.createVendorProductWithBarcode = exports.createVendorProduct = exports.createProduct = void 0;
 // models/product.model.ts
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
@@ -314,6 +314,13 @@ exports.getVendorProductsByCategory = function (vendorId, categoryId) { return _
                     tags: true,
                     categories: true
                 }
+            })];
+    });
+}); };
+exports.getVendorProductById = function (vendorProductId) { return __awaiter(void 0, void 0, void 0, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, prisma.vendorProduct.findUnique({
+                where: { id: vendorProductId }
             })];
     });
 }); };

@@ -20,9 +20,9 @@ export const getVendorsCategoriesAndProductsService = async (
 
 
 // Service Function
-export const getVendorCategoriesWithProductsService = async (vendorId: string) => {
+export const getVendorCategoriesWithProductsService = async (vendorId: string, parentCategoryId: string) => {
   try {
-    const result = await getVendorCategoriesWithProducts(vendorId);
+    const result = await getVendorCategoriesWithProducts(vendorId, parentCategoryId);
     return result;
   } catch (error) {
     // Handle errors appropriately (e.g., log, rethrow with a specific error type)

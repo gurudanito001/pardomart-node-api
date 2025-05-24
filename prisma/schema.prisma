@@ -97,8 +97,8 @@ model Cart {
 
 model CartItem {
   id              String    @id @default(uuid())
-  cartId          String
-  cart            Cart      @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  cartId          String?
+  cart            Cart?      @relation(fields: [cartId], references: [id], onDelete: Cascade)
   vendorProductId String
   vendorProduct   VendorProduct @relation(fields: [vendorProductId], references: [id])
   quantity        Int

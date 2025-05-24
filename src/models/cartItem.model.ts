@@ -4,9 +4,9 @@ const prisma = new PrismaClient();
 
 // --- CartItem Model Functions ---
 export interface CreateCartItemPayload {
-  cartId: string;
   vendorProductId: string;
   quantity: number;
+  orderId: string;
 }
 export const createCartItem = async (
   payload: CreateCartItemPayload
@@ -16,6 +16,14 @@ export const createCartItem = async (
     include:{
       vendorProduct: true
     }
+  });
+};
+
+export const createManyCartItems = async (
+  payload: CreateCartItemPayload[]
+): Promise<{ count: number }> => { // Corrected return type
+  return prisma.cartItem.createMany({
+    data: payload
   });
 };
 

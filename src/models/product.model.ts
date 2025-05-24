@@ -344,6 +344,13 @@ export const getVendorProductsByCategory = async (
   });
 };
 
+export const getVendorProductById = async (vendorProductId: string) =>{
+  return prisma.vendorProduct.findUnique({
+    where: {id: vendorProductId}
+  });
+};
+
+
 
 
 

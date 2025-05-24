@@ -11,8 +11,9 @@ import {
 import { Order, PaymentMethods, PaymentStatus, OrderStatus } from '@prisma/client';
 import { AuthenticatedRequest } from './vendor.controller';
 import { getCartByIdService } from '../services/cart.service';
-import { getCartItemsByCartId, updateCartItemsWithOrderId } from '../models/cartItem.model';
+import { createManyCartItems, getCartItemsByCartId, updateCartItemsWithOrderId } from '../models/cartItem.model';
 import { createOrder, getOrderById } from '../models/order.model';
+import { getVendorProductById } from '../models/product.model';
 
 // --- Order Controllers ---
 
@@ -20,36 +21,41 @@ import { createOrder, getOrderById } from '../models/order.model';
  * Controller for creating a new order.
  * POST /orders
  */
+interface OrderItem {
+  vendorProductId: string
+  quantity: number
+}
 export const createOrderController = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.userId as string
     const {
       vendorId,
-      cartId,
+      paymentMethod,
       shippingAddress,
-      deliveryInstructions
-    } = req.body;
+      deliveryInstructions,
+      orderItems
+    } = req.body as {vendorId: string, paymentMethod: PaymentMethods, shippingAddress: string, deliveryInstructions: string, orderItems: OrderItem[] };
 
     // calculate total amount and pass it to create order fields
-    const cartItems = await getCartItemsByCartId(cartId);
     let totalAmount = 0;
-    cartItems?.forEach( item =>{
-      if(item.vendorProduct){
-        totalAmount += item.vendorProduct?.price
+    await Promise.all(orderItems.map(async (item) => {
+      const vendorProduct = await getVendorProductById(item.vendorProductId);
+      if (vendorProduct) {
+        totalAmount += vendorProduct.price;
       }
-    })
-    // Use cartId to get all cartItems and get the amount of each iterate over them and get the total amount
-    
-    const order = await createOrder({
-      userId,
-      deliveryAddress: shippingAddress,
-      vendorId,
-      deliveryInstructions,
-      totalAmount
-    });
+    }));
 
-    // Update many for cartItems, pass orderId to the object.
-    await updateCartItemsWithOrderId(cartId, order?.id);
+    // create the order without cartItems
+    const order = await createOrder({userId: userId, vendorId, paymentMethod, deliveryAddress: shippingAddress, deliveryInstructions, totalAmount})
+
+    // pass the orderId into each cartItem and bulk create cartItems
+    const updatedOrderItems = orderItems.map(item => {
+      return {
+        ...item,
+        orderId: order.id
+      };
+    });
+    await createManyCartItems(updatedOrderItems)
 
     const finalOrder = await getOrderById(order.id);
 

@@ -1,4 +1,15 @@
 "use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -40,44 +51,44 @@ exports.updateOrderController = exports.cancelOrderController = exports.updateOr
 var order_service_1 = require("../services/order.service"); // Adjust the path if needed
 var cartItem_model_1 = require("../models/cartItem.model");
 var order_model_1 = require("../models/order.model");
-// --- Order Controllers ---
-/**
- * Controller for creating a new order.
- * POST /orders
- */
+var product_model_1 = require("../models/product.model");
 exports.createOrderController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var userId, _a, vendorId, cartId, shippingAddress, deliveryInstructions, cartItems, totalAmount_1, order, finalOrder, error_1;
+    var userId, _a, vendorId, paymentMethod, shippingAddress, deliveryInstructions, orderItems, totalAmount_1, order_1, updatedOrderItems, finalOrder, error_1;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
                 _b.trys.push([0, 5, , 6]);
                 userId = req.userId;
-                _a = req.body, vendorId = _a.vendorId, cartId = _a.cartId, shippingAddress = _a.shippingAddress, deliveryInstructions = _a.deliveryInstructions;
-                return [4 /*yield*/, cartItem_model_1.getCartItemsByCartId(cartId)];
-            case 1:
-                cartItems = _b.sent();
+                _a = req.body, vendorId = _a.vendorId, paymentMethod = _a.paymentMethod, shippingAddress = _a.shippingAddress, deliveryInstructions = _a.deliveryInstructions, orderItems = _a.orderItems;
                 totalAmount_1 = 0;
-                cartItems === null || cartItems === void 0 ? void 0 : cartItems.forEach(function (item) {
-                    var _a;
-                    if (item.vendorProduct) {
-                        totalAmount_1 += (_a = item.vendorProduct) === null || _a === void 0 ? void 0 : _a.price;
-                    }
-                });
-                return [4 /*yield*/, order_model_1.createOrder({
-                        userId: userId,
-                        deliveryAddress: shippingAddress,
-                        vendorId: vendorId,
-                        deliveryInstructions: deliveryInstructions,
-                        totalAmount: totalAmount_1
-                    })];
-            case 2:
-                order = _b.sent();
-                // Update many for cartItems, pass orderId to the object.
-                return [4 /*yield*/, cartItem_model_1.updateCartItemsWithOrderId(cartId, order === null || order === void 0 ? void 0 : order.id)];
-            case 3:
-                // Update many for cartItems, pass orderId to the object.
+                return [4 /*yield*/, Promise.all(orderItems.map(function (item) { return __awaiter(void 0, void 0, void 0, function () {
+                        var vendorProduct;
+                        return __generator(this, function (_a) {
+                            switch (_a.label) {
+                                case 0: return [4 /*yield*/, product_model_1.getVendorProductById(item.vendorProductId)];
+                                case 1:
+                                    vendorProduct = _a.sent();
+                                    if (vendorProduct) {
+                                        totalAmount_1 += vendorProduct.price;
+                                    }
+                                    return [2 /*return*/];
+                            }
+                        });
+                    }); }))];
+            case 1:
                 _b.sent();
-                return [4 /*yield*/, order_model_1.getOrderById(order.id)];
+                return [4 /*yield*/, order_model_1.createOrder({ userId: userId, vendorId: vendorId, paymentMethod: paymentMethod, deliveryAddress: shippingAddress, deliveryInstructions: deliveryInstructions, totalAmount: totalAmount_1 })
+                    // pass the orderId into each cartItem and bulk create cartItems
+                ];
+            case 2:
+                order_1 = _b.sent();
+                updatedOrderItems = orderItems.map(function (item) {
+                    return __assign(__assign({}, item), { orderId: order_1.id });
+                });
+                return [4 /*yield*/, cartItem_model_1.createManyCartItems(updatedOrderItems)];
+            case 3:
+                _b.sent();
+                return [4 /*yield*/, order_model_1.getOrderById(order_1.id)];
             case 4:
                 finalOrder = _b.sent();
                 res.status(201).json(finalOrder);

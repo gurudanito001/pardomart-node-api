@@ -10,7 +10,6 @@ var category_routes_1 = require("./category.routes");
 var tag_routes_1 = require("./tag.routes");
 var generalSearch_routes_1 = require("./generalSearch.routes");
 var cartItem_routes_1 = require("./cartItem.routes");
-var cart_routes_1 = require("./cart.routes");
 var order_routes_1 = require("./order.routes");
 // Create a new Router instance
 var router = express_1.Router();
@@ -24,6 +23,5 @@ router.use('/api/v1/category', category_routes_1["default"]);
 router.use('/api/v1/tags', tag_routes_1["default"]);
 router.use('/api/v1/generalSearch', generalSearch_routes_1["default"]);
 router.use('/api/v1/cartItem', cartItem_routes_1["default"]);
-router.use('/api/v1/cart', cart_routes_1["default"]);
 router.use('/api/v1/order', order_routes_1["default"]);
 exports["default"] = router;

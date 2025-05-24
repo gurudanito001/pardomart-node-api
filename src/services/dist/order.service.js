@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.cancelOrderService = exports.updateOrderStatusService = exports.updateOrderService = exports.getOrdersByUserIdService = exports.getOrderByIdService = void 0;
+exports.cancelOrderService = exports.updateOrderStatusService = exports.updateOrderService = exports.getOrdersByUserIdService = exports.getOrderByIdService = exports.createOrderService = void 0;
 var orderModel = require("../models/order.model"); // Adjust the path if needed
 // --- Order Service Functions ---
 /**
@@ -46,40 +46,26 @@ var orderModel = require("../models/order.model"); // Adjust the path if needed
  * @param shippingAddress - The shipping address for the order.
  * @returns The newly created order.
  */
-/* export const createOrderService = async (
-  userId: string,
-  cartId: string,
-  vendorId: string,
-  shippingAddress: string,
-  paymentMethod?: PaymentMethods,
-  paymentStatus?: PaymentStatus,
-  orderStatus?: OrderStatus,
-  deliveryInstructions?: string,
-  shoppingHandlerId?: string,
-  deliveryHandlerId?: string,
-  scheduledDeliveryTime?: Date,
-): Promise<Order> => {
-  
-
-  const order = await orderModel.createOrder({
-    userId,
-    deliveryAddress: shippingAddress,
-    totalAmount: totalPrice,
-    paymentMethod,
-    paymentStatus,
-    orderStatus,
-    deliveryInstructions,
-    shoppingHandlerId,
-    deliveryHandlerId,
-    scheduledDeliveryTime,
-    vendorId,
-  });
-
-  // Optionally, clear the cart after the order is created.
-  //await cartModel.updateCart(cartId, { items: [] }); //  Consider if you want to clear the cart.
-
-  return order;
-}; */
+exports.createOrderService = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
+    var order;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, orderModel.createOrder({
+                    vendorId: payload.vendorId,
+                    userId: payload.userId,
+                    deliveryAddress: payload.deliveryAddress,
+                    totalAmount: payload.totalAmount,
+                    paymentMethod: payload.paymentMethod,
+                    deliveryInstructions: payload.deliveryInstructions
+                })];
+            case 1:
+                order = _a.sent();
+                // Optionally, clear the cart after the order is created.
+                //await cartModel.updateCart(cartId, { items: [] }); //  Consider if you want to clear the cart.
+                return [2 /*return*/, order];
+        }
+    });
+}); };
 /**
  * Retrieves an order by its ID.
  * @param id - The ID of the order to retrieve.

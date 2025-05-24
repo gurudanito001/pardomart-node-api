@@ -58,13 +58,13 @@ exports.getVendorsCategoriesAndProductsService = function (search, latitude, lon
     });
 }); };
 // Service Function
-exports.getVendorCategoriesWithProductsService = function (vendorId) { return __awaiter(void 0, void 0, void 0, function () {
+exports.getVendorCategoriesWithProductsService = function (vendorId, parentCategoryId) { return __awaiter(void 0, void 0, void 0, function () {
     var result, error_2;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, generalSearch_model_1.getVendorCategoriesWithProducts(vendorId)];
+                return [4 /*yield*/, generalSearch_model_1.getVendorCategoriesWithProducts(vendorId, parentCategoryId)];
             case 1:
                 result = _a.sent();
                 return [2 /*return*/, result];

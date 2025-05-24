@@ -8,7 +8,6 @@ import categoryRouter from './category.routes'
 import tagRouter from './tag.routes';
 import generalSearchRouter from './generalSearch.routes'
 import cartItemRouter from './cartItem.routes';
-import cartRouter from './cart.routes';
 import orderRouter from './order.routes'
 
 // Create a new Router instance
@@ -24,7 +23,6 @@ router.use('/api/v1/category', categoryRouter);
 router.use('/api/v1/tags', tagRouter);
 router.use('/api/v1/generalSearch', generalSearchRouter);
 router.use('/api/v1/cartItem', cartItemRouter);
-router.use('/api/v1/cart', cartRouter);
 router.use('/api/v1/order', orderRouter);
 
 export default router;

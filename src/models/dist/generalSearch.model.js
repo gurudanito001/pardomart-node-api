@@ -46,6 +46,17 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 var __spreadArrays = (this && this.__spreadArrays) || function () {
     for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
     for (var r = Array(s), k = 0, i = 0; i < il; i++)
@@ -150,20 +161,18 @@ exports.getVendorsCategoriesAndProducts = function (search, latitude, longitude)
         }
     });
 }); };
-exports.getVendorCategoriesWithProducts = function (vendorId) { return __awaiter(void 0, void 0, Promise, function () {
-    var categories, categoriesWithProducts, error_2;
+exports.getVendorCategoriesWithProducts = function (vendorId, parentCategoryId) { return __awaiter(void 0, void 0, Promise, function () {
+    var subCategories, parentCategoriesIds_2, parentCategories, _i, parentCategoriesIds_1, categoryId, category, error_2, categoriesWithProducts, error_3;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                _a.trys.push([0, 2, , 3]);
+                _a.trys.push([0, 8, , 9]);
                 return [4 /*yield*/, prisma.category.findMany({
-                        where: {
-                            vendorProducts: {
+                        where: __assign({ vendorProducts: {
                                 some: {
                                     vendorId: vendorId
                                 }
-                            }
-                        },
+                            } }, (parentCategoryId && { parentId: parentCategoryId })),
                         include: {
                             vendorProducts: {
                                 where: {
@@ -174,16 +183,50 @@ exports.getVendorCategoriesWithProducts = function (vendorId) { return __awaiter
                         }
                     })];
             case 1:
-                categories = _a.sent();
-                categoriesWithProducts = categories.map(function (category) { return ({
-                    category: category
-                }); });
-                return [2 /*return*/, categoriesWithProducts];
+                subCategories = _a.sent();
+                parentCategoriesIds_2 = [];
+                parentCategories = [];
+                subCategories.forEach(function (item) {
+                    if (item === null || item === void 0 ? void 0 : item.parentId) {
+                        parentCategoriesIds_2.push(item.parentId);
+                    }
+                });
+                parentCategoriesIds_2 = __spreadArrays(new Set(parentCategoriesIds_2));
+                _i = 0, parentCategoriesIds_1 = parentCategoriesIds_2;
+                _a.label = 2;
             case 2:
+                if (!(_i < parentCategoriesIds_1.length)) return [3 /*break*/, 7];
+                categoryId = parentCategoriesIds_1[_i];
+                _a.label = 3;
+            case 3:
+                _a.trys.push([3, 5, , 6]);
+                return [4 /*yield*/, prisma.category.findUnique({
+                        where: { id: categoryId }
+                    })];
+            case 4:
+                category = _a.sent();
+                if (category) {
+                    parentCategories.push(category);
+                }
+                return [3 /*break*/, 6];
+            case 5:
                 error_2 = _a.sent();
-                console.error('Error fetching categories with products for vendor:', error_2);
-                throw error_2; // Re-throw for centralized error handling
-            case 3: return [2 /*return*/];
+                console.error("Error fetching category with ID " + categoryId + ":", error_2);
+                return [3 /*break*/, 6];
+            case 6:
+                _i++;
+                return [3 /*break*/, 2];
+            case 7:
+                categoriesWithProducts = subCategories.map(function (category) { return ({
+                    category: __assign(__assign({}, category), { vendorProducts: null }),
+                    products: category.vendorProducts
+                }); });
+                return [2 /*return*/, { parentCategories: parentCategories, subCategories: categoriesWithProducts }];
+            case 8:
+                error_3 = _a.sent();
+                console.error('Error fetching categories with products for vendor:', error_3);
+                throw error_3; // Re-throw for centralized error handling
+            case 9: return [2 /*return*/];
         }
     });
 }); };
@@ -254,7 +297,7 @@ exports.getProductsByCategoryId = function (categoryId, page, take, vendorId, us
     });
 }); };
 var getStoresByCategoryOrChildren = function (categoryId, userLatitude, userLongitude, vendorId) { return __awaiter(void 0, void 0, Promise, function () {
-    var category, categoryIds, vendorIds, uniqueVendorIds, vendors, storesWithDistance;
+    var category, categoryIds, vendorIdsHavingProducts, uniqueVendorIds, vendorsWithProducts, storesWithFormattedProducts;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4 /*yield*/, prisma.category.findUnique({
@@ -281,34 +324,63 @@ var getStoresByCategoryOrChildren = function (categoryId, userLatitude, userLong
                         }
                     })];
             case 2:
-                vendorIds = _a.sent();
-                uniqueVendorIds = vendorIds.map(function (v) { return v.vendorId; });
+                vendorIdsHavingProducts = _a.sent();
+                uniqueVendorIds = vendorIdsHavingProducts.map(function (v) { return v.vendorId; });
                 return [4 /*yield*/, prisma.vendor.findMany({
                         where: {
                             id: {
                                 "in": uniqueVendorIds
                             }
+                        },
+                        include: {
+                            vendorProducts: {
+                                where: {
+                                    categories: {
+                                        some: {
+                                            id: {
+                                                "in": categoryIds
+                                            }
+                                        }
+                                    }
+                                },
+                                take: 5,
+                                orderBy: {
+                                    createdAt: 'desc'
+                                }
+                            }
                         }
                     })];
             case 3:
-                vendors = _a.sent();
-                storesWithDistance = userLatitude && userLongitude
-                    ? vendors.map(function (vendor) { return (__assign(__assign({}, vendor), { distance: vendor.latitude && vendor.longitude
-                            ? geolib_1.getDistance({ latitude: userLatitude, longitude: userLongitude }, { latitude: vendor.latitude || 0, longitude: vendor.longitude || 0 }) / 1000
-                            : Infinity })); }).sort(function (a, b) { return a.distance - b.distance; }) // Sort by distance
-                    : vendors;
-                return [2 /*return*/, storesWithDistance];
+                vendorsWithProducts = _a.sent();
+                storesWithFormattedProducts = vendorsWithProducts.map(function (vendor) {
+                    var distance = Infinity;
+                    if (userLatitude && userLongitude && vendor.latitude !== null && vendor.longitude !== null) {
+                        // Ensure vendor.latitude and vendor.longitude are not null before calculating
+                        distance = geolib_1.getDistance({ latitude: userLatitude, longitude: userLongitude }, { latitude: vendor.latitude, longitude: vendor.longitude }) / 1000; // Convert to kilometers
+                    }
+                    // Destructure vendorProducts to separate them from the rest of the vendor properties
+                    var vendorProducts = vendor.vendorProducts, storeDetails = __rest(vendor, ["vendorProducts"]);
+                    return {
+                        store: __assign(__assign({}, storeDetails), { distance: distance }),
+                        products: vendorProducts
+                    };
+                });
+                // 4. Sort the results by distance if user location is provided
+                if (userLatitude && userLongitude) {
+                    storesWithFormattedProducts.sort(function (a, b) { return a.store.distance - b.store.distance; });
+                }
+                return [2 /*return*/, storesWithFormattedProducts];
         }
     });
 }); };
 exports.getCategoryDetailsWithRelatedData = function (_a) {
     var categoryId = _a.categoryId, vendorId = _a.vendorId, userLatitude = _a.userLatitude, userLongitude = _a.userLongitude, _b = _a.page, page = _b === void 0 ? 1 : _b, _c = _a.take, take = _c === void 0 ? 10 : _c;
     return __awaiter(void 0, void 0, Promise, function () {
-        var category, children, products, stores, productResult, error_3;
+        var category, stores, error_4;
         return __generator(this, function (_d) {
             switch (_d.label) {
                 case 0:
-                    _d.trys.push([0, 8, , 9]);
+                    _d.trys.push([0, 3, , 4]);
                     return [4 /*yield*/, prisma.category.findUnique({
                             where: { id: categoryId },
                             include: { children: true }
@@ -318,56 +390,23 @@ exports.getCategoryDetailsWithRelatedData = function (_a) {
                     if (!category) {
                         throw new Error('Category not found');
                     }
-                    children = void 0;
-                    products = void 0;
                     stores = [];
-                    if (!(category.children.length > 0)) return [3 /*break*/, 4];
-                    return [4 /*yield*/, Promise.all(category.children.map(function (child) { return __awaiter(void 0, void 0, Promise, function () {
-                            var childProducts;
-                            return __generator(this, function (_a) {
-                                switch (_a.label) {
-                                    case 0: return [4 /*yield*/, exports.getProductsByCategoryId(child.id, 1, 5, vendorId, userLatitude, userLongitude)];
-                                    case 1:
-                                        childProducts = _a.sent();
-                                        return [2 /*return*/, {
-                                                category: child,
-                                                products: childProducts.products
-                                            }];
-                                }
-                            });
-                        }); }))];
+                    return [4 /*yield*/, getStoresByCategoryOrChildren(categoryId, userLatitude, userLongitude, vendorId)];
                 case 2:
-                    // Fetch subcategories and products for each child
-                    children = _d.sent();
-                    return [4 /*yield*/, getStoresByCategoryOrChildren(categoryId, userLatitude, userLongitude, vendorId)];
+                    stores = _d.sent();
+                    return [2 /*return*/, { category: { id: category.id, name: category.name, description: category.description, parentId: category.parentId }, stores: stores }];
                 case 3:
-                    stores = _d.sent();
-                    return [3 /*break*/, 7];
-                case 4: return [4 /*yield*/, exports.getProductsByCategoryId(categoryId, page, take, vendorId, userLatitude, userLongitude)];
-                case 5:
-                    productResult = _d.sent();
-                    products = {
-                        products: productResult.products,
-                        totalPages: productResult.totalPages || 0,
-                        currentPage: productResult.currentPage || 0
-                    };
-                    return [4 /*yield*/, getStoresByCategoryOrChildren(categoryId, userLatitude, userLongitude, vendorId)];
-                case 6:
-                    stores = _d.sent();
-                    _d.label = 7;
-                case 7: return [2 /*return*/, { category: { id: category.id, name: category.name, description: category.description, parentId: category.parentId }, children: children, products: products, stores: stores }];
-                case 8:
-                    error_3 = _d.sent();
-                    console.error('Error in getCategoryDetailsWithRelatedData:', error_3);
-                    throw error_3;
-                case 9: return [2 /*return*/];
+                    error_4 = _d.sent();
+                    console.error('Error in getCategoryDetailsWithRelatedData:', error_4);
+                    throw error_4;
+                case 4: return [2 /*return*/];
             }
         });
     });
 };
 exports.getStoresByProductId = function (searchTerm, // Changed to searchTerm
 userLatitude, userLongitude) { return __awaiter(void 0, void 0, Promise, function () {
-    var vendorProducts, vendorProductMap_1, storesWithProducts, sortedStores, error_4;
+    var vendorProducts, vendorProductMap_1, storesWithProducts, sortedStores, error_5;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -447,9 +486,9 @@ userLatitude, userLongitude) { return __awaiter(void 0, void 0, Promise, functio
                 });
                 return [2 /*return*/, { stores: sortedStores }];
             case 3:
-                error_4 = _a.sent();
-                console.error('Error in getStoresByProductId:', error_4);
-                throw error_4;
+                error_5 = _a.sent();
+                console.error('Error in getStoresByProductId:', error_5);
+                throw error_5;
             case 4: return [2 /*return*/];
         }
     });

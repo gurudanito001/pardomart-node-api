@@ -11,13 +11,8 @@ export interface CreateOrderPayload {
   deliveryFee?: number;
   serviceFee?: number;
   paymentMethod?: PaymentMethods;
-  paymentStatus?: PaymentStatus;
-  orderStatus?: OrderStatus;
-  deliveryAddress?: string;
+  deliveryAddress: string;
   deliveryInstructions?: string;
-  shoppingHandlerId?: string;
-  deliveryHandlerId?: string;
-  scheduledDeliveryTime?: Date;
 }
 
 export const createOrder = async (payload: CreateOrderPayload): Promise<Order> => {

@@ -14,40 +14,24 @@ import * as cartModel from '../models/cart.model';
  * @param shippingAddress - The shipping address for the order.
  * @returns The newly created order.
  */
-/* export const createOrderService = async (
-  userId: string,
-  cartId: string,
-  vendorId: string,
-  shippingAddress: string,
-  paymentMethod?: PaymentMethods,
-  paymentStatus?: PaymentStatus,
-  orderStatus?: OrderStatus,
-  deliveryInstructions?: string,
-  shoppingHandlerId?: string,
-  deliveryHandlerId?: string,
-  scheduledDeliveryTime?: Date,
-): Promise<Order> => {
+
+export const createOrderService = async (payload: orderModel.CreateOrderPayload): Promise<Order> => {
   
 
   const order = await orderModel.createOrder({
-    userId,
-    deliveryAddress: shippingAddress,
-    totalAmount: totalPrice,
-    paymentMethod,
-    paymentStatus,
-    orderStatus,
-    deliveryInstructions,
-    shoppingHandlerId,
-    deliveryHandlerId,
-    scheduledDeliveryTime,
-    vendorId,
+    vendorId: payload.vendorId,
+    userId: payload.userId,
+    deliveryAddress: payload.deliveryAddress,
+    totalAmount: payload.totalAmount,
+    paymentMethod: payload.paymentMethod,
+    deliveryInstructions: payload.deliveryInstructions,
   });
 
   // Optionally, clear the cart after the order is created.
   //await cartModel.updateCart(cartId, { items: [] }); //  Consider if you want to clear the cart.
 
   return order;
-}; */
+};
 
 /**
  * Retrieves an order by its ID.
