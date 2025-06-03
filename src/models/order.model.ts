@@ -1,4 +1,4 @@
-import { PrismaClient, Order, Cart, CartItem, PaymentMethods, PaymentStatus, OrderStatus } from '@prisma/client';
+import { PrismaClient, Order, Cart, CartItem, PaymentMethods, PaymentStatus, OrderStatus, ShoppingMethod, DeliveryMethod } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -11,8 +11,11 @@ export interface CreateOrderPayload {
   deliveryFee?: number;
   serviceFee?: number;
   paymentMethod?: PaymentMethods;
-  deliveryAddress: string;
+  deliveryAddressId?: string;
   deliveryInstructions?: string;
+  shoppingMethod?: ShoppingMethod;
+  deliveryMethod?: DeliveryMethod;
+  scheduledShoppingStartTime?: Date
 }
 
 export const createOrder = async (payload: CreateOrderPayload): Promise<Order> => {
@@ -31,14 +34,24 @@ export const getOrderById = async (id: string): Promise<Order | null> => {
   return prisma.order.findUnique({
     where: { id },
      include: {
-      orderItems: true,
+      orderItems: {
+        include: {
+          vendorProduct: {
+            include: {
+              product: true
+            }
+          }
+        }
+      },
       shopper: true,
       deliverer: true,
+      deliveryAddress: true
     },
   });
 };
 
 export const getOrdersByUserId = async (userId: string): Promise<Order[]> => {
+  //await prisma.order.deleteMany();
   return prisma.order.findMany({
     where: { userId },
     include: {
@@ -61,13 +74,15 @@ export interface UpdateOrderPayload {
   paymentMethod?: PaymentMethods;
   paymentStatus?: PaymentStatus;
   orderStatus?: OrderStatus;
-  deliveryAddress?: string;
+  deliveryAddressId?: string;
   deliveryInstructions?: string;
   shoppingHandlerId?: string;
   deliveryHandlerId?: string;
-  scheduledDeliveryTime?: Date;
-  vendorId?: string;
+  shoppingMethod?: ShoppingMethod;
+  deliveryMethod?: DeliveryMethod;
+  scheduledShoppingStartTime?: Date
 }
+
 export const updateOrder = async (
   id: string,
   payload: UpdateOrderPayload

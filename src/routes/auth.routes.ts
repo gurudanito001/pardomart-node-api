@@ -8,6 +8,7 @@ const router = Router();
 
 // Authentication Routes
 router.post('/register', validate(validateRegisterUser), authController.registerUser);
+router.get('/getTimeZones', authController.getTimeZones);
 router.post('/resendVerification',validate(validateResendVerification), authController.resendVerificationCode);
 router.post('/initiateLogin',validate(validateLogin), authController.initiateLogin);
 router.post('/verifyAndLogin',validate(validateVerifyAndLogin), authController.verifyCodeAndLogin);

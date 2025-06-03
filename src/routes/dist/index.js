@@ -11,6 +11,8 @@ var tag_routes_1 = require("./tag.routes");
 var generalSearch_routes_1 = require("./generalSearch.routes");
 var cartItem_routes_1 = require("./cartItem.routes");
 var order_routes_1 = require("./order.routes");
+var fee_routes_1 = require("./fee.routes");
+var deliveryAddress_routes_1 = require("./deliveryAddress.routes");
 // Create a new Router instance
 var router = express_1.Router();
 // Mount the routers
@@ -24,4 +26,6 @@ router.use('/api/v1/tags', tag_routes_1["default"]);
 router.use('/api/v1/generalSearch', generalSearch_routes_1["default"]);
 router.use('/api/v1/cartItem', cartItem_routes_1["default"]);
 router.use('/api/v1/order', order_routes_1["default"]);
+router.use('/api/v1/fees', fee_routes_1["default"]);
+router.use('/api/v1/deliveryAddress', deliveryAddress_routes_1["default"]);
 exports["default"] = router;

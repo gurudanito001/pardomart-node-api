@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.cancelOrderService = exports.updateOrderStatusService = exports.updateOrderService = exports.getOrdersByUserIdService = exports.getOrderByIdService = exports.createOrderService = void 0;
+exports.updateOrderStatusService = exports.updateOrderService = exports.getOrdersByUserIdService = exports.getOrderByIdService = exports.createOrderService = void 0;
 var orderModel = require("../models/order.model"); // Adjust the path if needed
 // --- Order Service Functions ---
 /**
@@ -50,18 +50,9 @@ exports.createOrderService = function (payload) { return __awaiter(void 0, void 
     var order;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4 /*yield*/, orderModel.createOrder({
-                    vendorId: payload.vendorId,
-                    userId: payload.userId,
-                    deliveryAddress: payload.deliveryAddress,
-                    totalAmount: payload.totalAmount,
-                    paymentMethod: payload.paymentMethod,
-                    deliveryInstructions: payload.deliveryInstructions
-                })];
+            case 0: return [4 /*yield*/, orderModel.createOrder(payload)];
             case 1:
                 order = _a.sent();
-                // Optionally, clear the cart after the order is created.
-                //await cartModel.updateCart(cartId, { items: [] }); //  Consider if you want to clear the cart.
                 return [2 /*return*/, order];
         }
     });
@@ -136,8 +127,3 @@ exports.updateOrderStatusService = function (id, status) { return __awaiter(void
   * @param id - The ID of the order to cancel
   * @returns The canceled order
   */
-exports.cancelOrderService = function (id) { return __awaiter(void 0, void 0, Promise, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, orderModel.updateOrder(id, { orderStatus: "cancelled" })];
-    });
-}); };

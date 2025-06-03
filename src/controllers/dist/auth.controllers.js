@@ -35,11 +35,19 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __spreadArrays = (this && this.__spreadArrays) || function () {
+    for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
+    for (var r = Array(s), k = 0, i = 0; i < il; i++)
+        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
+            r[k] = a[j];
+    return r;
+};
 exports.__esModule = true;
-exports.verifyCodeAndLogin = exports.initiateLogin = exports.resendVerificationCode = exports.registerUser = void 0;
+exports.verifyCodeAndLogin = exports.initiateLogin = exports.resendVerificationCode = exports.getTimeZones = exports.registerUser = void 0;
 var authService = require("../services/auth.service"); // Create this file
 var userService = require("../services/user.service");
 var verification_1 = require("../utils/verification"); // Create this file.
+var timezones_1 = require("../utils/timezones");
 exports.registerUser = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var newUser, verificationCode, error_1;
     return __generator(this, function (_a) {
@@ -65,6 +73,24 @@ exports.registerUser = function (req, res) { return __awaiter(void 0, void 0, vo
                 return [3 /*break*/, 5];
             case 5: return [2 /*return*/];
         }
+    });
+}); };
+exports.getTimeZones = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var timezones, utcs_1;
+    return __generator(this, function (_a) {
+        try {
+            timezones = timezones_1["default"];
+            utcs_1 = [];
+            timezones.forEach(function (zone) {
+                utcs_1 = __spreadArrays(utcs_1, zone.utc);
+            });
+            res.status(201).json({ message: 'List of time zones', data: utcs_1 });
+        }
+        catch (error) {
+            console.error('Error registering user:', error);
+            res.status(500).json({ error: 'Internal server error' });
+        }
+        return [2 /*return*/];
     });
 }); };
 exports.resendVerificationCode = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {

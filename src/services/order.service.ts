@@ -16,20 +16,7 @@ import * as cartModel from '../models/cart.model';
  */
 
 export const createOrderService = async (payload: orderModel.CreateOrderPayload): Promise<Order> => {
-  
-
-  const order = await orderModel.createOrder({
-    vendorId: payload.vendorId,
-    userId: payload.userId,
-    deliveryAddress: payload.deliveryAddress,
-    totalAmount: payload.totalAmount,
-    paymentMethod: payload.paymentMethod,
-    deliveryInstructions: payload.deliveryInstructions,
-  });
-
-  // Optionally, clear the cart after the order is created.
-  //await cartModel.updateCart(cartId, { items: [] }); //  Consider if you want to clear the cart.
-
+  const order = await orderModel.createOrder(payload);
   return order;
 };
 
@@ -103,6 +90,4 @@ export const updateOrderStatusService = async (
   * @param id - The ID of the order to cancel
   * @returns The canceled order
   */
-export const cancelOrderService = async (id: string): Promise<Order> => {
-    return orderModel.updateOrder(id, { orderStatus: "cancelled" });
-};
+

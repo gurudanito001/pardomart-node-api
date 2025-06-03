@@ -33,8 +33,7 @@ model User {
   supportMessages  Support[] @relation("SupportMessages")
   orderShoppers    Order[] @relation("OrderShopper")
   orderDeliverers  Order[] @relation("OrderDeliverer")
-
-
+  deliveryAddresses DeliveryAddress[]
   orders           Order[]
   carts            Cart[] 
   createdAt        DateTime  @default(now())
@@ -114,24 +113,75 @@ model Order {
   userId              String
   user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   vendorId            String // Add this field
-  vendor            Vendor @relation(fields: [vendorId], references: [id])
+  vendor              Vendor @relation(fields: [vendorId], references: [id])
   totalAmount         Float
   deliveryFee         Float?    // Add delivery fee
   serviceFee          Float?    // Platform service fee
   paymentMethod       PaymentMethods  @default(credit_card)  // e.g., "credit_card", "wallet", "cash"
   paymentStatus       PaymentStatus   @default(pending) // e.g., "pending", "paid", "failed"
   orderStatus         OrderStatus    @default(pending)// e.g., "pending", "processing", "shipped", "delivered", "cancelled"
-  deliveryAddress     String?    // Consider a separate Address model for more complex scenarios
+  deliveryAddressId   String?         // ID of the DeliveryAddress used for this order (can be null if customer pickup or temporary address)
+  deliveryAddress     DeliveryAddress? @relation(fields: [deliveryAddressId], references: [id])
   deliveryInstructions  String? // Customer's delivery instructions
   shoppingHandlerId   String?   // ID of the User handling the shopping (Role: SHOPPER)
   shopper             User?     @relation("OrderShopper", fields: [shoppingHandlerId], references: [id])
   deliveryHandlerId String?   // ID of the User handling the delivery (Role: DELIVERY)
   deliverer           User?     @relation("OrderDeliverer", fields: [deliveryHandlerId], references: [id])
-  scheduledDeliveryTime DateTime? //when the customer wants the order delivered
+  // NEW: Defines who is responsible for shopping/preparation
+  shoppingMethod      ShoppingMethod? @default(VENDOR)
+  // NEW: Defines how the order will be delivered to the customer
+  deliveryMethod      DeliveryMethod? @default(CUSTOMER_PICKUP)
+  // When the shopping for the order is scheduled to start.
+  // Orders with a future scheduledShoppingStartTime might not be visible to handlers yet.
+  scheduledShoppingStartTime DateTime? @default(now())
   orderItems          CartItem[] // Use CartItem to store order details
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 }
+
+model DeliveryAddress {
+  id               String    @id @default(uuid())
+  userId           String    // Links this address to a specific user
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Standard address components
+  label            String?   // e.g., "Home", "Work", "Friend's House"
+  addressLine1     String    // Street address, house number
+  addressLine2     String?   // Apartment, suite, unit, building name
+  city             String
+  state            String?   // State/Province/Region
+  postalCode       String?   // Zip/Postal Code
+  country          String    @default("Nigeria") // Default or make configurable
+
+  // Optional: For mapping and delivery optimization
+  latitude         Float?
+  longitude        Float?
+
+  isDefault        Boolean   @default(false) // Flag if this is the user's preferred default address
+
+  // Relation to Order: An address can be used for many orders
+  orders           Order[]
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Ensures a user cannot have two default addresses (optional, but good for UX)
+  @@unique([userId, isDefault])
+  @@index([userId]) // Index for faster lookups by user
+}
+
+model Fee {
+  id        String    @id @default(uuid())
+  type      FeeType   // Distinguishes between Delivery, Service, etc.
+  amount    Float     // The actual fee value
+  isActive  Boolean   @default(false) // True if this is the currently active fee for its type
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([type, isActive]) // Ensures only one active fee per type
+}
+
+
 
 model Category {
   id       String    @id @default(uuid())
@@ -163,6 +213,7 @@ model Vendor {
   address          String?
   longitude        Float?
   latitude         Float?
+  timezone         String?  @default("America/New_York")// e.g., "Africa/Lagos", "America/New_York"
   isVerified       Boolean    @default(false)
   meta             Json?
   openingHours     VendorOpeningHours[] 
@@ -225,6 +276,7 @@ enum Days {
   sunday
 }
 
+
 enum PaymentMethods {
   credit_card
   wallet
@@ -239,8 +291,29 @@ enum PaymentStatus {
 
 enum OrderStatus {
   pending
-  processing
-  shipped
+  accepted_for_shopping
+  declined_by_vendor
+  cancelled_by_customer
+  currently_shopping
+  ready_for_delivery
+  ready_for_pickup
+  en_route
   delivered
-  cancelled
+}
+
+// --- NEW ENUMS ---
+enum ShoppingMethod {
+  VENDOR        // The vendor prepares the order
+  SHOPPER       // A designated shopper (e.g., delivery person who also shops) prepares the order
+}
+
+enum DeliveryMethod {
+  DELIVERY_PERSON // A designated delivery person delivers the order
+  CUSTOMER_PICKUP // The customer picks up the order
+}
+
+// Enum to define different types of fees
+enum FeeType {
+  DELIVERY
+  SERVICE
 }

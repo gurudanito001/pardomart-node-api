@@ -8,7 +8,9 @@ import categoryRouter from './category.routes'
 import tagRouter from './tag.routes';
 import generalSearchRouter from './generalSearch.routes'
 import cartItemRouter from './cartItem.routes';
-import orderRouter from './order.routes'
+import orderRouter from './order.routes';
+import feeRouter from './fee.routes';
+import deliveryAddress from './deliveryAddress.routes';
 
 // Create a new Router instance
 const router = Router();
@@ -24,5 +26,7 @@ router.use('/api/v1/tags', tagRouter);
 router.use('/api/v1/generalSearch', generalSearchRouter);
 router.use('/api/v1/cartItem', cartItemRouter);
 router.use('/api/v1/order', orderRouter);
+router.use('/api/v1/fees', feeRouter);
+router.use('/api/v1/deliveryAddress', deliveryAddress);
 
 export default router;

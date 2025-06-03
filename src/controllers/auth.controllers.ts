@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import * as authService from '../services/auth.service'; // Create this file
 import * as userService from '../services/user.service'
 import { generateVerificationCode, sendVerificationCode } from '../utils/verification'; // Create this file.
+import Timezones from '../utils/timezones';
 
 
 
@@ -21,6 +22,21 @@ export const registerUser = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+export const getTimeZones = async (req: Request, res: Response) => {
+  try {
+    const timezones = Timezones;
+    let utcs: string[] = [];
+    timezones.forEach( zone =>{
+      utcs = [...utcs, ...zone.utc ];
+    })
+    res.status(201).json({ message: 'List of time zones', data: utcs });
+  } catch (error) {
+    console.error('Error registering user:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
 
 export const resendVerificationCode = async (req: Request, res: Response) => {
   try {

@@ -1,5 +1,5 @@
 // models/vendor.model.ts
-import { PrismaClient, Vendor, Days } from '@prisma/client';
+import { PrismaClient, Vendor, Days, User, VendorOpeningHours } from '@prisma/client';
 
 
 const prisma = new PrismaClient();
@@ -62,7 +62,12 @@ export const createVendor = async (payload: CreateVendorPayload): Promise<Vendor
   return data as Vendor
 };
 
-export const getVendorById = async (id: string): Promise<Vendor | null> => {
+
+export type VendorWithRelations = Vendor & {
+  user: User;
+  openingHours: VendorOpeningHours[];
+};
+export const getVendorById = async (id: string): Promise<VendorWithRelations | null> => {
   return prisma.vendor.findUnique({
     where: { id },
     include: {

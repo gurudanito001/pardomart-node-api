@@ -33,7 +33,7 @@ export const createVendor = async (payload: vendorModel.CreateVendorPayload): Pr
   return vendorModel.createVendor(payload);
 };
 
-export const getVendorById = async (id: string): Promise<Vendor | null> => {
+export const getVendorById = async (id: string): Promise<vendorModel.VendorWithRelations | null> => {
   return vendorModel.getVendorById(id);
 };
 

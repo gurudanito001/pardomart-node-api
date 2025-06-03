@@ -59,15 +59,25 @@ exports.getOrderById = function (id) { return __awaiter(void 0, void 0, Promise,
         return [2 /*return*/, prisma.order.findUnique({
                 where: { id: id },
                 include: {
-                    orderItems: true,
+                    orderItems: {
+                        include: {
+                            vendorProduct: {
+                                include: {
+                                    product: true
+                                }
+                            }
+                        }
+                    },
                     shopper: true,
-                    deliverer: true
+                    deliverer: true,
+                    deliveryAddress: true
                 }
             })];
     });
 }); };
 exports.getOrdersByUserId = function (userId) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
+        //await prisma.order.deleteMany();
         return [2 /*return*/, prisma.order.findMany({
                 where: { userId: userId },
                 include: {

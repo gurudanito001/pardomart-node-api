@@ -47,19 +47,84 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.updateOrderController = exports.cancelOrderController = exports.updateOrderStatusController = exports.getOrdersByUserController = exports.getOrderByIdController = exports.createOrderController = void 0;
+exports.updateOrderController = exports.updateOrderStatusController = exports.getOrdersByUserController = exports.getOrderByIdController = exports.createOrderController = void 0;
 var order_service_1 = require("../services/order.service"); // Adjust the path if needed
 var cartItem_model_1 = require("../models/cartItem.model");
 var order_model_1 = require("../models/order.model");
 var product_model_1 = require("../models/product.model");
+var fee_service_1 = require("../services/fee.service");
+var client_1 = require("@prisma/client");
+var dayjs_1 = require("dayjs");
+var utc_1 = require("dayjs/plugin/utc");
+var timezone_1 = require("dayjs/plugin/timezone");
+var vendor_service_1 = require("../services/vendor.service");
+var deliveryAddress_service_1 = require("../services/deliveryAddress.service");
+// Extend dayjs with plugins
+dayjs_1["default"].extend(utc_1["default"]);
+dayjs_1["default"].extend(timezone_1["default"]);
+// --- Helper function to map Dayjs day index to Prisma's Days enum ---
+// Assuming your Days enum is like: enum Days { SUNDAY, MONDAY, TUESDAY, ... }
+var getDayEnumFromDayjs = function (dayjsDayIndex) {
+    var days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    return days[dayjsDayIndex];
+};
 exports.createOrderController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var userId, _a, vendorId, paymentMethod, shippingAddress, deliveryInstructions, orderItems, totalAmount_1, order_1, updatedOrderItems, finalOrder, error_1;
-    return __generator(this, function (_b) {
-        switch (_b.label) {
+    var userId, _a, vendorId, paymentMethod, shippingAddressId, newShippingAddress, deliveryInstructions, orderItems, shoppingMethod, deliveryMethod, scheduledShoppingStartTime, parsedScheduledTime, vendor, vendorLocalDayjs, dayOfWeek_1, openingHoursToday, _b, openHours, openMinutes, _c, closeHours, closeMinutes, vendorOpenTimeUTC, vendorCloseTimeUTC, twoHoursBeforeCloseUTC, totalAmount_1, serviceFeeObject, serviceFee, payloadForNewAddress, createdAddress, order_1, updatedOrderItems, finalOrder, error_1;
+    return __generator(this, function (_d) {
+        switch (_d.label) {
             case 0:
-                _b.trys.push([0, 5, , 6]);
+                _d.trys.push([0, 11, , 12]);
                 userId = req.userId;
-                _a = req.body, vendorId = _a.vendorId, paymentMethod = _a.paymentMethod, shippingAddress = _a.shippingAddress, deliveryInstructions = _a.deliveryInstructions, orderItems = _a.orderItems;
+                _a = req.body, vendorId = _a.vendorId, paymentMethod = _a.paymentMethod, shippingAddressId = _a.shippingAddressId, newShippingAddress = _a.newShippingAddress, deliveryInstructions = _a.deliveryInstructions, orderItems = _a.orderItems, shoppingMethod = _a.shoppingMethod, deliveryMethod = _a.deliveryMethod, scheduledShoppingStartTime = _a.scheduledShoppingStartTime;
+                if (!scheduledShoppingStartTime) return [3 /*break*/, 2];
+                parsedScheduledTime = dayjs_1["default"].utc(scheduledShoppingStartTime);
+                if (!parsedScheduledTime.isValid()) {
+                    return [2 /*return*/, res.status(400).json({ error: 'Invalid scheduled shopping start time format.' })];
+                }
+                return [4 /*yield*/, vendor_service_1.getVendorById(vendorId)];
+            case 1:
+                vendor = _d.sent();
+                if (!vendor) {
+                    return [2 /*return*/, res.status(404).json({ error: 'Vendor not found.' })];
+                }
+                if (!vendor.timezone) {
+                    // This is a critical point: if vendor doesn't have a timezone, validation is impossible.
+                    // You might default to a specific timezone or throw an error.
+                    // For robust validation, make timezone mandatory for vendors.
+                    console.warn("Vendor " + vendorId + " does not have a timezone set. Skipping time validation.");
+                    // return res.status(500).json({ error: 'Vendor timezone not configured. Cannot validate shopping time.' });
+                }
+                vendorLocalDayjs = parsedScheduledTime.tz(vendor.timezone || 'UTC');
+                dayOfWeek_1 = getDayEnumFromDayjs(vendorLocalDayjs.day());
+                openingHoursToday = vendor.openingHours.find(function (h) { return h.day === dayOfWeek_1; });
+                if (!openingHoursToday || !openingHoursToday.open || !openingHoursToday.close) {
+                    console.log(dayOfWeek_1, vendor.openingHours);
+                    return [2 /*return*/, res.status(400).json({
+                            error: "Vendor is closed or has no defined hours for " + dayOfWeek_1 + "."
+                        })];
+                }
+                _b = openingHoursToday.open.split(':').map(Number), openHours = _b[0], openMinutes = _b[1];
+                _c = openingHoursToday.close.split(':').map(Number), closeHours = _c[0], closeMinutes = _c[1];
+                vendorOpenTimeUTC = vendorLocalDayjs.hour(openHours).minute(openMinutes).second(0).millisecond(0).utc();
+                vendorCloseTimeUTC = vendorLocalDayjs.hour(closeHours).minute(closeMinutes).second(0).millisecond(0).utc();
+                // Handle cases where closing time is on the next day (e.g., 22:00 - 02:00)
+                // This assumes the `open` and `close` times are relative to the same day.
+                // If close is numerically smaller than open, it means it rolls over to the next day.
+                if (vendorCloseTimeUTC.isBefore(vendorOpenTimeUTC)) {
+                    vendorCloseTimeUTC = vendorCloseTimeUTC.add(1, 'day');
+                }
+                twoHoursBeforeCloseUTC = vendorCloseTimeUTC.subtract(2, 'hour');
+                // Perform the validation check
+                if (parsedScheduledTime.isBefore(vendorOpenTimeUTC) || parsedScheduledTime.isAfter(twoHoursBeforeCloseUTC)) {
+                    return [2 /*return*/, res.status(400).json({
+                            error: "Scheduled shopping time must be between " + openingHoursToday.open + " and " + twoHoursBeforeCloseUTC.tz(vendor.timezone || 'UTC').format('HH:mm') + " vendor local time."
+                        })];
+                }
+                if (parsedScheduledTime.isBefore(dayjs_1["default"].utc())) {
+                    return [2 /*return*/, res.status(400).json({ error: 'Scheduled shopping time cannot be in the past.' })];
+                }
+                _d.label = 2;
+            case 2:
                 totalAmount_1 = 0;
                 return [4 /*yield*/, Promise.all(orderItems.map(function (item) { return __awaiter(void 0, void 0, void 0, function () {
                         var vendorProduct;
@@ -75,33 +140,63 @@ exports.createOrderController = function (req, res) { return __awaiter(void 0, v
                             }
                         });
                     }); }))];
-            case 1:
-                _b.sent();
-                return [4 /*yield*/, order_model_1.createOrder({ userId: userId, vendorId: vendorId, paymentMethod: paymentMethod, deliveryAddress: shippingAddress, deliveryInstructions: deliveryInstructions, totalAmount: totalAmount_1 })
-                    // pass the orderId into each cartItem and bulk create cartItems
-                ];
-            case 2:
-                order_1 = _b.sent();
+            case 3:
+                _d.sent();
+                return [4 /*yield*/, fee_service_1.getCurrentFees(client_1.FeeType.SERVICE)];
+            case 4:
+                serviceFeeObject = _d.sent();
+                serviceFee = 0;
+                if (serviceFeeObject && !Array.isArray(serviceFeeObject)) {
+                    // Ensure it's a single Fee object and not an array
+                    serviceFee = serviceFeeObject.amount;
+                }
+                if (!(!shippingAddressId && newShippingAddress)) return [3 /*break*/, 6];
+                // If no existing address ID is provided, but new address details are, create it
+                // Ensure newShippingAddress has userId, and other required fields
+                if (!newShippingAddress.addressLine1 || !newShippingAddress.city) {
+                    return [2 /*return*/, res.status(400).json({ error: 'New shipping address requires addressLine1 and city.' })];
+                }
+                payloadForNewAddress = __assign(__assign({}, newShippingAddress), { userId: userId });
+                return [4 /*yield*/, deliveryAddress_service_1.createDeliveryAddressService(payloadForNewAddress)];
+            case 5:
+                createdAddress = _d.sent();
+                shippingAddressId = createdAddress.id; // Use the ID of the newly created address
+                return [3 /*break*/, 7];
+            case 6:
+                if (!shippingAddressId) {
+                    // If no shippingAddressId and no newShippingAddress, and deliveryMethod requires it
+                    // (e.g., DELIVERY_PERSON), then it's an error.
+                    // If deliveryMethod is CUSTOMER_PICKUP, then shippingAddressId might be null.
+                    if (deliveryMethod === 'DELIVERY_PERSON') { // Adjust based on your DeliveryMethod enum
+                        return [2 /*return*/, res.status(400).json({ error: 'Delivery address is required for delivery orders.' })];
+                    }
+                }
+                _d.label = 7;
+            case 7: return [4 /*yield*/, order_model_1.createOrder({ userId: userId, vendorId: vendorId, paymentMethod: paymentMethod, deliveryAddressId: shippingAddressId, deliveryInstructions: deliveryInstructions, totalAmount: totalAmount_1, serviceFee: serviceFee, shoppingMethod: shoppingMethod, deliveryMethod: deliveryMethod, scheduledShoppingStartTime: scheduledShoppingStartTime })
+                // pass the orderId into each cartItem and bulk create cartItems
+            ];
+            case 8:
+                order_1 = _d.sent();
                 updatedOrderItems = orderItems.map(function (item) {
                     return __assign(__assign({}, item), { orderId: order_1.id });
                 });
                 return [4 /*yield*/, cartItem_model_1.createManyCartItems(updatedOrderItems)];
-            case 3:
-                _b.sent();
+            case 9:
+                _d.sent();
                 return [4 /*yield*/, order_model_1.getOrderById(order_1.id)];
-            case 4:
-                finalOrder = _b.sent();
+            case 10:
+                finalOrder = _d.sent();
                 res.status(201).json(finalOrder);
-                return [3 /*break*/, 6];
-            case 5:
-                error_1 = _b.sent();
+                return [3 /*break*/, 12];
+            case 11:
+                error_1 = _d.sent();
                 // Handle specific errors (e.g., from the service layer)
                 if (error_1.message === 'Cart not found') {
                     return [2 /*return*/, res.status(400).json({ error: error_1.message })];
                 }
                 res.status(500).json({ error: 'Failed to create order: ' + error_1.message });
-                return [3 /*break*/, 6];
-            case 6: return [2 /*return*/];
+                return [3 /*break*/, 12];
+            case 12: return [2 /*return*/];
         }
     });
 }); };
@@ -188,38 +283,11 @@ exports.updateOrderStatusController = function (req, res) { return __awaiter(voi
     });
 }); };
 /**
- * Controller for cancelling an order.
- * PATCH /orders/:id/cancel
- */
-exports.cancelOrderController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var orderId, cancelledOrder, error_5;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                _a.trys.push([0, 2, , 3]);
-                orderId = req.params.id;
-                return [4 /*yield*/, order_service_1.cancelOrderService(orderId)];
-            case 1:
-                cancelledOrder = _a.sent();
-                res.status(200).json(cancelledOrder);
-                return [3 /*break*/, 3];
-            case 2:
-                error_5 = _a.sent();
-                if (error_5.message === 'Order not found') {
-                    return [2 /*return*/, res.status(404).json({ error: error_5.message })];
-                }
-                res.status(500).json({ error: 'Failed to cancel order: ' + error_5.message });
-                return [3 /*break*/, 3];
-            case 3: return [2 /*return*/];
-        }
-    });
-}); };
-/**
  * Controller for updating an order.
  * PATCH /orders/:id
  */
 exports.updateOrderController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var orderId, updates, updatedOrder, error_6;
+    var orderId, updates, updatedOrder, error_5;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -232,11 +300,11 @@ exports.updateOrderController = function (req, res) { return __awaiter(void 0, v
                 res.status(200).json(updatedOrder);
                 return [3 /*break*/, 3];
             case 2:
-                error_6 = _a.sent();
-                if (error_6.message === 'Order not found') {
-                    return [2 /*return*/, res.status(404).json({ error: error_6.message })];
+                error_5 = _a.sent();
+                if (error_5.message === 'Order not found') {
+                    return [2 /*return*/, res.status(404).json({ error: error_5.message })];
                 }
-                res.status(500).json({ error: 'Failed to update order: ' + error_6.message });
+                res.status(500).json({ error: 'Failed to update order: ' + error_5.message });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
