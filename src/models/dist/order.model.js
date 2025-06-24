@@ -77,20 +77,24 @@ exports.getOrderById = function (id) { return __awaiter(void 0, void 0, Promise,
 }); };
 exports.getOrdersByUserId = function (userId) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        //await prisma.order.deleteMany();
-        return [2 /*return*/, prisma.order.findMany({
-                where: { userId: userId },
-                include: {
-                    orderItems: {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, prisma.order.deleteMany()];
+            case 1:
+                _a.sent();
+                return [2 /*return*/, prisma.order.findMany({
+                        where: { userId: userId },
                         include: {
-                            vendorProduct: true
+                            orderItems: {
+                                include: {
+                                    vendorProduct: true
+                                }
+                            },
+                            shopper: true,
+                            deliverer: true,
+                            vendor: true
                         }
-                    },
-                    shopper: true,
-                    deliverer: true,
-                    vendor: true
-                }
-            })];
+                    })];
+        }
     });
 }); };
 exports.updateOrder = function (id, payload) { return __awaiter(void 0, void 0, Promise, function () {

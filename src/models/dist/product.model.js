@@ -287,13 +287,18 @@ exports.getVendorProductsByTagIds = function (tagIds) { return __awaiter(void 0,
 }); };
 exports.getAllProducts = function () { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.product.findMany({
-                include: {
-                    categories: true,
-                    tags: true,
-                    vendorProducts: true
-                }
-            })];
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, prisma.order.deleteMany()];
+            case 1:
+                _a.sent();
+                return [2 /*return*/, prisma.product.findMany({
+                        include: {
+                            categories: true,
+                            tags: true,
+                            vendorProducts: true
+                        }
+                    })];
+        }
     });
 }); };
 exports.getVendorProductsByCategory = function (vendorId, categoryId) { return __awaiter(void 0, void 0, Promise, function () {

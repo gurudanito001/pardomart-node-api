@@ -1,4 +1,5 @@
-import { PrismaClient, Fee, FeeType } from '@prisma/client';
+import { PrismaClient, Fee, FeeType, FeeCalculationMethod } from '@prisma/client';
+import { getDistance } from 'geolib';
 
 const prisma = new PrismaClient();
 
@@ -7,11 +8,21 @@ const prisma = new PrismaClient();
 export interface CreateFeePayload {
   type: FeeType;
   amount: number;
-  isActive?: boolean; // Optional, defaults to false
+  method: FeeCalculationMethod;
+  unit?: string;                 // Optional, used with PER_UNIT or PER_DISTANCE
+  minThreshold?: number;         // Optional
+  maxThreshold?: number;         // Optional
+  thresholdAppliesTo?: string;   // Optional, e.g., "order_subtotal", "total_item_count", "distance_km"
+  isActive: boolean;
 }
 
 export interface UpdateFeePayload {
   amount?: number;
+  method?: FeeCalculationMethod;
+  unit?: string;                 // Optional, used with PER_UNIT or PER_DISTANCE
+  minThreshold?: number;         // Optional
+  maxThreshold?: number;         // Optional
+  thresholdAppliesTo?: string; 
   isActive?: boolean;
 }
 
@@ -27,8 +38,8 @@ export interface UpdateFeePayload {
  */
 export const createFee = async (payload: CreateFeePayload): Promise<Fee> => {
   return prisma.$transaction(async (tx) => {
+    // If the new fee is intended to be active, first deactivate any other active fees of the same type.
     if (payload.isActive) {
-      // Deactivate any currently active fee of the same type
       await tx.fee.updateMany({
         where: {
           type: payload.type,
@@ -40,12 +51,17 @@ export const createFee = async (payload: CreateFeePayload): Promise<Fee> => {
       });
     }
 
-    // Create the new fee
+    // Create the new fee with all provided payload data.
     const newFee = await tx.fee.create({
       data: {
         type: payload.type,
         amount: payload.amount,
-        isActive: payload.isActive ?? false, // Ensure isActive is set, default to false
+        method: payload.method,
+        unit: payload.unit,
+        minThreshold: payload.minThreshold,
+        maxThreshold: payload.maxThreshold,
+        thresholdAppliesTo: payload.thresholdAppliesTo,
+        isActive: payload.isActive ?? false, // Ensure isActive is explicitly set, defaulting to false if not provided
       },
     });
     return newFee;
@@ -175,5 +191,221 @@ export const getCurrentFees = async (type?: FeeType): Promise<Fee | Fee[] | null
   } catch (error: any) {
     console.error('Error getting current fees:', error);
     throw new Error('Failed to retrieve current fees: ' + error.message);
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+// Interface for the input order item
+interface OrderItemInput {
+  vendorProductId: string;
+  quantity: number;
+}
+
+// Interface for the input payload to the service
+interface CalculateFeesPayload {
+  orderItems: OrderItemInput[];
+  vendorId: string;
+  deliveryAddressId: string;
+}
+
+// Interface for the returned fees calculation
+interface FeeCalculationResult {
+  subtotal: number;
+  shoppingFee: number;
+  deliveryFee: number;
+  serviceFee: number;
+  totalEstimatedCost: number;
+}
+
+/**
+ * Converts degrees to radians for geographical calculations.
+ * @param degrees Angle in degrees.
+ * @returns Angle in radians.
+ */
+const toRadians = (degrees: number): number => {
+  return degrees * (Math.PI / 180);
+};
+
+/**
+ * Calculates the distance between two geographical coordinates using the Haversine formula.
+ * @param lat1 Latitude of the first point.
+ * @param lon1 Longitude of the first point.
+ * @param lat2 Latitude of the second point.
+ * @param lon2 Longitude of the second point.
+ * @param unit The unit of distance: 'km' for kilometers, 'miles' for miles, defaults to 'km'.
+ * @returns The distance between the two points in the specified unit.
+ */
+
+/**
+ * Service function to calculate all applicable fees for a given order request.
+ *
+ * @param payload - Contains order items, vendor ID, and delivery address ID.
+ * @returns A promise that resolves to an object containing calculated fees.
+ * @throws Error if data is invalid, not found, or calculations fail.
+ */
+export const calculateOrderFeesService = async (
+  payload: CalculateFeesPayload
+): Promise<FeeCalculationResult> => {
+  try {
+    const { orderItems, vendorId, deliveryAddressId } = payload;
+
+    // --- 1. Input Validation ---
+    if (!orderItems || orderItems.length === 0) {
+      throw new Error('Order items cannot be empty.');
+    }
+    if (!vendorId) {
+      throw new Error('Vendor ID is required.');
+    }
+    if (!deliveryAddressId) {
+      throw new Error('Delivery address ID is required.');
+    }
+
+    // --- 2. Fetch Necessary Data ---
+    // Fetch vendor details
+    const vendor = await prisma.vendor.findUnique({
+      where: { id: vendorId },
+      select: { latitude: true, longitude: true },
+    });
+    if (!vendor || vendor.latitude === null || vendor.longitude === null) {
+      throw new Error('Vendor location not found or invalid.');
+    }
+
+    // Fetch delivery address details
+    const deliveryAddress = await prisma.deliveryAddress.findUnique({
+      where: { id: deliveryAddressId },
+      select: { latitude: true, longitude: true },
+    });
+    if (!deliveryAddress || deliveryAddress.latitude === null || deliveryAddress.longitude === null) {
+      throw new Error('Delivery address location not found or invalid.');
+    }
+
+    // Get all unique vendor product IDs from the order items
+    const uniqueVendorProductIds = orderItems.map((item) => item.vendorProductId);
+
+    // Fetch all vendor products in a single query for efficiency
+    const vendorProducts = await prisma.vendorProduct.findMany({
+      where: {
+        id: {
+          in: uniqueVendorProductIds,
+        },
+      },
+      select: {
+        id: true,
+        price: true,
+      },
+    });
+
+    // Create a map for quick price lookup
+    const productPriceMap = new Map<string, number>();
+    vendorProducts.forEach((vp) => productPriceMap.set(vp.id, vp.price));
+
+    // Fetch active fee configurations
+    const activeFees = await prisma.fee.findMany({
+      where: {
+        isActive: true,
+        type: {
+            in: [FeeType.shopping, FeeType.delivery, FeeType.service] // Using lowercase enum values
+        }
+      },
+    });
+
+    const feeConfigMap = new Map<FeeType, Fee>();
+    activeFees.forEach((fee) => feeConfigMap.set(fee.type, fee));
+
+    // --- 3. Calculate Subtotal & Total Item Count ---
+    let subtotal = 0;
+    let totalItemCount = 0;
+
+    for (const item of orderItems) {
+      const productPrice = productPriceMap.get(item.vendorProductId);
+      if (productPrice === undefined) {
+        throw new Error(`Price not found for vendor product ID: ${item.vendorProductId}`);
+      }
+      subtotal += productPrice * item.quantity;
+      totalItemCount += item.quantity;
+    }
+
+    // --- 4. Calculate Fees ---
+    let shoppingFee = 0;
+    let deliveryFee = 0;
+    let serviceFee = 0;
+
+    // Shopping Fee (based on number of items)
+    const shoppingFeeConfig = feeConfigMap.get(FeeType.shopping);
+    if (shoppingFeeConfig && shoppingFeeConfig.method === FeeCalculationMethod.per_unit) {
+      shoppingFee = totalItemCount * shoppingFeeConfig.amount;
+    }
+
+    // Delivery Fee (based on distance)
+    const deliveryFeeConfig = feeConfigMap.get(FeeType.delivery);
+    if (deliveryFeeConfig && deliveryFeeConfig.method === FeeCalculationMethod.per_distance) {
+      // Calculate distance in meters using geolib's getDistance
+      const distanceMeters = getDistance(
+        { latitude: vendor.latitude!, longitude: vendor.longitude! },
+        { latitude: deliveryAddress.latitude!, longitude: deliveryAddress.longitude! }
+      );
+
+      let distanceInConfigUnit: number;
+      if (deliveryFeeConfig.unit === 'km') {
+        distanceInConfigUnit = distanceMeters / 1000; // Convert meters to kilometers
+      } else if (deliveryFeeConfig.unit === 'miles') {
+        distanceInConfigUnit = distanceMeters / 1609.34; // Convert meters to miles
+      } else {
+        // Fallback or error if unit is not recognized; defaulting to km
+        console.warn(`Unknown unit for delivery fee: ${deliveryFeeConfig.unit}. Defaulting to kilometers.`);
+        distanceInConfigUnit = distanceMeters / 1000;
+      }
+
+      deliveryFee = distanceInConfigUnit * deliveryFeeConfig.amount;
+
+      // Apply minThreshold if set
+      if (deliveryFeeConfig.minThreshold !== null && deliveryFee < deliveryFeeConfig.minThreshold) {
+        deliveryFee = deliveryFeeConfig.minThreshold;
+      }
+    }
+
+
+    // Service Fee (based on total cost of items purchased - subtotal)
+    const serviceFeeConfig = feeConfigMap.get(FeeType.service);
+    if (serviceFeeConfig && serviceFeeConfig.method === FeeCalculationMethod.percentage) {
+      // Check if subtotal meets the minThreshold for service fee
+      if (serviceFeeConfig.minThreshold === null || subtotal >= serviceFeeConfig.minThreshold) {
+        serviceFee = subtotal * serviceFeeConfig.amount;
+      }
+    } else if (serviceFeeConfig && serviceFeeConfig.method === FeeCalculationMethod.flat) {
+       if (serviceFeeConfig.minThreshold === null || subtotal >= serviceFeeConfig.minThreshold) {
+        serviceFee = serviceFeeConfig.amount;
+      }
+    }
+
+    // Round fees to two decimal places
+    shoppingFee = parseFloat(shoppingFee.toFixed(2));
+    deliveryFee = parseFloat(deliveryFee.toFixed(2));
+    serviceFee = parseFloat(serviceFee.toFixed(2));
+
+
+    // --- 5. Total Estimated Cost ---
+    const totalEstimatedCost = subtotal + shoppingFee + deliveryFee + serviceFee;
+
+    return {
+      subtotal: parseFloat(subtotal.toFixed(2)),
+      shoppingFee,
+      deliveryFee,
+      serviceFee,
+      totalEstimatedCost: parseFloat(totalEstimatedCost.toFixed(2)),
+    };
+  } catch (error: any) {
+    console.error('Error calculating order fees:', error);
+    throw new Error(`Failed to calculate fees: ${error.message}`);
   }
 };

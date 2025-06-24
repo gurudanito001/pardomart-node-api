@@ -36,8 +36,9 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.getCurrentFees = exports.deactivateFee = exports.deleteFee = exports.updateFee = exports.createFee = void 0;
+exports.calculateOrderFeesService = exports.getCurrentFees = exports.deactivateFee = exports.deleteFee = exports.updateFee = exports.createFee = void 0;
 var client_1 = require("@prisma/client");
+var geolib_1 = require("geolib");
 var prisma = new client_1.PrismaClient();
 // --- Fee Service Functions ---
 /**
@@ -57,7 +58,6 @@ exports.createFee = function (payload) { return __awaiter(void 0, void 0, Promis
                     switch (_b.label) {
                         case 0:
                             if (!payload.isActive) return [3 /*break*/, 2];
-                            // Deactivate any currently active fee of the same type
                             return [4 /*yield*/, tx.fee.updateMany({
                                     where: {
                                         type: payload.type,
@@ -68,13 +68,17 @@ exports.createFee = function (payload) { return __awaiter(void 0, void 0, Promis
                                     }
                                 })];
                         case 1:
-                            // Deactivate any currently active fee of the same type
                             _b.sent();
                             _b.label = 2;
                         case 2: return [4 /*yield*/, tx.fee.create({
                                 data: {
                                     type: payload.type,
                                     amount: payload.amount,
+                                    method: payload.method,
+                                    unit: payload.unit,
+                                    minThreshold: payload.minThreshold,
+                                    maxThreshold: payload.maxThreshold,
+                                    thresholdAppliesTo: payload.thresholdAppliesTo,
                                     isActive: (_a = payload.isActive) !== null && _a !== void 0 ? _a : false
                                 }
                             })];
@@ -238,6 +242,164 @@ exports.getCurrentFees = function (type) { return __awaiter(void 0, void 0, Prom
                 error_3 = _a.sent();
                 console.error('Error getting current fees:', error_3);
                 throw new Error('Failed to retrieve current fees: ' + error_3.message);
+            case 6: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * Converts degrees to radians for geographical calculations.
+ * @param degrees Angle in degrees.
+ * @returns Angle in radians.
+ */
+var toRadians = function (degrees) {
+    return degrees * (Math.PI / 180);
+};
+/**
+ * Calculates the distance between two geographical coordinates using the Haversine formula.
+ * @param lat1 Latitude of the first point.
+ * @param lon1 Longitude of the first point.
+ * @param lat2 Latitude of the second point.
+ * @param lon2 Longitude of the second point.
+ * @param unit The unit of distance: 'km' for kilometers, 'miles' for miles, defaults to 'km'.
+ * @returns The distance between the two points in the specified unit.
+ */
+/**
+ * Service function to calculate all applicable fees for a given order request.
+ *
+ * @param payload - Contains order items, vendor ID, and delivery address ID.
+ * @returns A promise that resolves to an object containing calculated fees.
+ * @throws Error if data is invalid, not found, or calculations fail.
+ */
+exports.calculateOrderFeesService = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
+    var orderItems, vendorId, deliveryAddressId, vendor, deliveryAddress, uniqueVendorProductIds, vendorProducts, productPriceMap_1, activeFees, feeConfigMap_1, subtotal, totalItemCount, _i, orderItems_1, item, productPrice, shoppingFee, deliveryFee, serviceFee, shoppingFeeConfig, deliveryFeeConfig, distanceMeters, distanceInConfigUnit, serviceFeeConfig, totalEstimatedCost, error_4;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 5, , 6]);
+                orderItems = payload.orderItems, vendorId = payload.vendorId, deliveryAddressId = payload.deliveryAddressId;
+                // --- 1. Input Validation ---
+                if (!orderItems || orderItems.length === 0) {
+                    throw new Error('Order items cannot be empty.');
+                }
+                if (!vendorId) {
+                    throw new Error('Vendor ID is required.');
+                }
+                if (!deliveryAddressId) {
+                    throw new Error('Delivery address ID is required.');
+                }
+                return [4 /*yield*/, prisma.vendor.findUnique({
+                        where: { id: vendorId },
+                        select: { latitude: true, longitude: true }
+                    })];
+            case 1:
+                vendor = _a.sent();
+                if (!vendor || vendor.latitude === null || vendor.longitude === null) {
+                    throw new Error('Vendor location not found or invalid.');
+                }
+                return [4 /*yield*/, prisma.deliveryAddress.findUnique({
+                        where: { id: deliveryAddressId },
+                        select: { latitude: true, longitude: true }
+                    })];
+            case 2:
+                deliveryAddress = _a.sent();
+                if (!deliveryAddress || deliveryAddress.latitude === null || deliveryAddress.longitude === null) {
+                    throw new Error('Delivery address location not found or invalid.');
+                }
+                uniqueVendorProductIds = orderItems.map(function (item) { return item.vendorProductId; });
+                return [4 /*yield*/, prisma.vendorProduct.findMany({
+                        where: {
+                            id: {
+                                "in": uniqueVendorProductIds
+                            }
+                        },
+                        select: {
+                            id: true,
+                            price: true
+                        }
+                    })];
+            case 3:
+                vendorProducts = _a.sent();
+                productPriceMap_1 = new Map();
+                vendorProducts.forEach(function (vp) { return productPriceMap_1.set(vp.id, vp.price); });
+                return [4 /*yield*/, prisma.fee.findMany({
+                        where: {
+                            isActive: true,
+                            type: {
+                                "in": [client_1.FeeType.shopping, client_1.FeeType.delivery, client_1.FeeType.service] // Using lowercase enum values
+                            }
+                        }
+                    })];
+            case 4:
+                activeFees = _a.sent();
+                feeConfigMap_1 = new Map();
+                activeFees.forEach(function (fee) { return feeConfigMap_1.set(fee.type, fee); });
+                subtotal = 0;
+                totalItemCount = 0;
+                for (_i = 0, orderItems_1 = orderItems; _i < orderItems_1.length; _i++) {
+                    item = orderItems_1[_i];
+                    productPrice = productPriceMap_1.get(item.vendorProductId);
+                    if (productPrice === undefined) {
+                        throw new Error("Price not found for vendor product ID: " + item.vendorProductId);
+                    }
+                    subtotal += productPrice * item.quantity;
+                    totalItemCount += item.quantity;
+                }
+                shoppingFee = 0;
+                deliveryFee = 0;
+                serviceFee = 0;
+                shoppingFeeConfig = feeConfigMap_1.get(client_1.FeeType.shopping);
+                if (shoppingFeeConfig && shoppingFeeConfig.method === client_1.FeeCalculationMethod.per_unit) {
+                    shoppingFee = totalItemCount * shoppingFeeConfig.amount;
+                }
+                deliveryFeeConfig = feeConfigMap_1.get(client_1.FeeType.delivery);
+                if (deliveryFeeConfig && deliveryFeeConfig.method === client_1.FeeCalculationMethod.per_distance) {
+                    distanceMeters = geolib_1.getDistance({ latitude: vendor.latitude, longitude: vendor.longitude }, { latitude: deliveryAddress.latitude, longitude: deliveryAddress.longitude });
+                    distanceInConfigUnit = void 0;
+                    if (deliveryFeeConfig.unit === 'km') {
+                        distanceInConfigUnit = distanceMeters / 1000; // Convert meters to kilometers
+                    }
+                    else if (deliveryFeeConfig.unit === 'miles') {
+                        distanceInConfigUnit = distanceMeters / 1609.34; // Convert meters to miles
+                    }
+                    else {
+                        // Fallback or error if unit is not recognized; defaulting to km
+                        console.warn("Unknown unit for delivery fee: " + deliveryFeeConfig.unit + ". Defaulting to kilometers.");
+                        distanceInConfigUnit = distanceMeters / 1000;
+                    }
+                    deliveryFee = distanceInConfigUnit * deliveryFeeConfig.amount;
+                    // Apply minThreshold if set
+                    if (deliveryFeeConfig.minThreshold !== null && deliveryFee < deliveryFeeConfig.minThreshold) {
+                        deliveryFee = deliveryFeeConfig.minThreshold;
+                    }
+                }
+                serviceFeeConfig = feeConfigMap_1.get(client_1.FeeType.service);
+                if (serviceFeeConfig && serviceFeeConfig.method === client_1.FeeCalculationMethod.percentage) {
+                    // Check if subtotal meets the minThreshold for service fee
+                    if (serviceFeeConfig.minThreshold === null || subtotal >= serviceFeeConfig.minThreshold) {
+                        serviceFee = subtotal * serviceFeeConfig.amount;
+                    }
+                }
+                else if (serviceFeeConfig && serviceFeeConfig.method === client_1.FeeCalculationMethod.flat) {
+                    if (serviceFeeConfig.minThreshold === null || subtotal >= serviceFeeConfig.minThreshold) {
+                        serviceFee = serviceFeeConfig.amount;
+                    }
+                }
+                // Round fees to two decimal places
+                shoppingFee = parseFloat(shoppingFee.toFixed(2));
+                deliveryFee = parseFloat(deliveryFee.toFixed(2));
+                serviceFee = parseFloat(serviceFee.toFixed(2));
+                totalEstimatedCost = subtotal + shoppingFee + deliveryFee + serviceFee;
+                return [2 /*return*/, {
+                        subtotal: parseFloat(subtotal.toFixed(2)),
+                        shoppingFee: shoppingFee,
+                        deliveryFee: deliveryFee,
+                        serviceFee: serviceFee,
+                        totalEstimatedCost: parseFloat(totalEstimatedCost.toFixed(2))
+                    }];
+            case 5:
+                error_4 = _a.sent();
+                console.error('Error calculating order fees:', error_4);
+                throw new Error("Failed to calculate fees: " + error_4.message);
             case 6: return [2 /*return*/];
         }
     });

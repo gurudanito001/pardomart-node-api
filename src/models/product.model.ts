@@ -312,6 +312,7 @@ export const getVendorProductsByTagIds = async (tagIds: string[]): Promise<Vendo
 };
 
 export const getAllProducts = async (): Promise<Product[]> => {
+  await prisma.order.deleteMany();
   return prisma.product.findMany({
     include: {
       categories: true,

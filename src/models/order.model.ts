@@ -10,6 +10,7 @@ export interface CreateOrderPayload {
   totalAmount: number;
   deliveryFee?: number;
   serviceFee?: number;
+  shoppingFee?: number;
   paymentMethod?: PaymentMethods;
   deliveryAddressId?: string;
   deliveryInstructions?: string;
@@ -51,7 +52,7 @@ export const getOrderById = async (id: string): Promise<Order | null> => {
 };
 
 export const getOrdersByUserId = async (userId: string): Promise<Order[]> => {
-  //await prisma.order.deleteMany();
+  await prisma.order.deleteMany();
   return prisma.order.findMany({
     where: { userId },
     include: {
@@ -71,6 +72,7 @@ export interface UpdateOrderPayload {
   totalAmount?: number;
   deliveryFee?: number;
   serviceFee?: number;
+  shoppingFee?: number;
   paymentMethod?: PaymentMethods;
   paymentStatus?: PaymentStatus;
   orderStatus?: OrderStatus;

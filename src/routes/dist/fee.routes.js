@@ -10,4 +10,5 @@ router.get('/current/:type', feeController.getCurrentFeesController);
 router.patch('/:id', feeController.updateFeeController);
 router.patch('/deactivate/:type', feeController.deactivateFeeController);
 router["delete"]('/:id', feeController.deactivateFeeController);
+router.post('/calculate-fees', feeController.calculateFeesController);
 exports["default"] = router;

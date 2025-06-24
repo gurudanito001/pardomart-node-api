@@ -7,6 +7,7 @@ import {
   getCurrentFees,
   CreateFeePayload,
   UpdateFeePayload,
+  calculateOrderFeesService
 } from '../services/fee.service'; // Adjust the path to your fee service file
 import { FeeType } from '@prisma/client'; // Assuming FeeType enum is exported from Prisma client
 
@@ -138,5 +139,44 @@ export const getCurrentFeesController = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Error in getCurrentFeesController:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+
+/**
+ * Controller to handle the request for calculating order fees.
+ * POST /api/orders/calculate-fees
+ */
+export const calculateFeesController = async (req: Request, res: Response) => {
+  try {
+    const { orderItems, vendorId, deliveryAddressId } = req.body;
+
+    // Basic validation of incoming request body
+    if (!orderItems || !Array.isArray(orderItems) || orderItems.length === 0) {
+      return res.status(400).json({ error: 'orderItems array is required and cannot be empty.' });
+    }
+    for (const item of orderItems) {
+      if (!item.vendorProductId || typeof item.quantity !== 'number' || item.quantity <= 0) {
+        return res.status(400).json({ error: 'Each order item must have a valid vendorProductId and a positive quantity.' });
+      }
+    }
+    if (!vendorId || typeof vendorId !== 'string') {
+      return res.status(400).json({ error: 'vendorId is required and must be a string.' });
+    }
+    if (!deliveryAddressId || typeof deliveryAddressId !== 'string') {
+      return res.status(400).json({ error: 'deliveryAddressId is required and must be a string.' });
+    }
+
+    // Call the service to calculate fees
+    const feesResult = await calculateOrderFeesService({
+      orderItems,
+      vendorId,
+      deliveryAddressId,
+    });
+
+    res.status(200).json(feesResult);
+  } catch (error: any) {
+    console.error('Error in calculateFeesController:', error);
+    res.status(500).json({ error: error.message || 'Internal server error during fee calculation.' });
   }
 };

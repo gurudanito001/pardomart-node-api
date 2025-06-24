@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.getCurrentFeesController = exports.deactivateFeeController = exports.deleteFeeController = exports.updateFeeController = exports.createFeeController = void 0;
+exports.calculateFeesController = exports.getCurrentFeesController = exports.deactivateFeeController = exports.deleteFeeController = exports.updateFeeController = exports.createFeeController = void 0;
 var fee_service_1 = require("../services/fee.service"); // Adjust the path to your fee service file
 var client_1 = require("@prisma/client"); // Assuming FeeType enum is exported from Prisma client
 // --- Fee Controllers ---
@@ -213,6 +213,51 @@ exports.getCurrentFeesController = function (req, res) { return __awaiter(void 0
                 res.status(500).json({ error: error_5.message || 'Internal server error' });
                 return [3 /*break*/, 6];
             case 6: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * Controller to handle the request for calculating order fees.
+ * POST /api/orders/calculate-fees
+ */
+exports.calculateFeesController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, orderItems, vendorId, deliveryAddressId, _i, orderItems_1, item, feesResult, error_6;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _b.trys.push([0, 2, , 3]);
+                _a = req.body, orderItems = _a.orderItems, vendorId = _a.vendorId, deliveryAddressId = _a.deliveryAddressId;
+                // Basic validation of incoming request body
+                if (!orderItems || !Array.isArray(orderItems) || orderItems.length === 0) {
+                    return [2 /*return*/, res.status(400).json({ error: 'orderItems array is required and cannot be empty.' })];
+                }
+                for (_i = 0, orderItems_1 = orderItems; _i < orderItems_1.length; _i++) {
+                    item = orderItems_1[_i];
+                    if (!item.vendorProductId || typeof item.quantity !== 'number' || item.quantity <= 0) {
+                        return [2 /*return*/, res.status(400).json({ error: 'Each order item must have a valid vendorProductId and a positive quantity.' })];
+                    }
+                }
+                if (!vendorId || typeof vendorId !== 'string') {
+                    return [2 /*return*/, res.status(400).json({ error: 'vendorId is required and must be a string.' })];
+                }
+                if (!deliveryAddressId || typeof deliveryAddressId !== 'string') {
+                    return [2 /*return*/, res.status(400).json({ error: 'deliveryAddressId is required and must be a string.' })];
+                }
+                return [4 /*yield*/, fee_service_1.calculateOrderFeesService({
+                        orderItems: orderItems,
+                        vendorId: vendorId,
+                        deliveryAddressId: deliveryAddressId
+                    })];
+            case 1:
+                feesResult = _b.sent();
+                res.status(200).json(feesResult);
+                return [3 /*break*/, 3];
+            case 2:
+                error_6 = _b.sent();
+                console.error('Error in calculateFeesController:', error_6);
+                res.status(500).json({ error: error_6.message || 'Internal server error during fee calculation.' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
         }
     });
 }); };

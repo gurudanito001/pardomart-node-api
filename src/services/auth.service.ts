@@ -6,7 +6,7 @@ import * as userModel from '../models/user.model';
 import { CheckUserFilters } from '../models/user.model';
 
 const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.SECRET;
 
 
 export const checkUserExistence = async (filters: CheckUserFilters): Promise<User | null> => {

@@ -29,6 +29,10 @@ model User {
   rememberToken    String?
   referralCode     String?
   role             Role     
+  // NEW: Link Vendor Staff to their Vendor
+  vendorId         String?           // ID of the Vendor this staff user belongs to (null for customers/delivery_persons)
+  vendor           Vendor?           @relation("VendorStaff", fields: [vendorId], references: [id], onDelete: SetNull)
+
   vendors          Vendor[]  @relation("Vendor")
   supportMessages  Support[] @relation("SupportMessages")
   orderShoppers    Order[] @relation("OrderShopper")
@@ -117,9 +121,11 @@ model Order {
   totalAmount         Float
   deliveryFee         Float?    // Add delivery fee
   serviceFee          Float?    // Platform service fee
+  shoppingFee         Float?    // Fee for shopping in the store
   paymentMethod       PaymentMethods  @default(credit_card)  // e.g., "credit_card", "wallet", "cash"
   paymentStatus       PaymentStatus   @default(pending) // e.g., "pending", "paid", "failed"
   orderStatus         OrderStatus    @default(pending)// e.g., "pending", "processing", "shipped", "delivered", "cancelled"
+  reasonForDecline    String?
   deliveryAddressId   String?         // ID of the DeliveryAddress used for this order (can be null if customer pickup or temporary address)
   deliveryAddress     DeliveryAddress? @relation(fields: [deliveryAddressId], references: [id])
   deliveryInstructions  String? // Customer's delivery instructions
@@ -128,9 +134,9 @@ model Order {
   deliveryHandlerId String?   // ID of the User handling the delivery (Role: DELIVERY)
   deliverer           User?     @relation("OrderDeliverer", fields: [deliveryHandlerId], references: [id])
   // NEW: Defines who is responsible for shopping/preparation
-  shoppingMethod      ShoppingMethod? @default(VENDOR)
+  shoppingMethod      ShoppingMethod? @default(vendor)
   // NEW: Defines how the order will be delivered to the customer
-  deliveryMethod      DeliveryMethod? @default(CUSTOMER_PICKUP)
+  deliveryMethod      DeliveryMethod? @default(customer_pickup)
   // When the shopping for the order is scheduled to start.
   // Orders with a future scheduledShoppingStartTime might not be visible to handlers yet.
   scheduledShoppingStartTime DateTime? @default(now())
@@ -171,14 +177,19 @@ model DeliveryAddress {
 }
 
 model Fee {
-  id        String    @id @default(uuid())
-  type      FeeType   // Distinguishes between Delivery, Service, etc.
-  amount    Float     // The actual fee value
-  isActive  Boolean   @default(false) // True if this is the currently active fee for its type
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id               String                 @id @default(uuid())
+  type             FeeType                // Distinguishes between Delivery, Service, etc.
+  amount           Float                  // The numerical value of the fee (e.g., 5.00, 0.05)
+  method           FeeCalculationMethod   // How the 'amount' is interpreted (FLAT, PERCENTAGE, PER_UNIT, PER_DISTANCE)
+  unit             String?                // Optional: Provides context for 'PER_UNIT' or 'PER_DISTANCE' (e.g., "item", "kg", "km", "mile")
+  minThreshold     Float?                 // Optional: Minimum value for the fee to apply (e.g., minimum order value for a service fee)
+  maxThreshold     Float?                 // Optional: Maximum value for the fee to apply
+  thresholdAppliesTo String?              // Optional: Defines what the threshold relates to (e.g., "order_subtotal", "total_item_count", "distance_km")
+  isActive         Boolean                @default(false) // True if this is the currently active fee for its type
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
 
-  @@unique([type, isActive]) // Ensures only one active fee per type
+  @@unique([type, isActive]) // Ensures only one active fee per type at any given time
 }
 
 
@@ -219,6 +230,7 @@ model Vendor {
   openingHours     VendorOpeningHours[] 
   vendorProducts   VendorProduct[]
   orders           Order[]
+  staff            User[]                 @relation("VendorStaff")
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 }
@@ -261,6 +273,7 @@ model Setting {
 enum Role {
   admin
   vendor
+  vendor_staff
   delivery
   customer
   shopper
@@ -303,17 +316,25 @@ enum OrderStatus {
 
 // --- NEW ENUMS ---
 enum ShoppingMethod {
-  VENDOR        // The vendor prepares the order
-  SHOPPER       // A designated shopper (e.g., delivery person who also shops) prepares the order
+  vendor        // The vendor prepares the order
+  shopper       // A designated shopper (e.g., delivery person who also shops) prepares the order
 }
 
 enum DeliveryMethod {
-  DELIVERY_PERSON // A designated delivery person delivers the order
-  CUSTOMER_PICKUP // The customer picks up the order
+  delivery_person // A designated delivery person delivers the order
+  customer_pickup // The customer picks up the order
 }
 
 // Enum to define different types of fees
 enum FeeType {
-  DELIVERY
-  SERVICE
+  delivery
+  service
+  shopping
+}
+
+enum FeeCalculationMethod {
+  flat          // A fixed amount in currency (e.g., $5.00)
+  percentage    // A percentage of a base value (e.g., 0.05 for 5% of subtotal)
+  per_unit      // Per unit of an item (e.g., $1.00 per item, or $0.50 per kg)
+  per_distance  // Per unit of distance (e.g., $2.00 per km)
 }
