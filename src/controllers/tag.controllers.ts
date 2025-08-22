@@ -3,6 +3,28 @@ import { Request, Response } from 'express';
 import * as tagService from '../services/tag.service';
 import { TagFilters } from '../models/tag.model';
 
+/**
+ * @swagger
+ * /tags:
+ *   post:
+ *     summary: Create a new tag
+ *     tags: [Tag]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateTagPayload'
+ *     responses:
+ *       201:
+ *         description: The created tag.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Tag'
+ */
 export const createTag = async (req: Request, res: Response) => {
   try {
     const tag = await tagService.createTag(req.body.name);
@@ -13,6 +35,32 @@ export const createTag = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @swagger
+ * /tags/bulk:
+ *   post:
+ *     summary: Create multiple tags in bulk
+ *     tags: [Tag]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateTagsBulkPayload'
+ *     responses:
+ *       201:
+ *         description: The created tags.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Tag'
+ *       400:
+ *         description: Bad request, names array is missing or empty.
+ */
 export const createTagsBulk = async (req: Request, res: Response) => {
   try {
     const { names } = req.body;
@@ -29,6 +77,30 @@ export const createTagsBulk = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @swagger
+ * /tags/{id}:
+ *   get:
+ *     summary: Get a tag by its ID
+ *     tags: [Tag]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the tag.
+ *     responses:
+ *       200:
+ *         description: The requested tag.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Tag'
+ *       404:
+ *         description: Tag not found.
+ */
 export const getTagById = async (req: Request, res: Response) => {
   try {
     const tag = await tagService.getTagById(req.params.id);
@@ -42,6 +114,28 @@ export const getTagById = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @swagger
+ * /tags:
+ *   get:
+ *     summary: Get all tags, with optional filtering by name
+ *     tags: [Tag]
+ *     parameters:
+ *       - in: query
+ *         name: name
+ *         schema:
+ *           type: string
+ *         description: Filter tags by name (case-insensitive search).
+ *     responses:
+ *       200:
+ *         description: A list of tags.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Tag'
+ */
 export const getAllTags = async (req: Request, res: Response) => {
   const {name}: TagFilters = req?.query;
   try {
@@ -53,22 +147,82 @@ export const getAllTags = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @swagger
+ * /tags/{id}:
+ *   patch:
+ *     summary: Update a tag's name
+ *     tags: [Tag]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the tag to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateTagPayload'
+ *     responses:
+ *       200:
+ *         description: The updated tag.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Tag'
+ *       404:
+ *         description: Tag not found.
+ */
 export const updateTag = async (req: Request, res: Response) => {
   try {
     const tag = await tagService.updateTag(req.params.id, req.body.name);
     res.json(tag);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating tag:', error);
+    if (error?.code === 'P2025') { // Prisma's error code for record not found on update
+      return res.status(404).json({ error: 'Tag not found' });
+    }
     res.status(500).json({ error: 'Internal server error' });
   }
 };
 
+/**
+ * @swagger
+ * /tags/{id}:
+ *   delete:
+ *     summary: Delete a tag
+ *     tags: [Tag]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the tag to delete.
+ *     responses:
+ *       200:
+ *         description: The deleted tag.
+ *       404:
+ *         description: Tag not found.
+ */
 export const deleteTag = async (req: Request, res: Response) => {
   try {
     const tag = await tagService.deleteTag(req.params.id);
     res.json(tag);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting tag:', error);
+    if (error?.code === 'P2025') { // Prisma's error code for record not found on delete
+      return res.status(404).json({ error: 'Tag not found' });
+    }
     res.status(500).json({ error: 'Internal server error' });
   }
 };

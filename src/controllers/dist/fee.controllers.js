@@ -41,8 +41,30 @@ var fee_service_1 = require("../services/fee.service"); // Adjust the path to yo
 var client_1 = require("@prisma/client"); // Assuming FeeType enum is exported from Prisma client
 // --- Fee Controllers ---
 /**
- * Controller for creating a new fee.
- * POST /fees
+ * @swagger
+ * /fees:
+ *   post:
+ *     summary: Create a new fee
+ *     tags: [Fee]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateFeePayload'
+ *     responses:
+ *       201:
+ *         description: The created fee.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Fee'
+ *       400:
+ *         description: Bad request, invalid payload.
+ *       500:
+ *         description: Internal server error.
  */
 exports.createFeeController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var payload, newFee, error_1;
@@ -76,8 +98,40 @@ exports.createFeeController = function (req, res) { return __awaiter(void 0, voi
     });
 }); };
 /**
- * Controller for updating an existing fee.
- * PATCH /fees/:id
+ * @swagger
+ * /fees/{id}:
+ *   patch:
+ *     summary: Update an existing fee
+ *     tags: [Fee]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the fee to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateFeePayload'
+ *     responses:
+ *       200:
+ *         description: The updated fee.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Fee'
+ *       400:
+ *         description: Bad request, invalid payload.
+ *       404:
+ *         description: Fee not found.
+ *       500:
+ *         description: Internal server error.
  */
 exports.updateFeeController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var id, payload, updatedFee, error_2;
@@ -112,8 +166,32 @@ exports.updateFeeController = function (req, res) { return __awaiter(void 0, voi
     });
 }); };
 /**
- * Controller for deleting a fee.
- * DELETE /fees/:id
+ * @swagger
+ * /fees/{id}:
+ *   delete:
+ *     summary: Delete a fee by its ID
+ *     tags: [Fee]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the fee to delete.
+ *     responses:
+ *       200:
+ *         description: The deleted fee.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Fee'
+ *       404:
+ *         description: Fee not found.
+ *       500:
+ *         description: Internal server error.
  */
 exports.deleteFeeController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var id, deletedFee, error_3;
@@ -140,8 +218,34 @@ exports.deleteFeeController = function (req, res) { return __awaiter(void 0, voi
     });
 }); };
 /**
- * Controller for deactivating a fee by type.
- * PATCH /fees/deactivate/:type
+ * @swagger
+ * /fees/deactivate/{type}:
+ *   patch:
+ *     summary: Deactivate the current active fee of a specific type
+ *     tags: [Fee]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: type
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [DELIVERY, SERVICE, SHOPPING]
+ *         description: The type of fee to deactivate.
+ *     responses:
+ *       200:
+ *         description: The deactivated fee.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Fee'
+ *       400:
+ *         description: Invalid fee type provided.
+ *       404:
+ *         description: No active fee of the specified type was found.
+ *       500:
+ *         description: Internal server error.
  */
 exports.deactivateFeeController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var type, deactivatedFee, error_4;
@@ -174,10 +278,56 @@ exports.deactivateFeeController = function (req, res) { return __awaiter(void 0,
     });
 }); };
 /**
- * Controller for getting current active fees.
- * GET /fees/current
- * GET /fees/current/:type
+ * @swagger
+ * /fees/current:
+ *   get:
+ *     summary: Get all current active fees
+ *     tags: [Fee]
+ *     responses:
+ *       200:
+ *         description: A list of all active fees.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Fee'
+ *       404:
+ *         description: No active fees found.
+ *       500:
+ *         description: Internal server error.
  */
+/**
+ * @swagger
+ * /fees/current/{type}:
+ *   get:
+ *     summary: Get the current active fee for a specific type
+ *     tags: [Fee]
+ *     parameters:
+ *       - in: path
+ *         name: type
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [DELIVERY, SERVICE, SHOPPING]
+ *         description: The type of fee to retrieve.
+ *     responses:
+ *       200:
+ *         description: The requested active fee.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Fee'
+ *       400:
+ *         description: Invalid fee type provided.
+ *       404:
+ *         description: No active fee of the specified type was found.
+ *       500:
+ *         description: Internal server error.
+ */
+// Controller for getting current active fees.
+// GET /fees/current
+// GET /fees/current/:type
 exports.getCurrentFeesController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var type, result, error_5;
     return __generator(this, function (_a) {
@@ -217,8 +367,30 @@ exports.getCurrentFeesController = function (req, res) { return __awaiter(void 0
     });
 }); };
 /**
- * Controller to handle the request for calculating order fees.
- * POST /api/orders/calculate-fees
+ * @swagger
+ * /orders/calculate-fees:
+ *   post:
+ *     summary: Calculate the total estimated cost for an order
+ *     tags: [Fee, Order]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CalculateFeesPayload'
+ *     responses:
+ *       200:
+ *         description: The calculated fees for the order.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CalculateFeesResponse'
+ *       400:
+ *         description: Bad request, invalid payload.
+ *       500:
+ *         description: Internal server error.
  */
 exports.calculateFeesController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var _a, orderItems, vendorId, deliveryAddressId, _i, orderItems_1, item, feesResult, error_6;

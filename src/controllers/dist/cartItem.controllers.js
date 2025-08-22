@@ -38,6 +38,33 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 exports.__esModule = true;
 exports.deleteCartItemController = exports.updateCartItemController = exports.getCartItemByIdController = void 0;
 var cartItem_service_1 = require("../services/cartItem.service");
+/**
+ * @swagger
+ * /cart-items/{id}:
+ *   get:
+ *     summary: Get a single cart item by its ID
+ *     tags: [CartItem]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the cart item.
+ *     responses:
+ *       200:
+ *         description: The requested cart item.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CartItem'
+ *       404:
+ *         description: Cart item not found.
+ *       500:
+ *         description: Internal server error.
+ */
 exports.getCartItemByIdController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var cartItem, error_1;
     return __generator(this, function (_a) {
@@ -60,6 +87,37 @@ exports.getCartItemByIdController = function (req, res) { return __awaiter(void 
         }
     });
 }); };
+/**
+ * @swagger
+ * /cart-items/{id}:
+ *   put:
+ *     summary: Update a cart item's quantity
+ *     tags: [CartItem]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the cart item to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateCartItemPayload'
+ *     responses:
+ *       200:
+ *         description: The updated cart item.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CartItem'
+ *       500:
+ *         description: Internal server error.
+ */
 exports.updateCartItemController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var cartItem, error_2;
     return __generator(this, function (_a) {

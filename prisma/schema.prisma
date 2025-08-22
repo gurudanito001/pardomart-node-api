@@ -52,6 +52,8 @@ model Product {
   name        String
   description String?
   images      String[]
+  weight      Float?
+  weightUnit  String?
   attributes  Json?
   meta        Json?
   vendorProducts     VendorProduct[]
@@ -75,6 +77,8 @@ model VendorProduct {
   description   String?
   discountedPrice Float?
   images        String[]
+  weight      Float?
+  weightUnit  String?
   stock         Int?
   isAvailable   Boolean   @default(true)
   isAlcohol   Boolean  @default(false)

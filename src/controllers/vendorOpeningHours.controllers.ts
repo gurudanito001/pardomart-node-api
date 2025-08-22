@@ -3,6 +3,37 @@ import { Request, Response } from 'express';
 import * as vendorOpeningHoursService from '../services/vendorOpeningHours.service';
 import { Prisma } from '@prisma/client'; // Import Prisma
 
+/**
+ * @swagger
+ * /vendor-opening-hours:
+ *   patch:
+ *     summary: Update opening hours for a specific day
+ *     tags: [VendorOpeningHours]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Finds and updates the opening and closing times for a given vendor on a specific day of the week.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateOpeningHoursPayload'
+ *     responses:
+ *       200:
+ *         description: The updated opening hours record.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/VendorOpeningHours'
+ *       400:
+ *         description: Bad request, vendorId and day are required.
+ *       404:
+ *         description: Opening hours record not found for the specified vendor and day.
+ *       409:
+ *         description: Conflict - this should not typically occur on an update.
+ *       500:
+ *         description: Internal server error.
+ */
 export const updateVendorOpeningHours = async (req: Request, res: Response) => {
   try {
     const { vendorId, day, open, close } = req.body;

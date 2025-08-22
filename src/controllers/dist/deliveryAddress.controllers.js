@@ -50,8 +50,32 @@ exports.__esModule = true;
 exports.setDefaultDeliveryAddressController = exports.deleteDeliveryAddressController = exports.updateDeliveryAddressController = exports.getMyDefaultDeliveryAddressController = exports.getMyDeliveryAddressesController = exports.getDeliveryAddressByIdController = exports.createDeliveryAddressController = void 0;
 var deliveryAddress_service_1 = require("../services/deliveryAddress.service");
 /**
- * Controller for creating a new delivery address.
- * POST /addresses
+ * @swagger
+ * /delivery-addresses:
+ *   post:
+ *     summary: Create a new delivery address for the authenticated user
+ *     tags: [Delivery Address]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateDeliveryAddressPayload'
+ *     responses:
+ *       201:
+ *         description: The created delivery address.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DeliveryAddress'
+ *       400:
+ *         description: Bad request, required fields are missing.
+ *       401:
+ *         description: Unauthorized.
+ *       500:
+ *         description: Internal server error.
  */
 exports.createDeliveryAddressController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var userId, payload, newAddress, error_1;
@@ -83,8 +107,30 @@ exports.createDeliveryAddressController = function (req, res) { return __awaiter
     });
 }); };
 /**
- * Controller for getting a delivery address by ID.
- * GET /addresses/:id
+ * @swagger
+ * /delivery-addresses/{id}:
+ *   get:
+ *     summary: Get a specific delivery address by its ID
+ *     tags: [Delivery Address]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the delivery address.
+ *     responses:
+ *       200:
+ *         description: The requested delivery address.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DeliveryAddress'
+ *       404:
+ *         description: Delivery address not found.
  */
 exports.getDeliveryAddressByIdController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var id, address, error_2;
@@ -111,8 +157,24 @@ exports.getDeliveryAddressByIdController = function (req, res) { return __awaite
     });
 }); };
 /**
- * Controller for getting all delivery addresses for the authenticated user.
- * GET /addresses/me
+ * @swagger
+ * /delivery-addresses/me:
+ *   get:
+ *     summary: Get all delivery addresses for the authenticated user
+ *     tags: [Delivery Address]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: A list of the user's delivery addresses.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/DeliveryAddress'
+ *       401:
+ *         description: Unauthorized.
  */
 exports.getMyDeliveryAddressesController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var userId, addresses, error_3;
@@ -139,8 +201,24 @@ exports.getMyDeliveryAddressesController = function (req, res) { return __awaite
     });
 }); };
 /**
- * Controller for getting the default delivery address for the authenticated user.
- * GET /addresses/me/default
+ * @swagger
+ * /delivery-addresses/me/default:
+ *   get:
+ *     summary: Get the default delivery address for the authenticated user
+ *     tags: [Delivery Address]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: The user's default delivery address.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DeliveryAddress'
+ *       401:
+ *         description: Unauthorized.
+ *       404:
+ *         description: No default address found for this user.
  */
 exports.getMyDefaultDeliveryAddressController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var userId, defaultAddress, error_4;
@@ -170,8 +248,36 @@ exports.getMyDefaultDeliveryAddressController = function (req, res) { return __a
     });
 }); };
 /**
- * Controller for updating a delivery address.
- * PUT /addresses/:id
+ * @swagger
+ * /delivery-addresses/{id}:
+ *   put:
+ *     summary: Update a delivery address
+ *     tags: [Delivery Address]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the delivery address to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateDeliveryAddressPayload'
+ *     responses:
+ *       200:
+ *         description: The updated delivery address.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DeliveryAddress'
+ *       404:
+ *         description: Delivery address not found.
  */
 exports.updateDeliveryAddressController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var id, payload, updatedAddress, error_5;
@@ -203,7 +309,6 @@ exports.updateDeliveryAddressController = function (req, res) { return __awaiter
     });
 }); };
 /**
- * Controller for deleting a delivery address.
  * DELETE /addresses/:id
  */
 exports.deleteDeliveryAddressController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {

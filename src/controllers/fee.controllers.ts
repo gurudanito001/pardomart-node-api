@@ -14,8 +14,30 @@ import { FeeType } from '@prisma/client'; // Assuming FeeType enum is exported f
 // --- Fee Controllers ---
 
 /**
- * Controller for creating a new fee.
- * POST /fees
+ * @swagger
+ * /fees:
+ *   post:
+ *     summary: Create a new fee
+ *     tags: [Fee]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateFeePayload'
+ *     responses:
+ *       201:
+ *         description: The created fee.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Fee'
+ *       400:
+ *         description: Bad request, invalid payload.
+ *       500:
+ *         description: Internal server error.
  */
 export const createFeeController = async (req: Request, res: Response) => {
   try {
@@ -41,8 +63,40 @@ export const createFeeController = async (req: Request, res: Response) => {
 };
 
 /**
- * Controller for updating an existing fee.
- * PATCH /fees/:id
+ * @swagger
+ * /fees/{id}:
+ *   patch:
+ *     summary: Update an existing fee
+ *     tags: [Fee]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the fee to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateFeePayload'
+ *     responses:
+ *       200:
+ *         description: The updated fee.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Fee'
+ *       400:
+ *         description: Bad request, invalid payload.
+ *       404:
+ *         description: Fee not found.
+ *       500:
+ *         description: Internal server error.
  */
 export const updateFeeController = async (req: Request, res: Response) => {
   try {
@@ -69,8 +123,32 @@ export const updateFeeController = async (req: Request, res: Response) => {
 };
 
 /**
- * Controller for deleting a fee.
- * DELETE /fees/:id
+ * @swagger
+ * /fees/{id}:
+ *   delete:
+ *     summary: Delete a fee by its ID
+ *     tags: [Fee]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the fee to delete.
+ *     responses:
+ *       200:
+ *         description: The deleted fee.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Fee'
+ *       404:
+ *         description: Fee not found.
+ *       500:
+ *         description: Internal server error.
  */
 export const deleteFeeController = async (req: Request, res: Response) => {
   try {
@@ -87,8 +165,34 @@ export const deleteFeeController = async (req: Request, res: Response) => {
 };
 
 /**
- * Controller for deactivating a fee by type.
- * PATCH /fees/deactivate/:type
+ * @swagger
+ * /fees/deactivate/{type}:
+ *   patch:
+ *     summary: Deactivate the current active fee of a specific type
+ *     tags: [Fee]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: type
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [DELIVERY, SERVICE, SHOPPING]
+ *         description: The type of fee to deactivate.
+ *     responses:
+ *       200:
+ *         description: The deactivated fee.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Fee'
+ *       400:
+ *         description: Invalid fee type provided.
+ *       404:
+ *         description: No active fee of the specified type was found.
+ *       500:
+ *         description: Internal server error.
  */
 export const deactivateFeeController = async (req: Request, res: Response) => {
   try {
@@ -112,10 +216,58 @@ export const deactivateFeeController = async (req: Request, res: Response) => {
 };
 
 /**
- * Controller for getting current active fees.
- * GET /fees/current
- * GET /fees/current/:type
+ * @swagger
+ * /fees/current:
+ *   get:
+ *     summary: Get all current active fees
+ *     tags: [Fee]
+ *     responses:
+ *       200:
+ *         description: A list of all active fees.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Fee'
+ *       404:
+ *         description: No active fees found.
+ *       500:
+ *         description: Internal server error.
  */
+
+/**
+ * @swagger
+ * /fees/current/{type}:
+ *   get:
+ *     summary: Get the current active fee for a specific type
+ *     tags: [Fee]
+ *     parameters:
+ *       - in: path
+ *         name: type
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [DELIVERY, SERVICE, SHOPPING]
+ *         description: The type of fee to retrieve.
+ *     responses:
+ *       200:
+ *         description: The requested active fee.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Fee'
+ *       400:
+ *         description: Invalid fee type provided.
+ *       404:
+ *         description: No active fee of the specified type was found.
+ *       500:
+ *         description: Internal server error.
+ */
+
+// Controller for getting current active fees.
+// GET /fees/current
+// GET /fees/current/:type
 export const getCurrentFeesController = async (req: Request, res: Response) => {
   try {
     const { type } = req.params; // Optional type parameter
@@ -144,8 +296,30 @@ export const getCurrentFeesController = async (req: Request, res: Response) => {
 
 
 /**
- * Controller to handle the request for calculating order fees.
- * POST /api/orders/calculate-fees
+ * @swagger
+ * /orders/calculate-fees:
+ *   post:
+ *     summary: Calculate the total estimated cost for an order
+ *     tags: [Fee, Order]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CalculateFeesPayload'
+ *     responses:
+ *       200:
+ *         description: The calculated fees for the order.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CalculateFeesResponse'
+ *       400:
+ *         description: Bad request, invalid payload.
+ *       500:
+ *         description: Internal server error.
  */
 export const calculateFeesController = async (req: Request, res: Response) => {
   try {

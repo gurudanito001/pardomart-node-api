@@ -38,7 +38,44 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 exports.__esModule = true;
 exports.getStoresByProductIdController = exports.getCategoryDetailsWithRelatedDataController = exports.getVendorCategoriesWithProductsController = exports.getVendorsCategoriesAndProductsController = void 0;
 var generalSearch_service_1 = require("../services/generalSearch.service");
-// Controller Function
+/**
+ * @swagger
+ * /search:
+ *   get:
+ *     summary: General search for vendors, categories, and products
+ *     tags: [General Search]
+ *     description: Performs a search across vendors, categories, and products based on a keyword and user's location.
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The search term.
+ *       - in: query
+ *         name: latitude
+ *         required: true
+ *         schema:
+ *           type: number
+ *           format: float
+ *         description: User's current latitude.
+ *       - in: query
+ *         name: longitude
+ *         required: true
+ *         schema:
+ *           type: number
+ *           format: float
+ *         description: User's current longitude.
+ *     responses:
+ *       200:
+ *         description: A list of matching vendors, categories, and products.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/GeneralSearchResult'
+ *       400:
+ *         description: Bad request due to missing or invalid parameters.
+ */
 exports.getVendorsCategoriesAndProductsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var _a, search, latitude, longitude, latitudeNum, longitudeNum, results, error_1;
     return __generator(this, function (_b) {
@@ -80,6 +117,37 @@ exports.getVendorsCategoriesAndProductsController = function (req, res) { return
         }
     });
 }); };
+/**
+ * @swagger
+ * /search/vendor/{vendorId}:
+ *   get:
+ *     summary: Get categories and products for a specific vendor
+ *     tags: [General Search]
+ *     description: Retrieves a list of product categories and a sample of products within those categories for a given vendor. Can be filtered by a parent category.
+ *     parameters:
+ *       - in: path
+ *         name: vendorId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the vendor.
+ *       - in: query
+ *         name: parentCategoryId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Optional. The ID of a parent category to filter the results.
+ *     responses:
+ *       200:
+ *         description: A list of parent categories and sub-categories with their products.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CategoriesWithProductsResult'
+ *       400:
+ *         description: Bad request due to missing vendor ID.
+ */
 exports.getVendorCategoriesWithProductsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var vendorId, parentCategoryId, results, error_2;
     return __generator(this, function (_a) {
@@ -107,7 +175,61 @@ exports.getVendorCategoriesWithProductsController = function (req, res) { return
         }
     });
 }); };
-// Controller Function
+/**
+ * @swagger
+ * /search/category/{categoryId}:
+ *   get:
+ *     summary: Get details for a category, including stores and products
+ *     tags: [General Search]
+ *     description: Retrieves details for a specific category, along with a list of stores that carry products from that category (or its children), sorted by proximity to the user.
+ *     parameters:
+ *       - in: path
+ *         name: categoryId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the category.
+ *       - in: query
+ *         name: latitude
+ *         schema:
+ *           type: number
+ *           format: float
+ *         description: User's current latitude for proximity sorting.
+ *       - in: query
+ *         name: longitude
+ *         schema:
+ *           type: number
+ *           format: float
+ *         description: User's current longitude for proximity sorting.
+ *       - in: query
+ *         name: vendorId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Optional. Filter results to a specific vendor.
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination (currently not implemented in model).
+ *       - in: query
+ *         name: take
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page (currently not implemented in model).
+ *     responses:
+ *       200:
+ *         description: Category details along with related stores and products.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CategoryDetailsResult'
+ *       400:
+ *         description: Bad request due to missing or invalid parameters.
+ */
 exports.getCategoryDetailsWithRelatedDataController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var categoryId, page, take, vendorId, latitude, longitude, results, error_3;
     var _a, _b, _c, _d;
@@ -154,7 +276,44 @@ exports.getCategoryDetailsWithRelatedDataController = function (req, res) { retu
         }
     });
 }); };
-// Controller Function
+/**
+ * @swagger
+ * /search/product:
+ *   get:
+ *     summary: Find stores that sell a specific product
+ *     tags: [General Search]
+ *     description: Searches for a product by name and returns a list of stores that sell it, sorted by proximity to the user. Each store result includes other products they sell.
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The name of the product to search for.
+ *       - in: query
+ *         name: latitude
+ *         required: true
+ *         schema:
+ *           type: number
+ *           format: float
+ *         description: User's current latitude.
+ *       - in: query
+ *         name: longitude
+ *         required: true
+ *         schema:
+ *           type: number
+ *           format: float
+ *         description: User's current longitude.
+ *     responses:
+ *       200:
+ *         description: A list of stores selling the product, sorted by distance.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/StoresByProductResult'
+ *       400:
+ *         description: Bad request due to missing or invalid parameters.
+ */
 exports.getStoresByProductIdController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var _a, search, latitude, longitude, userSearchTerm, userLatitude, userLongitude, result, error_4;
     return __generator(this, function (_b) {

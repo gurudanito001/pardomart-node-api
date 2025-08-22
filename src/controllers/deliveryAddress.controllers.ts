@@ -1,24 +1,51 @@
-import { Request, Response, Router } from 'express';
+import { Request, Response } from 'express';
 import { createDeliveryAddressService, getDeliveryAddressByIdService, getDeliveryAddressesByUserIdService, getDefaultDeliveryAddressByUserIdService, updateDeliveryAddressService, deleteDeliveryAddressService, setDefaultDeliveryAddressService } from "../services/deliveryAddress.service";
 
 import * as deliveryAddressModel from "../models/deliveryAddress.model"
 
+// A better approach would be to have this in a shared types file
+interface AuthenticatedRequest extends Request {
+  userId?: string;
+}
 
 /**
- * Controller for creating a new delivery address.
- * POST /addresses
+ * @swagger
+ * /delivery-addresses:
+ *   post:
+ *     summary: Create a new delivery address for the authenticated user
+ *     tags: [Delivery Address]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateDeliveryAddressPayload'
+ *     responses:
+ *       201:
+ *         description: The created delivery address.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DeliveryAddress'
+ *       400:
+ *         description: Bad request, required fields are missing.
+ *       401:
+ *         description: Unauthorized.
+ *       500:
+ *         description: Internal server error.
  */
-export const createDeliveryAddressController = async (req: Request, res: Response) => {
+export const createDeliveryAddressController = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    // Assuming userId comes from authentication middleware
-    const userId = (req as any).userId; // Adjust type based on your AuthenticatedRequest
+    const userId = req.userId;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized: User ID not found.' });
     }
 
     const payload: deliveryAddressModel.CreateDeliveryAddressPayload = {
       ...req.body,
-      userId: userId, // Ensure userId is set from authenticated user
+      userId: userId,
     };
 
     // Basic validation
@@ -35,10 +62,32 @@ export const createDeliveryAddressController = async (req: Request, res: Respons
 };
 
 /**
- * Controller for getting a delivery address by ID.
- * GET /addresses/:id
+ * @swagger
+ * /delivery-addresses/{id}:
+ *   get:
+ *     summary: Get a specific delivery address by its ID
+ *     tags: [Delivery Address]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the delivery address.
+ *     responses:
+ *       200:
+ *         description: The requested delivery address.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DeliveryAddress'
+ *       404:
+ *         description: Delivery address not found.
  */
-export const getDeliveryAddressByIdController = async (req: Request, res: Response) => {
+export const getDeliveryAddressByIdController = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
     const address = await getDeliveryAddressByIdService(id);
@@ -53,13 +102,28 @@ export const getDeliveryAddressByIdController = async (req: Request, res: Respon
 };
 
 /**
- * Controller for getting all delivery addresses for the authenticated user.
- * GET /addresses/me
+ * @swagger
+ * /delivery-addresses/me:
+ *   get:
+ *     summary: Get all delivery addresses for the authenticated user
+ *     tags: [Delivery Address]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: A list of the user's delivery addresses.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/DeliveryAddress'
+ *       401:
+ *         description: Unauthorized.
  */
-export const getMyDeliveryAddressesController = async (req: Request, res: Response) => {
+export const getMyDeliveryAddressesController = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    // Assuming userId comes from authentication middleware
-    const userId = (req as any).userId; // Adjust type based on your AuthenticatedRequest
+    const userId = req.userId;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized: User ID not found.' });
     }
@@ -73,13 +137,28 @@ export const getMyDeliveryAddressesController = async (req: Request, res: Respon
 };
 
 /**
- * Controller for getting the default delivery address for the authenticated user.
- * GET /addresses/me/default
+ * @swagger
+ * /delivery-addresses/me/default:
+ *   get:
+ *     summary: Get the default delivery address for the authenticated user
+ *     tags: [Delivery Address]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: The user's default delivery address.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DeliveryAddress'
+ *       401:
+ *         description: Unauthorized.
+ *       404:
+ *         description: No default address found for this user.
  */
-export const getMyDefaultDeliveryAddressController = async (req: Request, res: Response) => {
+export const getMyDefaultDeliveryAddressController = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    // Assuming userId comes from authentication middleware
-    const userId = (req as any).userId; // Adjust type based on your AuthenticatedRequest
+    const userId = req.userId;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized: User ID not found.' });
     }
@@ -96,10 +175,38 @@ export const getMyDefaultDeliveryAddressController = async (req: Request, res: R
 };
 
 /**
- * Controller for updating a delivery address.
- * PUT /addresses/:id
+ * @swagger
+ * /delivery-addresses/{id}:
+ *   put:
+ *     summary: Update a delivery address
+ *     tags: [Delivery Address]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the delivery address to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateDeliveryAddressPayload'
+ *     responses:
+ *       200:
+ *         description: The updated delivery address.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DeliveryAddress'
+ *       404:
+ *         description: Delivery address not found.
  */
-export const updateDeliveryAddressController = async (req: Request, res: Response) => {
+export const updateDeliveryAddressController = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
     const payload: deliveryAddressModel.UpdateDeliveryAddressPayload = req.body;
@@ -121,7 +228,6 @@ export const updateDeliveryAddressController = async (req: Request, res: Respons
 };
 
 /**
- * Controller for deleting a delivery address.
  * DELETE /addresses/:id
  */
 export const deleteDeliveryAddressController = async (req: Request, res: Response) => {

@@ -1,50 +1,42 @@
+"use strict";
+exports.__esModule = true;
 // Import express, cors, helmet and morgan
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import morgan from 'morgan';
-import router from './routes';
-import swaggerUi from 'swagger-ui-express';
-import swaggerSpec from './config/swagger';
+var express_1 = require("express");
+var cors_1 = require("cors");
+var helmet_1 = require("helmet");
+var morgan_1 = require("morgan");
+var routes_1 = require("./routes");
+var swagger_ui_express_1 = require("swagger-ui-express");
+var swagger_1 = require("./config/swagger");
 //import { Server } from 'socket.io';
-const http = require('http');
+var http = require('http');
 require('dotenv').config();
 //import { createMessage, getAllMessages, clearMessages } from './models/message.model';
 //import { prisma } from './utils/prisma';
-
 // Create Express server
-const app = express(); // New express instance
-const server = http.createServer(app);
+var app = express_1["default"](); // New express instance
+var server = http.createServer(app);
 /* const io = new Server(server, {
   cors: {
     origin: '*', // React frontend URL
     methods: ['GET', 'POST'],
   },
 }); */
-const port = 5000; // Port number
-
+var port = 5000; // Port number
 // Express configuration
-app.use(cors()); // Enable CORS
-app.use(helmet()); // Enable Helmet
-app.use(morgan('dev')); // Enable Morgan
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true }));
-
-
-
+app.use(cors_1["default"]()); // Enable CORS
+app.use(helmet_1["default"]()); // Enable Helmet
+app.use(morgan_1["default"]('dev')); // Enable Morgan
+app.use(express_1["default"].json({ limit: '50mb' }));
+app.use(express_1["default"].urlencoded({ extended: true }));
 // Swagger UI Endpoint
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
-
-
+app.use('/api-docs', swagger_ui_express_1["default"].serve, swagger_ui_express_1["default"].setup(swagger_1["default"], { explorer: true }));
 // Use routes
-app.use('/', router);
-
+app.use('/', routes_1["default"]);
 /* type roomsObject = {
   [key: string]: any[];
 }; */
-
 //const rooms: roomsObject  = {};
-
 /* io.on('connection', (socket) => {
   console.log('A user connected', socket?.id);
 
@@ -108,12 +100,10 @@ app.use('/', router);
     }
   });
 }); */
-
 // Start Express server
-server.listen(port, () => {
-  // Callback function when server is successfully started
-  console.log(`Server started at http://localhost:${port}`);
+server.listen(port, function () {
+    // Callback function when server is successfully started
+    console.log("Server started at http://localhost:" + port);
 });
-
 // Export Express app
-export default app;
+exports["default"] = app;

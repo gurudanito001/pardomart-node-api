@@ -48,6 +48,37 @@ var authService = require("../services/auth.service"); // Create this file
 var userService = require("../services/user.service");
 var verification_1 = require("../utils/verification"); // Create this file.
 var timezones_1 = require("../utils/timezones");
+/**
+ * @swagger
+ * /auth/register:
+ *   post:
+ *     summary: Register a new user
+ *     tags: [Auth]
+ *     description: Creates a new user account and sends a verification code to their mobile number.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - mobileNumber
+ *               - role
+ *             properties:
+ *               mobileNumber:
+ *                 type: string
+ *                 description: The user's mobile number in E.164 format.
+ *                 example: "+1234567890"
+ *               role:
+ *                 type: string
+ *                 description: The role for the new user.
+ *                 enum: [CUSTOMER, VENDOR_ADMIN, SHOPPER_STAFF]
+ *     responses:
+ *       201:
+ *         description: Verification code sent successfully.
+ *       500:
+ *         description: Internal server error.
+ */
 exports.registerUser = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var newUser, verificationCode, error_1;
     return __generator(this, function (_a) {
@@ -75,6 +106,30 @@ exports.registerUser = function (req, res) { return __awaiter(void 0, void 0, vo
         }
     });
 }); };
+/**
+ * @swagger
+ * /timezones:
+ *   get:
+ *     summary: Get a list of all supported timezones
+ *     tags: [General]
+ *     description: Returns a flat list of UTC timezone strings.
+ *     responses:
+ *       200:
+ *         description: A list of timezones.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "List of time zones"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                     example: "UTC-11"
+ */
 exports.getTimeZones = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var timezones, utcs_1;
     return __generator(this, function (_a) {
@@ -84,15 +139,34 @@ exports.getTimeZones = function (req, res) { return __awaiter(void 0, void 0, vo
             timezones.forEach(function (zone) {
                 utcs_1 = __spreadArrays(utcs_1, zone.utc);
             });
-            res.status(201).json({ message: 'List of time zones', data: utcs_1 });
+            res.status(200).json({ message: 'List of time zones', data: utcs_1 });
         }
         catch (error) {
-            console.error('Error registering user:', error);
+            console.error('Error getting timezones:', error);
             res.status(500).json({ error: 'Internal server error' });
         }
         return [2 /*return*/];
     });
 }); };
+/**
+ * @swagger
+ * /auth/resend-verification:
+ *   post:
+ *     summary: Resend verification code
+ *     tags: [Auth]
+ *     description: Resends a verification code to a user's mobile number if the user exists.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/InitiateLogin'
+ *     responses:
+ *       200:
+ *         description: Verification code resent successfully.
+ *       404:
+ *         description: User not found.
+ */
 exports.resendVerificationCode = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var _a, mobileNumber, role, userExists, verificationCode, error_2;
     return __generator(this, function (_b) {
@@ -124,6 +198,34 @@ exports.resendVerificationCode = function (req, res) { return __awaiter(void 0, 
         }
     });
 }); };
+/**
+ * @swagger
+ * /auth/login:
+ *   post:
+ *     summary: Initiate user login
+ *     tags: [Auth]
+ *     description: Checks if a user exists with the given mobile number and role. If they exist, a verification code is sent to their mobile number.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - mobileNumber
+ *               - role
+ *             properties:
+ *               mobileNumber:
+ *                 type: string
+ *                 example: "+1234567890"
+ *               role:
+ *                 type: string
+ *                 enum: [CUSTOMER, VENDOR_ADMIN, SHOPPER_STAFF]
+ *                 example: "CUSTOMER"
+ *     responses:
+ *       200:
+ *         description: Returns whether the user exists and sends a verification code if they do.
+ */
 exports.initiateLogin = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var _a, mobileNumber, role, userExists, verificationCode, error_3;
     return __generator(this, function (_b) {
@@ -149,12 +251,46 @@ exports.initiateLogin = function (req, res) { return __awaiter(void 0, void 0, v
             case 4:
                 error_3 = _b.sent();
                 console.error('Error initiating login:', error_3);
-                res.status(500).json({ error: "Internal server error " + error_3 });
+                res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 5];
             case 5: return [2 /*return*/];
         }
     });
 }); };
+/**
+ * @swagger
+ * /auth/verify:
+ *   post:
+ *     summary: Verify code and log in
+ *     tags: [Auth]
+ *     description: Verifies the provided code for the given mobile number and role, and returns a JWT token upon successful verification.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - mobileNumber
+ *               - verificationCode
+ *               - role
+ *             properties:
+ *               mobileNumber:
+ *                 type: string
+ *                 example: "+1234567890"
+ *               verificationCode:
+ *                 type: string
+ *                 example: "123456"
+ *               role:
+ *                 type: string
+ *                 enum: [CUSTOMER, VENDOR_ADMIN, SHOPPER_STAFF]
+ *                 example: "CUSTOMER"
+ *     responses:
+ *       200:
+ *         description: Login successful, returns user object with token.
+ *       401:
+ *         description: Invalid verification code or code has expired.
+ */
 exports.verifyCodeAndLogin = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var _a, mobileNumber, verificationCode, role, user, error_4;
     return __generator(this, function (_b) {
@@ -174,7 +310,7 @@ exports.verifyCodeAndLogin = function (req, res) { return __awaiter(void 0, void
             case 2:
                 error_4 = _b.sent();
                 console.error('Error verifying code and logging in:', error_4);
-                res.status(500).json({ error: "Internal server error " + error_4 });
+                res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }

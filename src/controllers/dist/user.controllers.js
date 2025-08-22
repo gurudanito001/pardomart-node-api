@@ -50,6 +50,55 @@ exports.__esModule = true;
 exports.deleteUser = exports.updateUser = exports.createUser = exports.getUserById = exports.getAllVerificationCodes = exports.getAllUsers = void 0;
 var userService = require("../services/user.service"); // Assuming you have a user.service.ts file
 // User Controllers
+/**
+ * @swagger
+ * /users:
+ *   get:
+ *     summary: Get a paginated list of users
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: mobileVerified
+ *         schema:
+ *           type: boolean
+ *         description: Filter by mobile verification status.
+ *       - in: query
+ *         name: active
+ *         schema:
+ *           type: boolean
+ *         description: Filter by active status.
+ *       - in: query
+ *         name: role
+ *         schema:
+ *           $ref: '#/components/schemas/Role'
+ *         description: Filter by user role.
+ *       - in: query
+ *         name: language
+ *         schema:
+ *           type: string
+ *         description: Filter by language.
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination.
+ *       - in: query
+ *         name: size
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Number of items per page.
+ *     responses:
+ *       200:
+ *         description: A paginated list of users.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedUsers'
+ */
 exports.getAllUsers = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var _a, mobileVerified, active, role, language, page, take, users, error_1;
     var _b, _c, _d, _e;
@@ -76,6 +125,25 @@ exports.getAllUsers = function (req, res) { return __awaiter(void 0, void 0, voi
         }
     });
 }); };
+/**
+ * @swagger
+ * /users/verificationCodes:
+ *   get:
+ *     summary: Get all verification codes
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Retrieves all stored verification codes. Intended for admin/debugging purposes.
+ *     responses:
+ *       200:
+ *         description: A list of all verification codes.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Verification'
+ */
 exports.getAllVerificationCodes = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var verificationCodes, error_2;
     return __generator(this, function (_a) {
@@ -96,6 +164,32 @@ exports.getAllVerificationCodes = function (req, res) { return __awaiter(void 0,
         }
     });
 }); };
+/**
+ * @swagger
+ * /users/{id}:
+ *   get:
+ *     summary: Get a user by their ID
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the user to retrieve.
+ *     responses:
+ *       200:
+ *         description: The requested user.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       404:
+ *         description: User not found.
+ */
 exports.getUserById = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var userId, user, error_3;
     return __generator(this, function (_a) {
@@ -120,6 +214,10 @@ exports.getUserById = function (req, res) { return __awaiter(void 0, void 0, voi
         }
     });
 }); };
+/*
+ * Note: The createUser endpoint is handled by /auth/register,
+ * so this controller is not currently exposed in the routes.
+ */
 exports.createUser = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var newUser, error_4;
     return __generator(this, function (_a) {
@@ -140,6 +238,38 @@ exports.createUser = function (req, res) { return __awaiter(void 0, void 0, void
         }
     });
 }); };
+/**
+ * @swagger
+ * /users/{id}:
+ *   put:
+ *     summary: Update a user's details
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the user to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateUserPayload'
+ *     responses:
+ *       200:
+ *         description: The updated user.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       404:
+ *         description: User not found.
+ */
 exports.updateUser = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var userId, updatedUser, error_5;
     return __generator(this, function (_a) {
@@ -155,12 +285,37 @@ exports.updateUser = function (req, res) { return __awaiter(void 0, void 0, void
             case 2:
                 error_5 = _a.sent();
                 console.error('Error updating user:', error_5);
+                if ((error_5 === null || error_5 === void 0 ? void 0 : error_5.code) === 'P2025') { // Prisma's error code for record not found on update
+                    return [2 /*return*/, res.status(404).json({ error: 'User not found' })];
+                }
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
     });
 }); };
+/**
+ * @swagger
+ * /users/{id}:
+ *   delete:
+ *     summary: Delete a user
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the user to delete.
+ *     responses:
+ *       200:
+ *         description: The deleted user.
+ *       404:
+ *         description: User not found.
+ */
 exports.deleteUser = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var userId, deletedUser, error_6;
     return __generator(this, function (_a) {
@@ -176,6 +331,9 @@ exports.deleteUser = function (req, res) { return __awaiter(void 0, void 0, void
             case 2:
                 error_6 = _a.sent();
                 console.error('Error deleting user:', error_6);
+                if ((error_6 === null || error_6 === void 0 ? void 0 : error_6.code) === 'P2025') { // Prisma's error code for record not found on delete
+                    return [2 /*return*/, res.status(404).json({ error: 'User not found' })];
+                }
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
