@@ -30,7 +30,17 @@ app.use(morgan_1["default"]('dev')); // Enable Morgan
 app.use(express_1["default"].json({ limit: '50mb' }));
 app.use(express_1["default"].urlencoded({ extended: true }));
 // Swagger UI Endpoint
-app.use('/api-docs', swagger_ui_express_1["default"].serve, swagger_ui_express_1["default"].setup(swagger_1["default"], { explorer: true }));
+app.get('/api-docs/openapi.json', function (req, res) {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(swagger_1["default"]);
+});
+var uiOptions = {
+    explorer: true,
+    swaggerOptions: {
+        url: "/api-docs/openapi.json"
+    }
+};
+app.use('/api-docs', swagger_ui_express_1["default"].serve, swagger_ui_express_1["default"].setup(null, uiOptions));
 // Use routes
 app.use('/', routes_1["default"]);
 /* type roomsObject = {

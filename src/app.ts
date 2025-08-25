@@ -31,9 +31,20 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 
-
 // Swagger UI Endpoint
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
+app.get('/api-docs/openapi.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+
+const uiOptions = {
+  explorer: true,
+  swaggerOptions: {
+    url: "/api-docs/openapi.json",
+  },
+};
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(null, uiOptions));
 
 
 // Use routes
