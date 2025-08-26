@@ -41,7 +41,7 @@ var vendorOpeningHoursService = require("../services/vendorOpeningHours.service"
 var client_1 = require("@prisma/client"); // Import Prisma
 /**
  * @swagger
- * /vendor-opening-hours:
+ * /openingHours:
  *   patch:
  *     summary: Update opening hours for a specific day
  *     tags: [VendorOpeningHours]
@@ -107,6 +107,34 @@ exports.updateVendorOpeningHours = function (req, res) { return __awaiter(void 0
         }
     });
 }); };
+/**
+ * @swagger
+ * /openingHours:
+ *   get:
+ *     summary: Get all opening hours for a specific vendor
+ *     tags: [VendorOpeningHours]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: vendorId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the vendor to retrieve opening hours for.
+ *     responses:
+ *       200:
+ *         description: A list of the vendor's opening hours.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/VendorOpeningHours'
+ *       500:
+ *         description: Internal server error.
+ */
 exports.getAllVendorOpeningHours = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var vendorId, vendorOpeningHours, error_2;
     return __generator(this, function (_a) {

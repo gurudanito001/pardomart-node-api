@@ -108,7 +108,7 @@ exports.registerUser = function (req, res) { return __awaiter(void 0, void 0, vo
 }); };
 /**
  * @swagger
- * /timezones:
+ * /auth/getTimeZones:
  *   get:
  *     summary: Get a list of all supported timezones
  *     tags: [General]
@@ -150,7 +150,7 @@ exports.getTimeZones = function (req, res) { return __awaiter(void 0, void 0, vo
 }); };
 /**
  * @swagger
- * /auth/resend-verification:
+ * /auth/resendVerification:
  *   post:
  *     summary: Resend verification code
  *     tags: [Auth]
@@ -200,7 +200,7 @@ exports.resendVerificationCode = function (req, res) { return __awaiter(void 0, 
 }); };
 /**
  * @swagger
- * /auth/login:
+ * /auth/initiateLogin:
  *   post:
  *     summary: Initiate user login
  *     tags: [Auth]
@@ -259,7 +259,7 @@ exports.initiateLogin = function (req, res) { return __awaiter(void 0, void 0, v
 }); };
 /**
  * @swagger
- * /auth/verify:
+ * /auth/verifyAndLogin:
  *   post:
  *     summary: Verify code and log in
  *     tags: [Auth]

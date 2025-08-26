@@ -9,7 +9,7 @@ import { getVendorProductsFilters } from '../models/product.model';
 
 /**
  * @swagger
- * /products:
+ * /product:
  *   post:
  *     summary: Create a base product
  *     tags: [Product]
@@ -42,7 +42,7 @@ export const createProduct = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /products/vendor:
+ * /product/vendor:
  *   post:
  *     summary: Create a vendor-specific product
  *     tags: [Product]
@@ -75,7 +75,7 @@ export const createVendorProduct = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /products/vendor/barcode:
+ * /product/vendor/barcode:
  *   post:
  *     summary: Create a vendor product via barcode scan
  *     tags: [Product]
@@ -117,7 +117,7 @@ export const createVendorProductWithBarcode = async (req: Request, res: Response
 
 /**
  * @swagger
- * /products/barcode:
+ * /product/barcode:
  *   get:
  *     summary: Get a base product by its barcode
  *     tags: [Product]
@@ -159,7 +159,7 @@ export const getProductByBarcode = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /products/vendor/barcode:
+ * /product/vendor/barcode:
  *   get:
  *     summary: Get a vendor-specific product by barcode
  *     tags: [Product]
@@ -208,7 +208,7 @@ export const getVendorProductByBarcode = async (req: Request, res: Response) => 
 
 /**
  * @swagger
- * /products/tags/ids:
+ * /product/tags/ids:
  *   get:
  *     summary: Get base products by tag IDs
  *     tags: [Product]
@@ -256,7 +256,7 @@ export const getProductsByTagIds = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /products/vendor/tags/ids:
+ * /product/vendor/tags/ids:
  *   get:
  *     summary: Get vendor products by tag IDs
  *     tags: [Product]
@@ -304,7 +304,7 @@ export const getVendorProductsByTagIds = async (req: Request, res: Response) => 
 
 /**
  * @swagger
- * /products/{id}:
+ * /product/{id}:
  *   patch:
  *     summary: Update a base product
  *     tags: [Product]
@@ -340,7 +340,7 @@ export const updateProductBase = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /products/vendor/{id}:
+ * /product/vendor/{id}:
  *   patch:
  *     summary: Update a vendor-specific product
  *     tags: [Product]
@@ -376,7 +376,7 @@ export const updateVendorProduct = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /products:
+ * /product:
  *   get:
  *     summary: Get all base products
  *     tags: [Product]
@@ -402,7 +402,7 @@ export const getAllProducts = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /products/vendor:
+ * /product/vendor:
  *   get:
  *     summary: Get all vendor products with filtering and pagination
  *     tags: [Product]
@@ -445,7 +445,7 @@ export const getAllProducts = async (req: Request, res: Response) => {
  *         content:
  *           application/json:
  *             schema:
- *               # Add a schema for paginated response here
+ *               $ref: '#/components/schemas/PaginatedVendorProducts'
  */
 export const getAllVendorProducts = async (req: Request, res: Response) => {
   const {name, vendorId, categoryIds, tagIds, productId}: getVendorProductsFilters = req.query;
@@ -462,7 +462,7 @@ export const getAllVendorProducts = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /products/vendor/category:
+ * /product/vendor/category:
  *   get:
  *     summary: Get vendor products by category
  *     tags: [Product]
@@ -505,7 +505,7 @@ export const getVendorProductsByCategory = async (req: Request, res: Response) =
 
 /**
  * @swagger
- * /products/{id}:
+ * /product/{id}:
  *   delete:
  *     summary: Delete a base product
  *     tags: [Product]
@@ -533,7 +533,7 @@ export const deleteProduct = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /products/vendor/{id}:
+ * /product/vendor/{id}:
  *   delete:
  *     summary: Delete a vendor-specific product
  *     tags: [Product]

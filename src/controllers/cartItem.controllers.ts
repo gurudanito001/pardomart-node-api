@@ -3,7 +3,7 @@ import { getCartItemByIdService, updateCartItemService, deleteCartItemService } 
 
 /**
  * @swagger
- * /cart-items/{id}:
+ * /cartItem/{id}:
  *   get:
  *     summary: Get a single cart item by its ID
  *     tags: [CartItem]
@@ -42,7 +42,7 @@ export const getCartItemByIdController = async (req: Request, res: Response) => 
 
 /**
  * @swagger
- * /cart-items/{id}:
+ * /cartItem/{id}:
  *   put:
  *     summary: Update a cart item's quantity
  *     tags: [CartItem]
@@ -80,6 +80,31 @@ export const updateCartItemController = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @swagger
+ * /cartItem/{id}:
+ *   delete:
+ *     summary: Delete a cart item by its ID
+ *     tags: [CartItem]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the cart item to delete.
+ *     responses:
+ *       200:
+ *         description: The deleted cart item.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CartItem'
+ *       500:
+ *         description: Internal server error.
+ */
 export const deleteCartItemController = async (req: Request, res: Response) => {
   try {
     const cartItem = await deleteCartItemService(req.params.id);

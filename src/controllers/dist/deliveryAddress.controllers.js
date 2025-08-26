@@ -51,7 +51,7 @@ exports.setDefaultDeliveryAddressController = exports.deleteDeliveryAddressContr
 var deliveryAddress_service_1 = require("../services/deliveryAddress.service");
 /**
  * @swagger
- * /delivery-addresses:
+ * /deliveryAddress:
  *   post:
  *     summary: Create a new delivery address for the authenticated user
  *     tags: [Delivery Address]
@@ -108,7 +108,7 @@ exports.createDeliveryAddressController = function (req, res) { return __awaiter
 }); };
 /**
  * @swagger
- * /delivery-addresses/{id}:
+ * /deliveryAddress/{id}:
  *   get:
  *     summary: Get a specific delivery address by its ID
  *     tags: [Delivery Address]
@@ -158,7 +158,7 @@ exports.getDeliveryAddressByIdController = function (req, res) { return __awaite
 }); };
 /**
  * @swagger
- * /delivery-addresses/me:
+ * /deliveryAddress/me:
  *   get:
  *     summary: Get all delivery addresses for the authenticated user
  *     tags: [Delivery Address]
@@ -202,7 +202,7 @@ exports.getMyDeliveryAddressesController = function (req, res) { return __awaite
 }); };
 /**
  * @swagger
- * /delivery-addresses/me/default:
+ * /deliveryAddress/me/default:
  *   get:
  *     summary: Get the default delivery address for the authenticated user
  *     tags: [Delivery Address]
@@ -249,7 +249,7 @@ exports.getMyDefaultDeliveryAddressController = function (req, res) { return __a
 }); };
 /**
  * @swagger
- * /delivery-addresses/{id}:
+ * /deliveryAddress/{id}:
  *   put:
  *     summary: Update a delivery address
  *     tags: [Delivery Address]
@@ -309,7 +309,30 @@ exports.updateDeliveryAddressController = function (req, res) { return __awaiter
     });
 }); };
 /**
- * DELETE /addresses/:id
+ * @swagger
+ * /deliveryAddress/{id}:
+ *   delete:
+ *     summary: Delete a delivery address by its ID
+ *     tags: [Delivery Address]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the delivery address to delete.
+ *     responses:
+ *       200:
+ *         description: The deleted delivery address.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DeliveryAddress'
+ *       404:
+ *         description: Delivery address not found.
  */
 exports.deleteDeliveryAddressController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var id, deletedAddress, error_6;
@@ -336,8 +359,34 @@ exports.deleteDeliveryAddressController = function (req, res) { return __awaiter
     });
 }); };
 /**
- * Controller for setting a delivery address as default.
- * PATCH /addresses/:id/set-default
+ * @swagger
+ * /deliveryAddress/{id}/set-default:
+ *   patch:
+ *     summary: Set a delivery address as the default for the authenticated user
+ *     tags: [Delivery Address]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the delivery address to set as default.
+ *     responses:
+ *       200:
+ *         description: The updated default delivery address.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DeliveryAddress'
+ *       401:
+ *         description: Unauthorized.
+ *       404:
+ *         description: Delivery address not found.
+ *       500:
+ *         description: Internal server error.
  */
 exports.setDefaultDeliveryAddressController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var userId, addressId, newDefaultAddress, error_7;

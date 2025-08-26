@@ -10,7 +10,7 @@ interface AuthenticatedRequest extends Request {
 
 /**
  * @swagger
- * /delivery-addresses:
+ * /deliveryAddress:
  *   post:
  *     summary: Create a new delivery address for the authenticated user
  *     tags: [Delivery Address]
@@ -63,7 +63,7 @@ export const createDeliveryAddressController = async (req: AuthenticatedRequest,
 
 /**
  * @swagger
- * /delivery-addresses/{id}:
+ * /deliveryAddress/{id}:
  *   get:
  *     summary: Get a specific delivery address by its ID
  *     tags: [Delivery Address]
@@ -103,7 +103,7 @@ export const getDeliveryAddressByIdController = async (req: AuthenticatedRequest
 
 /**
  * @swagger
- * /delivery-addresses/me:
+ * /deliveryAddress/me:
  *   get:
  *     summary: Get all delivery addresses for the authenticated user
  *     tags: [Delivery Address]
@@ -138,7 +138,7 @@ export const getMyDeliveryAddressesController = async (req: AuthenticatedRequest
 
 /**
  * @swagger
- * /delivery-addresses/me/default:
+ * /deliveryAddress/me/default:
  *   get:
  *     summary: Get the default delivery address for the authenticated user
  *     tags: [Delivery Address]
@@ -176,7 +176,7 @@ export const getMyDefaultDeliveryAddressController = async (req: AuthenticatedRe
 
 /**
  * @swagger
- * /delivery-addresses/{id}:
+ * /deliveryAddress/{id}:
  *   put:
  *     summary: Update a delivery address
  *     tags: [Delivery Address]
@@ -228,7 +228,30 @@ export const updateDeliveryAddressController = async (req: AuthenticatedRequest,
 };
 
 /**
- * DELETE /addresses/:id
+ * @swagger
+ * /deliveryAddress/{id}:
+ *   delete:
+ *     summary: Delete a delivery address by its ID
+ *     tags: [Delivery Address]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the delivery address to delete.
+ *     responses:
+ *       200:
+ *         description: The deleted delivery address.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DeliveryAddress'
+ *       404:
+ *         description: Delivery address not found.
  */
 export const deleteDeliveryAddressController = async (req: Request, res: Response) => {
   try {
@@ -245,8 +268,34 @@ export const deleteDeliveryAddressController = async (req: Request, res: Respons
 };
 
 /**
- * Controller for setting a delivery address as default.
- * PATCH /addresses/:id/set-default
+ * @swagger
+ * /deliveryAddress/{id}/set-default:
+ *   patch:
+ *     summary: Set a delivery address as the default for the authenticated user
+ *     tags: [Delivery Address]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the delivery address to set as default.
+ *     responses:
+ *       200:
+ *         description: The updated default delivery address.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DeliveryAddress'
+ *       401:
+ *         description: Unauthorized.
+ *       404:
+ *         description: Delivery address not found.
+ *       500:
+ *         description: Internal server error.
  */
 export const setDefaultDeliveryAddressController = async (req: Request, res: Response) => {
   try {

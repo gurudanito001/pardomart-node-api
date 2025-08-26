@@ -40,7 +40,7 @@ exports.deleteCartItemController = exports.updateCartItemController = exports.ge
 var cartItem_service_1 = require("../services/cartItem.service");
 /**
  * @swagger
- * /cart-items/{id}:
+ * /cartItem/{id}:
  *   get:
  *     summary: Get a single cart item by its ID
  *     tags: [CartItem]
@@ -89,7 +89,7 @@ exports.getCartItemByIdController = function (req, res) { return __awaiter(void 
 }); };
 /**
  * @swagger
- * /cart-items/{id}:
+ * /cartItem/{id}:
  *   put:
  *     summary: Update a cart item's quantity
  *     tags: [CartItem]
@@ -137,6 +137,31 @@ exports.updateCartItemController = function (req, res) { return __awaiter(void 0
         }
     });
 }); };
+/**
+ * @swagger
+ * /cartItem/{id}:
+ *   delete:
+ *     summary: Delete a cart item by its ID
+ *     tags: [CartItem]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the cart item to delete.
+ *     responses:
+ *       200:
+ *         description: The deleted cart item.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CartItem'
+ *       500:
+ *         description: Internal server error.
+ */
 exports.deleteCartItemController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var cartItem, error_3;
     return __generator(this, function (_a) {

@@ -463,6 +463,25 @@ const options: swaggerJsdoc.Options = {
             status: { $ref: '#/components/schemas/OrderStatus' }
           }
         },
+        UpdateOrderPayload: {
+          type: 'object',
+          properties: {
+            totalAmount: { type: 'number', format: 'float' },
+            deliveryFee: { type: 'number', format: 'float' },
+            serviceFee: { type: 'number', format: 'float' },
+            shoppingFee: { type: 'number', format: 'float' },
+            paymentMethod: { $ref: '#/components/schemas/PaymentMethods' },
+            paymentStatus: { type: 'string', enum: ['pending', 'paid', 'failed'] },
+            orderStatus: { $ref: '#/components/schemas/OrderStatus' },
+            deliveryAddressId: { type: 'string', format: 'uuid' },
+            deliveryInstructions: { type: 'string' },
+            shoppingHandlerId: { type: 'string', format: 'uuid' },
+            deliveryHandlerId: { type: 'string', format: 'uuid' },
+            shoppingMethod: { $ref: '#/components/schemas/ShoppingMethod' },
+            deliveryMethod: { $ref: '#/components/schemas/DeliveryMethod' },
+            scheduledShoppingStartTime: { type: 'string', format: 'date-time' }
+          }
+        },
         DeclineOrderPayload: {
           type: 'object',
           properties: {
@@ -682,6 +701,19 @@ const options: swaggerJsdoc.Options = {
             data: {
               type: 'array',
               items: { $ref: '#/components/schemas/Vendor' },
+            },
+          },
+        },
+        PaginatedVendorProducts: {
+          type: 'object',
+          properties: {
+            page: { type: 'integer' },
+            totalPages: { type: 'integer' },
+            pageSize: { type: 'integer' },
+            totalCount: { type: 'integer' },
+            data: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/VendorProductWithRelations' },
             },
           },
         },

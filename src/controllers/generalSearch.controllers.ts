@@ -3,7 +3,7 @@ import { getVendorsCategoriesAndProductsService, getVendorCategoriesWithProducts
 
 /**
  * @swagger
- * /search:
+ * /generalSearch:
  *   get:
  *     summary: General search for vendors, categories, and products
  *     tags: [General Search]
@@ -77,7 +77,7 @@ export const getVendorsCategoriesAndProductsController = async (req: Request, re
 
 /**
  * @swagger
- * /search/vendor/{vendorId}:
+ * /generalSearch/vendor/{vendorId}:
  *   get:
  *     summary: Get categories and products for a specific vendor
  *     tags: [General Search]
@@ -125,7 +125,7 @@ export const getVendorCategoriesWithProductsController = async (req: Request, re
 
 /**
  * @swagger
- * /search/category/{categoryId}:
+ * /generalSearch/category/{categoryId}:
  *   get:
  *     summary: Get details for a category, including stores and products
  *     tags: [General Search]
@@ -217,7 +217,7 @@ export const getCategoryDetailsWithRelatedDataController = async (req: Request, 
 
 /**
  * @swagger
- * /search/product:
+ * /generalSearch/product:
  *   get:
  *     summary: Find stores that sell a specific product
  *     tags: [General Search]

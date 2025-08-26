@@ -40,7 +40,7 @@ exports.getStoresByProductIdController = exports.getCategoryDetailsWithRelatedDa
 var generalSearch_service_1 = require("../services/generalSearch.service");
 /**
  * @swagger
- * /search:
+ * /generalSearch:
  *   get:
  *     summary: General search for vendors, categories, and products
  *     tags: [General Search]
@@ -119,7 +119,7 @@ exports.getVendorsCategoriesAndProductsController = function (req, res) { return
 }); };
 /**
  * @swagger
- * /search/vendor/{vendorId}:
+ * /generalSearch/vendor/{vendorId}:
  *   get:
  *     summary: Get categories and products for a specific vendor
  *     tags: [General Search]
@@ -177,7 +177,7 @@ exports.getVendorCategoriesWithProductsController = function (req, res) { return
 }); };
 /**
  * @swagger
- * /search/category/{categoryId}:
+ * /generalSearch/category/{categoryId}:
  *   get:
  *     summary: Get details for a category, including stores and products
  *     tags: [General Search]
@@ -278,7 +278,7 @@ exports.getCategoryDetailsWithRelatedDataController = function (req, res) { retu
 }); };
 /**
  * @swagger
- * /search/product:
+ * /generalSearch/product:
  *   get:
  *     summary: Find stores that sell a specific product
  *     tags: [General Search]

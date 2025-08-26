@@ -5,7 +5,7 @@ import { CategoryFilters } from '../models/category.model';
 
 /**
  * @swagger
- * /categories/bulk:
+ * /category/bulk:
  *   post:
  *     summary: Create multiple categories in bulk
  *     tags: [Category]
@@ -50,7 +50,7 @@ export const createCategoriesBulk = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /categories:
+ * /category:
  *   post:
  *     summary: Create a new category
  *     tags: [Category]
@@ -85,7 +85,7 @@ export const createCategory = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /categories/{id}:
+ * /category/{id}:
  *   get:
  *     summary: Get a category by its ID
  *     tags: [Category]
@@ -123,7 +123,7 @@ export const getCategoryById = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /categories:
+ * /category:
  *   get:
  *     summary: Get all categories, with optional filters
  *     tags: [Category]
@@ -171,7 +171,7 @@ export const getAllCategories = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /categories/{id}:
+ * /category/{id}:
  *   put:
  *     summary: Update a category
  *     tags: [Category]
@@ -217,7 +217,7 @@ export const updateCategory = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /categories/{id}:
+ * /category/{id}:
  *   delete:
  *     summary: Delete a category
  *     tags: [Category]

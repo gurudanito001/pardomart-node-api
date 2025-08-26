@@ -178,7 +178,7 @@ export const deleteFeeController = async (req: Request, res: Response) => {
  *         required: true
  *         schema:
  *           type: string
- *           enum: [DELIVERY, SERVICE, SHOPPING]
+ *           enum: [delivery, service, shopping]
  *         description: The type of fee to deactivate.
  *     responses:
  *       200:
@@ -248,7 +248,7 @@ export const deactivateFeeController = async (req: Request, res: Response) => {
  *         required: true
  *         schema:
  *           type: string
- *           enum: [DELIVERY, SERVICE, SHOPPING]
+ *           enum: [delivery, service, shopping]
  *         description: The type of fee to retrieve.
  *     responses:
  *       200:
@@ -297,7 +297,7 @@ export const getCurrentFeesController = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /orders/calculate-fees:
+ * /fees/calculate-fees:
  *   post:
  *     summary: Calculate the total estimated cost for an order
  *     tags: [Fee, Order]

@@ -191,7 +191,30 @@ exports.createOrderController = function (req, res) { return __awaiter(void 0, v
 }); };
 /**
  * Controller for getting an order by ID.
- * GET /orders/:id
+ * @swagger
+ * /order/{id}:
+ *   get:
+ *     summary: Get an order by its ID
+ *     tags: [Order]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the order to retrieve.
+ *     responses:
+ *       200:
+ *         description: The requested order.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Order'
+ *       404:
+ *         description: Order not found.
  */
 exports.getOrderByIdController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var orderId, order, error_2;
@@ -218,7 +241,24 @@ exports.getOrderByIdController = function (req, res) { return __awaiter(void 0, 
 }); };
 /**
  * Controller for getting all orders for a user.
- * GET /orders/user/:userId
+ * @swagger
+ * /order/user/getByUserId:
+ *   get:
+ *     summary: Get all orders for the authenticated user
+ *     tags: [Order]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: A list of the user's orders.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Order'
+ *       400:
+ *         description: User ID is required.
  */
 exports.getOrdersByUserController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var userId, orders, error_3;
@@ -245,7 +285,36 @@ exports.getOrdersByUserController = function (req, res) { return __awaiter(void 
 }); };
 /**
  * Controller for updating the status of an order.
- * PATCH /orders/:id/status
+ * @swagger
+ * /order/{id}/status:
+ *   patch:
+ *     summary: Update the status of an order
+ *     tags: [Order]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the order to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateOrderStatusPayload'
+ *     responses:
+ *       200:
+ *         description: The updated order.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Order'
+ *       404:
+ *         description: Order not found.
  */
 exports.updateOrderStatusController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var orderId, status, updatedOrder, error_4;
@@ -273,7 +342,36 @@ exports.updateOrderStatusController = function (req, res) { return __awaiter(voi
 }); };
 /**
  * Controller for updating an order.
- * PATCH /orders/:id
+ * @swagger
+ * /order/{id}:
+ *   patch:
+ *     summary: Update an order
+ *     tags: [Order]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the order to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateOrderPayload'
+ *     responses:
+ *       200:
+ *         description: The updated order.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Order'
+ *       404:
+ *         description: Order not found.
  */
 exports.updateOrderController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var orderId, updates, updatedOrder, error_5;
@@ -301,9 +399,28 @@ exports.updateOrderController = function (req, res) { return __awaiter(void 0, v
 }); };
 /**
  * Controller to get a list of orders for a specific vendor's dashboard.
- * Requires vendor staff/admin authentication and authorization.
- * GET /vendor/orders
- * Query params: statuses=pending,accepted,shopping&includeFutureScheduled=true
+ * @swagger
+ * /order/vendorOrders:
+ *   get:
+ *     summary: Get orders for a vendor's dashboard
+ *     tags: [Order, Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           $ref: '#/components/schemas/OrderStatus'
+ *         description: Optional. Filter orders by a specific status.
+ *     responses:
+ *       200:
+ *         description: A list of orders for the vendor.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Order'
  */
 exports.getVendorOrdersController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var vendorId, status, orders, error_6;
@@ -329,7 +446,30 @@ exports.getVendorOrdersController = function (req, res) { return __awaiter(void 
 }); };
 /**
  * Controller to accept a pending order.
- * PATCH /vendor/orders/:orderId/accept
+ * @swagger
+ * /order/{orderId}/accept:
+ *   patch:
+ *     summary: Accept a pending order
+ *     tags: [Order, Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the order to accept.
+ *     responses:
+ *       200:
+ *         description: The accepted order.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Order'
+ *       400:
+ *         description: Bad request or order cannot be accepted.
  */
 exports.acceptOrderController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var orderId, shoppingHandlerUserId, vendorId, acceptedOrder, error_7;
@@ -362,7 +502,35 @@ exports.acceptOrderController = function (req, res) { return __awaiter(void 0, v
 }); };
 /**
  * Controller to decline a pending order.
- * PATCH /vendor/orders/:orderId/decline
+ * @swagger
+ * /order/{orderId}/decline:
+ *   patch:
+ *     summary: Decline a pending order
+ *     tags: [Order, Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the order to decline.
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/DeclineOrderPayload'
+ *     responses:
+ *       200:
+ *         description: The declined order.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Order'
+ *       400:
+ *         description: Bad request or order cannot be declined.
  */
 exports.declineOrderController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var orderId, reason, vendorId, declinedOrder, error_8;
@@ -395,7 +563,30 @@ exports.declineOrderController = function (req, res) { return __awaiter(void 0, 
 }); };
 /**
  * Controller to mark an accepted order as 'shopping'.
- * PATCH /vendor/orders/:orderId/start-shopping
+ * @swagger
+ * /order/{orderId}/start-shopping:
+ *   patch:
+ *     summary: Mark an order as 'currently shopping'
+ *     tags: [Order, Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the order to start shopping for.
+ *     responses:
+ *       200:
+ *         description: The updated order.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Order'
+ *       400:
+ *         description: Bad request or shopping cannot be started for this order.
  */
 exports.startShoppingController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var orderId, shoppingHandlerUserId, vendorId, updatedOrder, error_9;

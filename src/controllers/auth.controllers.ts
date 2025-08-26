@@ -54,7 +54,7 @@ export const registerUser = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /timezones:
+ * /auth/getTimeZones:
  *   get:
  *     summary: Get a list of all supported timezones
  *     tags: [General]
@@ -92,7 +92,7 @@ export const getTimeZones = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /auth/resend-verification:
+ * /auth/resendVerification:
  *   post:
  *     summary: Resend verification code
  *     tags: [Auth]
@@ -132,7 +132,7 @@ export const resendVerificationCode = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /auth/login:
+ * /auth/initiateLogin:
  *   post:
  *     summary: Initiate user login
  *     tags: [Auth]
@@ -180,7 +180,7 @@ export const initiateLogin = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /auth/verify:
+ * /auth/verifyAndLogin:
  *   post:
  *     summary: Verify code and log in
  *     tags: [Auth]

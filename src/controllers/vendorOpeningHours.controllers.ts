@@ -5,7 +5,7 @@ import { Prisma } from '@prisma/client'; // Import Prisma
 
 /**
  * @swagger
- * /vendor-opening-hours:
+ * /openingHours:
  *   patch:
  *     summary: Update opening hours for a specific day
  *     tags: [VendorOpeningHours]
@@ -67,6 +67,34 @@ export const updateVendorOpeningHours = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @swagger
+ * /openingHours:
+ *   get:
+ *     summary: Get all opening hours for a specific vendor
+ *     tags: [VendorOpeningHours]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: vendorId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the vendor to retrieve opening hours for.
+ *     responses:
+ *       200:
+ *         description: A list of the vendor's opening hours.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/VendorOpeningHours'
+ *       500:
+ *         description: Internal server error.
+ */
 export const getAllVendorOpeningHours = async (req: Request, res: Response) => {
   try {
     const vendorId = req.query.vendorId as string ;

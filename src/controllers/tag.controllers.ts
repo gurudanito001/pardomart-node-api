@@ -211,6 +211,10 @@ export const updateTag = async (req: Request, res: Response) => {
  *     responses:
  *       200:
  *         description: The deleted tag.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Tag'
  *       404:
  *         description: Tag not found.
  */

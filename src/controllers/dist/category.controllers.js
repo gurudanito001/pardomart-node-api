@@ -51,7 +51,7 @@ exports.deleteCategory = exports.updateCategory = exports.getAllCategories = exp
 var categoryService = require("../services/category.service");
 /**
  * @swagger
- * /categories/bulk:
+ * /category/bulk:
  *   post:
  *     summary: Create multiple categories in bulk
  *     tags: [Category]
@@ -104,7 +104,7 @@ exports.createCategoriesBulk = function (req, res) { return __awaiter(void 0, vo
 }); };
 /**
  * @swagger
- * /categories:
+ * /category:
  *   post:
  *     summary: Create a new category
  *     tags: [Category]
@@ -149,7 +149,7 @@ exports.createCategory = function (req, res) { return __awaiter(void 0, void 0, 
 }); };
 /**
  * @swagger
- * /categories/{id}:
+ * /category/{id}:
  *   get:
  *     summary: Get a category by its ID
  *     tags: [Category]
@@ -197,7 +197,7 @@ exports.getCategoryById = function (req, res) { return __awaiter(void 0, void 0,
 }); };
 /**
  * @swagger
- * /categories:
+ * /category:
  *   get:
  *     summary: Get all categories, with optional filters
  *     tags: [Category]
@@ -255,7 +255,7 @@ exports.getAllCategories = function (req, res) { return __awaiter(void 0, void 0
 }); };
 /**
  * @swagger
- * /categories/{id}:
+ * /category/{id}:
  *   put:
  *     summary: Update a category
  *     tags: [Category]
@@ -311,7 +311,7 @@ exports.updateCategory = function (req, res) { return __awaiter(void 0, void 0, 
 }); };
 /**
  * @swagger
- * /categories/{id}:
+ * /category/{id}:
  *   delete:
  *     summary: Delete a category
  *     tags: [Category]

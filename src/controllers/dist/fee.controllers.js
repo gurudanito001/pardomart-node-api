@@ -231,7 +231,7 @@ exports.deleteFeeController = function (req, res) { return __awaiter(void 0, voi
  *         required: true
  *         schema:
  *           type: string
- *           enum: [DELIVERY, SERVICE, SHOPPING]
+ *           enum: [delivery, service, shopping]
  *         description: The type of fee to deactivate.
  *     responses:
  *       200:
@@ -309,7 +309,7 @@ exports.deactivateFeeController = function (req, res) { return __awaiter(void 0,
  *         required: true
  *         schema:
  *           type: string
- *           enum: [DELIVERY, SERVICE, SHOPPING]
+ *           enum: [delivery, service, shopping]
  *         description: The type of fee to retrieve.
  *     responses:
  *       200:
@@ -368,7 +368,7 @@ exports.getCurrentFeesController = function (req, res) { return __awaiter(void 0
 }); };
 /**
  * @swagger
- * /orders/calculate-fees:
+ * /fees/calculate-fees:
  *   post:
  *     summary: Calculate the total estimated cost for an order
  *     tags: [Fee, Order]

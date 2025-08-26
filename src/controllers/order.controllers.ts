@@ -42,7 +42,30 @@ const getDayEnumFromDayjs = (dayjsDayIndex: number): string => {
 
 /**
  * Controller for creating a new order.
- * POST /orders
+ * @swagger
+ * /order:
+ *   post:
+ *     summary: Create a new order
+ *     tags: [Order]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateOrderPayload'
+ *     responses:
+ *       201:
+ *         description: The created order.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Order'
+ *       400:
+ *         description: Bad request due to invalid input.
+ *       500:
+ *         description: Internal server error.
  */
 interface OrderItem {
   vendorProductId: string
@@ -209,7 +232,30 @@ export const createOrderController = async (req: AuthenticatedRequest, res: Resp
 
 /**
  * Controller for getting an order by ID.
- * GET /orders/:id
+ * @swagger
+ * /order/{id}:
+ *   get:
+ *     summary: Get an order by its ID
+ *     tags: [Order]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the order to retrieve.
+ *     responses:
+ *       200:
+ *         description: The requested order.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Order'
+ *       404:
+ *         description: Order not found.
  */
 export const getOrderByIdController = async (req: Request, res: Response) => {
   try {
@@ -226,7 +272,24 @@ export const getOrderByIdController = async (req: Request, res: Response) => {
 
 /**
  * Controller for getting all orders for a user.
- * GET /orders/user/:userId
+ * @swagger
+ * /order/user/getByUserId:
+ *   get:
+ *     summary: Get all orders for the authenticated user
+ *     tags: [Order]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: A list of the user's orders.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Order'
+ *       400:
+ *         description: User ID is required.
  */
 export const getOrdersByUserController = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -243,7 +306,36 @@ export const getOrdersByUserController = async (req: AuthenticatedRequest, res: 
 
 /**
  * Controller for updating the status of an order.
- * PATCH /orders/:id/status
+ * @swagger
+ * /order/{id}/status:
+ *   patch:
+ *     summary: Update the status of an order
+ *     tags: [Order]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the order to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateOrderStatusPayload'
+ *     responses:
+ *       200:
+ *         description: The updated order.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Order'
+ *       404:
+ *         description: Order not found.
  */
 export const updateOrderStatusController = async (req: Request, res: Response) => {
   try {
@@ -264,7 +356,36 @@ export const updateOrderStatusController = async (req: Request, res: Response) =
 
 /**
  * Controller for updating an order.
- * PATCH /orders/:id
+ * @swagger
+ * /order/{id}:
+ *   patch:
+ *     summary: Update an order
+ *     tags: [Order]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the order to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateOrderPayload'
+ *     responses:
+ *       200:
+ *         description: The updated order.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Order'
+ *       404:
+ *         description: Order not found.
  */
 export const updateOrderController = async (req: Request, res: Response) => {
   try {
@@ -291,9 +412,28 @@ interface OrderAuthenticatedRequest extends Request {
 
 /**
  * Controller to get a list of orders for a specific vendor's dashboard.
- * Requires vendor staff/admin authentication and authorization.
- * GET /vendor/orders
- * Query params: statuses=pending,accepted,shopping&includeFutureScheduled=true
+ * @swagger
+ * /order/vendorOrders:
+ *   get:
+ *     summary: Get orders for a vendor's dashboard
+ *     tags: [Order, Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           $ref: '#/components/schemas/OrderStatus'
+ *         description: Optional. Filter orders by a specific status.
+ *     responses:
+ *       200:
+ *         description: A list of orders for the vendor.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Order'
  */
 export const getVendorOrdersController = async (req: OrderAuthenticatedRequest, res: Response) => {
   try {
@@ -312,7 +452,30 @@ export const getVendorOrdersController = async (req: OrderAuthenticatedRequest, 
 
 /**
  * Controller to accept a pending order.
- * PATCH /vendor/orders/:orderId/accept
+ * @swagger
+ * /order/{orderId}/accept:
+ *   patch:
+ *     summary: Accept a pending order
+ *     tags: [Order, Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the order to accept.
+ *     responses:
+ *       200:
+ *         description: The accepted order.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Order'
+ *       400:
+ *         description: Bad request or order cannot be accepted.
  */
 export const acceptOrderController = async (req: OrderAuthenticatedRequest, res: Response) => {
   try {
@@ -338,7 +501,35 @@ export const acceptOrderController = async (req: OrderAuthenticatedRequest, res:
 
 /**
  * Controller to decline a pending order.
- * PATCH /vendor/orders/:orderId/decline
+ * @swagger
+ * /order/{orderId}/decline:
+ *   patch:
+ *     summary: Decline a pending order
+ *     tags: [Order, Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the order to decline.
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/DeclineOrderPayload'
+ *     responses:
+ *       200:
+ *         description: The declined order.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Order'
+ *       400:
+ *         description: Bad request or order cannot be declined.
  */
 export const declineOrderController = async (req: OrderAuthenticatedRequest, res: Response) => {
   try {
@@ -364,7 +555,30 @@ export const declineOrderController = async (req: OrderAuthenticatedRequest, res
 
 /**
  * Controller to mark an accepted order as 'shopping'.
- * PATCH /vendor/orders/:orderId/start-shopping
+ * @swagger
+ * /order/{orderId}/start-shopping:
+ *   patch:
+ *     summary: Mark an order as 'currently shopping'
+ *     tags: [Order, Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the order to start shopping for.
+ *     responses:
+ *       200:
+ *         description: The updated order.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Order'
+ *       400:
+ *         description: Bad request or shopping cannot be started for this order.
  */
 export const startShoppingController = async (req: OrderAuthenticatedRequest, res: Response) => {
   try {

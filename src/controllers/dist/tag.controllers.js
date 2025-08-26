@@ -296,6 +296,10 @@ exports.updateTag = function (req, res) { return __awaiter(void 0, void 0, void 
  *     responses:
  *       200:
  *         description: The deleted tag.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Tag'
  *       404:
  *         description: Tag not found.
  */

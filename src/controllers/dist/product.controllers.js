@@ -52,7 +52,7 @@ var productService = require("../services/product.service");
 var client_1 = require("@prisma/client");
 /**
  * @swagger
- * /products:
+ * /product:
  *   post:
  *     summary: Create a base product
  *     tags: [Product]
@@ -95,7 +95,7 @@ exports.createProduct = function (req, res) { return __awaiter(void 0, void 0, v
 }); };
 /**
  * @swagger
- * /products/vendor:
+ * /product/vendor:
  *   post:
  *     summary: Create a vendor-specific product
  *     tags: [Product]
@@ -138,7 +138,7 @@ exports.createVendorProduct = function (req, res) { return __awaiter(void 0, voi
 }); };
 /**
  * @swagger
- * /products/vendor/barcode:
+ * /product/vendor/barcode:
  *   post:
  *     summary: Create a vendor product via barcode scan
  *     tags: [Product]
@@ -189,7 +189,7 @@ exports.createVendorProductWithBarcode = function (req, res) { return __awaiter(
 }); };
 /**
  * @swagger
- * /products/barcode:
+ * /product/barcode:
  *   get:
  *     summary: Get a base product by its barcode
  *     tags: [Product]
@@ -241,7 +241,7 @@ exports.getProductByBarcode = function (req, res) { return __awaiter(void 0, voi
 }); };
 /**
  * @swagger
- * /products/vendor/barcode:
+ * /product/vendor/barcode:
  *   get:
  *     summary: Get a vendor-specific product by barcode
  *     tags: [Product]
@@ -300,7 +300,7 @@ exports.getVendorProductByBarcode = function (req, res) { return __awaiter(void 
 }); };
 /**
  * @swagger
- * /products/tags/ids:
+ * /product/tags/ids:
  *   get:
  *     summary: Get base products by tag IDs
  *     tags: [Product]
@@ -355,7 +355,7 @@ exports.getProductsByTagIds = function (req, res) { return __awaiter(void 0, voi
 }); };
 /**
  * @swagger
- * /products/vendor/tags/ids:
+ * /product/vendor/tags/ids:
  *   get:
  *     summary: Get vendor products by tag IDs
  *     tags: [Product]
@@ -410,7 +410,7 @@ exports.getVendorProductsByTagIds = function (req, res) { return __awaiter(void 
 }); };
 /**
  * @swagger
- * /products/{id}:
+ * /product/{id}:
  *   patch:
  *     summary: Update a base product
  *     tags: [Product]
@@ -456,7 +456,7 @@ exports.updateProductBase = function (req, res) { return __awaiter(void 0, void 
 }); };
 /**
  * @swagger
- * /products/vendor/{id}:
+ * /product/vendor/{id}:
  *   patch:
  *     summary: Update a vendor-specific product
  *     tags: [Product]
@@ -502,7 +502,7 @@ exports.updateVendorProduct = function (req, res) { return __awaiter(void 0, voi
 }); };
 /**
  * @swagger
- * /products:
+ * /product:
  *   get:
  *     summary: Get all base products
  *     tags: [Product]
@@ -538,7 +538,7 @@ exports.getAllProducts = function (req, res) { return __awaiter(void 0, void 0, 
 }); };
 /**
  * @swagger
- * /products/vendor:
+ * /product/vendor:
  *   get:
  *     summary: Get all vendor products with filtering and pagination
  *     tags: [Product]
@@ -581,7 +581,7 @@ exports.getAllProducts = function (req, res) { return __awaiter(void 0, void 0, 
  *         content:
  *           application/json:
  *             schema:
- *               # Add a schema for paginated response here
+ *               $ref: '#/components/schemas/PaginatedVendorProducts'
  */
 exports.getAllVendorProducts = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var _a, name, vendorId, categoryIds, tagIds, productId, page, take, vendorProducts, error_11;
@@ -611,7 +611,7 @@ exports.getAllVendorProducts = function (req, res) { return __awaiter(void 0, vo
 }); };
 /**
  * @swagger
- * /products/vendor/category:
+ * /product/vendor/category:
  *   get:
  *     summary: Get vendor products by category
  *     tags: [Product]
@@ -658,7 +658,7 @@ exports.getVendorProductsByCategory = function (req, res) { return __awaiter(voi
 }); };
 /**
  * @swagger
- * /products/{id}:
+ * /product/{id}:
  *   delete:
  *     summary: Delete a base product
  *     tags: [Product]
@@ -696,7 +696,7 @@ exports.deleteProduct = function (req, res) { return __awaiter(void 0, void 0, v
 }); };
 /**
  * @swagger
- * /products/vendor/{id}:
+ * /product/vendor/{id}:
  *   delete:
  *     summary: Delete a vendor-specific product
  *     tags: [Product]
