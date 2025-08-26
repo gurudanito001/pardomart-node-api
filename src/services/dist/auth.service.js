@@ -1,4 +1,17 @@
 "use strict";
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -36,37 +49,58 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.verifyCodeAndLogin = exports.storeVerificationCode = exports.checkUserExistence = void 0;
-// services/auth.service.ts
+exports.verifyCodeAndLogin = exports.storeVerificationCode = exports.checkUserExistence = exports.AuthError = void 0;
 var client_1 = require("@prisma/client");
-var auth_1 = require("../utils/auth"); //create this file.
+var auth_1 = require("../utils/auth");
 var userModel = require("../models/user.model");
 var prisma = new client_1.PrismaClient();
-var JWT_SECRET = process.env.SECRET;
+// Custom Error for auth flow to allow for specific error handling
+var AuthError = /** @class */ (function (_super) {
+    __extends(AuthError, _super);
+    function AuthError(message) {
+        var _this = _super.call(this, message) || this;
+        _this.name = 'AuthError';
+        return _this;
+    }
+    return AuthError;
+}(Error));
+exports.AuthError = AuthError;
 exports.checkUserExistence = function (filters) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
         return [2 /*return*/, userModel.checkUserExistence(filters)];
     });
 }); };
-exports.storeVerificationCode = function (mobileNumber, verificationCode) { return __awaiter(void 0, void 0, void 0, function () {
+/**
+ * Stores or updates a verification code for a given mobile number.
+ * @param mobileNumber The user's mobile number.
+ * @param verificationCode The code to store.
+ */
+exports.storeVerificationCode = function (mobileNumber, verificationCode) { return __awaiter(void 0, void 0, Promise, function () {
+    var expiresAt;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: 
-            // Store verification code and timestamp in a temporary database or cache
-            return [4 /*yield*/, prisma.verification.upsert({
-                    where: { mobileNumber: mobileNumber },
-                    update: { code: verificationCode, expiresAt: new Date(Date.now() + 5 * 60 * 1000) },
-                    create: { mobileNumber: mobileNumber, code: verificationCode, expiresAt: new Date(Date.now() + 5 * 60 * 1000) }
-                })];
+            case 0:
+                expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+                return [4 /*yield*/, prisma.verification.upsert({
+                        where: { mobileNumber: mobileNumber },
+                        update: { code: verificationCode, expiresAt: expiresAt, attempts: 0 },
+                        create: { mobileNumber: mobileNumber, code: verificationCode, expiresAt: expiresAt }
+                    })];
             case 1:
-                // Store verification code and timestamp in a temporary database or cache
                 _a.sent();
                 return [2 /*return*/];
         }
     });
 }); };
+/**
+ * Verifies a mobile number with a code and returns a JWT if successful.
+ * @param mobileNumber The user's mobile number.
+ * @param verificationCode The code provided by the user.
+ * @param role The user's role.
+ * @returns An object with the token and user, or throws an AuthError.
+ */
 exports.verifyCodeAndLogin = function (mobileNumber, verificationCode, role) { return __awaiter(void 0, void 0, void 0, function () {
-    var storedVerification, user, token;
+    var storedVerification;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4 /*yield*/, prisma.verification.findUnique({
@@ -74,30 +108,48 @@ exports.verifyCodeAndLogin = function (mobileNumber, verificationCode, role) { r
                 })];
             case 1:
                 storedVerification = _a.sent();
-                if (!storedVerification || storedVerification.code !== verificationCode || storedVerification.expiresAt < new Date()) {
-                    return [2 /*return*/, null];
+                if (!storedVerification) {
+                    throw new AuthError('No verification code found for this number. Please request a new one.');
                 }
-                return [4 /*yield*/, prisma.user.findFirst({
-                        where: { mobileNumber: mobileNumber, role: role }
-                    })];
+                if (!(storedVerification.expiresAt < new Date())) return [3 /*break*/, 3];
+                return [4 /*yield*/, prisma.verification["delete"]({ where: { mobileNumber: mobileNumber } })];
             case 2:
-                user = _a.sent();
-                if (!user) {
-                    return [2 /*return*/, null];
-                }
-                return [4 /*yield*/, prisma.user.update({
-                        where: { id: user.id },
-                        data: { mobileVerified: true }
-                    })];
-            case 3:
                 _a.sent();
-                token = auth_1.generateToken(user.id, user.role);
-                return [4 /*yield*/, prisma.verification["delete"]({
-                        where: { mobileNumber: mobileNumber }
+                throw new AuthError('Verification code has expired.');
+            case 3:
+                if ((storedVerification === null || storedVerification === void 0 ? void 0 : storedVerification.attempts) && storedVerification.attempts >= 5) {
+                    throw new AuthError('Too many incorrect attempts. Please request a new code.');
+                }
+                if (!(storedVerification.code !== verificationCode)) return [3 /*break*/, 5];
+                return [4 /*yield*/, prisma.verification.update({
+                        where: { mobileNumber: mobileNumber },
+                        data: { attempts: { increment: 1 } }
                     })];
             case 4:
                 _a.sent();
-                return [2 /*return*/, { token: token, user: user }];
+                throw new AuthError('Invalid verification code.');
+            case 5: 
+            // Use a transaction to ensure logging in and cleaning up the code are atomic
+            return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
+                    var user, updatedUser, token;
+                    return __generator(this, function (_a) {
+                        switch (_a.label) {
+                            case 0: return [4 /*yield*/, tx.user.findFirst({ where: { mobileNumber: mobileNumber, role: role } })];
+                            case 1:
+                                user = _a.sent();
+                                if (!user)
+                                    throw new AuthError('User not found.');
+                                return [4 /*yield*/, tx.user.update({ where: { id: user.id }, data: { mobileVerified: true } })];
+                            case 2:
+                                updatedUser = _a.sent();
+                                token = auth_1.generateToken(user.id, user.role);
+                                return [4 /*yield*/, tx.verification["delete"]({ where: { mobileNumber: mobileNumber } })];
+                            case 3:
+                                _a.sent();
+                                return [2 /*return*/, { token: token, user: updatedUser }];
+                        }
+                    });
+                }); })];
         }
     });
 }); };

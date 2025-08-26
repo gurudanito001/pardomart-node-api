@@ -1,17 +1,20 @@
 import { Router } from 'express';
 import * as authController from '../controllers/auth.controllers'; 
-import { validate, validateRegisterUser, validateLogin, validateVerifyAndLogin, validateResendVerification } from '../middlewares/validation.middleware';
-
+import {
+  validate,
+  validateRegisterUser,
+  validateLogin,
+  validateVerifyAndLogin,
+} from '../middlewares/validation.middleware';
+import { smsLimiter } from '../middlewares/rateLimiter.middleware';
 
 // New Router instance
 const router = Router();
 
 // Authentication Routes
-router.post('/register', validate(validateRegisterUser), authController.registerUser);
-router.get('/getTimeZones', authController.getTimeZones);
-router.post('/resendVerification',validate(validateResendVerification), authController.resendVerificationCode);
-router.post('/initiateLogin',validate(validateLogin), authController.initiateLogin);
-router.post('/verifyAndLogin',validate(validateVerifyAndLogin), authController.verifyCodeAndLogin);
-
+router.post('/register', smsLimiter, validate(validateRegisterUser), authController.registerUser);
+router.get('/time-zones', authController.getTimeZones);
+router.post('/initiate-login', smsLimiter, validate(validateLogin), authController.initiateLogin);
+router.post('/verify-login', validate(validateVerifyAndLogin), authController.verifyCodeAndLogin);
 
 export default router;

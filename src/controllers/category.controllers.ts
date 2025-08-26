@@ -138,7 +138,7 @@ export const getCategoryById = async (req: Request, res: Response) => {
  *         name: type
  *         schema:
  *           type: string
- *           enum: [PRODUCT, SERVICE]
+ *           enum: [top, sub]
  *         description: Filter categories by their type.
  *       - in: query
  *         name: name

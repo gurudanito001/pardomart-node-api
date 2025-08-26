@@ -29,7 +29,6 @@ export interface GetUserFilters {
 export const getAllUsers = async (filters: GetUserFilters, pagination: {page: string, take: string}) => {
   const skip = ( (parseInt(pagination.page) ) - 1) * parseInt(pagination.take) 
   const takeVal = parseInt(pagination.take)
-  await prisma.cartItem.deleteMany();
   const users = await prisma.user.findMany({
     where: {
       ...(filters.mobileVerified !== undefined && { mobileVerified: filters.mobileVerified }), // Assuming mobileVerified maps to verified filter

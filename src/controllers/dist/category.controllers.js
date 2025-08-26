@@ -212,7 +212,7 @@ exports.getCategoryById = function (req, res) { return __awaiter(void 0, void 0,
  *         name: type
  *         schema:
  *           type: string
- *           enum: [PRODUCT, SERVICE]
+ *           enum: [top, sub]
  *         description: Filter categories by their type.
  *       - in: query
  *         name: name

@@ -43,14 +43,14 @@ var __spreadArrays = (this && this.__spreadArrays) || function () {
     return r;
 };
 exports.__esModule = true;
-exports.verifyCodeAndLogin = exports.initiateLogin = exports.resendVerificationCode = exports.getTimeZones = exports.registerUser = void 0;
-var authService = require("../services/auth.service"); // Create this file
+exports.verifyCodeAndLogin = exports.initiateLogin = exports.getTimeZones = exports.registerUser = void 0;
+var authService = require("../services/auth.service");
 var userService = require("../services/user.service");
 var verification_1 = require("../utils/verification"); // Create this file.
 var timezones_1 = require("../utils/timezones");
 /**
  * @swagger
- * /auth/register:
+ * /api/v1/auth/register:
  *   post:
  *     summary: Register a new user
  *     tags: [Auth]
@@ -72,7 +72,8 @@ var timezones_1 = require("../utils/timezones");
  *               role:
  *                 type: string
  *                 description: The role for the new user.
- *                 enum: [CUSTOMER, VENDOR_ADMIN, SHOPPER_STAFF]
+ *                 enum: [admin, vendor, vendor_staff, delivery, customer, shopper]
+ *                example: "customer"
  *     responses:
  *       201:
  *         description: Verification code sent successfully.
@@ -108,7 +109,7 @@ exports.registerUser = function (req, res) { return __awaiter(void 0, void 0, vo
 }); };
 /**
  * @swagger
- * /auth/getTimeZones:
+ * /api/v1/auth/time-zones:
  *   get:
  *     summary: Get a list of all supported timezones
  *     tags: [General]
@@ -150,59 +151,9 @@ exports.getTimeZones = function (req, res) { return __awaiter(void 0, void 0, vo
 }); };
 /**
  * @swagger
- * /auth/resendVerification:
+ * /api/v1/auth/initiate-login:
  *   post:
- *     summary: Resend verification code
- *     tags: [Auth]
- *     description: Resends a verification code to a user's mobile number if the user exists.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/InitiateLogin'
- *     responses:
- *       200:
- *         description: Verification code resent successfully.
- *       404:
- *         description: User not found.
- */
-exports.resendVerificationCode = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, mobileNumber, role, userExists, verificationCode, error_2;
-    return __generator(this, function (_b) {
-        switch (_b.label) {
-            case 0:
-                _b.trys.push([0, 4, , 5]);
-                _a = req.body, mobileNumber = _a.mobileNumber, role = _a.role;
-                return [4 /*yield*/, authService.checkUserExistence({ mobileNumber: mobileNumber, role: role })];
-            case 1:
-                userExists = _b.sent();
-                if (!userExists) {
-                    return [2 /*return*/, res.status(404).json({ error: 'User not found' })];
-                }
-                verificationCode = verification_1.generateVerificationCode();
-                return [4 /*yield*/, authService.storeVerificationCode(mobileNumber, verificationCode)];
-            case 2:
-                _b.sent();
-                return [4 /*yield*/, verification_1.sendVerificationCode(mobileNumber, verificationCode)];
-            case 3:
-                _b.sent();
-                res.status(200).json({ message: 'Verification code resent' });
-                return [3 /*break*/, 5];
-            case 4:
-                error_2 = _b.sent();
-                console.error('Error resending verification code:', error_2);
-                res.status(500).json({ error: 'Internal server error' });
-                return [3 /*break*/, 5];
-            case 5: return [2 /*return*/];
-        }
-    });
-}); };
-/**
- * @swagger
- * /auth/initiateLogin:
- *   post:
- *     summary: Initiate user login
+ *     summary: Initiate user login or resend verification code
  *     tags: [Auth]
  *     description: Checks if a user exists with the given mobile number and role. If they exist, a verification code is sent to their mobile number.
  *     requestBody:
@@ -220,14 +171,18 @@ exports.resendVerificationCode = function (req, res) { return __awaiter(void 0, 
  *                 example: "+1234567890"
  *               role:
  *                 type: string
- *                 enum: [CUSTOMER, VENDOR_ADMIN, SHOPPER_STAFF]
- *                 example: "CUSTOMER"
+ *                  enum: [admin, vendor, vendor_staff, delivery, customer, shopper]
+ *                 example: "customer"
  *     responses:
  *       200:
- *         description: Returns whether the user exists and sends a verification code if they do.
+ *         description: Verification code sent successfully.
+ *       404:
+ *         description: User not found.
+ *       500:
+ *         description: Internal server error.
  */
 exports.initiateLogin = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, mobileNumber, role, userExists, verificationCode, error_3;
+    var _a, mobileNumber, role, userExists, verificationCode, error_2;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -237,7 +192,7 @@ exports.initiateLogin = function (req, res) { return __awaiter(void 0, void 0, v
             case 1:
                 userExists = _b.sent();
                 if (!userExists) {
-                    return [2 /*return*/, res.status(200).json({ exists: false })];
+                    return [2 /*return*/, res.status(404).json({ exists: false, message: 'User not found.' })];
                 }
                 verificationCode = verification_1.generateVerificationCode();
                 return [4 /*yield*/, authService.storeVerificationCode(mobileNumber, verificationCode)];
@@ -249,8 +204,8 @@ exports.initiateLogin = function (req, res) { return __awaiter(void 0, void 0, v
                 res.status(200).json({ exists: true });
                 return [3 /*break*/, 5];
             case 4:
-                error_3 = _b.sent();
-                console.error('Error initiating login:', error_3);
+                error_2 = _b.sent();
+                console.error('Error initiating login:', error_2);
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 5];
             case 5: return [2 /*return*/];
@@ -259,7 +214,7 @@ exports.initiateLogin = function (req, res) { return __awaiter(void 0, void 0, v
 }); };
 /**
  * @swagger
- * /auth/verifyAndLogin:
+ * /api/v1/auth/verify-login:
  *   post:
  *     summary: Verify code and log in
  *     tags: [Auth]
@@ -283,16 +238,18 @@ exports.initiateLogin = function (req, res) { return __awaiter(void 0, void 0, v
  *                 example: "123456"
  *               role:
  *                 type: string
- *                 enum: [CUSTOMER, VENDOR_ADMIN, SHOPPER_STAFF]
- *                 example: "CUSTOMER"
+ *                 enum: [admin, vendor, vendor_staff, delivery, customer, shopper]
+ *                 example: "customer"
  *     responses:
  *       200:
  *         description: Login successful, returns user object with token.
  *       401:
  *         description: Invalid verification code or code has expired.
+ *       500:
+ *         description: Internal server error.
  */
 exports.verifyCodeAndLogin = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, mobileNumber, verificationCode, role, user, error_4;
+    var _a, mobileNumber, verificationCode, role, result, error_3;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -300,16 +257,15 @@ exports.verifyCodeAndLogin = function (req, res) { return __awaiter(void 0, void
                 _a = req.body, mobileNumber = _a.mobileNumber, verificationCode = _a.verificationCode, role = _a.role;
                 return [4 /*yield*/, authService.verifyCodeAndLogin(mobileNumber, verificationCode, role)];
             case 1:
-                user = _b.sent();
-                if (!user) {
-                    return [2 /*return*/, res.status(401).json({ error: 'Invalid verification' })];
-                }
-                // TODO: Handle error when the code has expired
-                res.status(200).json(user); // user object containing token.
+                result = _b.sent();
+                res.status(200).json(result);
                 return [3 /*break*/, 3];
             case 2:
-                error_4 = _b.sent();
-                console.error('Error verifying code and logging in:', error_4);
+                error_3 = _b.sent();
+                if (error_3 instanceof authService.AuthError) {
+                    return [2 /*return*/, res.status(401).json({ error: error_3.message })];
+                }
+                console.error('Error verifying code and logging in:', error_3);
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];

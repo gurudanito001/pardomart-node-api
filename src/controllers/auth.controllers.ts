@@ -1,6 +1,6 @@
 // controllers/auth.controller.ts
 import { Request, Response } from 'express';
-import * as authService from '../services/auth.service'; // Create this file
+import * as authService from '../services/auth.service';
 import * as userService from '../services/user.service'
 import { generateVerificationCode, sendVerificationCode } from '../utils/verification'; // Create this file.
 import Timezones from '../utils/timezones';
@@ -8,7 +8,7 @@ import Timezones from '../utils/timezones';
 
 /**
  * @swagger
- * /auth/register:
+ * /api/v1/auth/register:
  *   post:
  *     summary: Register a new user
  *     tags: [Auth]
@@ -30,7 +30,8 @@ import Timezones from '../utils/timezones';
  *               role:
  *                 type: string
  *                 description: The role for the new user.
- *                 enum: [CUSTOMER, VENDOR_ADMIN, SHOPPER_STAFF]
+ *                 enum: [admin, vendor, vendor_staff, delivery, customer, shopper]
+ *                example: "customer"      
  *     responses:
  *       201:
  *         description: Verification code sent successfully.
@@ -54,7 +55,7 @@ export const registerUser = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /auth/getTimeZones:
+ * /api/v1/auth/time-zones:
  *   get:
  *     summary: Get a list of all supported timezones
  *     tags: [General]
@@ -92,49 +93,9 @@ export const getTimeZones = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /auth/resendVerification:
+ * /api/v1/auth/initiate-login:
  *   post:
- *     summary: Resend verification code
- *     tags: [Auth]
- *     description: Resends a verification code to a user's mobile number if the user exists.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/InitiateLogin'
- *     responses:
- *       200:
- *         description: Verification code resent successfully.
- *       404:
- *         description: User not found.
- */
-export const resendVerificationCode = async (req: Request, res: Response) => {
-  try {
-    const { mobileNumber, role } = req.body;
-
-    // Check if the user exists
-    const userExists = await authService.checkUserExistence({ mobileNumber, role });
-    if (!userExists) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const verificationCode = generateVerificationCode();
-    await authService.storeVerificationCode(mobileNumber, verificationCode);
-    await sendVerificationCode(mobileNumber, verificationCode);
-
-    res.status(200).json({ message: 'Verification code resent' });
-  } catch (error) {
-    console.error('Error resending verification code:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-};
-
-/**
- * @swagger
- * /auth/initiateLogin:
- *   post:
- *     summary: Initiate user login
+ *     summary: Initiate user login or resend verification code
  *     tags: [Auth]
  *     description: Checks if a user exists with the given mobile number and role. If they exist, a verification code is sent to their mobile number.
  *     requestBody:
@@ -152,11 +113,15 @@ export const resendVerificationCode = async (req: Request, res: Response) => {
  *                 example: "+1234567890"
  *               role:
  *                 type: string
- *                 enum: [CUSTOMER, VENDOR_ADMIN, SHOPPER_STAFF]
- *                 example: "CUSTOMER"
+ *                  enum: [admin, vendor, vendor_staff, delivery, customer, shopper]
+ *                 example: "customer"
  *     responses:
  *       200:
- *         description: Returns whether the user exists and sends a verification code if they do.
+ *         description: Verification code sent successfully.
+ *       404:
+ *         description: User not found.
+ *       500:
+ *         description: Internal server error.
  */
 export const initiateLogin = async (req: Request, res: Response) => {
   try {
@@ -164,7 +129,7 @@ export const initiateLogin = async (req: Request, res: Response) => {
     const userExists = await authService.checkUserExistence({ mobileNumber, role });
 
     if (!userExists) {
-      return res.status(200).json({ exists: false });
+      return res.status(404).json({ exists: false, message: 'User not found.' });
     }
 
     const verificationCode = generateVerificationCode();
@@ -180,7 +145,7 @@ export const initiateLogin = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /auth/verifyAndLogin:
+ * /api/v1/auth/verify-login:
  *   post:
  *     summary: Verify code and log in
  *     tags: [Auth]
@@ -204,25 +169,25 @@ export const initiateLogin = async (req: Request, res: Response) => {
  *                 example: "123456"
  *               role:
  *                 type: string
- *                 enum: [CUSTOMER, VENDOR_ADMIN, SHOPPER_STAFF]
- *                 example: "CUSTOMER"
+ *                 enum: [admin, vendor, vendor_staff, delivery, customer, shopper]
+ *                 example: "customer"
  *     responses:
  *       200:
  *         description: Login successful, returns user object with token.
  *       401:
  *         description: Invalid verification code or code has expired.
+ *       500:
+ *         description: Internal server error.
  */
 export const verifyCodeAndLogin = async (req: Request, res: Response) => {
   try {
     const { mobileNumber, verificationCode, role } = req.body;
-    const user = await authService.verifyCodeAndLogin(mobileNumber, verificationCode, role);
-
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid verification' });
+    const result = await authService.verifyCodeAndLogin(mobileNumber, verificationCode, role);
+    res.status(200).json(result);
+  } catch (error: any) {
+    if (error instanceof authService.AuthError) {
+      return res.status(401).json({ error: error.message });
     }
-    // TODO: Handle error when the code has expired
-    res.status(200).json(user); // user object containing token.
-  } catch (error) {
     console.error('Error verifying code and logging in:', error);
     res.status(500).json({ error: 'Internal server error' });
   }

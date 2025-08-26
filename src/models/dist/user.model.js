@@ -67,9 +67,6 @@ exports.getAllUsers = function (filters, pagination) { return __awaiter(void 0, 
             case 0:
                 skip = ((parseInt(pagination.page)) - 1) * parseInt(pagination.take);
                 takeVal = parseInt(pagination.take);
-                return [4 /*yield*/, prisma.cartItem.deleteMany()];
-            case 1:
-                _a.sent();
                 return [4 /*yield*/, prisma.user.findMany({
                         where: __assign(__assign(__assign(__assign({}, (filters.mobileVerified !== undefined && { mobileVerified: filters.mobileVerified })), (filters.active !== undefined && { active: filters.active })), (filters.role && { role: filters.role })), (filters.language && { language: filters.language })),
                         skip: skip,
@@ -78,12 +75,12 @@ exports.getAllUsers = function (filters, pagination) { return __awaiter(void 0, 
                             createdAt: "desc"
                         }
                     })];
-            case 2:
+            case 1:
                 users = _a.sent();
                 return [4 /*yield*/, prisma.user.count({
                         where: __assign(__assign(__assign(__assign({}, (filters.mobileVerified !== undefined && { mobileVerified: filters.mobileVerified })), (filters.active !== undefined && { active: filters.active })), (filters.role && { role: filters.role })), (filters.language && { language: filters.language }))
                     })];
-            case 3:
+            case 2:
                 totalCount = _a.sent();
                 totalPages = Math.ceil(totalCount / parseInt(pagination.take));
                 return [2 /*return*/, { page: parseInt(pagination.page), totalPages: totalPages, pageSize: takeVal, totalCount: totalCount, data: users }];
