@@ -50,7 +50,7 @@ var verification_1 = require("../utils/verification"); // Create this file.
 var timezones_1 = require("../utils/timezones");
 /**
  * @swagger
- * /api/v1/auth/register:
+ * /auth/register:
  *   post:
  *     summary: Register a new user
  *     tags: [Auth]
@@ -124,7 +124,7 @@ exports.registerUser = function (req, res) { return __awaiter(void 0, void 0, vo
 }); };
 /**
  * @swagger
- * /api/v1/auth/time-zones:
+ * /auth/time-zones:
  *   get:
  *     summary: Get a list of all supported timezones
  *     tags: [General]
@@ -166,7 +166,7 @@ exports.getTimeZones = function (req, res) { return __awaiter(void 0, void 0, vo
 }); };
 /**
  * @swagger
- * /api/v1/auth/initiate-login:
+ * /auth/initiate-login:
  *   post:
  *     summary: Initiate user login or resend verification code
  *     tags: [Auth]
@@ -229,7 +229,7 @@ exports.initiateLogin = function (req, res) { return __awaiter(void 0, void 0, v
 }); };
 /**
  * @swagger
- * /api/v1/auth/verify-login:
+ * /auth/verify-login:
  *   post:
  *     summary: Verify code and log in
  *     tags: [Auth]

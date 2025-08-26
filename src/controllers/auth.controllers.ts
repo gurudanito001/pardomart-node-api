@@ -8,7 +8,7 @@ import Timezones from '../utils/timezones';
 
 /**
  * @swagger
- * /api/v1/auth/register:
+ * /auth/register:
  *   post:
  *     summary: Register a new user
  *     tags: [Auth]
@@ -70,7 +70,7 @@ export const registerUser = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /api/v1/auth/time-zones:
+ * /auth/time-zones:
  *   get:
  *     summary: Get a list of all supported timezones
  *     tags: [General]
@@ -108,7 +108,7 @@ export const getTimeZones = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /api/v1/auth/initiate-login:
+ * /auth/initiate-login:
  *   post:
  *     summary: Initiate user login or resend verification code
  *     tags: [Auth]
@@ -160,7 +160,7 @@ export const initiateLogin = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /api/v1/auth/verify-login:
+ * /auth/verify-login:
  *   post:
  *     summary: Verify code and log in
  *     tags: [Auth]
