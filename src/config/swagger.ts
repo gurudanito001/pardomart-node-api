@@ -18,6 +18,10 @@ const options: swaggerJsdoc.Options = {
     servers: [
       {
         url: 'http://localhost:3000/api/v1', // Adjust if your base URL is different
+        description: 'Local server',
+      },
+      {
+        url: 'https://pardomart-node-api-vaje.onrender.com/api/v1', // Adjust if your base URL is different
         description: 'Development server',
       },
     ],
