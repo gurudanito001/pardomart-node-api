@@ -2,11 +2,21 @@
 
 import { Request, Response, Router } from 'express';
 import * as orderModel from '../models/order.model'; // Adjust the path if needed
-import { PrismaClient, Order, CartItem, Role, ShoppingMethod, OrderStatus } from '@prisma/client';
-import * as cartModel from '../models/cart.model';
+import { PrismaClient, Order, OrderItem, Role, ShoppingMethod, OrderStatus, DeliveryMethod, VendorProduct, Product, DeliveryAddress, Prisma, PaymentMethods  } from '@prisma/client';
 import dayjs from 'dayjs';
+import { CreateDeliveryAddressPayload } from '../models/deliveryAddress.model';
+import { createDeliveryAddressService } from './deliveryAddress.service';
+import { calculateOrderFeesService } from './fee.service';
+import * as orderItemModel from '../models/orderItem.model';
+import { getVendorById } from './vendor.service';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const prisma = new PrismaClient();
+
 
 // --- Order Service Functions ---
 
@@ -32,6 +42,19 @@ export const getOrderByIdService = async (id: string): Promise<Order | null> => 
   return orderModel.getOrderById(id);
 };
 
+
+export class OrderCreationError extends Error {
+  public statusCode: number;
+  constructor(message: string, statusCode: number = 400) {
+    super(message);
+    this.name = 'OrderCreationError';
+    this.statusCode = statusCode;
+  }
+}
+
+
+
+
 /**
  * Retrieves all orders for a specific user.
  * @param userId - The ID of the user whose orders are to be retrieved.
@@ -40,6 +63,132 @@ export const getOrderByIdService = async (id: string): Promise<Order | null> => 
 export const getOrdersByUserIdService = async (userId: string): Promise<Order[]> => {
   return orderModel.getOrdersByUserId(userId);
 };
+
+
+
+
+
+
+const getDayEnumFromDayjs = (dayjsDayIndex: number): string => {
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    return days[dayjsDayIndex];
+};
+
+interface CreateOrderFromClientPayload {
+  vendorId: string;
+  paymentMethod: PaymentMethods; // Consider using an enum if you have fixed payment methods
+  shippingAddressId?: string;
+  newShippingAddress?: CreateDeliveryAddressPayload;
+  deliveryInstructions?: string;
+  orderItems: { vendorProductId: string; quantity: number }[];
+  shoppingMethod: ShoppingMethod;
+  deliveryMethod: DeliveryMethod;
+  scheduledShoppingStartTime?: Date;
+}
+
+export const createOrderFromClient = async (userId: string, payload: CreateOrderFromClientPayload) => {
+  // Destructure payload
+  const {
+    vendorId,
+    paymentMethod,
+    shippingAddressId,
+    newShippingAddress,
+    deliveryInstructions,
+    orderItems,
+    shoppingMethod,
+    deliveryMethod,
+    scheduledShoppingStartTime,
+  } = payload;
+
+  // --- 1. Validate payload basics ---
+  if (!orderItems || !Array.isArray(orderItems) || orderItems.length === 0) {
+    throw new OrderCreationError('Order must contain at least one item.');
+  }
+
+  // --- 2. Validate scheduled time against vendor hours ---
+  if (scheduledShoppingStartTime) {
+    const parsedScheduledTime = dayjs.utc(scheduledShoppingStartTime);
+    if (!parsedScheduledTime.isValid()) {
+      throw new OrderCreationError('Invalid scheduled shopping start time format.');
+    }
+    const vendor = await getVendorById(vendorId);
+    if (!vendor) throw new OrderCreationError('Vendor not found.', 404);
+    if (!vendor.timezone) console.warn(`Vendor ${vendorId} does not have a timezone set. Skipping time validation.`);
+
+    const vendorLocalDayjs = parsedScheduledTime.tz(vendor.timezone || 'UTC');
+    const dayOfWeek = getDayEnumFromDayjs(vendorLocalDayjs.day());
+    const openingHoursToday = vendor.openingHours.find((h) => h.day === dayOfWeek);
+
+    if (!openingHoursToday || !openingHoursToday.open || !openingHoursToday.close) {
+      throw new OrderCreationError(`Vendor is closed or has no defined hours for ${dayOfWeek}.`);
+    }
+    const [openHours, openMinutes] = openingHoursToday.open.split(':').map(Number);
+    const [closeHours, closeMinutes] = openingHoursToday.close.split(':').map(Number);
+
+    let vendorOpenTimeUTC = vendorLocalDayjs.hour(openHours).minute(openMinutes).second(0).millisecond(0).utc();
+    let vendorCloseTimeUTC = vendorLocalDayjs.hour(closeHours).minute(closeMinutes).second(0).millisecond(0).utc();
+
+    if (vendorCloseTimeUTC.isBefore(vendorOpenTimeUTC)) {
+      vendorCloseTimeUTC = vendorCloseTimeUTC.add(1, 'day');
+    }
+
+    const twoHoursBeforeCloseUTC = vendorCloseTimeUTC.subtract(2, 'hour');
+
+    if (parsedScheduledTime.isBefore(vendorOpenTimeUTC) || parsedScheduledTime.isAfter(twoHoursBeforeCloseUTC)) {
+      throw new OrderCreationError(`Scheduled shopping time must be between ${openingHoursToday.open} and ${twoHoursBeforeCloseUTC.tz(vendor.timezone || 'UTC').format('HH:mm')} vendor local time.`);
+    }
+
+    if (parsedScheduledTime.isBefore(dayjs.utc())) {
+      throw new OrderCreationError('Scheduled shopping time cannot be in the past.');
+    }
+  }
+
+  // --- Transactional Block ---
+  return prisma.$transaction(async (tx) => {
+    // --- 3. Handle Delivery Address ---
+    let finalShippingAddressId = shippingAddressId;
+    if (!shippingAddressId && newShippingAddress) {
+      const createdAddress = await createDeliveryAddressService({ ...newShippingAddress, userId }, tx);
+      finalShippingAddressId = createdAddress.id;
+    } else if (!shippingAddressId && deliveryMethod === DeliveryMethod.delivery_person) {
+      throw new OrderCreationError('Delivery address is required for delivery orders.');
+    }
+
+    // --- 4. Calculate Fees & Validate Items ---
+    const fees = await calculateOrderFeesService({
+      orderItems,
+      vendorId,
+      deliveryAddressId: finalShippingAddressId!,
+    }, tx);
+
+    const { totalEstimatedCost, deliveryFee, serviceFee, shoppingFee } = fees;
+
+    // --- 5. Create the Order record ---
+    const newOrder = await orderModel.createOrder({
+      userId, vendorId, totalAmount: totalEstimatedCost, deliveryFee, serviceFee, shoppingFee, paymentMethod, shoppingMethod, deliveryMethod, scheduledShoppingStartTime, deliveryAddressId: finalShippingAddressId, deliveryInstructions,
+    }, tx);
+
+    // --- 6. Create the OrderItem records ---
+    const orderItemsToCreate = orderItems.map((item: any) => ({
+      vendorProductId: item.vendorProductId,
+      quantity: item.quantity,
+      orderId: newOrder.id,
+    }));
+
+    await orderItemModel.createManyOrderItems(orderItemsToCreate, tx);
+
+    // --- 7. Return the complete order with all relations ---
+    const finalOrder = await orderModel.getOrderById(newOrder.id, tx);
+    if (!finalOrder) {
+        throw new OrderCreationError("Failed to retrieve the created order.", 500);
+    }
+    return finalOrder;
+  });
+};
+
+
+
+
 
 
 /**
@@ -91,10 +240,16 @@ export const updateOrderStatusService = async (
 
 // Define a type that includes relations needed for the vendor dashboard
 // This ensures type safety when Prisma returns data with included relations
+type OrderItemWithProductDetails = OrderItem & {
+  vendorProduct: VendorProduct & {
+    product: Product;
+  };
+};
+
 type OrderWithRequiredRelations = Order & {
   user: { id: string; name: string | null; mobileNumber: string | null };
-  orderItems: Array<any>; // Replace 'any' with actual CartItem & VendorProduct types if complex
-  deliveryAddress: any | null;
+  orderItems: OrderItemWithProductDetails[];
+  deliveryAddress: DeliveryAddress | null;
   shopper: { id: string; name: string | null; } | null;
   deliverer: { id: string; name: string | null; } | null;
   // Add other relations needed for the dashboard (e.g., deliverer)
@@ -140,7 +295,7 @@ export const getOrdersForVendorDashboard = async (
         // Filter by scheduledShoppingStartTime:
         // If includeFutureScheduled is false/undefined, only show orders where shopping is due now or in the past
         scheduledShoppingStartTime:  {
-          lte: dayjs().add(30, 'minutes').utc().toDate(), // Show orders scheduled up to 30 mins in future/past
+          lte: dayjs().add(30, 'minutes').utc().toDate(), // Show overdue orders and scheduled orders up to 30 mins in future
         },
       },
       include: {
@@ -160,7 +315,7 @@ export const getOrdersForVendorDashboard = async (
         scheduledShoppingStartTime: 'asc', // Sort upcoming orders
         createdAt: 'asc', // Fallback sort
       },
-    }) /* as Promise<OrderWithRequiredRelations[]> */; // Cast for type safety due to complex include
+    });
 
     return orders;
   } catch (error) {

@@ -90,6 +90,7 @@ model VendorProduct {
   categories  Category[]
   tags        Tag[]
   cartItems     CartItem[] //Opposite relation to CartItem
+  orderItems    OrderItem[] //Opposite relation to OrderItem
   @@unique([vendorId, productId])
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -113,8 +114,17 @@ model CartItem {
   quantity        Int
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
-  orderId         String?
-  order           Order?    @relation(fields: [orderId], references: [id])
+}
+
+model OrderItem {
+  id              String        @id @default(uuid())
+  orderId         String
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  vendorProductId String
+  vendorProduct   VendorProduct @relation(fields: [vendorProductId], references: [id])
+  quantity        Int
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 //extend the order model
@@ -146,7 +156,7 @@ model Order {
   // When the shopping for the order is scheduled to start.
   // Orders with a future scheduledShoppingStartTime might not be visible to handlers yet.
   scheduledShoppingStartTime DateTime? @default(now())
-  orderItems          CartItem[] // Use CartItem to store order details
+  orderItems                 OrderItem[]
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 }

@@ -1,4 +1,4 @@
-import { PrismaClient, DeliveryAddress } from '@prisma/client';
+import { PrismaClient, DeliveryAddress, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -41,30 +41,11 @@ export interface UpdateDeliveryAddressPayload {
  * @returns The newly created DeliveryAddress object.
  */
 export const createDeliveryAddress = async (
-  payload: CreateDeliveryAddressPayload
+  payload: CreateDeliveryAddressPayload,
+  tx?: Prisma.TransactionClient
 ): Promise<DeliveryAddress> => {
-  return prisma.$transaction(async (tx) => {
-    if (payload.isDefault) {
-      // Deactivate any existing default address for this user
-      await tx.deliveryAddress.updateMany({
-        where: {
-          userId: payload.userId,
-          isDefault: true,
-        },
-        data: {
-          isDefault: false,
-        },
-      });
-    }
-
-    const newAddress = await tx.deliveryAddress.create({
-      data: {
-        ...payload,
-        isDefault: payload.isDefault ?? false, // Ensure isDefault is set
-      },
-    });
-    return newAddress;
-  });
+  const prismaClient = tx || prisma;
+  return prismaClient.deliveryAddress.create({ data: payload });
 };
 
 /**

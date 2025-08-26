@@ -7,6 +7,7 @@ import productRouter from './product.routes';
 import categoryRouter from './category.routes'
 import tagRouter from './tag.routes';
 import generalSearchRouter from './generalSearch.routes'
+import cartRouter from './cart.routes';
 import cartItemRouter from './cartItem.routes';
 import orderRouter from './order.routes';
 import feeRouter from './fee.routes';
@@ -24,6 +25,7 @@ router.use('/api/v1/product', productRouter);
 router.use('/api/v1/category', categoryRouter);
 router.use('/api/v1/tags', tagRouter);
 router.use('/api/v1/generalSearch', generalSearchRouter);
+router.use('/api/v1/cart', cartRouter);
 router.use('/api/v1/cartItem', cartItemRouter);
 router.use('/api/v1/order', orderRouter);
 router.use('/api/v1/fees', feeRouter);

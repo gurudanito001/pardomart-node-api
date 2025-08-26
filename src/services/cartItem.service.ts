@@ -8,7 +8,7 @@ export const createCartItemService = async (payload: cartItemModel.CreateCartIte
   return cartItemModel.createCartItem(payload);
 };
 
-export const getCartItemByIdService = async (id: string): Promise<CartItem | null> => {
+export const getCartItemByIdService = async (id: string): Promise<cartItemModel.CartItemWithCart | null> => {
   return cartItemModel.getCartItemById(id);
 };
 

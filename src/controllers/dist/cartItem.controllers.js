@@ -38,6 +38,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 exports.__esModule = true;
 exports.deleteCartItemController = exports.updateCartItemController = exports.getCartItemByIdController = void 0;
 var cartItem_service_1 = require("../services/cartItem.service");
+var client_1 = require("@prisma/client");
 /**
  * @swagger
  * /cartItem/{id}:
@@ -66,21 +67,28 @@ var cartItem_service_1 = require("../services/cartItem.service");
  *         description: Internal server error.
  */
 exports.getCartItemByIdController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var cartItem, error_1;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
+    var userId, cartItem, itemOwnerId, error_1;
+    var _a;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
             case 0:
-                _a.trys.push([0, 2, , 3]);
+                _b.trys.push([0, 2, , 3]);
+                userId = req.userId;
                 return [4 /*yield*/, cartItem_service_1.getCartItemByIdService(req.params.id)];
             case 1:
-                cartItem = _a.sent();
+                cartItem = _b.sent();
                 if (!cartItem) {
                     return [2 /*return*/, res.status(404).json({ error: 'Cart item not found' })];
+                }
+                itemOwnerId = (_a = cartItem.cart) === null || _a === void 0 ? void 0 : _a.userId;
+                if (itemOwnerId !== userId) {
+                    return [2 /*return*/, res.status(403).json({ error: 'Forbidden: You do not have permission to access this item.' })];
                 }
                 res.json(cartItem);
                 return [3 /*break*/, 3];
             case 2:
-                error_1 = _a.sent();
+                error_1 = _b.sent();
+                console.error('Error in getCartItemByIdController:', error_1);
                 res.status(500).json({ error: error_1.message || 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -119,21 +127,37 @@ exports.getCartItemByIdController = function (req, res) { return __awaiter(void 
  *         description: Internal server error.
  */
 exports.updateCartItemController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var cartItem, error_2;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
+    var userId, cartItemId, itemToUpdate, itemOwnerId, updatedCartItem, error_2;
+    var _a;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
             case 0:
-                _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, cartItem_service_1.updateCartItemService(req.params.id, req.body)];
+                _b.trys.push([0, 3, , 4]);
+                userId = req.userId;
+                cartItemId = req.params.id;
+                return [4 /*yield*/, cartItem_service_1.getCartItemByIdService(cartItemId)];
             case 1:
-                cartItem = _a.sent();
-                res.json(cartItem);
-                return [3 /*break*/, 3];
+                itemToUpdate = _b.sent();
+                if (!itemToUpdate) {
+                    return [2 /*return*/, res.status(404).json({ error: 'Cart item not found' })];
+                }
+                itemOwnerId = (_a = itemToUpdate.cart) === null || _a === void 0 ? void 0 : _a.userId;
+                if (itemOwnerId !== userId) {
+                    return [2 /*return*/, res.status(403).json({ error: 'Forbidden: You do not have permission to update this item.' })];
+                }
+                return [4 /*yield*/, cartItem_service_1.updateCartItemService(cartItemId, req.body)];
             case 2:
-                error_2 = _a.sent();
+                updatedCartItem = _b.sent();
+                res.json(updatedCartItem);
+                return [3 /*break*/, 4];
+            case 3:
+                error_2 = _b.sent();
+                if (error_2 instanceof client_1.Prisma.PrismaClientKnownRequestError && error_2.code === 'P2025') {
+                    return [2 /*return*/, res.status(404).json({ error: 'Cart item not found' })];
+                }
                 res.status(500).json({ error: error_2.message || 'Internal server error' });
-                return [3 /*break*/, 3];
-            case 3: return [2 /*return*/];
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
         }
     });
 }); };
@@ -163,21 +187,37 @@ exports.updateCartItemController = function (req, res) { return __awaiter(void 0
  *         description: Internal server error.
  */
 exports.deleteCartItemController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var cartItem, error_3;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
+    var userId, cartItemId, itemToDelete, itemOwnerId, deletedCartItem, error_3;
+    var _a;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
             case 0:
-                _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, cartItem_service_1.deleteCartItemService(req.params.id)];
+                _b.trys.push([0, 3, , 4]);
+                userId = req.userId;
+                cartItemId = req.params.id;
+                return [4 /*yield*/, cartItem_service_1.getCartItemByIdService(cartItemId)];
             case 1:
-                cartItem = _a.sent();
-                res.json(cartItem);
-                return [3 /*break*/, 3];
+                itemToDelete = _b.sent();
+                if (!itemToDelete) {
+                    return [2 /*return*/, res.status(404).json({ error: 'Cart item not found' })];
+                }
+                itemOwnerId = (_a = itemToDelete.cart) === null || _a === void 0 ? void 0 : _a.userId;
+                if (itemOwnerId !== userId) {
+                    return [2 /*return*/, res.status(403).json({ error: 'Forbidden: You do not have permission to delete this item.' })];
+                }
+                return [4 /*yield*/, cartItem_service_1.deleteCartItemService(cartItemId)];
             case 2:
-                error_3 = _a.sent();
+                deletedCartItem = _b.sent();
+                res.json(deletedCartItem);
+                return [3 /*break*/, 4];
+            case 3:
+                error_3 = _b.sent();
+                if (error_3 instanceof client_1.Prisma.PrismaClientKnownRequestError && error_3.code === 'P2025') {
+                    return [2 /*return*/, res.status(404).json({ error: 'Cart item not found' })];
+                }
                 res.status(500).json({ error: error_3.message || 'Internal server error' });
-                return [3 /*break*/, 3];
-            case 3: return [2 /*return*/];
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
         }
     });
 }); };

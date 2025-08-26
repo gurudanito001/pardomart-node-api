@@ -270,12 +270,15 @@ var toRadians = function (degrees) {
  * @returns A promise that resolves to an object containing calculated fees.
  * @throws Error if data is invalid, not found, or calculations fail.
  */
-exports.calculateOrderFeesService = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
-    var orderItems, vendorId, deliveryAddressId, vendor, deliveryAddress, uniqueVendorProductIds, vendorProducts, productPriceMap_1, activeFees, feeConfigMap_1, subtotal, totalItemCount, _i, orderItems_1, item, productPrice, shoppingFee, deliveryFee, serviceFee, shoppingFeeConfig, deliveryFeeConfig, distanceMeters, distanceInConfigUnit, serviceFeeConfig, totalEstimatedCost, error_4;
+exports.calculateOrderFeesService = function (payload, tx) { return __awaiter(void 0, void 0, Promise, function () {
+    var prismaClient, orderItems, vendorId, deliveryAddressId, vendor, deliveryAddress, uniqueVendorProductIds, vendorProducts, productDetailsMap_1, activeFees, feeConfigMap_1, subtotal, totalItemCount, _i, orderItems_1, item, productDetails, shoppingFee, deliveryFee, serviceFee, shoppingFeeConfig, deliveryFeeConfig, distanceMeters, distanceInConfigUnit, serviceFeeConfig, totalEstimatedCost, error_4;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                _a.trys.push([0, 5, , 6]);
+                prismaClient = tx || prisma;
+                _a.label = 1;
+            case 1:
+                _a.trys.push([1, 6, , 7]);
                 orderItems = payload.orderItems, vendorId = payload.vendorId, deliveryAddressId = payload.deliveryAddressId;
                 // --- 1. Input Validation ---
                 if (!orderItems || orderItems.length === 0) {
@@ -287,26 +290,26 @@ exports.calculateOrderFeesService = function (payload) { return __awaiter(void 0
                 if (!deliveryAddressId) {
                     throw new Error('Delivery address ID is required.');
                 }
-                return [4 /*yield*/, prisma.vendor.findUnique({
+                return [4 /*yield*/, prismaClient.vendor.findUnique({
                         where: { id: vendorId },
                         select: { latitude: true, longitude: true }
                     })];
-            case 1:
+            case 2:
                 vendor = _a.sent();
                 if (!vendor || vendor.latitude === null || vendor.longitude === null) {
                     throw new Error('Vendor location not found or invalid.');
                 }
-                return [4 /*yield*/, prisma.deliveryAddress.findUnique({
+                return [4 /*yield*/, prismaClient.deliveryAddress.findUnique({
                         where: { id: deliveryAddressId },
                         select: { latitude: true, longitude: true }
                     })];
-            case 2:
+            case 3:
                 deliveryAddress = _a.sent();
                 if (!deliveryAddress || deliveryAddress.latitude === null || deliveryAddress.longitude === null) {
                     throw new Error('Delivery address location not found or invalid.');
                 }
                 uniqueVendorProductIds = orderItems.map(function (item) { return item.vendorProductId; });
-                return [4 /*yield*/, prisma.vendorProduct.findMany({
+                return [4 /*yield*/, prismaClient.vendorProduct.findMany({
                         where: {
                             id: {
                                 "in": uniqueVendorProductIds
@@ -314,14 +317,16 @@ exports.calculateOrderFeesService = function (payload) { return __awaiter(void 0
                         },
                         select: {
                             id: true,
-                            price: true
+                            price: true,
+                            isAvailable: true,
+                            stock: true
                         }
                     })];
-            case 3:
+            case 4:
                 vendorProducts = _a.sent();
-                productPriceMap_1 = new Map();
-                vendorProducts.forEach(function (vp) { return productPriceMap_1.set(vp.id, vp.price); });
-                return [4 /*yield*/, prisma.fee.findMany({
+                productDetailsMap_1 = new Map();
+                vendorProducts.forEach(function (vp) { return productDetailsMap_1.set(vp.id, { price: vp.price, isAvailable: vp.isAvailable, stock: vp.stock }); });
+                return [4 /*yield*/, prismaClient.fee.findMany({
                         where: {
                             isActive: true,
                             type: {
@@ -329,7 +334,7 @@ exports.calculateOrderFeesService = function (payload) { return __awaiter(void 0
                             }
                         }
                     })];
-            case 4:
+            case 5:
                 activeFees = _a.sent();
                 feeConfigMap_1 = new Map();
                 activeFees.forEach(function (fee) { return feeConfigMap_1.set(fee.type, fee); });
@@ -337,11 +342,14 @@ exports.calculateOrderFeesService = function (payload) { return __awaiter(void 0
                 totalItemCount = 0;
                 for (_i = 0, orderItems_1 = orderItems; _i < orderItems_1.length; _i++) {
                     item = orderItems_1[_i];
-                    productPrice = productPriceMap_1.get(item.vendorProductId);
-                    if (productPrice === undefined) {
+                    productDetails = productDetailsMap_1.get(item.vendorProductId);
+                    if (!productDetails) {
                         throw new Error("Price not found for vendor product ID: " + item.vendorProductId);
                     }
-                    subtotal += productPrice * item.quantity;
+                    if (!productDetails.isAvailable || (productDetails.stock !== null && productDetails.stock < item.quantity)) {
+                        throw new Error("Product ID " + item.vendorProductId + " is not available or out of stock.");
+                    }
+                    subtotal += productDetails.price * item.quantity;
                     totalItemCount += item.quantity;
                 }
                 shoppingFee = 0;
@@ -396,11 +404,11 @@ exports.calculateOrderFeesService = function (payload) { return __awaiter(void 0
                         serviceFee: serviceFee,
                         totalEstimatedCost: parseFloat(totalEstimatedCost.toFixed(2))
                     }];
-            case 5:
+            case 6:
                 error_4 = _a.sent();
                 console.error('Error calculating order fees:', error_4);
                 throw new Error("Failed to calculate fees: " + error_4.message);
-            case 6: return [2 /*return*/];
+            case 7: return [2 /*return*/];
         }
     });
 }); };

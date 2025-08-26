@@ -1,11 +1,17 @@
-"use strict";
-exports.__esModule = true;
-var express_1 = require("express");
-var cart_controller_1 = require("../controllers/cart.controller");
-var auth_middleware_1 = require("../middlewares/auth.middleware");
-var router = express_1.Router();
+import { Router } from 'express';
+import {
+  getCartController,
+  addItemToCartController,
+  updateCartItemQuantityController,
+  removeCartItemController,
+} from '../controllers/cart.controller';
+import { authenticate } from '../middlewares/auth.middleware';
+
+const router = Router();
+
 // All cart routes should be authenticated
-router.use(auth_middleware_1.authenticate);
+router.use(authenticate);
+
 /**
  * @swagger
  * /cart:
@@ -18,7 +24,8 @@ router.use(auth_middleware_1.authenticate);
  *       200:
  *         description: The user's shopping cart with items.
  */
-router.get('/', cart_controller_1.getCartController);
+router.get('/', getCartController);
+
 /**
  * @swagger
  * /cart/items:
@@ -40,6 +47,8 @@ router.get('/', cart_controller_1.getCartController);
  *       201:
  *         description: The added or updated cart item.
  */
-router.post('/items', cart_controller_1.addItemToCartController);
+router.post('/items', addItemToCartController);
+
 // You would also add PUT /items/{itemId} and DELETE /items/{itemId} here
-exports["default"] = router;
+
+export default router;

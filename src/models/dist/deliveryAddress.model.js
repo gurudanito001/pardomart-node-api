@@ -1,15 +1,4 @@
 "use strict";
-var __assign = (this && this.__assign) || function () {
-    __assign = Object.assign || function(t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-            s = arguments[i];
-            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-                t[p] = s[p];
-        }
-        return t;
-    };
-    return __assign.apply(this, arguments);
-};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -58,38 +47,11 @@ var prisma = new client_1.PrismaClient();
  * @param payload The data for the new delivery address.
  * @returns The newly created DeliveryAddress object.
  */
-exports.createDeliveryAddress = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
+exports.createDeliveryAddress = function (payload, tx) { return __awaiter(void 0, void 0, Promise, function () {
+    var prismaClient;
     return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
-                var newAddress;
-                var _a;
-                return __generator(this, function (_b) {
-                    switch (_b.label) {
-                        case 0:
-                            if (!payload.isDefault) return [3 /*break*/, 2];
-                            // Deactivate any existing default address for this user
-                            return [4 /*yield*/, tx.deliveryAddress.updateMany({
-                                    where: {
-                                        userId: payload.userId,
-                                        isDefault: true
-                                    },
-                                    data: {
-                                        isDefault: false
-                                    }
-                                })];
-                        case 1:
-                            // Deactivate any existing default address for this user
-                            _b.sent();
-                            _b.label = 2;
-                        case 2: return [4 /*yield*/, tx.deliveryAddress.create({
-                                data: __assign(__assign({}, payload), { isDefault: (_a = payload.isDefault) !== null && _a !== void 0 ? _a : false })
-                            })];
-                        case 3:
-                            newAddress = _b.sent();
-                            return [2 /*return*/, newAddress];
-                    }
-                });
-            }); })];
+        prismaClient = tx || prisma;
+        return [2 /*return*/, prismaClient.deliveryAddress.create({ data: payload })];
     });
 }); };
 /**

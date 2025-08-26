@@ -1,4 +1,4 @@
-import { PrismaClient, Order, Cart, CartItem, VendorProduct } from '@prisma/client';
+import { PrismaClient, Cart, CartItem, VendorProduct, Prisma } from '@prisma/client';
 const prisma = new PrismaClient();
 
 
@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 export interface CreateCartItemPayload {
   vendorProductId: string;
   quantity: number;
-  orderId: string;
+  cartId: string;
 }
 export const createCartItem = async (
   payload: CreateCartItemPayload
@@ -19,19 +19,22 @@ export const createCartItem = async (
   });
 };
 
-export const createManyCartItems = async (
-  payload: CreateCartItemPayload[]
-): Promise<{ count: number }> => { // Corrected return type
-  return prisma.cartItem.createMany({
-    data: payload
-  });
-};
 
-export const getCartItemById = async (id: string): Promise<CartItem | null> => {
+export interface CartItemWithCart extends CartItem {
+  cart: {
+    userId: string;
+  } | null;
+  vendorProduct: VendorProduct | null;
+}
+
+export const getCartItemById = async (id: string): Promise<CartItemWithCart | null> => {
   return prisma.cartItem.findUnique({
     where: { id },
      include:{
-      vendorProduct: true
+      vendorProduct: true,
+      cart: {
+        select: { userId: true }
+      }
     }
   });
 };
@@ -62,7 +65,6 @@ export const getCartItemsByCartId = async (cartId: string): Promise<CartItemWith
 
 export interface UpdateCartItemPayload {
   quantity?: number;
-  orderId?: string;
 }
 
 export const updateCartItem = async (
@@ -76,17 +78,6 @@ export const updateCartItem = async (
       vendorProduct: true
     }
   });
-};
-
-export const updateCartItemsWithOrderId = async (
-  cartId: string,
-  orderId: string
-): Promise<number> => { // Changed return type to Promise<number>
-  const result = await prisma.cartItem.updateMany({
-    where: { cartId },
-    data: { orderId },
-  });
-  return result.count;
 };
 
 export const deleteCartItem = async (id: string): Promise<CartItem> => {

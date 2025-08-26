@@ -36,70 +36,15 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteOrder = exports.updateOrder = exports.getOrdersByUserId = exports.getOrderById = exports.createOrder = void 0;
+exports.createManyOrderItems = void 0;
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
-exports.createOrder = function (payload, tx) { return __awaiter(void 0, void 0, Promise, function () {
+exports.createManyOrderItems = function (payload, tx) { return __awaiter(void 0, void 0, Promise, function () {
     var db;
     return __generator(this, function (_a) {
         db = tx || prisma;
-        return [2 /*return*/, db.order.create({
+        return [2 /*return*/, db.orderItem.createMany({
                 data: payload
-            })];
-    });
-}); };
-exports.getOrderById = function (id, tx) { return __awaiter(void 0, void 0, Promise, function () {
-    var db;
-    return __generator(this, function (_a) {
-        db = tx || prisma;
-        return [2 /*return*/, db.order.findUnique({
-                where: { id: id },
-                include: {
-                    orderItems: {
-                        include: {
-                            vendorProduct: {
-                                include: {
-                                    product: true
-                                }
-                            }
-                        }
-                    },
-                    shopper: true,
-                    deliverer: true,
-                    deliveryAddress: true
-                }
-            })];
-    });
-}); };
-exports.getOrdersByUserId = function (userId) { return __awaiter(void 0, void 0, Promise, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.order.findMany({
-                where: { userId: userId },
-                include: {
-                    orderItems: {
-                        include: {
-                            vendorProduct: true
-                        }
-                    },
-                    shopper: true,
-                    deliverer: true,
-                    vendor: true
-                }
-            })];
-    });
-}); };
-exports.updateOrder = function (id, payload) { return __awaiter(void 0, void 0, Promise, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.order.update({
-                where: { id: id },
-                data: payload
-            })];
-    });
-}); };
-exports.deleteOrder = function (id) { return __awaiter(void 0, void 0, Promise, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.order["delete"]({
-                where: { id: id }
             })];
     });
 }); };

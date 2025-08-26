@@ -1,5 +1,7 @@
 import * as deliveryAddressModel from '../models/deliveryAddress.model'; // Adjust this path as needed
-import { DeliveryAddress } from '@prisma/client';
+import { DeliveryAddress, Prisma, PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 
 
@@ -11,9 +13,31 @@ import { DeliveryAddress } from '@prisma/client';
  * @returns The newly created DeliveryAddress object.
  */
 export const createDeliveryAddressService = async (
-  payload: deliveryAddressModel.CreateDeliveryAddressPayload
+  payload: deliveryAddressModel.CreateDeliveryAddressPayload,
+  tx?: Prisma.TransactionClient
 ): Promise<DeliveryAddress> => {
-  return deliveryAddressModel.createDeliveryAddress(payload);
+  const createAddressInTx = async (prismaClient: Prisma.TransactionClient | PrismaClient) => {
+    if (payload.isDefault) {
+      // Deactivate any other default address for this user
+      await prismaClient.deliveryAddress.updateMany({
+        where: {
+          userId: payload.userId,
+          isDefault: true,
+        },
+        data: {
+          isDefault: false,
+        },
+      });
+    }
+    // The model function now simply creates the record
+    return deliveryAddressModel.createDeliveryAddress({ ...payload, isDefault: payload.isDefault ?? false }, prismaClient as Prisma.TransactionClient);
+  };
+
+  if (tx) {
+    return createAddressInTx(tx);
+  } else {
+    return prisma.$transaction(createAddressInTx);
+  }
 };
 
 /**

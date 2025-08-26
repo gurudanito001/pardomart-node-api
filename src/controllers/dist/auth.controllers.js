@@ -62,9 +62,20 @@ var timezones_1 = require("../utils/timezones");
  *           schema:
  *             type: object
  *             required:
+ *               - name
+ *               - email
  *               - mobileNumber
  *               - role
  *             properties:
+ *               name:
+ *                 type: string
+ *                 description: The user's full name.
+ *                 example: "John Doe"
+ *               email:
+ *                 type: string
+ *                 description: The user's email address.
+ *                 format: email
+ *                 example: "john.doe@example.com"
  *               mobileNumber:
  *                 type: string
  *                 description: The user's mobile number in E.164 format.
@@ -73,7 +84,11 @@ var timezones_1 = require("../utils/timezones");
  *                 type: string
  *                 description: The role for the new user.
  *                 enum: [admin, vendor, vendor_staff, delivery, customer, shopper]
- *                example: "customer"
+ *                 example: "customer"
+ *               vendorId:
+ *                 type: string
+ *                 description: "Required if role is 'vendor_staff'. The ID of the vendor this staff member belongs to."
+ *                 example: "clq1z2x3y4a5b6c7d8e9f0g1h"
  *     responses:
  *       201:
  *         description: Verification code sent successfully.
@@ -171,7 +186,7 @@ exports.getTimeZones = function (req, res) { return __awaiter(void 0, void 0, vo
  *                 example: "+1234567890"
  *               role:
  *                 type: string
- *                  enum: [admin, vendor, vendor_staff, delivery, customer, shopper]
+ *                 enum: [admin, vendor, vendor_staff, delivery, customer, shopper]
  *                 example: "customer"
  *     responses:
  *       200:

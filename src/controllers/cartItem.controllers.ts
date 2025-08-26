@@ -1,5 +1,8 @@
 import { Request, Response } from 'express';
 import { getCartItemByIdService, updateCartItemService, deleteCartItemService } from '../services/cartItem.service';
+import { Prisma } from '@prisma/client';
+
+import { AuthenticatedRequest } from './vendor.controller';
 
 /**
  * @swagger
@@ -28,14 +31,24 @@ import { getCartItemByIdService, updateCartItemService, deleteCartItemService } 
  *       500:
  *         description: Internal server error.
  */
-export const getCartItemByIdController = async (req: Request, res: Response) => {
+export const getCartItemByIdController = async (req: AuthenticatedRequest, res: Response) => {
   try {
+    const userId = req.userId;
     const cartItem = await getCartItemByIdService(req.params.id);
+
     if (!cartItem) {
       return res.status(404).json({ error: 'Cart item not found' });
     }
+
+    // Authorization check: Ensure the user owns the cart item
+    const itemOwnerId = cartItem.cart?.userId;
+    if (itemOwnerId !== userId) {
+      return res.status(403).json({ error: 'Forbidden: You do not have permission to access this item.' });
+    }
+
     res.json(cartItem);
   } catch (error: any) {
+    console.error('Error in getCartItemByIdController:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -71,11 +84,27 @@ export const getCartItemByIdController = async (req: Request, res: Response) => 
  *       500:
  *         description: Internal server error.
  */
-export const updateCartItemController = async (req: Request, res: Response) => {
+export const updateCartItemController = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const cartItem = await updateCartItemService(req.params.id, req.body);
-    res.json(cartItem);
+    const userId = req.userId;
+    const cartItemId = req.params.id;
+
+    // Authorization: Check if the user owns the cart item before updating
+    const itemToUpdate = await getCartItemByIdService(cartItemId);
+    if (!itemToUpdate) {
+      return res.status(404).json({ error: 'Cart item not found' });
+    }
+    const itemOwnerId = itemToUpdate.cart?.userId ;
+    if (itemOwnerId !== userId) {
+      return res.status(403).json({ error: 'Forbidden: You do not have permission to update this item.' });
+    }
+
+    const updatedCartItem = await updateCartItemService(cartItemId, req.body);
+    res.json(updatedCartItem);
   } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      return res.status(404).json({ error: 'Cart item not found' });
+    }
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -105,11 +134,27 @@ export const updateCartItemController = async (req: Request, res: Response) => {
  *       500:
  *         description: Internal server error.
  */
-export const deleteCartItemController = async (req: Request, res: Response) => {
+export const deleteCartItemController = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const cartItem = await deleteCartItemService(req.params.id);
-    res.json(cartItem);
+    const userId = req.userId;
+    const cartItemId = req.params.id;
+
+    // Authorization: Check if the user owns the cart item before deleting
+    const itemToDelete = await getCartItemByIdService(cartItemId);
+    if (!itemToDelete) {
+      return res.status(404).json({ error: 'Cart item not found' });
+    }
+    const itemOwnerId = itemToDelete.cart?.userId 
+    if (itemOwnerId !== userId) {
+      return res.status(403).json({ error: 'Forbidden: You do not have permission to delete this item.' });
+    }
+
+    const deletedCartItem = await deleteCartItemService(cartItemId);
+    res.json(deletedCartItem);
   } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      return res.status(404).json({ error: 'Cart item not found' });
+    }
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };

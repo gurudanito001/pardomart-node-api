@@ -1,4 +1,4 @@
-import { PrismaClient, Fee, FeeType, FeeCalculationMethod } from '@prisma/client';
+import { PrismaClient, Prisma, Fee, FeeType, FeeCalculationMethod } from '@prisma/client';
 import { getDistance } from 'geolib';
 
 const prisma = new PrismaClient();
@@ -254,8 +254,10 @@ const toRadians = (degrees: number): number => {
  * @throws Error if data is invalid, not found, or calculations fail.
  */
 export const calculateOrderFeesService = async (
-  payload: CalculateFeesPayload
+  payload: CalculateFeesPayload,
+  tx?: Prisma.TransactionClient
 ): Promise<FeeCalculationResult> => {
+  const prismaClient = tx || prisma;
   try {
     const { orderItems, vendorId, deliveryAddressId } = payload;
 
@@ -272,7 +274,7 @@ export const calculateOrderFeesService = async (
 
     // --- 2. Fetch Necessary Data ---
     // Fetch vendor details
-    const vendor = await prisma.vendor.findUnique({
+    const vendor = await prismaClient.vendor.findUnique({
       where: { id: vendorId },
       select: { latitude: true, longitude: true },
     });
@@ -281,7 +283,7 @@ export const calculateOrderFeesService = async (
     }
 
     // Fetch delivery address details
-    const deliveryAddress = await prisma.deliveryAddress.findUnique({
+    const deliveryAddress = await prismaClient.deliveryAddress.findUnique({
       where: { id: deliveryAddressId },
       select: { latitude: true, longitude: true },
     });
@@ -293,7 +295,7 @@ export const calculateOrderFeesService = async (
     const uniqueVendorProductIds = orderItems.map((item) => item.vendorProductId);
 
     // Fetch all vendor products in a single query for efficiency
-    const vendorProducts = await prisma.vendorProduct.findMany({
+    const vendorProducts = await prismaClient.vendorProduct.findMany({
       where: {
         id: {
           in: uniqueVendorProductIds,
@@ -302,15 +304,17 @@ export const calculateOrderFeesService = async (
       select: {
         id: true,
         price: true,
+        isAvailable: true,
+        stock: true,
       },
     });
 
     // Create a map for quick price lookup
-    const productPriceMap = new Map<string, number>();
-    vendorProducts.forEach((vp) => productPriceMap.set(vp.id, vp.price));
+    const productDetailsMap = new Map<string, { price: number; isAvailable: boolean; stock: number | null }>();
+    vendorProducts.forEach((vp) => productDetailsMap.set(vp.id, { price: vp.price, isAvailable: vp.isAvailable, stock: vp.stock }));
 
     // Fetch active fee configurations
-    const activeFees = await prisma.fee.findMany({
+    const activeFees = await prismaClient.fee.findMany({
       where: {
         isActive: true,
         type: {
@@ -323,15 +327,19 @@ export const calculateOrderFeesService = async (
     activeFees.forEach((fee) => feeConfigMap.set(fee.type, fee));
 
     // --- 3. Calculate Subtotal & Total Item Count ---
+    // And validate product availability
     let subtotal = 0;
     let totalItemCount = 0;
 
     for (const item of orderItems) {
-      const productPrice = productPriceMap.get(item.vendorProductId);
-      if (productPrice === undefined) {
+      const productDetails = productDetailsMap.get(item.vendorProductId);
+      if (!productDetails) {
         throw new Error(`Price not found for vendor product ID: ${item.vendorProductId}`);
       }
-      subtotal += productPrice * item.quantity;
+      if (!productDetails.isAvailable || (productDetails.stock !== null && productDetails.stock < item.quantity)) {
+        throw new Error(`Product ID ${item.vendorProductId} is not available or out of stock.`);
+      }
+      subtotal += productDetails.price * item.quantity;
       totalItemCount += item.quantity;
     }
 

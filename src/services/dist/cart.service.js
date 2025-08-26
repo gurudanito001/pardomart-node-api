@@ -1,4 +1,17 @@
 "use strict";
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -36,8 +49,24 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteCartService = exports.getCartByUserIdService = exports.getCartByIdService = exports.createCartService = void 0;
+exports.addItemToCartService = exports.deleteCartService = exports.getCartByUserIdService = exports.getCartByIdService = exports.createCartService = exports.CartError = void 0;
 var cartModel = require("../models/cart.model"); // Adjust the path if needed
+var cartItemModel = require("../models/cartItem.model");
+var client_1 = require("@prisma/client");
+var prisma = new client_1.PrismaClient();
+// Custom error class for better error handling in the controller
+var CartError = /** @class */ (function (_super) {
+    __extends(CartError, _super);
+    function CartError(message, statusCode) {
+        if (statusCode === void 0) { statusCode = 400; }
+        var _this = _super.call(this, message) || this;
+        _this.name = 'CartError';
+        _this.statusCode = statusCode;
+        return _this;
+    }
+    return CartError;
+}(Error));
+exports.CartError = CartError;
 // --- Cart Service Functions ---
 /**
  * Creates a new cart for a user.
@@ -77,5 +106,66 @@ exports.getCartByUserIdService = function (userId) { return __awaiter(void 0, vo
 exports.deleteCartService = function (id) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
         return [2 /*return*/, cartModel.deleteCart(id)];
+    });
+}); };
+/**
+ * Adds an item to a user's shopping cart.
+ * If the user has no cart, one is created.
+ * If the item is already in the cart, its quantity is updated.
+ * @param userId The ID of the user.
+ * @param payload The item and quantity to add.
+ * @returns The created or updated cart item.
+ */
+exports.addItemToCartService = function (userId, payload) { return __awaiter(void 0, void 0, void 0, function () {
+    var vendorProductId, quantity, vendorProduct, cart, existingItem, newQuantity;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                vendorProductId = payload.vendorProductId, quantity = payload.quantity;
+                if (quantity <= 0) {
+                    throw new CartError('Quantity must be a positive number.');
+                }
+                return [4 /*yield*/, prisma.vendorProduct.findUnique({ where: { id: vendorProductId } })];
+            case 1:
+                vendorProduct = _a.sent();
+                if (!vendorProduct) {
+                    throw new CartError('Product not found.', 404);
+                }
+                if (!vendorProduct.isAvailable) {
+                    throw new CartError('Product is currently not available.');
+                }
+                return [4 /*yield*/, exports.getCartByUserIdService(userId)];
+            case 2:
+                cart = _a.sent();
+                if (!!cart) return [3 /*break*/, 4];
+                return [4 /*yield*/, exports.createCartService(userId)];
+            case 3:
+                cart = _a.sent();
+                _a.label = 4;
+            case 4: return [4 /*yield*/, cartItemModel.getCartItemByCartId(cart.id, vendorProductId)];
+            case 5:
+                existingItem = _a.sent();
+                if (existingItem) {
+                    newQuantity = existingItem.quantity + quantity;
+                    // Check stock for the new total quantity
+                    if (vendorProduct.stock !== null && vendorProduct.stock < newQuantity) {
+                        throw new CartError("Not enough stock. Only " + vendorProduct.stock + " items available.");
+                    }
+                    return [2 /*return*/, cartItemModel.updateCartItem(existingItem.id, { quantity: newQuantity })];
+                }
+                else {
+                    // 4b. If item does not exist, create a new cart item
+                    // Check stock for the initial quantity
+                    if (vendorProduct.stock !== null && vendorProduct.stock < quantity) {
+                        throw new CartError("Not enough stock. Only " + vendorProduct.stock + " items available.");
+                    }
+                    return [2 /*return*/, cartItemModel.createCartItem({
+                            cartId: cart.id,
+                            vendorProductId: vendorProductId,
+                            quantity: quantity
+                        })];
+                }
+                return [2 /*return*/];
+        }
     });
 }); };

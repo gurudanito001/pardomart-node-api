@@ -1,15 +1,4 @@
 "use strict";
-var __assign = (this && this.__assign) || function () {
-    __assign = Object.assign || function(t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-            s = arguments[i];
-            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-                t[p] = s[p];
-        }
-        return t;
-    };
-    return __assign.apply(this, arguments);
-};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -49,143 +38,98 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 exports.__esModule = true;
 exports.startShoppingController = exports.declineOrderController = exports.acceptOrderController = exports.getVendorOrdersController = exports.updateOrderController = exports.updateOrderStatusController = exports.getOrdersByUserController = exports.getOrderByIdController = exports.createOrderController = void 0;
 var order_service_1 = require("../services/order.service"); // Adjust the path if needed
-var cartItem_model_1 = require("../models/cartItem.model");
-var order_model_1 = require("../models/order.model");
-var client_1 = require("@prisma/client");
-var dayjs_1 = require("dayjs");
-var utc_1 = require("dayjs/plugin/utc");
-var timezone_1 = require("dayjs/plugin/timezone");
-var vendor_service_1 = require("../services/vendor.service");
-var deliveryAddress_service_1 = require("../services/deliveryAddress.service");
-var fee_service_1 = require("../services/fee.service");
-// Extend dayjs with plugins
-dayjs_1["default"].extend(utc_1["default"]);
-dayjs_1["default"].extend(timezone_1["default"]);
-// --- Helper function to map Dayjs day index to Prisma's Days enum ---
-// Assuming your Days enum is like: enum Days { SUNDAY, MONDAY, TUESDAY, ... }
-var getDayEnumFromDayjs = function (dayjsDayIndex) {
-    var days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    return days[dayjsDayIndex];
-};
+// --- Order Controllers ---
+/**
+ * Controller for creating a new order.
+ * @swagger
+ * /order:
+ *   post:
+ *     summary: Create a new order
+ *     tags: [Order]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - vendorId
+ *               - paymentMethod
+ *               - orderItems
+ *               - shoppingMethod
+ *               - deliveryMethod
+ *             properties:
+ *               vendorId:
+ *                 type: string
+ *                 format: uuid
+ *               paymentMethod:
+ *                 $ref: '#/components/schemas/PaymentMethods'
+ *               shippingAddressId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: "ID of an existing delivery address. Required if newShippingAddress is not provided for a delivery order."
+ *               newShippingAddress:
+ *                 $ref: '#/components/schemas/CreateDeliveryAddressPayload'
+ *                 description: "A new delivery address object. Required if shippingAddressId is not provided for a delivery order."
+ *               deliveryInstructions:
+ *                 type: string
+ *               orderItems:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required: [vendorProductId, quantity]
+ *                   properties:
+ *                     vendorProductId:
+ *                       type: string
+ *                       format: uuid
+ *                     quantity:
+ *                       type: integer
+ *               shoppingMethod:
+ *                 $ref: '#/components/schemas/ShoppingMethod'
+ *               deliveryMethod:
+ *                 $ref: '#/components/schemas/DeliveryMethod'
+ *               scheduledShoppingStartTime:
+ *                 type: string
+ *                 format: date-time
+ *                 description: "Optional. The UTC time when shopping should begin. Must be within vendor's operating hours."
+ *     responses:
+ *       201:
+ *         description: The created order.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Order'
+ *       400:
+ *         description: Bad request due to invalid input.
+ *       500:
+ *         description: Internal server error.
+ */
 exports.createOrderController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var userId, _a, vendorId, paymentMethod, shippingAddressId, newShippingAddress, deliveryInstructions, orderItems, shoppingMethod, deliveryMethod, scheduledShoppingStartTime, parsedScheduledTime, vendor, vendorLocalDayjs, dayOfWeek_1, openingHoursToday, _b, openHours, openMinutes, _c, closeHours, closeMinutes, vendorOpenTimeUTC, vendorCloseTimeUTC, twoHoursBeforeCloseUTC, finalShippingAddressId, payloadForNewAddress, createdAddress, orderItemsForFeeCalculation, fees, subtotal, shoppingFee, deliveryFee, serviceFee, totalEstimatedCost, order_1, orderItemsToCreate, finalOrder, error_1;
-    return __generator(this, function (_d) {
-        switch (_d.label) {
+    var userId, finalOrder, error_1;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
             case 0:
-                _d.trys.push([0, 10, , 11]);
+                _a.trys.push([0, 2, , 3]);
                 userId = req.userId;
-                _a = req.body, vendorId = _a.vendorId, paymentMethod = _a.paymentMethod, shippingAddressId = _a.shippingAddressId, newShippingAddress = _a.newShippingAddress, deliveryInstructions = _a.deliveryInstructions, orderItems = _a.orderItems, shoppingMethod = _a.shoppingMethod, deliveryMethod = _a.deliveryMethod, scheduledShoppingStartTime = _a.scheduledShoppingStartTime;
-                if (!scheduledShoppingStartTime) return [3 /*break*/, 2];
-                parsedScheduledTime = dayjs_1["default"].utc(scheduledShoppingStartTime);
-                if (!parsedScheduledTime.isValid()) {
-                    return [2 /*return*/, res.status(400).json({ error: 'Invalid scheduled shopping start time format.' })];
+                if (!userId) {
+                    return [2 /*return*/, res.status(401).json({ error: 'Unauthorized' })];
                 }
-                return [4 /*yield*/, vendor_service_1.getVendorById(vendorId)];
+                return [4 /*yield*/, order_service_1.createOrderFromClient(userId, req.body)];
             case 1:
-                vendor = _d.sent();
-                if (!vendor) {
-                    return [2 /*return*/, res.status(404).json({ error: 'Vendor not found.' })];
-                }
-                if (!vendor.timezone) {
-                    console.warn("Vendor " + vendorId + " does not have a timezone set. Skipping time validation.");
-                }
-                vendorLocalDayjs = parsedScheduledTime.tz(vendor.timezone || 'UTC');
-                dayOfWeek_1 = getDayEnumFromDayjs(vendorLocalDayjs.day());
-                openingHoursToday = vendor.openingHours.find(function (h) { return h.day === dayOfWeek_1; });
-                if (!openingHoursToday || !openingHoursToday.open || !openingHoursToday.close) {
-                    return [2 /*return*/, res.status(400).json({
-                            error: "Vendor is closed or has no defined hours for " + dayOfWeek_1 + "."
-                        })];
-                }
-                _b = openingHoursToday.open.split(':').map(Number), openHours = _b[0], openMinutes = _b[1];
-                _c = openingHoursToday.close.split(':').map(Number), closeHours = _c[0], closeMinutes = _c[1];
-                vendorOpenTimeUTC = vendorLocalDayjs.hour(openHours).minute(openMinutes).second(0).millisecond(0).utc();
-                vendorCloseTimeUTC = vendorLocalDayjs.hour(closeHours).minute(closeMinutes).second(0).millisecond(0).utc();
-                if (vendorCloseTimeUTC.isBefore(vendorOpenTimeUTC)) {
-                    vendorCloseTimeUTC = vendorCloseTimeUTC.add(1, 'day');
-                }
-                twoHoursBeforeCloseUTC = vendorCloseTimeUTC.subtract(2, 'hour');
-                if (parsedScheduledTime.isBefore(vendorOpenTimeUTC) || parsedScheduledTime.isAfter(twoHoursBeforeCloseUTC)) {
-                    return [2 /*return*/, res.status(400).json({
-                            error: "Scheduled shopping time must be between " + openingHoursToday.open + " and " + twoHoursBeforeCloseUTC.tz(vendor.timezone || 'UTC').format('HH:mm') + " vendor local time."
-                        })];
-                }
-                if (parsedScheduledTime.isBefore(dayjs_1["default"].utc())) {
-                    return [2 /*return*/, res.status(400).json({ error: 'Scheduled shopping time cannot be in the past.' })];
-                }
-                _d.label = 2;
-            case 2:
-                finalShippingAddressId = shippingAddressId;
-                if (!(!shippingAddressId && newShippingAddress)) return [3 /*break*/, 4];
-                if (!newShippingAddress.addressLine1 || !newShippingAddress.city) {
-                    return [2 /*return*/, res.status(400).json({ error: 'New shipping address requires addressLine1 and city.' })];
-                }
-                payloadForNewAddress = __assign(__assign({}, newShippingAddress), { userId: userId });
-                return [4 /*yield*/, deliveryAddress_service_1.createDeliveryAddressService(payloadForNewAddress)];
-            case 3:
-                createdAddress = _d.sent();
-                finalShippingAddressId = createdAddress.id;
-                return [3 /*break*/, 5];
-            case 4:
-                if (!shippingAddressId && deliveryMethod === client_1.DeliveryMethod.delivery_person) {
-                    // If deliveryMethod is DELIVERY_PERSON, shippingAddressId is mandatory
-                    return [2 /*return*/, res.status(400).json({ error: 'Delivery address is required for delivery orders.' })];
-                }
-                _d.label = 5;
-            case 5:
-                orderItemsForFeeCalculation = orderItems.map(function (item) { return ({
-                    vendorProductId: item.vendorProductId,
-                    quantity: item.quantity
-                }); });
-                // --- Calculate Fees ---
-                if (!finalShippingAddressId && deliveryMethod === client_1.DeliveryMethod.delivery_person) {
-                    // This should ideally be caught by the earlier address validation, but good to double check
-                    return [2 /*return*/, res.status(400).json({ error: 'Cannot calculate delivery fee without a valid delivery address.' })];
-                }
-                return [4 /*yield*/, fee_service_1.calculateOrderFeesService({
-                        orderItems: orderItemsForFeeCalculation,
-                        vendorId: vendorId,
-                        deliveryAddressId: finalShippingAddressId
-                    })];
-            case 6:
-                fees = _d.sent();
-                subtotal = fees.subtotal, shoppingFee = fees.shoppingFee, deliveryFee = fees.deliveryFee, serviceFee = fees.serviceFee, totalEstimatedCost = fees.totalEstimatedCost;
-                return [4 /*yield*/, order_model_1.createOrder({
-                        userId: userId,
-                        vendorId: vendorId,
-                        totalAmount: totalEstimatedCost,
-                        deliveryFee: deliveryFee,
-                        serviceFee: serviceFee,
-                        shoppingFee: shoppingFee,
-                        paymentMethod: paymentMethod,
-                        shoppingMethod: shoppingMethod,
-                        deliveryMethod: deliveryMethod,
-                        scheduledShoppingStartTime: scheduledShoppingStartTime,
-                        deliveryAddressId: finalShippingAddressId,
-                        deliveryInstructions: deliveryInstructions
-                    })];
-            case 7:
-                order_1 = _d.sent();
-                orderItemsToCreate = orderItems.map(function (item) { return ({
-                    vendorProductId: item.vendorProductId,
-                    quantity: item.quantity,
-                    orderId: order_1.id
-                }); });
-                return [4 /*yield*/, cartItem_model_1.createManyCartItems(orderItemsToCreate)];
-            case 8:
-                _d.sent(); // This function will create CartItems linked to the Order
-                return [4 /*yield*/, order_model_1.getOrderById(order_1.id)];
-            case 9:
-                finalOrder = _d.sent();
+                finalOrder = _a.sent();
                 res.status(201).json(finalOrder);
-                return [3 /*break*/, 11];
-            case 10:
-                error_1 = _d.sent();
+                return [3 /*break*/, 3];
+            case 2:
+                error_1 = _a.sent();
+                if (error_1 instanceof order_service_1.OrderCreationError) {
+                    return [2 /*return*/, res.status(error_1.statusCode).json({ error: error_1.message })];
+                }
                 console.error('Error creating order:', error_1);
-                // Provide a more generic error message if the specific error is not for the client
                 res.status(500).json({ error: error_1.message || 'Internal server error during order creation.' });
-                return [3 /*break*/, 11];
-            case 11: return [2 /*return*/];
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
         }
     });
 }); };

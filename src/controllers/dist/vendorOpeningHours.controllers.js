@@ -53,7 +53,26 @@ var client_1 = require("@prisma/client"); // Import Prisma
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UpdateOpeningHoursPayload'
+ *             type: object
+ *             required:
+ *               - vendorId
+ *               - day
+ *             properties:
+ *               vendorId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: The ID of the vendor whose opening hours are being updated.
+ *               day:
+ *                 $ref: '#/components/schemas/Days'
+ *                 description: The day of the week to update.
+ *               open:
+ *                 type: string
+ *                 format: "HH:mm"
+ *                 description: "The opening time in 24-hour format (e.g., '09:00'). Set to null to mark as closed."
+ *               close:
+ *                 type: string
+ *                 format: "HH:mm"
+ *                 description: "The closing time in 24-hour format (e.g., '18:00'). Set to null to mark as closed."
  *     responses:
  *       200:
  *         description: The updated opening hours record.

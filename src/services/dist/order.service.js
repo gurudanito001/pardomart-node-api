@@ -1,4 +1,17 @@
 "use strict";
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 var __assign = (this && this.__assign) || function () {
     __assign = Object.assign || function(t) {
         for (var s, i = 1, n = arguments.length; i < n; i++) {
@@ -47,10 +60,18 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.startShoppingService = exports.declineOrderService = exports.acceptOrderService = exports.getOrdersForVendorDashboard = exports.updateOrderStatusService = exports.updateOrderService = exports.getOrdersByUserIdService = exports.getOrderByIdService = exports.createOrderService = void 0;
+exports.startShoppingService = exports.declineOrderService = exports.acceptOrderService = exports.getOrdersForVendorDashboard = exports.updateOrderStatusService = exports.updateOrderService = exports.createOrderFromClient = exports.getOrdersByUserIdService = exports.OrderCreationError = exports.getOrderByIdService = exports.createOrderService = void 0;
 var orderModel = require("../models/order.model"); // Adjust the path if needed
 var client_1 = require("@prisma/client");
 var dayjs_1 = require("dayjs");
+var deliveryAddress_service_1 = require("./deliveryAddress.service");
+var fee_service_1 = require("./fee.service");
+var orderItemModel = require("../models/orderItem.model");
+var vendor_service_1 = require("./vendor.service");
+var utc_1 = require("dayjs/plugin/utc");
+var timezone_1 = require("dayjs/plugin/timezone");
+dayjs_1["default"].extend(utc_1["default"]);
+dayjs_1["default"].extend(timezone_1["default"]);
 var prisma = new client_1.PrismaClient();
 // --- Order Service Functions ---
 /**
@@ -81,6 +102,18 @@ exports.getOrderByIdService = function (id) { return __awaiter(void 0, void 0, P
         return [2 /*return*/, orderModel.getOrderById(id)];
     });
 }); };
+var OrderCreationError = /** @class */ (function (_super) {
+    __extends(OrderCreationError, _super);
+    function OrderCreationError(message, statusCode) {
+        if (statusCode === void 0) { statusCode = 400; }
+        var _this = _super.call(this, message) || this;
+        _this.name = 'OrderCreationError';
+        _this.statusCode = statusCode;
+        return _this;
+    }
+    return OrderCreationError;
+}(Error));
+exports.OrderCreationError = OrderCreationError;
 /**
  * Retrieves all orders for a specific user.
  * @param userId - The ID of the user whose orders are to be retrieved.
@@ -89,6 +122,110 @@ exports.getOrderByIdService = function (id) { return __awaiter(void 0, void 0, P
 exports.getOrdersByUserIdService = function (userId) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
         return [2 /*return*/, orderModel.getOrdersByUserId(userId)];
+    });
+}); };
+var getDayEnumFromDayjs = function (dayjsDayIndex) {
+    var days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    return days[dayjsDayIndex];
+};
+exports.createOrderFromClient = function (userId, payload) { return __awaiter(void 0, void 0, void 0, function () {
+    var vendorId, paymentMethod, shippingAddressId, newShippingAddress, deliveryInstructions, orderItems, shoppingMethod, deliveryMethod, scheduledShoppingStartTime, parsedScheduledTime, vendor, vendorLocalDayjs, dayOfWeek_1, openingHoursToday, _a, openHours, openMinutes, _b, closeHours, closeMinutes, vendorOpenTimeUTC, vendorCloseTimeUTC, twoHoursBeforeCloseUTC;
+    return __generator(this, function (_c) {
+        switch (_c.label) {
+            case 0:
+                vendorId = payload.vendorId, paymentMethod = payload.paymentMethod, shippingAddressId = payload.shippingAddressId, newShippingAddress = payload.newShippingAddress, deliveryInstructions = payload.deliveryInstructions, orderItems = payload.orderItems, shoppingMethod = payload.shoppingMethod, deliveryMethod = payload.deliveryMethod, scheduledShoppingStartTime = payload.scheduledShoppingStartTime;
+                // --- 1. Validate payload basics ---
+                if (!orderItems || !Array.isArray(orderItems) || orderItems.length === 0) {
+                    throw new OrderCreationError('Order must contain at least one item.');
+                }
+                if (!scheduledShoppingStartTime) return [3 /*break*/, 2];
+                parsedScheduledTime = dayjs_1["default"].utc(scheduledShoppingStartTime);
+                if (!parsedScheduledTime.isValid()) {
+                    throw new OrderCreationError('Invalid scheduled shopping start time format.');
+                }
+                return [4 /*yield*/, vendor_service_1.getVendorById(vendorId)];
+            case 1:
+                vendor = _c.sent();
+                if (!vendor)
+                    throw new OrderCreationError('Vendor not found.', 404);
+                if (!vendor.timezone)
+                    console.warn("Vendor " + vendorId + " does not have a timezone set. Skipping time validation.");
+                vendorLocalDayjs = parsedScheduledTime.tz(vendor.timezone || 'UTC');
+                dayOfWeek_1 = getDayEnumFromDayjs(vendorLocalDayjs.day());
+                openingHoursToday = vendor.openingHours.find(function (h) { return h.day === dayOfWeek_1; });
+                if (!openingHoursToday || !openingHoursToday.open || !openingHoursToday.close) {
+                    throw new OrderCreationError("Vendor is closed or has no defined hours for " + dayOfWeek_1 + ".");
+                }
+                _a = openingHoursToday.open.split(':').map(Number), openHours = _a[0], openMinutes = _a[1];
+                _b = openingHoursToday.close.split(':').map(Number), closeHours = _b[0], closeMinutes = _b[1];
+                vendorOpenTimeUTC = vendorLocalDayjs.hour(openHours).minute(openMinutes).second(0).millisecond(0).utc();
+                vendorCloseTimeUTC = vendorLocalDayjs.hour(closeHours).minute(closeMinutes).second(0).millisecond(0).utc();
+                if (vendorCloseTimeUTC.isBefore(vendorOpenTimeUTC)) {
+                    vendorCloseTimeUTC = vendorCloseTimeUTC.add(1, 'day');
+                }
+                twoHoursBeforeCloseUTC = vendorCloseTimeUTC.subtract(2, 'hour');
+                if (parsedScheduledTime.isBefore(vendorOpenTimeUTC) || parsedScheduledTime.isAfter(twoHoursBeforeCloseUTC)) {
+                    throw new OrderCreationError("Scheduled shopping time must be between " + openingHoursToday.open + " and " + twoHoursBeforeCloseUTC.tz(vendor.timezone || 'UTC').format('HH:mm') + " vendor local time.");
+                }
+                if (parsedScheduledTime.isBefore(dayjs_1["default"].utc())) {
+                    throw new OrderCreationError('Scheduled shopping time cannot be in the past.');
+                }
+                _c.label = 2;
+            case 2: 
+            // --- Transactional Block ---
+            return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
+                    var finalShippingAddressId, createdAddress, fees, totalEstimatedCost, deliveryFee, serviceFee, shoppingFee, newOrder, orderItemsToCreate, finalOrder;
+                    return __generator(this, function (_a) {
+                        switch (_a.label) {
+                            case 0:
+                                finalShippingAddressId = shippingAddressId;
+                                if (!(!shippingAddressId && newShippingAddress)) return [3 /*break*/, 2];
+                                return [4 /*yield*/, deliveryAddress_service_1.createDeliveryAddressService(__assign(__assign({}, newShippingAddress), { userId: userId }), tx)];
+                            case 1:
+                                createdAddress = _a.sent();
+                                finalShippingAddressId = createdAddress.id;
+                                return [3 /*break*/, 3];
+                            case 2:
+                                if (!shippingAddressId && deliveryMethod === client_1.DeliveryMethod.delivery_person) {
+                                    throw new OrderCreationError('Delivery address is required for delivery orders.');
+                                }
+                                _a.label = 3;
+                            case 3: return [4 /*yield*/, fee_service_1.calculateOrderFeesService({
+                                    orderItems: orderItems,
+                                    vendorId: vendorId,
+                                    deliveryAddressId: finalShippingAddressId
+                                }, tx)];
+                            case 4:
+                                fees = _a.sent();
+                                totalEstimatedCost = fees.totalEstimatedCost, deliveryFee = fees.deliveryFee, serviceFee = fees.serviceFee, shoppingFee = fees.shoppingFee;
+                                return [4 /*yield*/, orderModel.createOrder({
+                                        userId: userId, vendorId: vendorId,
+                                        totalAmount: totalEstimatedCost,
+                                        deliveryFee: deliveryFee, serviceFee: serviceFee, shoppingFee: shoppingFee, paymentMethod: paymentMethod, shoppingMethod: shoppingMethod, deliveryMethod: deliveryMethod, scheduledShoppingStartTime: scheduledShoppingStartTime,
+                                        deliveryAddressId: finalShippingAddressId,
+                                        deliveryInstructions: deliveryInstructions
+                                    }, tx)];
+                            case 5:
+                                newOrder = _a.sent();
+                                orderItemsToCreate = orderItems.map(function (item) { return ({
+                                    vendorProductId: item.vendorProductId,
+                                    quantity: item.quantity,
+                                    orderId: newOrder.id
+                                }); });
+                                return [4 /*yield*/, orderItemModel.createManyOrderItems(orderItemsToCreate, tx)];
+                            case 6:
+                                _a.sent();
+                                return [4 /*yield*/, orderModel.getOrderById(newOrder.id, tx)];
+                            case 7:
+                                finalOrder = _a.sent();
+                                if (!finalOrder) {
+                                    throw new OrderCreationError("Failed to retrieve the created order.", 500);
+                                }
+                                return [2 /*return*/, finalOrder];
+                        }
+                    });
+                }); })];
+        }
     });
 }); };
 /**
@@ -186,9 +323,9 @@ exports.getOrdersForVendorDashboard = function (vendorId, options) { return __aw
                             scheduledShoppingStartTime: 'asc',
                             createdAt: 'asc'
                         }
-                    })]; /* as Promise<OrderWithRequiredRelations[]> */
+                    })];
             case 2:
-                orders = _a.sent() /* as Promise<OrderWithRequiredRelations[]> */;
+                orders = _a.sent();
                 return [2 /*return*/, orders];
             case 3:
                 error_2 = _a.sent();

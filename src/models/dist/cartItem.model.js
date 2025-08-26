@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteCartItem = exports.updateCartItemsWithOrderId = exports.updateCartItem = exports.getCartItemsByCartId = exports.getCartItemByCartId = exports.getCartItemById = exports.createManyCartItems = exports.createCartItem = void 0;
+exports.deleteCartItem = exports.updateCartItem = exports.getCartItemsByCartId = exports.getCartItemByCartId = exports.getCartItemById = exports.createCartItem = void 0;
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
 exports.createCartItem = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
@@ -49,19 +49,15 @@ exports.createCartItem = function (payload) { return __awaiter(void 0, void 0, P
             })];
     });
 }); };
-exports.createManyCartItems = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.cartItem.createMany({
-                data: payload
-            })];
-    });
-}); };
 exports.getCartItemById = function (id) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
         return [2 /*return*/, prisma.cartItem.findUnique({
                 where: { id: id },
                 include: {
-                    vendorProduct: true
+                    vendorProduct: true,
+                    cart: {
+                        select: { userId: true }
+                    }
                 }
             })];
     });
@@ -97,20 +93,6 @@ exports.updateCartItem = function (id, payload) { return __awaiter(void 0, void 
                     vendorProduct: true
                 }
             })];
-    });
-}); };
-exports.updateCartItemsWithOrderId = function (cartId, orderId) { return __awaiter(void 0, void 0, Promise, function () {
-    var result;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0: return [4 /*yield*/, prisma.cartItem.updateMany({
-                    where: { cartId: cartId },
-                    data: { orderId: orderId }
-                })];
-            case 1:
-                result = _a.sent();
-                return [2 /*return*/, result.count];
-        }
     });
 }); };
 exports.deleteCartItem = function (id) { return __awaiter(void 0, void 0, Promise, function () {
