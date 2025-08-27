@@ -34,6 +34,29 @@ export const getCartsController = async (req: AuthenticatedRequest, res: Respons
   }
 };
 
+/**
+ * @swagger
+ * /cart/{cartId}:
+ *   delete:
+ *     summary: Delete a cart by its ID
+ *     tags: [Cart]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cartId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the cart to delete.
+ *     responses:
+ *       200:
+ *         description: The cart was deleted successfully. Returns the deleted cart object.
+ *       404:
+ *         description: Cart not found or user does not have permission to delete it.
+ *
+ */
 export const deleteCartController = async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.userId as string;

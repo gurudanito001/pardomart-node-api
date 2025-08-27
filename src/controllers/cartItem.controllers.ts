@@ -23,17 +23,7 @@ import { AuthenticatedRequest } from './vendor.controller';
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - vendorProductId
- *               - quantity
- *             properties:
- *               vendorProductId:
- *                 type: string
- *                 format: uuid
- *               quantity:
- *                 type: integer
- *                 minimum: 1
+ *             $ref: '#/components/schemas/AddCartItemPayload'
  *     responses:
  *       201:
  *         description: Item added or updated successfully. Returns the updated cart.

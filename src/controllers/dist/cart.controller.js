@@ -79,6 +79,29 @@ exports.getCartsController = function (req, res) { return __awaiter(void 0, void
         }
     });
 }); };
+/**
+ * @swagger
+ * /cart/{cartId}:
+ *   delete:
+ *     summary: Delete a cart by its ID
+ *     tags: [Cart]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cartId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the cart to delete.
+ *     responses:
+ *       200:
+ *         description: The cart was deleted successfully. Returns the deleted cart object.
+ *       404:
+ *         description: Cart not found or user does not have permission to delete it.
+ *
+ */
 exports.deleteCartController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var userId, cartId, cart, deletedCart, error_2;
     return __generator(this, function (_a) {

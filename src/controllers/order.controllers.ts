@@ -32,47 +32,7 @@ import { AuthenticatedRequest } from './vendor.controller';
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - vendorId
- *               - paymentMethod
- *               - orderItems
- *               - shoppingMethod
- *               - deliveryMethod
- *             properties:
- *               vendorId:
- *                 type: string
- *                 format: uuid
- *               paymentMethod:
- *                 $ref: '#/components/schemas/PaymentMethods'
- *               shippingAddressId:
- *                 type: string
- *                 format: uuid
- *                 description: "ID of an existing delivery address. Required if newShippingAddress is not provided for a delivery order."
- *               newShippingAddress:
- *                 $ref: '#/components/schemas/CreateDeliveryAddressPayload'
- *                 description: "A new delivery address object. Required if shippingAddressId is not provided for a delivery order."
- *               deliveryInstructions:
- *                 type: string
- *               orderItems:
- *                 type: array
- *                 items:
- *                   type: object
- *                   required: [vendorProductId, quantity]
- *                   properties:
- *                     vendorProductId:
- *                       type: string
- *                       format: uuid
- *                     quantity:
- *                       type: integer
- *               shoppingMethod:
- *                 $ref: '#/components/schemas/ShoppingMethod'
- *               deliveryMethod:
- *                 $ref: '#/components/schemas/DeliveryMethod'
- *               scheduledShoppingStartTime:
- *                 type: string
- *                 format: date-time
- *                 description: "Optional. The UTC time when shopping should begin. Must be within vendor's operating hours."
+ *             $ref: '#/components/schemas/CreateOrderPayload'
  *     responses:
  *       201:
  *         description: The created order.

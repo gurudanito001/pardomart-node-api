@@ -443,16 +443,16 @@ var options = {
                     properties: {
                         vendorId: { type: 'string', format: 'uuid' },
                         paymentMethod: { $ref: '#/components/schemas/PaymentMethods' },
-                        shippingAddressId: { type: 'string', format: 'uuid', nullable: true },
-                        newShippingAddress: { $ref: '#/components/schemas/CreateDeliveryAddressPayload' },
-                        deliveryInstructions: { type: 'string', nullable: true },
+                        shippingAddressId: { type: 'string', format: 'uuid', nullable: true, description: "ID of an existing delivery address. Required if newShippingAddress is not provided for a delivery order." },
+                        newShippingAddress: { $ref: '#/components/schemas/CreateDeliveryAddressPayload', description: "A new delivery address object. Required if shippingAddressId is not provided for a delivery order." },
+                        deliveryInstructions: { type: 'string', nullable: true, example: "Leave at the front door." },
                         orderItems: {
                             type: 'array',
                             items: { $ref: '#/components/schemas/OrderItemPayload' }
                         },
                         shoppingMethod: { $ref: '#/components/schemas/ShoppingMethod' },
                         deliveryMethod: { $ref: '#/components/schemas/DeliveryMethod' },
-                        scheduledShoppingStartTime: { type: 'string', format: 'date-time', nullable: true }
+                        scheduledShoppingStartTime: { type: 'string', format: 'date-time', nullable: true, description: "Optional. The UTC time when shopping should begin. Must be within vendor's operating hours." }
                     }
                 },
                 UpdateOrderStatusPayload: {
@@ -574,6 +574,29 @@ var options = {
                         name: {
                             type: 'string', example: 'Clearance'
                         }
+                    }
+                },
+                Cart: {
+                    type: 'object',
+                    properties: {
+                        id: { type: 'string', format: 'uuid' },
+                        userId: { type: 'string', format: 'uuid' },
+                        vendorId: { type: 'string', format: 'uuid' },
+                        createdAt: { type: 'string', format: 'date-time' },
+                        updatedAt: { type: 'string', format: 'date-time' },
+                        cartItems: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/CartItem' }
+                        },
+                        vendor: { $ref: '#/components/schemas/Vendor' }
+                    }
+                },
+                AddCartItemPayload: {
+                    type: 'object',
+                    required: ['vendorProductId', 'quantity'],
+                    properties: {
+                        vendorProductId: { type: 'string', format: 'uuid' },
+                        quantity: { type: 'integer', minimum: 1 }
                     }
                 },
                 // --- User Schemas ---
