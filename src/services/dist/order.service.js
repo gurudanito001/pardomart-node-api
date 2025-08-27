@@ -174,7 +174,7 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
             case 2: 
             // --- Transactional Block ---
             return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
-                    var finalShippingAddressId, createdAddress, fees, totalEstimatedCost, deliveryFee, serviceFee, shoppingFee, newOrder, orderItemsToCreate, finalOrder;
+                    var finalShippingAddressId, createdAddress, fees, totalEstimatedCost, deliveryFee, serviceFee, shoppingFee, newOrder, orderItemsToCreate, _i, orderItems_1, item, cartToClear, finalOrder;
                     return __generator(this, function (_a) {
                         switch (_a.label) {
                             case 0:
@@ -215,8 +215,38 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                 return [4 /*yield*/, orderItemModel.createManyOrderItems(orderItemsToCreate, tx)];
                             case 6:
                                 _a.sent();
-                                return [4 /*yield*/, orderModel.getOrderById(newOrder.id, tx)];
+                                _i = 0, orderItems_1 = orderItems;
+                                _a.label = 7;
                             case 7:
+                                if (!(_i < orderItems_1.length)) return [3 /*break*/, 10];
+                                item = orderItems_1[_i];
+                                return [4 /*yield*/, tx.vendorProduct.update({
+                                        where: { id: item.vendorProductId },
+                                        data: {
+                                            stock: {
+                                                decrement: item.quantity
+                                            }
+                                        }
+                                    })];
+                            case 8:
+                                _a.sent();
+                                _a.label = 9;
+                            case 9:
+                                _i++;
+                                return [3 /*break*/, 7];
+                            case 10: return [4 /*yield*/, tx.cart.findUnique({
+                                    where: { userId_vendorId: { userId: userId, vendorId: vendorId } },
+                                    select: { id: true }
+                                })];
+                            case 11:
+                                cartToClear = _a.sent();
+                                if (!cartToClear) return [3 /*break*/, 13];
+                                return [4 /*yield*/, tx.cartItem.deleteMany({ where: { cartId: cartToClear.id } })];
+                            case 12:
+                                _a.sent();
+                                _a.label = 13;
+                            case 13: return [4 /*yield*/, orderModel.getOrderById(newOrder.id, tx)];
+                            case 14:
                                 finalOrder = _a.sent();
                                 if (!finalOrder) {
                                     throw new OrderCreationError("Failed to retrieve the created order.", 500);

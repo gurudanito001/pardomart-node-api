@@ -48,6 +48,8 @@ var authService = require("../services/auth.service");
 var userService = require("../services/user.service");
 var verification_1 = require("../utils/verification"); // Create this file.
 var timezones_1 = require("../utils/timezones");
+var client_1 = require("@prisma/client");
+var prisma = new client_1.PrismaClient();
 /**
  * @swagger
  * /auth/register:

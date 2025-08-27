@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteCartItem = exports.updateCartItem = exports.getCartItemsByCartId = exports.getCartItemByCartId = exports.getCartItemById = exports.createCartItem = void 0;
+exports.deleteCartItem = exports.updateCartItem = exports.getCartItemsByCartId = exports.getCartItemByCartIdAndVendorProductId = exports.getCartItemById = exports.createCartItem = void 0;
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
 exports.createCartItem = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
@@ -62,12 +62,14 @@ exports.getCartItemById = function (id) { return __awaiter(void 0, void 0, Promi
             })];
     });
 }); };
-exports.getCartItemByCartId = function (cartId, vendorProductId) { return __awaiter(void 0, void 0, Promise, function () {
+exports.getCartItemByCartIdAndVendorProductId = function (cartId, vendorProductId) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.cartItem.findFirst({
+        return [2 /*return*/, prisma.cartItem.findUnique({
                 where: {
-                    cartId: cartId,
-                    vendorProductId: vendorProductId
+                    cartId_vendorProductId: {
+                        cartId: cartId,
+                        vendorProductId: vendorProductId
+                    }
                 }
             })];
     });

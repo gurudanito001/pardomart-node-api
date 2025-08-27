@@ -1,45 +1,53 @@
 import { Response } from 'express';
 import * as cartService from '../services/cart.service';
 import { AuthenticatedRequest } from './vendor.controller';
+import { CartError } from '../services/cart.service';
 
-export const getCartController = async (req: AuthenticatedRequest, res: Response) => {
+/**
+ * @swagger
+ * /cart:
+ *   get:
+ *     summary: Get all carts for the current user
+ *     tags: [Cart]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: A list of the user's carts, one for each vendor.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Cart'
+ *       401:
+ *         description: User not authenticated.
+ */
+export const getCartsController = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.userId as string;
-    const cart = await cartService.getCartByUserIdService(userId);
-    res.status(200).json(cart || { userId, items: [] }); // Return empty cart if none exists
+    const carts = await cartService.getCartsByUserIdService(userId);
+    res.status(200).json(carts || []);
   } catch (error: any) {
-    console.error('Error in getCartController:', error);
+    console.error('Error in getCartsController:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
 
-export const addItemToCartController = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const userId = req.userId as string;
-    const { vendorProductId, quantity } = req.body;
+export const deleteCartController = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.userId as string;
+        const { cartId } = req.params;
 
-    if (!vendorProductId || !quantity) {
-      return res.status(400).json({ error: 'vendorProductId and quantity are required.' });
+        const cart = await cartService.getCartByIdService(cartId);
+        if (!cart || cart.userId !== userId) {
+            return res.status(404).json({ error: 'Cart not found or you do not have permission to delete it.' });
+        }
+
+        const deletedCart = await cartService.deleteCartService(cartId);
+        res.status(200).json(deletedCart);
+    } catch (error: any) {
+        console.error('Error in deleteCartController:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
-
-    const result = await cartService.addItemToCartService(userId, { vendorProductId, quantity });
-    res.status(201).json(result);
-  } catch (error: any) {
-    if (error.name === 'CartError') {
-        return res.status(400).json({ error: error.message });
-    }
-    console.error('Error in addItemToCartController:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-};
-
-// Stubs for other controllers you would add
-export const updateCartItemQuantityController = async (req: AuthenticatedRequest, res: Response) => {
-  // Logic to update item quantity would go here
-  res.status(501).json({ message: 'Not implemented' });
-};
-
-export const removeCartItemController = async (req: AuthenticatedRequest, res: Response) => {
-  // Logic to remove an item would go here
-  res.status(501).json({ message: 'Not implemented' });
 };

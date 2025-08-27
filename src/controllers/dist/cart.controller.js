@@ -36,69 +36,74 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.removeCartItemController = exports.updateCartItemQuantityController = exports.addItemToCartController = exports.getCartController = void 0;
+exports.deleteCartController = exports.getCartsController = void 0;
 var cartService = require("../services/cart.service");
-exports.getCartController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var userId, cart, error_1;
+/**
+ * @swagger
+ * /cart:
+ *   get:
+ *     summary: Get all carts for the current user
+ *     tags: [Cart]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: A list of the user's carts, one for each vendor.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Cart'
+ *       401:
+ *         description: User not authenticated.
+ */
+exports.getCartsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var userId, carts, error_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
                 userId = req.userId;
-                return [4 /*yield*/, cartService.getCartByUserIdService(userId)];
+                return [4 /*yield*/, cartService.getCartsByUserIdService(userId)];
             case 1:
-                cart = _a.sent();
-                res.status(200).json(cart || { userId: userId, items: [] }); // Return empty cart if none exists
+                carts = _a.sent();
+                res.status(200).json(carts || []);
                 return [3 /*break*/, 3];
             case 2:
                 error_1 = _a.sent();
-                console.error('Error in getCartController:', error_1);
+                console.error('Error in getCartsController:', error_1);
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
     });
 }); };
-exports.addItemToCartController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var userId, _a, vendorProductId, quantity, result, error_2;
-    return __generator(this, function (_b) {
-        switch (_b.label) {
+exports.deleteCartController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var userId, cartId, cart, deletedCart, error_2;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
             case 0:
-                _b.trys.push([0, 2, , 3]);
+                _a.trys.push([0, 3, , 4]);
                 userId = req.userId;
-                _a = req.body, vendorProductId = _a.vendorProductId, quantity = _a.quantity;
-                if (!vendorProductId || !quantity) {
-                    return [2 /*return*/, res.status(400).json({ error: 'vendorProductId and quantity are required.' })];
-                }
-                return [4 /*yield*/, cartService.addItemToCartService(userId, { vendorProductId: vendorProductId, quantity: quantity })];
+                cartId = req.params.cartId;
+                return [4 /*yield*/, cartService.getCartByIdService(cartId)];
             case 1:
-                result = _b.sent();
-                res.status(201).json(result);
-                return [3 /*break*/, 3];
-            case 2:
-                error_2 = _b.sent();
-                if (error_2.name === 'CartError') {
-                    return [2 /*return*/, res.status(400).json({ error: error_2.message })];
+                cart = _a.sent();
+                if (!cart || cart.userId !== userId) {
+                    return [2 /*return*/, res.status(404).json({ error: 'Cart not found or you do not have permission to delete it.' })];
                 }
-                console.error('Error in addItemToCartController:', error_2);
+                return [4 /*yield*/, cartService.deleteCartService(cartId)];
+            case 2:
+                deletedCart = _a.sent();
+                res.status(200).json(deletedCart);
+                return [3 /*break*/, 4];
+            case 3:
+                error_2 = _a.sent();
+                console.error('Error in deleteCartController:', error_2);
                 res.status(500).json({ error: 'Internal server error' });
-                return [3 /*break*/, 3];
-            case 3: return [2 /*return*/];
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
         }
-    });
-}); };
-// Stubs for other controllers you would add
-exports.updateCartItemQuantityController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        // Logic to update item quantity would go here
-        res.status(501).json({ message: 'Not implemented' });
-        return [2 /*return*/];
-    });
-}); };
-exports.removeCartItemController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        // Logic to remove an item would go here
-        res.status(501).json({ message: 'Not implemented' });
-        return [2 /*return*/];
     });
 }); };

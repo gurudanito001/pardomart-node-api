@@ -98,22 +98,28 @@ model VendorProduct {
 
 model Cart {
   id         String    @id @default(uuid())
-  userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  vendorId String
   items      CartItem[]
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+
+  @@unique([userId, vendorId]) // Ensure one cart per user-vendor pair
 }
 
 model CartItem {
   id              String    @id @default(uuid())
-  cartId          String?
-  cart            Cart?      @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  cartId          String
+  cart            Cart      @relation(fields: [cartId], references: [id], onDelete: Cascade)
   vendorProductId String
   vendorProduct   VendorProduct @relation(fields: [vendorProductId], references: [id])
   quantity        Int
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+
+  @@unique([cartId, vendorProductId])
 }
 
 model OrderItem {
@@ -244,6 +250,7 @@ model Vendor {
   isVerified       Boolean    @default(false)
   meta             Json?
   openingHours     VendorOpeningHours[] 
+  carts           Cart[]  
   vendorProducts   VendorProduct[]
   orders           Order[]
   staff            User[]                 @relation("VendorStaff")

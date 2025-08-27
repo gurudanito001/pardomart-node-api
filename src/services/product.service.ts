@@ -24,6 +24,10 @@ export const getVendorProductByBarcode = async (barcode: string, vendorId: strin
   return productModel.getVendorProductByBarcode(barcode, vendorId);
 };
 
+export const getVendorProductById = async (id: string): Promise<VendorProduct | null> => {
+  return productModel.getVendorProductById(id);
+};
+
 export const getVendorProductsByCategory = async (
   vendorId: string,
   categoryId: string

@@ -4,6 +4,9 @@ import * as authService from '../services/auth.service';
 import * as userService from '../services/user.service'
 import { generateVerificationCode, sendVerificationCode } from '../utils/verification'; // Create this file.
 import Timezones from '../utils/timezones';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 
 /**

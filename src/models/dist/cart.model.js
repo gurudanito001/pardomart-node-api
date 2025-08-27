@@ -36,28 +36,50 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteCart = exports.getCartById = exports.getCartByUserId = exports.createCart = void 0;
+exports.deleteCart = exports.getCartById = exports.getCartByUserIdAndVendorId = exports.getCartsByUserId = exports.createCart = void 0;
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
 exports.createCart = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
         return [2 /*return*/, prisma.cart.create({
                 data: {
-                    userId: payload.userId
+                    userId: payload.userId,
+                    vendorId: payload.vendorId
                 }
             })];
     });
 }); };
-exports.getCartByUserId = function (userId) { return __awaiter(void 0, void 0, Promise, function () {
+exports.getCartsByUserId = function (userId) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.cart.findFirst({
+        return [2 /*return*/, prisma.cart.findMany({
                 where: { userId: userId },
                 include: {
                     items: {
                         include: {
                             vendorProduct: true
                         }
+                    },
+                    vendor: true
+                }
+            })];
+    });
+}); };
+exports.getCartByUserIdAndVendorId = function (userId, vendorId) { return __awaiter(void 0, void 0, Promise, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, prisma.cart.findUnique({
+                where: {
+                    userId_vendorId: {
+                        userId: userId,
+                        vendorId: vendorId
                     }
+                },
+                include: {
+                    items: {
+                        include: {
+                            vendorProduct: true
+                        }
+                    },
+                    vendor: true
                 }
             })];
     });
@@ -71,7 +93,8 @@ exports.getCartById = function (id) { return __awaiter(void 0, void 0, Promise, 
                         include: {
                             vendorProduct: true
                         }
-                    }
+                    },
+                    vendor: true
                 }
             })];
     });

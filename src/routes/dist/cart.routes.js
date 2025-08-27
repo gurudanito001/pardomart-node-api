@@ -10,36 +10,37 @@ router.use(auth_middleware_1.authenticate);
  * @swagger
  * /cart:
  *   get:
- *     summary: Get the current user's shopping cart
+ *     summary: Get all carts for the current user
  *     tags: [Cart]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: The user's shopping cart with items.
+ *         description: A list of the user's carts, one for each vendor.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Cart'
  */
-router.get('/', cart_controller_1.getCartController);
+router.get('/', cart_controller_1.getCartsController);
 /**
  * @swagger
- * /cart/items:
- *   post:
- *     summary: Add an item to the shopping cart
+ * /cart/{cartId}:
+ *   delete:
+ *     summary: Delete an entire cart
  *     tags: [Cart]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               vendorProductId: { type: 'string', format: 'uuid' }
- *               quantity: { type: 'integer', minimum: 1 }
+ *     parameters:
+ *       - in: path
+ *         name: cartId
+ *         required: true
+ *         schema: { type: 'string', format: 'uuid' }
  *     responses:
- *       201:
- *         description: The added or updated cart item.
+ *       200:
+ *         description: The deleted cart.
  */
-router.post('/items', cart_controller_1.addItemToCartController);
-// You would also add PUT /items/{itemId} and DELETE /items/{itemId} here
+router["delete"]('/:cartId', cart_controller_1.deleteCartController);
 exports["default"] = router;

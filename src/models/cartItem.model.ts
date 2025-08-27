@@ -39,12 +39,14 @@ export const getCartItemById = async (id: string): Promise<CartItemWithCart | nu
   });
 };
 
-export const getCartItemByCartId = async (cartId: string, vendorProductId?: string): Promise<CartItem | null> => {
-  return prisma.cartItem.findFirst({
-    where: { 
-      cartId, 
-      vendorProductId 
-    }
+export const getCartItemByCartIdAndVendorProductId = async (cartId: string, vendorProductId: string): Promise<CartItem | null> => {
+  return prisma.cartItem.findUnique({
+    where: {
+      cartId_vendorProductId: {
+        cartId,
+        vendorProductId,
+      },
+    },
   });
 };
 

@@ -36,8 +36,9 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteCartItemService = exports.updateCartItemService = exports.getCartItemByIdService = exports.createCartItemService = void 0;
+exports.deleteCartItemService = exports.updateCartItemService = exports.getCartItemByCartIdAndVendorProductIdService = exports.getCartItemByIdService = exports.createCartItemService = void 0;
 var cartItemModel = require("../models/cartItem.model"); // Adjust the path if needed
+var cart_service_1 = require("./cart.service");
 // --- CartItem Service Functions ---
 exports.createCartItemService = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
@@ -49,9 +50,36 @@ exports.getCartItemByIdService = function (id) { return __awaiter(void 0, void 0
         return [2 /*return*/, cartItemModel.getCartItemById(id)];
     });
 }); };
-exports.updateCartItemService = function (id, payload) { return __awaiter(void 0, void 0, Promise, function () {
+exports.getCartItemByCartIdAndVendorProductIdService = function (cartId, vendorProductId) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, cartItemModel.updateCartItem(id, payload)];
+        return [2 /*return*/, cartItemModel.getCartItemByCartIdAndVendorProductId(cartId, vendorProductId)];
+    });
+}); };
+exports.updateCartItemService = function (id, payload) { return __awaiter(void 0, void 0, Promise, function () {
+    var quantity, cartItem;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                quantity = payload.quantity;
+                if (quantity === undefined) {
+                    throw new cart_service_1.CartError('Quantity is required for update.');
+                }
+                if (quantity < 1) {
+                    // If quantity is 0 or less, it should be a delete operation.
+                    // The controller should handle this and call deleteCartItemService instead.
+                    throw new cart_service_1.CartError('Quantity must be a positive number.');
+                }
+                return [4 /*yield*/, exports.getCartItemByIdService(id)];
+            case 1:
+                cartItem = _a.sent();
+                if (!(cartItem === null || cartItem === void 0 ? void 0 : cartItem.vendorProduct)) {
+                    throw new cart_service_1.CartError('Cart item or associated product not found.', 404);
+                }
+                if (cartItem.vendorProduct.stock !== null && cartItem.vendorProduct.stock < quantity) {
+                    throw new cart_service_1.CartError("Not enough stock. Only " + cartItem.vendorProduct.stock + " items available.");
+                }
+                return [2 /*return*/, cartItemModel.updateCartItem(id, { quantity: quantity })];
+        }
     });
 }); };
 exports.deleteCartItemService = function (id) { return __awaiter(void 0, void 0, Promise, function () {

@@ -1,9 +1,8 @@
 
 import * as cartModel from '../models/cart.model'; // Adjust the path if needed
 import * as cartItemModel from '../models/cartItem.model';
-import { PrismaClient, Cart } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { PrismaClient, Cart, CartItem } from '@prisma/client';
+import { getVendorProductById } from './product.service';
 
 // Custom error class for better error handling in the controller
 export class CartError extends Error {
@@ -15,15 +14,18 @@ export class CartError extends Error {
   }
 }
 
+const prisma = new PrismaClient();
+
 // --- Cart Service Functions ---
 
 /**
  * Creates a new cart for a user.
- * @param userId - The ID of the user for whom the cart is created.
+ * @param userId - The ID of the user.
+ * @param vendorId - The ID of the vendor.
  * @returns The newly created cart.
  */
-export const createCartService = async (userId: string): Promise<Cart> => {
-  return cartModel.createCart({ userId}); // Initialize with empty items
+export const createCartService = async (userId: string, vendorId: string): Promise<Cart> => {
+  return cartModel.createCart({ userId, vendorId });
 };
 
 /**
@@ -36,14 +38,17 @@ export const getCartByIdService = async (id: string): Promise<Cart | null> => {
 };
 
 /**
- * Retrieves the cart for a specific user.
+ * Retrieves all carts for a specific user.
  * @param userId - The ID of the user whose cart is to be retrieved.
- * @returns The user's cart, or null if not found.
+ * @returns An array of the user's carts.
  */
-export const getCartByUserIdService = async (userId: string): Promise<Cart | null> => {
-  return cartModel.getCartByUserId(userId);
+export const getCartsByUserIdService = async (userId: string): Promise<Cart[]> => {
+  return cartModel.getCartsByUserId(userId);
 };
 
+export const getCartByUserIdAndVendorIdService = async (userId: string, vendorId: string): Promise<Cart | null> => {
+  return cartModel.getCartByUserIdAndVendorId(userId, vendorId);
+};
 
 /**
  * Deletes a cart by its ID.
@@ -60,57 +65,69 @@ interface AddItemPayload {
 }
 
 /**
- * Adds an item to a user's shopping cart.
- * If the user has no cart, one is created.
- * If the item is already in the cart, its quantity is updated.
+ * Adds or updates an item in the correct vendor-specific cart for a user.
  * @param userId The ID of the user.
  * @param payload The item and quantity to add.
- * @returns The created or updated cart item.
+ * @returns The updated cart.
  */
-export const addItemToCartService = async (userId: string, payload: AddItemPayload) => {
+export const addItemToCartService = async (userId: string, payload: AddItemPayload): Promise<Cart | null> => {
   const { vendorProductId, quantity } = payload;
 
-  if (quantity <= 0) {
-    throw new CartError('Quantity must be a positive number.');
+  if (typeof quantity !== 'number' || quantity < 1) {
+    throw new CartError('Quantity must be a positive integer.');
   }
 
-  // 1. Validate product exists and is available
-  const vendorProduct = await prisma.vendorProduct.findUnique({ where: { id: vendorProductId } });
+  // 1. Get vendor product to find the vendorId and check availability
+  const vendorProduct = await getVendorProductById(vendorProductId);
   if (!vendorProduct) {
     throw new CartError('Product not found.', 404);
   }
   if (!vendorProduct.isAvailable) {
     throw new CartError('Product is currently not available.');
   }
+  const { vendorId } = vendorProduct;
 
-  // 2. Find or create a cart for the user
-  let cart = await getCartByUserIdService(userId);
+  // 2. Find or create a cart for the specific user-vendor pair
+  let cart = await getCartByUserIdAndVendorIdService(userId, vendorId);
   if (!cart) {
-    cart = await createCartService(userId);
+    cart = await createCartService(userId, vendorId);
+  }
+
+  if (!cart) {
+    // This should not happen if createCartService is correct
+    throw new CartError('Could not find or create a cart.', 500);
   }
 
   // 3. Check if item already exists in the cart
-  const existingItem = await cartItemModel.getCartItemByCartId(cart.id, vendorProductId);
+  const existingItem = await cartItemModel.getCartItemByCartIdAndVendorProductId(cart.id, vendorProductId);
 
   if (existingItem) {
-    // 4a. If item exists, update its quantity
-    const newQuantity = existingItem.quantity + quantity;
-
-    // Check stock for the new total quantity
-    if (vendorProduct.stock !== null && vendorProduct.stock < newQuantity) {
+    // 4a. If item exists, update its quantity.
+    if (vendorProduct.stock !== null && vendorProduct.stock < quantity) {
       throw new CartError(`Not enough stock. Only ${vendorProduct.stock} items available.`);
     }
-    return cartItemModel.updateCartItem(existingItem.id, { quantity: newQuantity });
+    await cartItemModel.updateCartItem(existingItem.id, { quantity });
   } else {
     // 4b. If item does not exist, create a new cart item
-    // Check stock for the initial quantity
     if (vendorProduct.stock !== null && vendorProduct.stock < quantity) {
         throw new CartError(`Not enough stock. Only ${vendorProduct.stock} items available.`);
     }
-    return cartItemModel.createCartItem({
+    await cartItemModel.createCartItem({
       cartId: cart.id,
       vendorProductId,
       quantity,
     });
   }
+
+  // 5. Return the fully updated cart
+  return getCartByIdService(cart.id);
+};
+
+export const clearCartService = async (cartId: string): Promise<Cart | null> => {
+    const cart = await getCartByIdService(cartId);
+    if (!cart) {
+        throw new CartError('Cart not found', 404);
+    }
+    await prisma.cartItem.deleteMany({ where: { cartId } });
+    return getCartByIdService(cartId);
 };
