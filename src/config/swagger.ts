@@ -361,6 +361,7 @@ const options: swaggerJsdoc.Options = {
           properties: {
             id: { type: 'string', format: 'uuid' },
             name: { type: 'string' },
+            description: { type: 'string', nullable: true },
             parentId: { type: 'string', format: 'uuid', nullable: true },
             type: { type: 'string', enum: ['PRODUCT', 'SERVICE'] },
             imageUrl: { type: 'string', format: 'uri', nullable: true },

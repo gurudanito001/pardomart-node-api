@@ -54,6 +54,7 @@ export interface CategoryFilters {
   parentId?: string
   type?: "top" | "sub"
   name?: string
+  vendorId?: string
 }
 export const getAllCategories = async (filters: CategoryFilters): Promise<Category[]> => {
   return prisma.category.findMany({
@@ -67,6 +68,13 @@ export const getAllCategories = async (filters: CategoryFilters): Promise<Catego
           mode: 'insensitive',
         }
       },
+      ...(filters?.vendorId && {
+        vendorProducts: {
+          some: {
+            vendorId: filters.vendorId,
+          },
+        },
+      }),
     }
   });
 };

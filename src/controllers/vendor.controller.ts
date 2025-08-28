@@ -115,7 +115,7 @@ export const getVendorById = async (req: Request, res: Response) => {
  *   get:
  *     summary: Get a paginated list of vendors
  *     tags: [Vendor]
- *     description: Retrieves a list of vendors. Can be filtered by name and sorted by proximity if latitude and longitude are provided.
+ *     description: Retrieves a list of vendors. Can be filtered by name and sorted by proximity if latitude and longitude are provided. If the user is authenticated, it also returns the number of items in their cart for each vendor.
  *     parameters:
  *       - in: query
  *         name: name
@@ -156,12 +156,13 @@ export const getVendorById = async (req: Request, res: Response) => {
  *       500:
  *         description: Internal server error.
  */
-export const getAllVendors = async (req: Request, res: Response) => {
+export const getAllVendors = async (req: AuthenticatedRequest, res: Response) => {
   const {name, latitude, longitude}: getVendorsFilters = req.query;
+  const userId = req.userId;
   const page = req?.query?.page?.toString() || "1";
   const take = req?.query?.size?.toString() || "20"; 
   try {
-    const vendors = await vendorService.getAllVendors({name, latitude, longitude}, {page, take});
+    const vendors = await vendorService.getAllVendors({name, latitude, longitude, userId}, {page, take});
     res.status(200).json(vendors);
   } catch (error) {
     console.error('Error getting all vendors:', error);

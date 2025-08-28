@@ -36,93 +36,62 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.getStoresByProductIdService = exports.getCategoryDetailsWithRelatedDataService = exports.getVendorCategoriesWithProductsService = exports.getVendorsCategoriesAndProductsService = void 0;
+exports.searchByCategoryService = exports.searchStoreService = exports.searchProductsService = void 0;
 var generalSearch_model_1 = require("../models/generalSearch.model");
-exports.getVendorsCategoriesAndProductsService = function (search, latitude, longitude) { return __awaiter(void 0, void 0, void 0, function () {
-    var results, error_1;
+// Service Function
+exports.searchProductsService = function (searchTerm, userLatitude, userLongitude) { return __awaiter(void 0, void 0, void 0, function () {
+    var result, error_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, generalSearch_model_1.getVendorsCategoriesAndProducts(search, latitude, longitude)];
+                return [4 /*yield*/, generalSearch_model_1.searchByProductName(searchTerm, userLatitude, userLongitude)];
             case 1:
-                results = _a.sent();
-                return [2 /*return*/, results];
+                result = _a.sent();
+                return [2 /*return*/, result];
             case 2:
                 error_1 = _a.sent();
-                // Handle errors appropriately (e.g., log, rethrow with a specific error type)
-                console.error('Error in generalSearchService:', error_1);
-                throw error_1;
+                // Handle errors (e.g., logging, specific error types)
+                console.error('Error searching by product name:', error_1);
+                throw error_1; // Re-throw to be caught by the controller
             case 3: return [2 /*return*/];
         }
     });
 }); };
-// Service Function
-exports.getVendorCategoriesWithProductsService = function (vendorId, parentCategoryId) { return __awaiter(void 0, void 0, void 0, function () {
+exports.searchStoreService = function (searchTerm, userLatitude, userLongitude) { return __awaiter(void 0, void 0, void 0, function () {
     var result, error_2;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, generalSearch_model_1.getVendorCategoriesWithProducts(vendorId, parentCategoryId)];
+                return [4 /*yield*/, generalSearch_model_1.searchByStoreName(searchTerm, userLatitude, userLongitude)];
             case 1:
                 result = _a.sent();
                 return [2 /*return*/, result];
             case 2:
                 error_2 = _a.sent();
-                // Handle errors appropriately (e.g., log, rethrow with a specific error type)
-                console.error('Error in getVendorCategoriesWithProductsService:', error_2);
-                throw error_2;
+                // Handle errors (e.g., logging, specific error types)
+                console.error('Error searching by store name:', error_2);
+                throw error_2; // Re-throw to be caught by the controller
             case 3: return [2 /*return*/];
         }
     });
 }); };
-// Service Function
-exports.getCategoryDetailsWithRelatedDataService = function (_a) {
-    var categoryId = _a.categoryId, page = _a.page, take = _a.take, userLatitude = _a.userLatitude, userLongitude = _a.userLongitude, vendorId = _a.vendorId;
-    return __awaiter(void 0, void 0, void 0, function () {
-        var results, error_3;
-        return __generator(this, function (_b) {
-            switch (_b.label) {
-                case 0:
-                    _b.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, generalSearch_model_1.getCategoryDetailsWithRelatedData({
-                            categoryId: categoryId,
-                            vendorId: vendorId,
-                            userLatitude: userLatitude,
-                            userLongitude: userLongitude,
-                            page: page,
-                            take: take
-                        })];
-                case 1:
-                    results = _b.sent();
-                    return [2 /*return*/, results];
-                case 2:
-                    error_3 = _b.sent();
-                    // Handle errors appropriately (e.g., log, rethrow with a specific error type)
-                    console.error('Error in getCategoryDetailsService:', error_3);
-                    throw error_3; // Re-throw the error to be handled by your application's error handling
-                case 3: return [2 /*return*/];
-            }
-        });
-    });
-};
-// Service Function
-exports.getStoresByProductIdService = function (searchTerm, userLatitude, userLongitude) { return __awaiter(void 0, void 0, void 0, function () {
-    var result, error_4;
+exports.searchByCategoryService = function (searchTerm, latitude, longitude) { return __awaiter(void 0, void 0, void 0, function () {
+    var result, error_3;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, generalSearch_model_1.getStoresByProductId(searchTerm, userLatitude, userLongitude)];
+                return [4 /*yield*/, generalSearch_model_1.searchByCategoryName(searchTerm, latitude, longitude)];
             case 1:
                 result = _a.sent();
                 return [2 /*return*/, result];
             case 2:
-                error_4 = _a.sent();
+                error_3 = _a.sent();
                 // Handle errors (e.g., logging, specific error types)
-                console.error('Error in getStoresByProductIdService:', error_4);
-                throw error_4; // Re-throw to be caught by the controller
+                console.error('Error searching by category name:', error_3);
+                throw error_3; // Re-throw to be caught by the controller
             case 3: return [2 /*return*/];
         }
     });

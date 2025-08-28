@@ -97,19 +97,32 @@ exports.getVendorById = function (id) { return __awaiter(void 0, void 0, Promise
     });
 }); };
 exports.getAllVendors = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
-    var skip, takeVal, vendors, totalCount, totalPages;
+    var skip, takeVal, where, include, vendors, totalCount, totalPages;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 skip = ((parseInt(pagination.page)) - 1) * parseInt(pagination.take);
                 takeVal = parseInt(pagination.take);
+                where = {
+                // isVerified: true,
+                };
+                if (filters === null || filters === void 0 ? void 0 : filters.name) {
+                    where.name = {
+                        contains: filters.name,
+                        mode: 'insensitive'
+                    };
+                }
+                include = filters.userId ? {
+                    carts: {
+                        where: { userId: filters.userId },
+                        select: {
+                            _count: { select: { items: true } }
+                        }
+                    }
+                } : undefined;
                 return [4 /*yield*/, prisma.vendor.findMany({
-                        where: __assign({}, (filters === null || filters === void 0 ? void 0 : filters.name) && {
-                            name: {
-                                contains: filters === null || filters === void 0 ? void 0 : filters.name,
-                                mode: 'insensitive'
-                            }
-                        }),
+                        where: where,
+                        include: include,
                         skip: skip,
                         take: takeVal,
                         orderBy: {
@@ -119,12 +132,7 @@ exports.getAllVendors = function (filters, pagination) { return __awaiter(void 0
             case 1:
                 vendors = _a.sent();
                 return [4 /*yield*/, prisma.vendor.count({
-                        where: __assign({}, (filters === null || filters === void 0 ? void 0 : filters.name) && {
-                            name: {
-                                contains: filters === null || filters === void 0 ? void 0 : filters.name,
-                                mode: 'insensitive'
-                            }
-                        })
+                        where: where
                     })];
             case 2:
                 totalCount = _a.sent();

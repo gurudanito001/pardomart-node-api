@@ -100,12 +100,18 @@ exports.getCategoryById = function (id) { return __awaiter(void 0, void 0, Promi
 exports.getAllCategories = function (filters) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
         return [2 /*return*/, prisma.category.findMany({
-                where: __assign(__assign(__assign(__assign({}, ((filters === null || filters === void 0 ? void 0 : filters.parentId) && { parentId: filters === null || filters === void 0 ? void 0 : filters.parentId })), (((filters === null || filters === void 0 ? void 0 : filters.type) === "top" && !(filters === null || filters === void 0 ? void 0 : filters.parentId)) && { parentId: null })), (((filters === null || filters === void 0 ? void 0 : filters.type) === "sub" && !(filters === null || filters === void 0 ? void 0 : filters.parentId)) && { parentId: { not: null } })), (filters === null || filters === void 0 ? void 0 : filters.name) && {
+                where: __assign(__assign(__assign(__assign(__assign({}, ((filters === null || filters === void 0 ? void 0 : filters.parentId) && { parentId: filters === null || filters === void 0 ? void 0 : filters.parentId })), (((filters === null || filters === void 0 ? void 0 : filters.type) === "top" && !(filters === null || filters === void 0 ? void 0 : filters.parentId)) && { parentId: null })), (((filters === null || filters === void 0 ? void 0 : filters.type) === "sub" && !(filters === null || filters === void 0 ? void 0 : filters.parentId)) && { parentId: { not: null } })), (filters === null || filters === void 0 ? void 0 : filters.name) && {
                     name: {
                         contains: filters === null || filters === void 0 ? void 0 : filters.name,
                         mode: 'insensitive'
                     }
-                })
+                }), ((filters === null || filters === void 0 ? void 0 : filters.vendorId) && {
+                    vendorProducts: {
+                        some: {
+                            vendorId: filters.vendorId
+                        }
+                    }
+                }))
             })];
     });
 }); };

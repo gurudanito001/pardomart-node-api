@@ -39,37 +39,40 @@ export const getVendorById = async (id: string): Promise<vendorModel.VendorWithR
 
 
 export const getAllVendors = async (filters: vendorModel.getVendorsFilters, pagination: {page: string, take: string}) => {
-  const vendors = await vendorModel.getAllVendors(filters, pagination);
-  //console.log("All vendors", vendors)
+  const vendorsResult = await vendorModel.getAllVendors(filters, pagination);
+
+  const processedVendors = vendorsResult.data.map((vendor: any) => {
+    const cartItemCount = vendor.carts?.[0]?._count?.items || 0;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { carts, ...vendorWithoutCarts } = vendor;
+    return { ...vendorWithoutCarts, cartItemCount };
+  });
+
   if(filters.latitude && filters.longitude){
     const customerLatitude = parseFloat(filters.latitude);
     const customerLongitude = parseFloat(filters.longitude);
 
      if (!isNaN(customerLatitude) && !isNaN(customerLongitude)) {
-       const vendorsWithDistance: VendorWithDistance[] = vendors.data.map((vendor) => {
+       const vendorsWithDistance = processedVendors.map((vendor) => {
          const distance = calculateDistance(
            customerLatitude,
            customerLongitude,
            vendor.latitude!,
            vendor.longitude!
          );
-         return { ...vendor, distance };
+         return { ...vendor, distance } as VendorWithDistance & { cartItemCount: number };
        });
 
         // Sort vendors by distance in ascending order
         vendorsWithDistance.sort((a, b) => a.distance - b.distance);
-        console.log(vendorsWithDistance);
         return {
-            data: vendorsWithDistance,
-            total: vendors.totalCount, // Ensure you return total from the original query
-            page: parseInt(pagination.page),
-            pageSize: parseInt(pagination.take),
-            totalPages: Math.ceil(vendors.totalCount / parseInt(pagination.take)),
+          ...vendorsResult,
+          data: vendorsWithDistance,
         };
     }
   }
   
-  return vendors
+  return { ...vendorsResult, data: processedVendors };
 };
 
 export const updateVendor = async (id: string, payload: vendorModel.UpdateVendorPayload): Promise<Vendor> => {

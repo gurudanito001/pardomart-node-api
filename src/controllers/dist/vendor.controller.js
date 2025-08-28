@@ -175,7 +175,7 @@ exports.getVendorById = function (req, res) { return __awaiter(void 0, void 0, v
  *   get:
  *     summary: Get a paginated list of vendors
  *     tags: [Vendor]
- *     description: Retrieves a list of vendors. Can be filtered by name and sorted by proximity if latitude and longitude are provided.
+ *     description: Retrieves a list of vendors. Can be filtered by name and sorted by proximity if latitude and longitude are provided. If the user is authenticated, it also returns the number of items in their cart for each vendor.
  *     parameters:
  *       - in: query
  *         name: name
@@ -217,18 +217,19 @@ exports.getVendorById = function (req, res) { return __awaiter(void 0, void 0, v
  *         description: Internal server error.
  */
 exports.getAllVendors = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, name, latitude, longitude, page, take, vendors, error_3;
+    var _a, name, latitude, longitude, userId, page, take, vendors, error_3;
     var _b, _c, _d, _e;
     return __generator(this, function (_f) {
         switch (_f.label) {
             case 0:
                 _a = req.query, name = _a.name, latitude = _a.latitude, longitude = _a.longitude;
+                userId = req.userId;
                 page = ((_c = (_b = req === null || req === void 0 ? void 0 : req.query) === null || _b === void 0 ? void 0 : _b.page) === null || _c === void 0 ? void 0 : _c.toString()) || "1";
                 take = ((_e = (_d = req === null || req === void 0 ? void 0 : req.query) === null || _d === void 0 ? void 0 : _d.size) === null || _e === void 0 ? void 0 : _e.toString()) || "20";
                 _f.label = 1;
             case 1:
                 _f.trys.push([1, 3, , 4]);
-                return [4 /*yield*/, vendorService.getAllVendors({ name: name, latitude: latitude, longitude: longitude }, { page: page, take: take })];
+                return [4 /*yield*/, vendorService.getAllVendors({ name: name, latitude: latitude, longitude: longitude, userId: userId }, { page: page, take: take })];
             case 2:
                 vendors = _f.sent();
                 res.status(200).json(vendors);

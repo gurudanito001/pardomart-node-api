@@ -46,6 +46,17 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 exports.__esModule = true;
 exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
 // services/vendor.service.ts
@@ -76,34 +87,33 @@ exports.getVendorById = function (id) { return __awaiter(void 0, void 0, Promise
     });
 }); };
 exports.getAllVendors = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
-    var vendors, customerLatitude_1, customerLongitude_1, vendorsWithDistance;
+    var vendorsResult, processedVendors, customerLatitude_1, customerLongitude_1, vendorsWithDistance;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4 /*yield*/, vendorModel.getAllVendors(filters, pagination)];
             case 1:
-                vendors = _a.sent();
-                //console.log("All vendors", vendors)
+                vendorsResult = _a.sent();
+                processedVendors = vendorsResult.data.map(function (vendor) {
+                    var _a, _b, _c;
+                    var cartItemCount = ((_c = (_b = (_a = vendor.carts) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b._count) === null || _c === void 0 ? void 0 : _c.items) || 0;
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    var carts = vendor.carts, vendorWithoutCarts = __rest(vendor, ["carts"]);
+                    return __assign(__assign({}, vendorWithoutCarts), { cartItemCount: cartItemCount });
+                });
                 if (filters.latitude && filters.longitude) {
                     customerLatitude_1 = parseFloat(filters.latitude);
                     customerLongitude_1 = parseFloat(filters.longitude);
                     if (!isNaN(customerLatitude_1) && !isNaN(customerLongitude_1)) {
-                        vendorsWithDistance = vendors.data.map(function (vendor) {
+                        vendorsWithDistance = processedVendors.map(function (vendor) {
                             var distance = calculateDistance(customerLatitude_1, customerLongitude_1, vendor.latitude, vendor.longitude);
                             return __assign(__assign({}, vendor), { distance: distance });
                         });
                         // Sort vendors by distance in ascending order
                         vendorsWithDistance.sort(function (a, b) { return a.distance - b.distance; });
-                        console.log(vendorsWithDistance);
-                        return [2 /*return*/, {
-                                data: vendorsWithDistance,
-                                total: vendors.totalCount,
-                                page: parseInt(pagination.page),
-                                pageSize: parseInt(pagination.take),
-                                totalPages: Math.ceil(vendors.totalCount / parseInt(pagination.take))
-                            }];
+                        return [2 /*return*/, __assign(__assign({}, vendorsResult), { data: vendorsWithDistance })];
                     }
                 }
-                return [2 /*return*/, vendors];
+                return [2 /*return*/, __assign(__assign({}, vendorsResult), { data: processedVendors })];
         }
     });
 }); };

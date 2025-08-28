@@ -36,246 +36,8 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.getStoresByProductIdController = exports.getCategoryDetailsWithRelatedDataController = exports.getVendorCategoriesWithProductsController = exports.getVendorsCategoriesAndProductsController = void 0;
+exports.searchByCategoryController = exports.searchByStoreController = exports.searchByProductController = void 0;
 var generalSearch_service_1 = require("../services/generalSearch.service");
-/**
- * @swagger
- * /generalSearch:
- *   get:
- *     summary: General search for vendors, categories, and products
- *     tags: [General Search]
- *     description: Performs a search across vendors, categories, and products based on a keyword and user's location.
- *     parameters:
- *       - in: query
- *         name: search
- *         required: true
- *         schema:
- *           type: string
- *         description: The search term.
- *       - in: query
- *         name: latitude
- *         required: true
- *         schema:
- *           type: number
- *           format: float
- *         description: User's current latitude.
- *       - in: query
- *         name: longitude
- *         required: true
- *         schema:
- *           type: number
- *           format: float
- *         description: User's current longitude.
- *     responses:
- *       200:
- *         description: A list of matching vendors, categories, and products.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/GeneralSearchResult'
- *       400:
- *         description: Bad request due to missing or invalid parameters.
- */
-exports.getVendorsCategoriesAndProductsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, search, latitude, longitude, latitudeNum, longitudeNum, results, error_1;
-    return __generator(this, function (_b) {
-        switch (_b.label) {
-            case 0:
-                _a = req.query, search = _a.search, latitude = _a.latitude, longitude = _a.longitude;
-                // Basic validation of input parameters
-                if (!search || typeof search !== 'string') {
-                    return [2 /*return*/, res
-                            .status(400)
-                            .json({ error: 'Search term is required and must be a string' })];
-                }
-                latitudeNum = Number(latitude);
-                longitudeNum = Number(longitude);
-                if (!latitude ||
-                    isNaN(latitudeNum) ||
-                    !longitude ||
-                    isNaN(longitudeNum)) {
-                    return [2 /*return*/, res
-                            .status(400)
-                            .json({
-                            error: 'Latitude and longitude are required and must be valid numbers'
-                        })];
-                }
-                _b.label = 1;
-            case 1:
-                _b.trys.push([1, 3, , 4]);
-                return [4 /*yield*/, generalSearch_service_1.getVendorsCategoriesAndProductsService(search, latitudeNum, longitudeNum)];
-            case 2:
-                results = _b.sent();
-                res.json(results);
-                return [3 /*break*/, 4];
-            case 3:
-                error_1 = _b.sent();
-                // Handle errors from the service (e.g., database errors)
-                res.status(500).json({ error: error_1.message || 'Internal server error' });
-                return [3 /*break*/, 4];
-            case 4: return [2 /*return*/];
-        }
-    });
-}); };
-/**
- * @swagger
- * /generalSearch/vendor/{vendorId}:
- *   get:
- *     summary: Get categories and products for a specific vendor
- *     tags: [General Search]
- *     description: Retrieves a list of product categories and a sample of products within those categories for a given vendor. Can be filtered by a parent category.
- *     parameters:
- *       - in: path
- *         name: vendorId
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: The ID of the vendor.
- *       - in: query
- *         name: parentCategoryId
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Optional. The ID of a parent category to filter the results.
- *     responses:
- *       200:
- *         description: A list of parent categories and sub-categories with their products.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/CategoriesWithProductsResult'
- *       400:
- *         description: Bad request due to missing vendor ID.
- */
-exports.getVendorCategoriesWithProductsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var vendorId, parentCategoryId, results, error_2;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                vendorId = req.params.vendorId;
-                parentCategoryId = req.query.parentCategoryId;
-                if (!vendorId) {
-                    return [2 /*return*/, res.status(400).json({ error: 'Vendor ID is required' })];
-                }
-                _a.label = 1;
-            case 1:
-                _a.trys.push([1, 3, , 4]);
-                return [4 /*yield*/, generalSearch_service_1.getVendorCategoriesWithProductsService(vendorId, parentCategoryId)];
-            case 2:
-                results = _a.sent();
-                res.json(results);
-                return [3 /*break*/, 4];
-            case 3:
-                error_2 = _a.sent();
-                // Handle errors from the service (e.g., database errors)
-                res.status(500).json({ error: error_2.message || 'Internal server error' });
-                return [3 /*break*/, 4];
-            case 4: return [2 /*return*/];
-        }
-    });
-}); };
-/**
- * @swagger
- * /generalSearch/category/{categoryId}:
- *   get:
- *     summary: Get details for a category, including stores and products
- *     tags: [General Search]
- *     description: Retrieves details for a specific category, along with a list of stores that carry products from that category (or its children), sorted by proximity to the user.
- *     parameters:
- *       - in: path
- *         name: categoryId
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: The ID of the category.
- *       - in: query
- *         name: latitude
- *         schema:
- *           type: number
- *           format: float
- *         description: User's current latitude for proximity sorting.
- *       - in: query
- *         name: longitude
- *         schema:
- *           type: number
- *           format: float
- *         description: User's current longitude for proximity sorting.
- *       - in: query
- *         name: vendorId
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Optional. Filter results to a specific vendor.
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *         description: Page number for pagination (currently not implemented in model).
- *       - in: query
- *         name: take
- *         schema:
- *           type: integer
- *           default: 10
- *         description: Number of items per page (currently not implemented in model).
- *     responses:
- *       200:
- *         description: Category details along with related stores and products.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/CategoryDetailsResult'
- *       400:
- *         description: Bad request due to missing or invalid parameters.
- */
-exports.getCategoryDetailsWithRelatedDataController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var categoryId, page, take, vendorId, latitude, longitude, results, error_3;
-    var _a, _b, _c, _d;
-    return __generator(this, function (_e) {
-        switch (_e.label) {
-            case 0:
-                categoryId = req.params.categoryId;
-                page = parseInt((((_a = req.query.page) === null || _a === void 0 ? void 0 : _a.toString()) || '1'), 10);
-                take = parseInt((((_b = req.query.take) === null || _b === void 0 ? void 0 : _b.toString()) || '10'), 10);
-                vendorId = (_d = (_c = req === null || req === void 0 ? void 0 : req.query) === null || _c === void 0 ? void 0 : _c.vendorId) === null || _d === void 0 ? void 0 : _d.toString();
-                latitude = req.query.latitude ? parseFloat(req.query.latitude.toString()) : undefined;
-                longitude = req.query.longitude ? parseFloat(req.query.longitude.toString()) : undefined;
-                // Validation
-                if (!categoryId) {
-                    return [2 /*return*/, res.status(400).json({ error: 'Category ID is required' })];
-                }
-                if (isNaN(page) || page < 1) {
-                    return [2 /*return*/, res.status(400).json({ error: 'Page must be a positive number' })];
-                }
-                if (isNaN(take) || take < 1) {
-                    return [2 /*return*/, res.status(400).json({ error: 'Take must be a positive number' })];
-                }
-                _e.label = 1;
-            case 1:
-                _e.trys.push([1, 3, , 4]);
-                return [4 /*yield*/, generalSearch_service_1.getCategoryDetailsWithRelatedDataService({
-                        categoryId: categoryId,
-                        page: page,
-                        take: take,
-                        userLatitude: latitude,
-                        userLongitude: longitude,
-                        vendorId: vendorId
-                    })];
-            case 2:
-                results = _e.sent();
-                res.json(results);
-                return [3 /*break*/, 4];
-            case 3:
-                error_3 = _e.sent();
-                // Handle errors from the service (e.g., database errors)
-                res.status(500).json({ error: error_3.message || 'Internal server error' });
-                return [3 /*break*/, 4];
-            case 4: return [2 /*return*/];
-        }
-    });
-}); };
 /**
  * @swagger
  * /generalSearch/product:
@@ -314,8 +76,8 @@ exports.getCategoryDetailsWithRelatedDataController = function (req, res) { retu
  *       400:
  *         description: Bad request due to missing or invalid parameters.
  */
-exports.getStoresByProductIdController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, search, latitude, longitude, userSearchTerm, userLatitude, userLongitude, result, error_4;
+exports.searchByProductController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, search, latitude, longitude, userSearchTerm, userLatitude, userLongitude, result, error_1;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -336,15 +98,156 @@ exports.getStoresByProductIdController = function (req, res) { return __awaiter(
                 _b.label = 1;
             case 1:
                 _b.trys.push([1, 3, , 4]);
-                return [4 /*yield*/, generalSearch_service_1.getStoresByProductIdService(userSearchTerm, userLatitude, userLongitude)];
+                return [4 /*yield*/, generalSearch_service_1.searchProductsService(userSearchTerm, userLatitude, userLongitude)];
             case 2:
                 result = _b.sent();
                 res.json(result);
                 return [3 /*break*/, 4];
             case 3:
-                error_4 = _b.sent();
+                error_1 = _b.sent();
                 // Handle errors from the service
-                res.status(500).json({ error: error_4.message || 'Internal server error' });
+                res.status(500).json({ error: error_1.message || 'Internal server error' });
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /generalSearch/store:
+ *   get:
+ *     summary: Find stores by name
+ *     tags: [General Search]
+ *     description: Searches for a store by name and returns a list of stores, sorted by proximity to the user. Each store result includes products they sell.
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The name of the store to search for.
+ *       - in: query
+ *         name: latitude
+ *         required: true
+ *         schema:
+ *           type: number
+ *           format: float
+ *         description: User's current latitude.
+ *       - in: query
+ *         name: longitude
+ *         required: true
+ *         schema:
+ *           type: number
+ *           format: float
+ *         description: User's current longitude.
+ *     responses:
+ *       200:
+ *         description: A list of stores matching the search, sorted by distance.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/StoresByProductResult'
+ *       400:
+ *         description: Bad request due to missing or invalid parameters.
+ */
+exports.searchByStoreController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, search, latitude, longitude, userSearchTerm, userLatitude, userLongitude, result, error_2;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _a = req.query, search = _a.search, latitude = _a.latitude, longitude = _a.longitude;
+                if (!search) {
+                    return [2 /*return*/, res.status(400).json({ error: 'Search Term is required' })];
+                }
+                if (!latitude || !longitude) {
+                    return [2 /*return*/, res.status(400).json({ error: 'Latitude and Longitude are required' })];
+                }
+                userSearchTerm = search.toString();
+                userLatitude = parseFloat(latitude);
+                userLongitude = parseFloat(longitude);
+                if (isNaN(userLatitude) || isNaN(userLongitude)) {
+                    return [2 /*return*/, res.status(400).json({ error: 'Invalid latitude or longitude values' })];
+                }
+                _b.label = 1;
+            case 1:
+                _b.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, generalSearch_service_1.searchStoreService(userSearchTerm, userLatitude, userLongitude)];
+            case 2:
+                result = _b.sent();
+                res.json(result);
+                return [3 /*break*/, 4];
+            case 3:
+                error_2 = _b.sent();
+                res.status(500).json({ error: error_2.message || 'Internal server error' });
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /generalSearch/category:
+ *   get:
+ *     summary: Find stores by category name
+ *     tags: [General Search]
+ *     description: Searches for a category by name and returns a list of stores that sell products in that category, sorted by proximity to the user.
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The name of the category to search for.
+ *       - in: query
+ *         name: latitude
+ *         required: true
+ *         schema:
+ *           type: number
+ *           format: float
+ *         description: User's current latitude.
+ *       - in: query
+ *         name: longitude
+ *         required: true
+ *         schema:
+ *           type: number
+ *           format: float
+ *         description: User's current longitude.
+ *     responses:
+ *       200:
+ *         description: A list of stores matching the category search, sorted by distance.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/StoresByProductResult'
+ *       400:
+ *         description: Bad request due to missing or invalid parameters.
+ */
+exports.searchByCategoryController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, search, latitude, longitude, userSearchTerm, userLatitude, userLongitude, result, error_3;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _a = req.query, search = _a.search, latitude = _a.latitude, longitude = _a.longitude;
+                if (!search) {
+                    return [2 /*return*/, res.status(400).json({ error: 'Search Term is required' })];
+                }
+                if (!latitude || !longitude) {
+                    return [2 /*return*/, res.status(400).json({ error: 'Latitude and Longitude are required' })];
+                }
+                userSearchTerm = search.toString();
+                userLatitude = parseFloat(latitude);
+                userLongitude = parseFloat(longitude);
+                _b.label = 1;
+            case 1:
+                _b.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, generalSearch_service_1.searchByCategoryService(userSearchTerm, userLatitude, userLongitude)];
+            case 2:
+                result = _b.sent();
+                res.json(result);
+                return [3 /*break*/, 4];
+            case 3:
+                error_3 = _b.sent();
+                res.status(500).json({ error: error_3.message || 'Internal server error' });
                 return [3 /*break*/, 4];
             case 4: return [2 /*return*/];
         }

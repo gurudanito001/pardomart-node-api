@@ -1,5 +1,5 @@
 // models/vendor.model.ts
-import { PrismaClient, Vendor, Days, User, VendorOpeningHours } from '@prisma/client';
+import { PrismaClient, Vendor, Days, User, VendorOpeningHours, Prisma } from '@prisma/client';
 
 
 const prisma = new PrismaClient();
@@ -81,23 +81,37 @@ export const getVendorById = async (id: string): Promise<VendorWithRelations | n
 export interface getVendorsFilters {
   name?: string,
   longitude?: string,
-  latitude?: string
+  latitude?: string,
+  userId?: string;
 }
 
 export const getAllVendors = async (filters: getVendorsFilters, pagination: {page: string, take: string}) => {
   const skip = ( (parseInt(pagination.page) ) - 1) * parseInt(pagination.take) 
   const takeVal = parseInt(pagination.take)
 
+  const where: Prisma.VendorWhereInput = {
+    // isVerified: true,
+  };
+
+  if (filters?.name) {
+    where.name = {
+      contains: filters.name,
+      mode: 'insensitive',
+    };
+  }
+
+  const include = filters.userId ? {
+    carts: {
+      where: { userId: filters.userId },
+      select: {
+        _count: { select: { items: true } }
+      }
+    }
+  } : undefined;
+
   const vendors = await prisma.vendor.findMany({
-    where: {
-      //isVerified: true,
-      ...filters?.name && {
-        name: {
-          contains: filters?.name, // Case-insensitive search
-          mode: 'insensitive',
-        }
-      },
-    },
+    where,
+    include,
     skip: skip,
     take: takeVal,
     orderBy: {
@@ -106,15 +120,7 @@ export const getAllVendors = async (filters: getVendorsFilters, pagination: {pag
   });
 
   const totalCount = await prisma.vendor.count({
-    where: {
-      //isVerified: true,
-      ...filters?.name && {
-        name: {
-          contains: filters?.name, // Case-insensitive search
-          mode: 'insensitive',
-        }
-      },
-    },
+    where,
   });
 
   const totalPages = Math.ceil( totalCount / parseInt(pagination.take));
@@ -152,4 +158,3 @@ export const deleteVendor = async (id: string): Promise<Vendor> => {
     where: { id }
   });
 };
-

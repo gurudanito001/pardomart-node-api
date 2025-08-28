@@ -175,37 +175,47 @@ exports.getVendorProductByBarcode = function (barcode, vendorId) { return __awai
     });
 }); };
 exports.getAllVendorProducts = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
-    var skip, takeVal, vendorProducts, totalCount, totalPages;
+    var skip, takeVal, where, vendorProducts, totalCount, totalPages;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 skip = ((parseInt(pagination.page)) - 1) * parseInt(pagination.take);
                 takeVal = parseInt(pagination.take);
+                where = {};
+                if (filters === null || filters === void 0 ? void 0 : filters.name) {
+                    where.name = {
+                        contains: filters.name,
+                        mode: 'insensitive'
+                    };
+                }
+                if ((filters === null || filters === void 0 ? void 0 : filters.tagIds) && filters.tagIds.length > 0) {
+                    where.tags = {
+                        some: {
+                            id: {
+                                "in": filters.tagIds
+                            }
+                        }
+                    };
+                }
+                if ((filters === null || filters === void 0 ? void 0 : filters.categoryIds) && filters.categoryIds.length > 0) {
+                    where.product = {
+                        categories: {
+                            some: {
+                                id: {
+                                    "in": filters.categoryIds
+                                }
+                            }
+                        }
+                    };
+                }
+                if (filters === null || filters === void 0 ? void 0 : filters.vendorId) {
+                    where.vendorId = filters.vendorId;
+                }
+                if (filters === null || filters === void 0 ? void 0 : filters.productId) {
+                    where.productId = filters.productId;
+                }
                 return [4 /*yield*/, prisma.vendorProduct.findMany({
-                        where: __assign(__assign(__assign(__assign(__assign({}, (filters === null || filters === void 0 ? void 0 : filters.name) && {
-                            name: {
-                                contains: filters === null || filters === void 0 ? void 0 : filters.name,
-                                mode: 'insensitive'
-                            }
-                        }), (filters === null || filters === void 0 ? void 0 : filters.tagIds) && {
-                            tags: {
-                                some: {
-                                    id: {
-                                        "in": filters === null || filters === void 0 ? void 0 : filters.tagIds
-                                    }
-                                }
-                            }
-                        }), (filters === null || filters === void 0 ? void 0 : filters.categoryIds) && {
-                            product: {
-                                categories: {
-                                    some: {
-                                        id: {
-                                            "in": filters === null || filters === void 0 ? void 0 : filters.categoryIds
-                                        }
-                                    }
-                                }
-                            }
-                        }), (filters === null || filters === void 0 ? void 0 : filters.vendorId) && { vendorId: filters === null || filters === void 0 ? void 0 : filters.vendorId }), (filters === null || filters === void 0 ? void 0 : filters.productId) && { productId: filters === null || filters === void 0 ? void 0 : filters.productId }),
+                        where: where,
                         include: {
                             categories: true
                         },
@@ -215,30 +225,7 @@ exports.getAllVendorProducts = function (filters, pagination) { return __awaiter
             case 1:
                 vendorProducts = _a.sent();
                 return [4 /*yield*/, prisma.vendorProduct.count({
-                        where: __assign(__assign(__assign(__assign(__assign({}, (filters === null || filters === void 0 ? void 0 : filters.name) && {
-                            name: {
-                                contains: filters === null || filters === void 0 ? void 0 : filters.name,
-                                mode: 'insensitive'
-                            }
-                        }), (filters === null || filters === void 0 ? void 0 : filters.tagIds) && {
-                            tags: {
-                                some: {
-                                    id: {
-                                        "in": filters === null || filters === void 0 ? void 0 : filters.tagIds
-                                    }
-                                }
-                            }
-                        }), (filters === null || filters === void 0 ? void 0 : filters.categoryIds) && {
-                            product: {
-                                categories: {
-                                    some: {
-                                        id: {
-                                            "in": filters === null || filters === void 0 ? void 0 : filters.categoryIds
-                                        }
-                                    }
-                                }
-                            }
-                        }), (filters === null || filters === void 0 ? void 0 : filters.vendorId) && { vendorId: filters === null || filters === void 0 ? void 0 : filters.vendorId }), (filters === null || filters === void 0 ? void 0 : filters.productId) && { productId: filters === null || filters === void 0 ? void 0 : filters.productId })
+                        where: where
                     })];
             case 2:
                 totalCount = _a.sent();

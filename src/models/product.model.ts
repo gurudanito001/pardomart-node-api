@@ -1,5 +1,5 @@
 // models/product.model.ts
-import { PrismaClient, Product, VendorProduct } from '@prisma/client';
+import { PrismaClient, Product, VendorProduct, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -194,37 +194,47 @@ export const getAllVendorProducts = async (filters: getVendorProductsFilters, pa
   const skip = ((parseInt(pagination.page)) - 1) * parseInt(pagination.take)
   const takeVal = parseInt(pagination.take)
 
+  const where: Prisma.VendorProductWhereInput = {};
+
+  if (filters?.name) {
+    where.name = {
+      contains: filters.name,
+      mode: 'insensitive',
+    };
+  }
+
+  if (filters?.tagIds && filters.tagIds.length > 0) {
+    where.tags = {
+      some: {
+        id: {
+          in: filters.tagIds,
+        },
+      },
+    };
+  }
+
+  if (filters?.categoryIds && filters.categoryIds.length > 0) {
+    where.product = {
+      categories: {
+        some: {
+          id: {
+            in: filters.categoryIds,
+          },
+        },
+      },
+    };
+  }
+
+  if (filters?.vendorId) {
+    where.vendorId = filters.vendorId;
+  }
+
+  if (filters?.productId) {
+    where.productId = filters.productId;
+  }
+
   const vendorProducts = await prisma.vendorProduct.findMany({
-    where: {
-      ...filters?.name && {
-        name: {
-          contains: filters?.name, // Case-insensitive search
-          mode: 'insensitive',
-        }
-      },
-      ...filters?.tagIds && {
-        tags: {
-          some: {
-            id: {
-              in: filters?.tagIds,
-            },
-          },
-        }
-      },
-      ...filters?.categoryIds && {
-        product: {
-          categories: {
-            some: {
-              id: {
-                in: filters?.categoryIds,
-              },
-            },
-          },
-        }
-      },
-      ...filters?.vendorId && { vendorId: filters?.vendorId },
-      ...filters?.productId && { productId: filters?.productId },
-    },
+    where,
     include: {
       categories: true
     },
@@ -234,36 +244,7 @@ export const getAllVendorProducts = async (filters: getVendorProductsFilters, pa
 
 
   const totalCount = await prisma.vendorProduct.count({
-    where: {
-      ...filters?.name && {
-        name: {
-          contains: filters?.name, // Case-insensitive search
-          mode: 'insensitive',
-        }
-      },
-      ...filters?.tagIds && {
-        tags: {
-          some: {
-            id: {
-              in: filters?.tagIds,
-            },
-          },
-        }
-      },
-      ...filters?.categoryIds && {
-        product: {
-          categories: {
-            some: {
-              id: {
-                in: filters?.categoryIds,
-              },
-            },
-          },
-        }
-      },
-      ...filters?.vendorId && { vendorId: filters?.vendorId },
-      ...filters?.productId && { productId: filters?.productId },
-    },
+    where,
   });
 
   const totalPages = Math.ceil( totalCount / parseInt(pagination.take));
@@ -393,4 +374,3 @@ export const deleteVendorProduct = async (id: string): Promise<VendorProduct> =>
     where: { id },
   });
 };
-
