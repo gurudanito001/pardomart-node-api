@@ -57,6 +57,18 @@ export const createVendor = async (req: AuthenticatedRequest, res: Response) => 
  *           type: string
  *           format: uuid
  *         description: The ID of the vendor to retrieve.
+ *       - in: query
+ *         name: latitude
+ *         schema:
+ *           type: number
+ *           format: float
+ *         description: User's current latitude to calculate distance to the vendor.
+ *       - in: query
+ *         name: longitude
+ *         schema:
+ *           type: number
+ *           format: float
+ *         description: User's current longitude to calculate distance to the vendor.
  *     responses:
  *       200:
  *         description: The requested vendor with its associated user and opening hours.
@@ -71,7 +83,8 @@ export const createVendor = async (req: AuthenticatedRequest, res: Response) => 
  */
 export const getVendorById = async (req: Request, res: Response) => {
   try {
-    const vendor = await vendorService.getVendorById(req.params.id);
+    const { latitude, longitude } = req.query;
+    const vendor = await vendorService.getVendorById(req.params.id, latitude as string | undefined, longitude as string | undefined);
     if (!vendor) {
       return res.status(404).json({ error: 'Vendor not found' });
     }

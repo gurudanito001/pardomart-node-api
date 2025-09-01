@@ -108,6 +108,18 @@ exports.createVendor = function (req, res) { return __awaiter(void 0, void 0, vo
  *           type: string
  *           format: uuid
  *         description: The ID of the vendor to retrieve.
+ *       - in: query
+ *         name: latitude
+ *         schema:
+ *           type: number
+ *           format: float
+ *         description: User's current latitude to calculate distance to the vendor.
+ *       - in: query
+ *         name: longitude
+ *         schema:
+ *           type: number
+ *           format: float
+ *         description: User's current longitude to calculate distance to the vendor.
  *     responses:
  *       200:
  *         description: The requested vendor with its associated user and opening hours.
@@ -121,21 +133,22 @@ exports.createVendor = function (req, res) { return __awaiter(void 0, void 0, vo
  *         description: Internal server error.
  */
 exports.getVendorById = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var vendor, error_2;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
+    var _a, latitude, longitude, vendor, error_2;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
             case 0:
-                _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, vendorService.getVendorById(req.params.id)];
+                _b.trys.push([0, 2, , 3]);
+                _a = req.query, latitude = _a.latitude, longitude = _a.longitude;
+                return [4 /*yield*/, vendorService.getVendorById(req.params.id, latitude, longitude)];
             case 1:
-                vendor = _a.sent();
+                vendor = _b.sent();
                 if (!vendor) {
                     return [2 /*return*/, res.status(404).json({ error: 'Vendor not found' })];
                 }
                 res.status(200).json(vendor);
                 return [3 /*break*/, 3];
             case 2:
-                error_2 = _a.sent();
+                error_2 = _b.sent();
                 console.error('Error getting vendor by ID:', error_2);
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];

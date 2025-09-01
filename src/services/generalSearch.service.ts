@@ -1,4 +1,4 @@
-import {  searchByProductName, searchByStoreName, searchByCategoryName } from '../models/generalSearch.model';
+import {  searchByProductName, searchByStoreName, searchByCategoryName, searchStoreProducts } from '../models/generalSearch.model';
 
 
 // Service Function
@@ -13,6 +13,21 @@ export const searchProductsService = async (
   } catch (error: any) {
     // Handle errors (e.g., logging, specific error types)
     console.error('Error searching by product name:', error);
+    throw error; // Re-throw to be caught by the controller
+  }
+};
+
+export const searchStoreProductsService = async (
+  storeId: string,
+  searchTerm?: string,
+  categoryId?: string
+) => {
+  try {
+    const result = await searchStoreProducts(storeId, searchTerm, categoryId);
+    return result;
+  } catch (error: any) {
+    // Handle errors (e.g., logging, specific error types)
+    console.error('Error in searchStoreProductsService:', error);
     throw error; // Re-throw to be caught by the controller
   }
 };

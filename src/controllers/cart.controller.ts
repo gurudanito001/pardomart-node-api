@@ -37,6 +37,54 @@ export const getCartsController = async (req: AuthenticatedRequest, res: Respons
 /**
  * @swagger
  * /cart/{cartId}:
+ *   get:
+ *     summary: Get a specific cart by its ID
+ *     tags: [Cart]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cartId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the cart to retrieve.
+ *     responses:
+ *       200:
+ *         description: The requested cart object.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Cart'
+ *       401:
+ *         description: User not authenticated.
+ *       403:
+ *         description: User not authorized to view this cart.
+ *       404:
+ *         description: Cart not found.
+ */
+export const getCartByIdController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.userId as string;
+    const { cartId } = req.params;
+    const cart = await cartService.getCartByIdService(cartId);
+    if (!cart) {
+      return res.status(404).json({ error: 'Cart not found.' });
+    }
+    if (cart.userId !== userId) {
+      return res.status(403).json({ error: 'You are not authorized to view this cart.' });
+    }
+    res.status(200).json(cart);
+  } catch (error: any) {
+    console.error('Error in getCartByIdController:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
+ * /cart/{cartId}:
  *   delete:
  *     summary: Delete a cart by its ID
  *     tags: [Cart]

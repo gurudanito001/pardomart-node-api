@@ -81,9 +81,27 @@ exports.createVendor = function (payload) { return __awaiter(void 0, void 0, Pro
         return [2 /*return*/, vendorModel.createVendor(payload)];
     });
 }); };
-exports.getVendorById = function (id) { return __awaiter(void 0, void 0, Promise, function () {
+exports.getVendorById = function (id, latitude, longitude) { return __awaiter(void 0, void 0, Promise, function () {
+    var vendor, customerLatitude, customerLongitude, distance;
     return __generator(this, function (_a) {
-        return [2 /*return*/, vendorModel.getVendorById(id)];
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, vendorModel.getVendorById(id)];
+            case 1:
+                vendor = _a.sent();
+                if (!vendor) {
+                    return [2 /*return*/, null];
+                }
+                if (latitude && longitude && vendor.latitude && vendor.longitude) {
+                    customerLatitude = parseFloat(latitude);
+                    customerLongitude = parseFloat(longitude);
+                    if (!isNaN(customerLatitude) && !isNaN(customerLongitude)) {
+                        distance = calculateDistance(customerLatitude, customerLongitude, vendor.latitude, vendor.longitude);
+                        // Return vendor with distance, rounded to 2 decimal places
+                        return [2 /*return*/, __assign(__assign({}, vendor), { distance: parseFloat(distance.toFixed(2)) })];
+                    }
+                }
+                return [2 /*return*/, vendor];
+        }
     });
 }); };
 exports.getAllVendors = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {

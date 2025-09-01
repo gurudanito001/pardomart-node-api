@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.searchByCategoryService = exports.searchStoreService = exports.searchProductsService = void 0;
+exports.searchByCategoryService = exports.searchStoreService = exports.searchStoreProductsService = exports.searchProductsService = void 0;
 var generalSearch_model_1 = require("../models/generalSearch.model");
 // Service Function
 exports.searchProductsService = function (searchTerm, userLatitude, userLongitude) { return __awaiter(void 0, void 0, void 0, function () {
@@ -58,8 +58,27 @@ exports.searchProductsService = function (searchTerm, userLatitude, userLongitud
         }
     });
 }); };
-exports.searchStoreService = function (searchTerm, userLatitude, userLongitude) { return __awaiter(void 0, void 0, void 0, function () {
+exports.searchStoreProductsService = function (storeId, searchTerm, categoryId) { return __awaiter(void 0, void 0, void 0, function () {
     var result, error_2;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                return [4 /*yield*/, generalSearch_model_1.searchStoreProducts(storeId, searchTerm, categoryId)];
+            case 1:
+                result = _a.sent();
+                return [2 /*return*/, result];
+            case 2:
+                error_2 = _a.sent();
+                // Handle errors (e.g., logging, specific error types)
+                console.error('Error in searchStoreProductsService:', error_2);
+                throw error_2; // Re-throw to be caught by the controller
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+exports.searchStoreService = function (searchTerm, userLatitude, userLongitude) { return __awaiter(void 0, void 0, void 0, function () {
+    var result, error_3;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -69,16 +88,16 @@ exports.searchStoreService = function (searchTerm, userLatitude, userLongitude) 
                 result = _a.sent();
                 return [2 /*return*/, result];
             case 2:
-                error_2 = _a.sent();
+                error_3 = _a.sent();
                 // Handle errors (e.g., logging, specific error types)
-                console.error('Error searching by store name:', error_2);
-                throw error_2; // Re-throw to be caught by the controller
+                console.error('Error searching by store name:', error_3);
+                throw error_3; // Re-throw to be caught by the controller
             case 3: return [2 /*return*/];
         }
     });
 }); };
 exports.searchByCategoryService = function (searchTerm, latitude, longitude) { return __awaiter(void 0, void 0, void 0, function () {
-    var result, error_3;
+    var result, error_4;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -88,10 +107,10 @@ exports.searchByCategoryService = function (searchTerm, latitude, longitude) { r
                 result = _a.sent();
                 return [2 /*return*/, result];
             case 2:
-                error_3 = _a.sent();
+                error_4 = _a.sent();
                 // Handle errors (e.g., logging, specific error types)
-                console.error('Error searching by category name:', error_3);
-                throw error_3; // Re-throw to be caught by the controller
+                console.error('Error searching by category name:', error_4);
+                throw error_4; // Re-throw to be caught by the controller
             case 3: return [2 /*return*/];
         }
     });

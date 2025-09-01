@@ -33,8 +33,30 @@ export const createVendor = async (payload: vendorModel.CreateVendorPayload): Pr
   return vendorModel.createVendor(payload);
 };
 
-export const getVendorById = async (id: string): Promise<vendorModel.VendorWithRelations | null> => {
-  return vendorModel.getVendorById(id);
+export const getVendorById = async (id: string, latitude?: string, longitude?: string): Promise<(vendorModel.VendorWithRelations & { distance?: number }) | null> => {
+  const vendor = await vendorModel.getVendorById(id);
+
+  if (!vendor) {
+    return null;
+  }
+
+  if (latitude && longitude && vendor.latitude && vendor.longitude) {
+    const customerLatitude = parseFloat(latitude);
+    const customerLongitude = parseFloat(longitude);
+
+    if (!isNaN(customerLatitude) && !isNaN(customerLongitude)) {
+      const distance = calculateDistance(
+        customerLatitude,
+        customerLongitude,
+        vendor.latitude,
+        vendor.longitude
+      );
+      // Return vendor with distance, rounded to 2 decimal places
+      return { ...vendor, distance: parseFloat(distance.toFixed(2)) };
+    }
+  }
+
+  return vendor;
 };
 
 

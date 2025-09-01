@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteCartController = exports.getCartsController = void 0;
+exports.deleteCartController = exports.getCartByIdController = exports.getCartsController = void 0;
 var cartService = require("../services/cart.service");
 /**
  * @swagger
@@ -82,6 +82,64 @@ exports.getCartsController = function (req, res) { return __awaiter(void 0, void
 /**
  * @swagger
  * /cart/{cartId}:
+ *   get:
+ *     summary: Get a specific cart by its ID
+ *     tags: [Cart]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cartId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the cart to retrieve.
+ *     responses:
+ *       200:
+ *         description: The requested cart object.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Cart'
+ *       401:
+ *         description: User not authenticated.
+ *       403:
+ *         description: User not authorized to view this cart.
+ *       404:
+ *         description: Cart not found.
+ */
+exports.getCartByIdController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var userId, cartId, cart, error_2;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                userId = req.userId;
+                cartId = req.params.cartId;
+                return [4 /*yield*/, cartService.getCartByIdService(cartId)];
+            case 1:
+                cart = _a.sent();
+                if (!cart) {
+                    return [2 /*return*/, res.status(404).json({ error: 'Cart not found.' })];
+                }
+                if (cart.userId !== userId) {
+                    return [2 /*return*/, res.status(403).json({ error: 'You are not authorized to view this cart.' })];
+                }
+                res.status(200).json(cart);
+                return [3 /*break*/, 3];
+            case 2:
+                error_2 = _a.sent();
+                console.error('Error in getCartByIdController:', error_2);
+                res.status(500).json({ error: 'Internal server error' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /cart/{cartId}:
  *   delete:
  *     summary: Delete a cart by its ID
  *     tags: [Cart]
@@ -103,7 +161,7 @@ exports.getCartsController = function (req, res) { return __awaiter(void 0, void
  *
  */
 exports.deleteCartController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var userId, cartId, cart, deletedCart, error_2;
+    var userId, cartId, cart, deletedCart, error_3;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -122,8 +180,8 @@ exports.deleteCartController = function (req, res) { return __awaiter(void 0, vo
                 res.status(200).json(deletedCart);
                 return [3 /*break*/, 4];
             case 3:
-                error_2 = _a.sent();
-                console.error('Error in deleteCartController:', error_2);
+                error_3 = _a.sent();
+                console.error('Error in deleteCartController:', error_3);
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 4];
             case 4: return [2 /*return*/];

@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.searchByCategoryController = exports.searchByStoreController = exports.searchByProductController = void 0;
+exports.searchStoreProductsController = exports.searchByCategoryController = exports.searchByStoreController = exports.searchByProductController = void 0;
 var generalSearch_service_1 = require("../services/generalSearch.service");
 /**
  * @swagger
@@ -248,6 +248,72 @@ exports.searchByCategoryController = function (req, res) { return __awaiter(void
             case 3:
                 error_3 = _b.sent();
                 res.status(500).json({ error: error_3.message || 'Internal server error' });
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /generalSearch/storeProducts/{storeId}:
+ *   get:
+ *     summary: Search for products within a specific store
+ *     tags: [General Search]
+ *     description: >
+ *       Searches for products within a specific store, optionally filtering by a search term and/or category.
+ *       If no categoryId is provided, it returns products grouped by their parent category.
+ *       If a categoryId is provided, it returns a flat list of products within that category.
+ *     parameters:
+ *       - in: path
+ *         name: storeId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the store (vendor) to search within.
+ *       - in: query
+ *         name: searchTerm
+ *         schema:
+ *           type: string
+ *         description: The search term to filter products by name.
+ *       - in: query
+ *         name: categoryId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the category to filter products by. If provided, results will not be grouped.
+ *     responses:
+ *       200:
+ *         description: A list of products, either grouped by category or as a flat list.
+ *       400:
+ *         description: Bad request due to missing storeId.
+ *       404:
+ *         description: Store not found.
+ *       500:
+ *         description: Internal server error.
+ */
+exports.searchStoreProductsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var storeId, _a, searchTerm, categoryId, result, error_4;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                storeId = req.params.storeId;
+                _a = req.query, searchTerm = _a.searchTerm, categoryId = _a.categoryId;
+                _b.label = 1;
+            case 1:
+                _b.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, generalSearch_service_1.searchStoreProductsService(storeId, searchTerm, categoryId)];
+            case 2:
+                result = _b.sent();
+                if (result === null) {
+                    return [2 /*return*/, res.status(404).json({ error: 'Store not found.' })];
+                }
+                res.json(result);
+                return [3 /*break*/, 4];
+            case 3:
+                error_4 = _b.sent();
+                console.error('Error searching store products:', error_4);
+                res.status(500).json({ error: error_4.message || 'Internal server error' });
                 return [3 /*break*/, 4];
             case 4: return [2 /*return*/];
         }
