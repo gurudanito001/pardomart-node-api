@@ -75,6 +75,44 @@ export const createVendorProduct = async (req: Request, res: Response) => {
 
 /**
  * @swagger
+ * /product/vendor/{id}:
+ *   get:
+ *     summary: Get a vendor-specific product by its ID
+ *     tags: [Product]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the vendor product to find.
+ *     responses:
+ *       200:
+ *         description: The found vendor product.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/VendorProductWithRelations'
+ *       404:
+ *         description: Vendor product not found.
+ */
+export const getVendorProductByIdController = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const vendorProduct = await productService.getVendorProductById(id);
+    if (!vendorProduct) {
+      return res.status(404).json({ error: 'Vendor product not found' });
+    }
+    res.json(vendorProduct);
+  } catch (error) {
+    console.error(`Error in getVendorProductByIdController: ${error}`);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
  * /product/vendor/barcode:
  *   post:
  *     summary: Create a vendor product via barcode scan

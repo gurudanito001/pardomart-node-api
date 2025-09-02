@@ -8,12 +8,13 @@ import {
   updateOrderStatusService,
   updateOrderService,
   getOrdersForVendorDashboard,
+  getAvailableDeliverySlots,
   acceptOrderService,
   declineOrderService,
   startShoppingService,
   OrderCreationError,
 } from '../services/order.service'; // Adjust the path if needed
-import { Order, PaymentMethods, PaymentStatus, OrderStatus, DeliveryAddress } from '@prisma/client';
+import { Order, PaymentMethods, PaymentStatus, OrderStatus, DeliveryMethod } from '@prisma/client';
 import { AuthenticatedRequest } from './vendor.controller';
 
 // --- Order Controllers ---
@@ -326,6 +327,70 @@ export const acceptOrderController = async (req: OrderAuthenticatedRequest, res:
     if (error.message.includes('not found') || error.message.includes('cannot be accepted')) {
       return res.status(400).json({ error: error.message });
     }
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+/**
+ * Controller to get available delivery time slots for a vendor.
+ * @swagger
+ * /order/delivery-slots:
+ *   get:
+ *     summary: Get available delivery time slots
+ *     tags: [Order]
+ *     parameters:
+ *       - in: query
+ *         name: vendorId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the vendor.
+ *       - in: query
+ *         name: deliveryMethod
+ *         required: true
+ *         schema:
+ *           $ref: '#/components/schemas/DeliveryMethod'
+ *         description: The delivery method for the order.
+ *     responses:
+ *       200:
+ *         description: A list of available delivery dates and time slots.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   date:
+ *                     type: string
+ *                     example: "27-09-2025"
+ *                   timeSlots:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                       example: "9:00am - 10:00am"
+ *       400:
+ *         description: Bad request due to missing or invalid parameters.
+ *       500:
+ *         description: Internal server error.
+ */
+export const getAvailableDeliverySlotsController = async (req: Request, res: Response) => {
+  try {
+    const { vendorId, deliveryMethod } = req.query;
+
+    if (!vendorId || typeof vendorId !== 'string') {
+      return res.status(400).json({ error: 'Vendor ID is required.' });
+    }
+
+    if (!deliveryMethod || (deliveryMethod !== DeliveryMethod.customer_pickup && deliveryMethod !== DeliveryMethod.delivery_person)) {
+      return res.status(400).json({ error: 'A valid delivery method is required.' });
+    }
+
+    const slots = await getAvailableDeliverySlots(vendorId, deliveryMethod as DeliveryMethod);
+    res.status(200).json(slots);
+  } catch (error: any) {
+    console.error('Error getting delivery slots:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };

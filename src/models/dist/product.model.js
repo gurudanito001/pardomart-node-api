@@ -309,7 +309,7 @@ exports.getVendorProductsByCategory = function (vendorId, categoryId) { return _
             })];
     });
 }); };
-exports.getVendorProductById = function (vendorProductId) { return __awaiter(void 0, void 0, void 0, function () {
+exports.getVendorProductById = function (vendorProductId) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
         return [2 /*return*/, prisma.vendorProduct.findUnique({
                 where: { id: vendorProductId }

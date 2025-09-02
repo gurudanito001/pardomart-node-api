@@ -185,7 +185,7 @@ exports.getTimeZones = function (req, res) { return __awaiter(void 0, void 0, vo
  *             properties:
  *               mobileNumber:
  *                 type: string
- *                 example: "+1234567890"
+ *                 example: "+2348140715723"
  *               role:
  *                 type: string
  *                 enum: [admin, vendor, vendor_staff, delivery, customer, shopper]
@@ -249,7 +249,7 @@ exports.initiateLogin = function (req, res) { return __awaiter(void 0, void 0, v
  *             properties:
  *               mobileNumber:
  *                 type: string
- *                 example: "+1234567890"
+ *                 example: "+2348140715723"
  *               verificationCode:
  *                 type: string
  *                 example: "123456"

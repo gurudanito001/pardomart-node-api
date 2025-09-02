@@ -14,9 +14,10 @@ export interface AuthenticatedRequest extends Request {
 
 export const authenticate = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
-
+  console.log(authHeader);
   if (authHeader) {
     const token = authHeader.split(' ')[1]; // Bearer <token>
+    console.log(token)
 
     jwt.verify(token, JWT_SECRET, (err, decoded) => {
       if (err) {

@@ -16,7 +16,9 @@ export interface CreateOrderPayload {
   deliveryInstructions?: string;
   shoppingMethod?: ShoppingMethod;
   deliveryMethod?: DeliveryMethod;
-  scheduledShoppingStartTime?: Date
+  scheduledShoppingStartTime?: Date;
+  scheduledDeliveryTime?: Date;
+  actualDeliveryTime?: Date;
 }
 
 export const createOrder = async (payload: CreateOrderPayload, tx?: Prisma.TransactionClient): Promise<Order> => {
@@ -77,7 +79,9 @@ export interface UpdateOrderPayload {
   deliveryHandlerId?: string;
   shoppingMethod?: ShoppingMethod;
   deliveryMethod?: DeliveryMethod;
-  scheduledShoppingStartTime?: Date
+  scheduledShoppingStartTime?: Date;
+  scheduledDeliveryTime?: Date;
+  actualDeliveryTime?: Date;
 }
 
 export const updateOrder = async (

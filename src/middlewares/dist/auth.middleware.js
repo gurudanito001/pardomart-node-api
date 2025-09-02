@@ -5,8 +5,10 @@ var jsonwebtoken_1 = require("jsonwebtoken");
 var JWT_SECRET = process.env.SECRET;
 exports.authenticate = function (req, res, next) {
     var authHeader = req.headers.authorization;
+    console.log(authHeader);
     if (authHeader) {
         var token = authHeader.split(' ')[1]; // Bearer <token>
+        console.log(token);
         jsonwebtoken_1["default"].verify(token, JWT_SECRET, function (err, decoded) {
             if (err) {
                 return res.status(403).json({ error: 'Invalid token' });

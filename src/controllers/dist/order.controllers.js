@@ -36,8 +36,9 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.startShoppingController = exports.declineOrderController = exports.acceptOrderController = exports.getVendorOrdersController = exports.updateOrderController = exports.updateOrderStatusController = exports.getOrdersByUserController = exports.getOrderByIdController = exports.createOrderController = void 0;
+exports.startShoppingController = exports.declineOrderController = exports.getAvailableDeliverySlotsController = exports.acceptOrderController = exports.getVendorOrdersController = exports.updateOrderController = exports.updateOrderStatusController = exports.getOrdersByUserController = exports.getOrderByIdController = exports.createOrderController = void 0;
 var order_service_1 = require("../services/order.service"); // Adjust the path if needed
+var client_1 = require("@prisma/client");
 // --- Order Controllers ---
 /**
  * Controller for creating a new order.
@@ -405,6 +406,77 @@ exports.acceptOrderController = function (req, res) { return __awaiter(void 0, v
     });
 }); };
 /**
+ * Controller to get available delivery time slots for a vendor.
+ * @swagger
+ * /order/delivery-slots:
+ *   get:
+ *     summary: Get available delivery time slots
+ *     tags: [Order]
+ *     parameters:
+ *       - in: query
+ *         name: vendorId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the vendor.
+ *       - in: query
+ *         name: deliveryMethod
+ *         required: true
+ *         schema:
+ *           $ref: '#/components/schemas/DeliveryMethod'
+ *         description: The delivery method for the order.
+ *     responses:
+ *       200:
+ *         description: A list of available delivery dates and time slots.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   date:
+ *                     type: string
+ *                     example: "27-09-2025"
+ *                   timeSlots:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                       example: "9:00am - 10:00am"
+ *       400:
+ *         description: Bad request due to missing or invalid parameters.
+ *       500:
+ *         description: Internal server error.
+ */
+exports.getAvailableDeliverySlotsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, vendorId, deliveryMethod, slots, error_8;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _b.trys.push([0, 2, , 3]);
+                _a = req.query, vendorId = _a.vendorId, deliveryMethod = _a.deliveryMethod;
+                if (!vendorId || typeof vendorId !== 'string') {
+                    return [2 /*return*/, res.status(400).json({ error: 'Vendor ID is required.' })];
+                }
+                if (!deliveryMethod || (deliveryMethod !== client_1.DeliveryMethod.customer_pickup && deliveryMethod !== client_1.DeliveryMethod.delivery_person)) {
+                    return [2 /*return*/, res.status(400).json({ error: 'A valid delivery method is required.' })];
+                }
+                return [4 /*yield*/, order_service_1.getAvailableDeliverySlots(vendorId, deliveryMethod)];
+            case 1:
+                slots = _b.sent();
+                res.status(200).json(slots);
+                return [3 /*break*/, 3];
+            case 2:
+                error_8 = _b.sent();
+                console.error('Error getting delivery slots:', error_8);
+                res.status(500).json({ error: error_8.message || 'Internal server error' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
  * Controller to decline a pending order.
  * @swagger
  * /order/{orderId}/decline:
@@ -437,7 +509,7 @@ exports.acceptOrderController = function (req, res) { return __awaiter(void 0, v
  *         description: Bad request or order cannot be declined.
  */
 exports.declineOrderController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var orderId, reason, vendorId, declinedOrder, error_8;
+    var orderId, reason, vendorId, declinedOrder, error_9;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -454,12 +526,12 @@ exports.declineOrderController = function (req, res) { return __awaiter(void 0, 
                 res.status(200).json(declinedOrder);
                 return [3 /*break*/, 3];
             case 2:
-                error_8 = _a.sent();
-                console.error('Error in declineOrderController:', error_8);
-                if (error_8.message.includes('not found') || error_8.message.includes('cannot be declined')) {
-                    return [2 /*return*/, res.status(400).json({ error: error_8.message })];
+                error_9 = _a.sent();
+                console.error('Error in declineOrderController:', error_9);
+                if (error_9.message.includes('not found') || error_9.message.includes('cannot be declined')) {
+                    return [2 /*return*/, res.status(400).json({ error: error_9.message })];
                 }
-                res.status(500).json({ error: error_8.message || 'Internal server error' });
+                res.status(500).json({ error: error_9.message || 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
@@ -493,7 +565,7 @@ exports.declineOrderController = function (req, res) { return __awaiter(void 0, 
  *         description: Bad request or shopping cannot be started for this order.
  */
 exports.startShoppingController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var orderId, shoppingHandlerUserId, vendorId, updatedOrder, error_9;
+    var orderId, shoppingHandlerUserId, vendorId, updatedOrder, error_10;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -510,12 +582,12 @@ exports.startShoppingController = function (req, res) { return __awaiter(void 0,
                 res.status(200).json(updatedOrder);
                 return [3 /*break*/, 3];
             case 2:
-                error_9 = _a.sent();
-                console.error('Error in startShoppingController:', error_9);
-                if (error_9.message.includes('not found') || error_9.message.includes('cannot start shopping')) {
-                    return [2 /*return*/, res.status(400).json({ error: error_9.message })];
+                error_10 = _a.sent();
+                console.error('Error in startShoppingController:', error_10);
+                if (error_10.message.includes('not found') || error_10.message.includes('cannot start shopping')) {
+                    return [2 /*return*/, res.status(400).json({ error: error_10.message })];
                 }
-                res.status(500).json({ error: error_9.message || 'Internal server error' });
+                res.status(500).json({ error: error_10.message || 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }

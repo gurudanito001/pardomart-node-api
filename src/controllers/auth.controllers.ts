@@ -128,7 +128,7 @@ export const getTimeZones = async (req: Request, res: Response) => {
  *             properties:
  *               mobileNumber:
  *                 type: string
- *                 example: "+1234567890"
+ *                 example: "+2348140715723"
  *               role:
  *                 type: string
  *                 enum: [admin, vendor, vendor_staff, delivery, customer, shopper]
@@ -181,7 +181,7 @@ export const initiateLogin = async (req: Request, res: Response) => {
  *             properties:
  *               mobileNumber:
  *                 type: string
- *                 example: "+1234567890"
+ *                 example: "+2348140715723"
  *               verificationCode:
  *                 type: string
  *                 example: "123456"

@@ -1,21 +1,38 @@
 // routes/product.routes.ts
 import express from 'express';
-import * as productController from '../controllers/product.controllers';
+import {
+  createProduct,
+  createVendorProduct,
+  createVendorProductWithBarcode,
+  deleteProduct,
+  deleteVendorProduct,
+  getAllProducts,
+  getAllVendorProducts,
+  getProductByBarcode,
+  getProductsByTagIds,
+  getVendorProductByBarcode,
+  getVendorProductByIdController,
+  getVendorProductsByCategory,
+  getVendorProductsByTagIds,
+  updateProductBase,
+  updateVendorProduct,
+} from '../controllers/product.controllers';
 
 const router = express.Router();
-router.get('/', productController.getAllProducts);
-router.get('/vendor', productController.getAllVendorProducts);
-router.post('/', productController.createProduct);
-router.post('/vendor', productController.createVendorProduct);
-router.post('/vendor/barcode', productController.createVendorProductWithBarcode);
-router.get('/barcode', productController.getProductByBarcode);
-router.get('/vendor/barcode', productController.getVendorProductByBarcode);
-router.get('/vendor/category', productController.getVendorProductsByCategory);
-router.get('/tags/ids', productController.getProductsByTagIds);
-router.get('/vendor/tags/ids', productController.getVendorProductsByTagIds);
-router.patch('/:id', productController.updateProductBase);
-router.patch('/vendor/:id', productController.updateVendorProduct);
-router.delete('/:id', productController.deleteProduct);
-router.delete('/vendor/:id', productController.deleteVendorProduct);
+router.get('/', getAllProducts);
+router.get('/vendor', getAllVendorProducts);
+router.post('/', createProduct);
+router.post('/vendor', createVendorProduct);
+router.post('/vendor/barcode', createVendorProductWithBarcode);
+router.get('/barcode', getProductByBarcode);
+router.get('/vendor/barcode', getVendorProductByBarcode);
+router.get('/vendor/category', getVendorProductsByCategory);
+router.get('/vendor/:id', getVendorProductByIdController);
+router.get('/tags/ids', getProductsByTagIds);
+router.get('/vendor/tags/ids', getVendorProductsByTagIds);
+router.patch('/:id', updateProductBase);
+router.patch('/vendor/:id', updateVendorProduct);
+router.delete('/:id', deleteProduct);
+router.delete('/vendor/:id', deleteVendorProduct);
 
 export default router;

@@ -60,7 +60,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.startShoppingService = exports.declineOrderService = exports.acceptOrderService = exports.getOrdersForVendorDashboard = exports.updateOrderStatusService = exports.updateOrderService = exports.createOrderFromClient = exports.getOrdersByUserIdService = exports.OrderCreationError = exports.getOrderByIdService = exports.createOrderService = void 0;
+exports.startShoppingService = exports.declineOrderService = exports.acceptOrderService = exports.getOrdersForVendorDashboard = exports.getAvailableDeliverySlots = exports.updateOrderStatusService = exports.updateOrderService = exports.createOrderFromClient = exports.getOrdersByUserIdService = exports.OrderCreationError = exports.getOrderByIdService = exports.createOrderService = void 0;
 var orderModel = require("../models/order.model"); // Adjust the path if needed
 var client_1 = require("@prisma/client");
 var dayjs_1 = require("dayjs");
@@ -70,8 +70,10 @@ var orderItemModel = require("../models/orderItem.model");
 var vendor_service_1 = require("./vendor.service");
 var utc_1 = require("dayjs/plugin/utc");
 var timezone_1 = require("dayjs/plugin/timezone");
+var customParseFormat_1 = require("dayjs/plugin/customParseFormat");
 dayjs_1["default"].extend(utc_1["default"]);
 dayjs_1["default"].extend(timezone_1["default"]);
+dayjs_1["default"].extend(customParseFormat_1["default"]);
 var prisma = new client_1.PrismaClient();
 // --- Order Service Functions ---
 /**
@@ -129,19 +131,26 @@ var getDayEnumFromDayjs = function (dayjsDayIndex) {
     return days[dayjsDayIndex];
 };
 exports.createOrderFromClient = function (userId, payload) { return __awaiter(void 0, void 0, void 0, function () {
-    var vendorId, paymentMethod, shippingAddressId, newShippingAddress, deliveryInstructions, orderItems, shoppingMethod, deliveryMethod, scheduledShoppingStartTime, parsedScheduledTime, vendor, vendorLocalDayjs, dayOfWeek_1, openingHoursToday, _a, openHours, openMinutes, _b, closeHours, closeMinutes, vendorOpenTimeUTC, vendorCloseTimeUTC, twoHoursBeforeCloseUTC;
+    var vendorId, paymentMethod, shippingAddressId, newShippingAddress, deliveryInstructions, orderItems, shoppingMethod, deliveryMethod, scheduledDeliveryTime, scheduledShoppingStartTime, parsedScheduledDeliveryTime, vendor, deliveryLocalDayjs, dayOfWeek_1, openingHoursToday, _a, openHours, openMinutes, _b, closeHours, closeMinutes, vendorOpenTimeUTC, vendorCloseTimeUTC, lastDeliveryTimeUTC;
     return __generator(this, function (_c) {
         switch (_c.label) {
             case 0:
-                vendorId = payload.vendorId, paymentMethod = payload.paymentMethod, shippingAddressId = payload.shippingAddressId, newShippingAddress = payload.newShippingAddress, deliveryInstructions = payload.deliveryInstructions, orderItems = payload.orderItems, shoppingMethod = payload.shoppingMethod, deliveryMethod = payload.deliveryMethod, scheduledShoppingStartTime = payload.scheduledShoppingStartTime;
+                vendorId = payload.vendorId, paymentMethod = payload.paymentMethod, shippingAddressId = payload.shippingAddressId, newShippingAddress = payload.newShippingAddress, deliveryInstructions = payload.deliveryInstructions, orderItems = payload.orderItems, shoppingMethod = payload.shoppingMethod, deliveryMethod = payload.deliveryMethod, scheduledDeliveryTime = payload.scheduledDeliveryTime;
                 // --- 1. Validate payload basics ---
                 if (!orderItems || !Array.isArray(orderItems) || orderItems.length === 0) {
                     throw new OrderCreationError('Order must contain at least one item.');
                 }
-                if (!scheduledShoppingStartTime) return [3 /*break*/, 2];
-                parsedScheduledTime = dayjs_1["default"].utc(scheduledShoppingStartTime);
-                if (!parsedScheduledTime.isValid()) {
-                    throw new OrderCreationError('Invalid scheduled shopping start time format.');
+                if (!scheduledDeliveryTime) return [3 /*break*/, 2];
+                parsedScheduledDeliveryTime = dayjs_1["default"].utc(scheduledDeliveryTime);
+                if (!parsedScheduledDeliveryTime.isValid()) {
+                    throw new OrderCreationError('Invalid scheduled delivery time format.');
+                }
+                // Calculate scheduledShoppingStartTime based on delivery time and method
+                if (deliveryMethod === client_1.DeliveryMethod.delivery_person) {
+                    scheduledShoppingStartTime = parsedScheduledDeliveryTime.subtract(2, 'hour').toDate();
+                }
+                else if (deliveryMethod === client_1.DeliveryMethod.customer_pickup) {
+                    scheduledShoppingStartTime = parsedScheduledDeliveryTime.subtract(1, 'hour').toDate();
                 }
                 return [4 /*yield*/, vendor_service_1.getVendorById(vendorId)];
             case 1:
@@ -150,25 +159,28 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                     throw new OrderCreationError('Vendor not found.', 404);
                 if (!vendor.timezone)
                     console.warn("Vendor " + vendorId + " does not have a timezone set. Skipping time validation.");
-                vendorLocalDayjs = parsedScheduledTime.tz(vendor.timezone || 'UTC');
-                dayOfWeek_1 = getDayEnumFromDayjs(vendorLocalDayjs.day());
+                deliveryLocalDayjs = parsedScheduledDeliveryTime.tz(vendor.timezone || 'UTC');
+                dayOfWeek_1 = getDayEnumFromDayjs(deliveryLocalDayjs.day());
                 openingHoursToday = vendor.openingHours.find(function (h) { return h.day === dayOfWeek_1; });
                 if (!openingHoursToday || !openingHoursToday.open || !openingHoursToday.close) {
                     throw new OrderCreationError("Vendor is closed or has no defined hours for " + dayOfWeek_1 + ".");
                 }
                 _a = openingHoursToday.open.split(':').map(Number), openHours = _a[0], openMinutes = _a[1];
                 _b = openingHoursToday.close.split(':').map(Number), closeHours = _b[0], closeMinutes = _b[1];
-                vendorOpenTimeUTC = vendorLocalDayjs.hour(openHours).minute(openMinutes).second(0).millisecond(0).utc();
-                vendorCloseTimeUTC = vendorLocalDayjs.hour(closeHours).minute(closeMinutes).second(0).millisecond(0).utc();
+                vendorOpenTimeUTC = deliveryLocalDayjs.hour(openHours).minute(openMinutes).second(0).millisecond(0).utc();
+                vendorCloseTimeUTC = deliveryLocalDayjs.hour(closeHours).minute(closeMinutes).second(0).millisecond(0).utc();
                 if (vendorCloseTimeUTC.isBefore(vendorOpenTimeUTC)) {
                     vendorCloseTimeUTC = vendorCloseTimeUTC.add(1, 'day');
                 }
-                twoHoursBeforeCloseUTC = vendorCloseTimeUTC.subtract(2, 'hour');
-                if (parsedScheduledTime.isBefore(vendorOpenTimeUTC) || parsedScheduledTime.isAfter(twoHoursBeforeCloseUTC)) {
-                    throw new OrderCreationError("Scheduled shopping time must be between " + openingHoursToday.open + " and " + twoHoursBeforeCloseUTC.tz(vendor.timezone || 'UTC').format('HH:mm') + " vendor local time.");
+                lastDeliveryTimeUTC = vendorCloseTimeUTC.subtract(30, 'minutes');
+                if (parsedScheduledDeliveryTime.isBefore(vendorOpenTimeUTC) || parsedScheduledDeliveryTime.isAfter(lastDeliveryTimeUTC)) {
+                    throw new OrderCreationError("Scheduled delivery time must be between " + openingHoursToday.open + " and " + lastDeliveryTimeUTC.tz(vendor.timezone || 'UTC').format('HH:mm') + " vendor local time.");
                 }
-                if (parsedScheduledTime.isBefore(dayjs_1["default"].utc())) {
-                    throw new OrderCreationError('Scheduled shopping time cannot be in the past.');
+                if (parsedScheduledDeliveryTime.isBefore(dayjs_1["default"].utc())) {
+                    throw new OrderCreationError('Scheduled delivery time cannot be in the past.');
+                }
+                if (scheduledShoppingStartTime && dayjs_1["default"].utc(scheduledShoppingStartTime).isBefore(vendorOpenTimeUTC)) {
+                    throw new OrderCreationError("Calculated shopping start time is before the vendor opens. Please choose a later delivery time.");
                 }
                 _c.label = 2;
             case 2: 
@@ -201,7 +213,7 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                 return [4 /*yield*/, orderModel.createOrder({
                                         userId: userId, vendorId: vendorId,
                                         totalAmount: totalEstimatedCost,
-                                        deliveryFee: deliveryFee, serviceFee: serviceFee, shoppingFee: shoppingFee, paymentMethod: paymentMethod, shoppingMethod: shoppingMethod, deliveryMethod: deliveryMethod, scheduledShoppingStartTime: scheduledShoppingStartTime,
+                                        deliveryFee: deliveryFee, serviceFee: serviceFee, shoppingFee: shoppingFee, paymentMethod: paymentMethod, shoppingMethod: shoppingMethod, deliveryMethod: deliveryMethod, scheduledDeliveryTime: scheduledDeliveryTime, scheduledShoppingStartTime: scheduledShoppingStartTime,
                                         deliveryAddressId: finalShippingAddressId,
                                         deliveryInstructions: deliveryInstructions
                                     }, tx)];
@@ -299,8 +311,88 @@ exports.updateOrderService = function (orderId, updates) { return __awaiter(void
  * @returns The updated order.
  */
 exports.updateOrderStatusService = function (id, status) { return __awaiter(void 0, void 0, Promise, function () {
+    var updates;
     return __generator(this, function (_a) {
-        return [2 /*return*/, orderModel.updateOrder(id, { orderStatus: status })];
+        updates = { orderStatus: status };
+        if (status === client_1.OrderStatus.delivered) { // When order is delivered
+            updates.actualDeliveryTime = new Date(); // Set the actual delivery time
+        }
+        return [2 /*return*/, orderModel.updateOrder(id, updates)];
+    });
+}); };
+/**
+ * Generates available delivery time slots for a vendor for the next 7 days.
+ *
+ * This considers the vendor's opening hours, a preparation buffer, and different
+ * cut-off times based on the delivery method.
+ *
+ * @param vendorId The ID of the vendor.
+ * @param deliveryMethod The method of delivery ('delivery_person' or 'customer_pickup').
+ * @returns A promise that resolves to an array of available dates, each with a list of time slots.
+ */
+exports.getAvailableDeliverySlots = function (vendorId, deliveryMethod) { return __awaiter(void 0, void 0, Promise, function () {
+    var vendor, vendorTimezone, availableSlotsByDay, nowInVendorTimezone, _loop_1, i;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, vendor_service_1.getVendorById(vendorId)];
+            case 1:
+                vendor = _a.sent();
+                if (!vendor || !vendor.openingHours || vendor.openingHours.length === 0) {
+                    throw new OrderCreationError('Vendor not found or has no opening hours defined.', 404);
+                }
+                vendorTimezone = vendor.timezone || 'UTC';
+                availableSlotsByDay = [];
+                nowInVendorTimezone = dayjs_1["default"]().tz(vendorTimezone);
+                _loop_1 = function (i) {
+                    var currentDay = nowInVendorTimezone.add(i, 'day');
+                    var dayOfWeek = getDayEnumFromDayjs(currentDay.day());
+                    var openingHoursToday = vendor.openingHours.find(function (h) { return h.day === dayOfWeek; });
+                    // Skip day if store is closed
+                    if (!openingHoursToday || !openingHoursToday.open || !openingHoursToday.close) {
+                        return "continue";
+                    }
+                    var _a = openingHoursToday.open.split(':').map(Number), openHour = _a[0], openMinute = _a[1];
+                    var _b = openingHoursToday.close.split(':').map(Number), closeHour = _b[0], closeMinute = _b[1];
+                    var openTime = currentDay.hour(openHour).minute(openMinute).second(0);
+                    var closeTime = currentDay.hour(closeHour).minute(closeMinute).second(0);
+                    // Determine the last possible delivery time based on the delivery method
+                    var bufferHours = deliveryMethod === client_1.DeliveryMethod.delivery_person ? 2 : 1;
+                    var lastSlotEndTime = closeTime.subtract(bufferHours, 'hour');
+                    // Determine the first possible delivery time
+                    var firstSlotStart = openTime;
+                    if (i === 0) { // If generating slots for today
+                        // Start from now + a buffer (e.g., 60 mins for prep), rounded to the next hour
+                        var earliestTime = nowInVendorTimezone.add(60, 'minutes');
+                        var potentialStartTime = earliestTime;
+                        if (potentialStartTime.minute() > 0 || potentialStartTime.second() > 0) {
+                            potentialStartTime = potentialStartTime.add(1, 'hour').startOf('hour');
+                        }
+                        // The first slot should be the later of the store opening or the earliest possible time
+                        if (potentialStartTime.isAfter(firstSlotStart)) {
+                            firstSlotStart = potentialStartTime;
+                        }
+                    }
+                    var timeSlots = [];
+                    var currentSlotStart = firstSlotStart;
+                    // Generate 1-hour slots
+                    while (currentSlotStart.add(1, 'hour').isBefore(lastSlotEndTime) || currentSlotStart.add(1, 'hour').isSame(lastSlotEndTime)) {
+                        var slotEnd = currentSlotStart.add(1, 'hour');
+                        timeSlots.push((currentSlotStart.format('h:mma') + " - " + slotEnd.format('h:mma')).toLowerCase());
+                        currentSlotStart = currentSlotStart.add(1, 'hour');
+                    }
+                    if (timeSlots.length > 0) {
+                        availableSlotsByDay.push({
+                            date: currentDay.format('DD-MM-YYYY'),
+                            timeSlots: timeSlots
+                        });
+                    }
+                };
+                // Generate slots for the next 7 days
+                for (i = 0; i < 7; i++) {
+                    _loop_1(i);
+                }
+                return [2 /*return*/, availableSlotsByDay];
+        }
     });
 }); };
 /**
@@ -332,7 +424,7 @@ exports.getOrdersForVendorDashboard = function (vendorId, options) { return __aw
                             { OrderStatus: options === null || options === void 0 ? void 0 : options.status } :
                             { orderStatus: { "in": defaultStatuses } })), { 
                             // Filter by scheduledShoppingStartTime:
-                            // If includeFutureScheduled is false/undefined, only show orders where shopping is due now or in the past
+                            // Only show orders where shopping is due now or in the past, plus those due in the next 30 minutes.
                             scheduledShoppingStartTime: {
                                 lte: dayjs_1["default"]().add(30, 'minutes').utc().toDate()
                             } }),

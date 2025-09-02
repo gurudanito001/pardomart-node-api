@@ -326,9 +326,9 @@ export const getVendorProductsByCategory = async (
   });
 };
 
-export const getVendorProductById = async (vendorProductId: string) =>{
+export const getVendorProductById = async (vendorProductId: string): Promise<VendorProduct | null> =>{
   return prisma.vendorProduct.findUnique({
-    where: {id: vendorProductId}
+    where: {id: vendorProductId},
   });
 };
 

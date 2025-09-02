@@ -161,7 +161,11 @@ model Order {
   deliveryMethod      DeliveryMethod? @default(customer_pickup)
   // When the shopping for the order is scheduled to start.
   // Orders with a future scheduledShoppingStartTime might not be visible to handlers yet.
-  scheduledShoppingStartTime DateTime? @default(now())
+  scheduledShoppingStartTime DateTime?
+  // When the order is scheduled for delivery.
+  scheduledDeliveryTime      DateTime?
+  // When the order was actually delivered.
+  actualDeliveryTime         DateTime?
   orderItems                 OrderItem[]
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
