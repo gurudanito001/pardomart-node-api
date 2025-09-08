@@ -14,11 +14,13 @@ export interface AuthenticatedRequest extends Request {
 
 export const authenticate = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
-  console.log(authHeader);
-  if (authHeader) {
-    const token = authHeader.split(' ')[1]; // Bearer <token>
-    console.log(token)
+  console.log(req.headers);
 
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Authentication token missing' });
+    }
     jwt.verify(token, JWT_SECRET, (err, decoded) => {
       if (err) {
         return res.status(403).json({ error: 'Invalid token' });

@@ -355,27 +355,29 @@ exports.getAvailableDeliverySlots = function (vendorId, deliveryMethod) { return
                     var _b = openingHoursToday.close.split(':').map(Number), closeHour = _b[0], closeMinute = _b[1];
                     var openTime = currentDay.hour(openHour).minute(openMinute).second(0);
                     var closeTime = currentDay.hour(closeHour).minute(closeMinute).second(0);
-                    // Determine the last possible delivery time based on the delivery method
-                    var bufferHours = deliveryMethod === client_1.DeliveryMethod.delivery_person ? 2 : 1;
-                    var lastSlotEndTime = closeTime.subtract(bufferHours, 'hour');
-                    // Determine the first possible delivery time
-                    var firstSlotStart = openTime;
+                    var shoppingToDeliveryDurationHours = deliveryMethod === client_1.DeliveryMethod.delivery_person ? 1 : 0.5;
+                    // Determine the earliest time a delivery can be made.
+                    // It's the later of:
+                    // 1. Store opening time + shopping/delivery duration.
+                    // 2. For today: Now + preparation buffer.
+                    var earliestDeliveryTime = openTime.add(shoppingToDeliveryDurationHours, 'hour');
                     if (i === 0) { // If generating slots for today
-                        // Start from now + a buffer (e.g., 60 mins for prep), rounded to the next hour
-                        var earliestTime = nowInVendorTimezone.add(60, 'minutes');
-                        var potentialStartTime = earliestTime;
-                        if (potentialStartTime.minute() > 0 || potentialStartTime.second() > 0) {
-                            potentialStartTime = potentialStartTime.add(1, 'hour').startOf('hour');
-                        }
-                        // The first slot should be the later of the store opening or the earliest possible time
-                        if (potentialStartTime.isAfter(firstSlotStart)) {
-                            firstSlotStart = potentialStartTime;
+                        var earliestDeliveryFromNow = nowInVendorTimezone.add(60, 'minutes');
+                        if (earliestDeliveryFromNow.isAfter(earliestDeliveryTime)) {
+                            earliestDeliveryTime = earliestDeliveryFromNow;
                         }
                     }
+                    // Align to the start of the next hour for clean slots.
+                    var firstSlotStart = earliestDeliveryTime;
+                    if (firstSlotStart.minute() > 0 || firstSlotStart.second() > 0 || firstSlotStart.millisecond() > 0) {
+                        firstSlotStart = firstSlotStart.add(1, 'hour').startOf('hour');
+                    }
+                    // The latest a delivery can be made is at closing time.
+                    var lastDeliveryTime = closeTime;
                     var timeSlots = [];
                     var currentSlotStart = firstSlotStart;
-                    // Generate 1-hour slots
-                    while (currentSlotStart.add(1, 'hour').isBefore(lastSlotEndTime) || currentSlotStart.add(1, 'hour').isSame(lastSlotEndTime)) {
+                    // Generate 1-hour slots until the end of the last slot is past the closing time.
+                    while (currentSlotStart.isBefore(lastDeliveryTime)) {
                         var slotEnd = currentSlotStart.add(1, 'hour');
                         timeSlots.push((currentSlotStart.format('h:mma') + " - " + slotEnd.format('h:mma')).toLowerCase());
                         currentSlotStart = currentSlotStart.add(1, 'hour');
@@ -387,8 +389,8 @@ exports.getAvailableDeliverySlots = function (vendorId, deliveryMethod) { return
                         });
                     }
                 };
-                // Generate slots for the next 7 days
-                for (i = 0; i < 7; i++) {
+                // Generate slots for today and the next 3 days
+                for (i = 0; i <= 3; i++) {
                     _loop_1(i);
                 }
                 return [2 /*return*/, availableSlotsByDay];

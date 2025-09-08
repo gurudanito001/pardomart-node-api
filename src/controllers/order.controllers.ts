@@ -1,5 +1,3 @@
-
-
 import { Request, Response } from 'express';
 import {
   getOrderByIdService,
@@ -338,6 +336,8 @@ export const acceptOrderController = async (req: OrderAuthenticatedRequest, res:
  *   get:
  *     summary: Get available delivery time slots
  *     tags: [Order]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: vendorId
@@ -375,7 +375,7 @@ export const acceptOrderController = async (req: OrderAuthenticatedRequest, res:
  *       500:
  *         description: Internal server error.
  */
-export const getAvailableDeliverySlotsController = async (req: Request, res: Response) => {
+export const getAvailableDeliverySlotsController = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { vendorId, deliveryMethod } = req.query;
 

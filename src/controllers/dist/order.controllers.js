@@ -412,6 +412,8 @@ exports.acceptOrderController = function (req, res) { return __awaiter(void 0, v
  *   get:
  *     summary: Get available delivery time slots
  *     tags: [Order]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: vendorId
