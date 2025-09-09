@@ -11,113 +11,118 @@ datasource db {
 }
 
 model Verification {
-    mobileNumber  String   @id
-    code          String
-    expiresAt     DateTime
-    createdAt     DateTime? @default(now())
-    attempts      Int?      @default(0) 
+  mobileNumber String    @id
+  code         String
+  expiresAt    DateTime
+  createdAt    DateTime? @default(now())
+  attempts     Int?      @default(0)
 }
 
 model User {
-  id               String    @id @default(uuid())
+  id               String  @id @default(uuid())
   name             String
-  email            String    
-  mobileNumber     String    
-  mobileVerified   Boolean   @default(false)
+  email            String
+  mobileNumber     String
+  mobileVerified   Boolean @default(false)
   dynamicMediaUrls Json?
-  active           Boolean   @default(true)
+  active           Boolean @default(true)
   language         String?
   notification     Json?
   rememberToken    String?
   referralCode     String?
-  role             Role     
+  role             Role
   // NEW: Link Vendor Staff to their Vendor
-  vendorId         String?           // ID of the Vendor this staff user belongs to (null for customers/delivery_persons)
-  vendor           Vendor?           @relation("VendorStaff", fields: [vendorId], references: [id], onDelete: SetNull)
+  vendorId         String? // ID of the Vendor this staff user belongs to (null for customers/delivery_persons)
+  vendor           Vendor? @relation("VendorStaff", fields: [vendorId], references: [id], onDelete: SetNull)
 
-  vendors          Vendor[]  @relation("Vendor")
-  supportMessages  Support[] @relation("SupportMessages")
-  orderShoppers    Order[] @relation("OrderShopper")
-  orderDeliverers  Order[] @relation("OrderDeliverer")
+  vendors           Vendor[]          @relation("Vendor")
+  supportMessages   Support[]         @relation("SupportMessages")
+  orderShoppers     Order[]           @relation("OrderShopper")
+  orderDeliverers   Order[]           @relation("OrderDeliverer")
   deliveryAddresses DeliveryAddress[]
-  orders           Order[]
-  carts            Cart[] 
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  orders            Order[]           @relation("OrderCustomer")
+  carts             Cart[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // New fields for ratings
+  ratingsGiven    Rating[] @relation("RatingsGiven")
+  ratingsReceived Rating[] @relation("RatingsReceived")
 
   @@unique([mobileNumber, role])
 }
 
 model Product {
-  id          String    @id @default(uuid())
-  barcode     String    @unique
-  name        String
-  description String?
-  images      String[]
-  weight      Float?
-  weightUnit  String?
-  attributes  Json?
-  meta        Json?
-  vendorProducts     VendorProduct[]
-  categoryIds String[]
-  categories  Category[] 
-  isAlcohol   Boolean  @default(false)
-  isAgeRestricted Boolean  @default(false)
-  tags        Tag[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id              String          @id @default(uuid())
+  barcode         String          @unique
+  name            String
+  description     String?
+  images          String[]
+  weight          Float?
+  weightUnit      String?
+  attributes      Json?
+  meta            Json?
+  vendorProducts  VendorProduct[]
+  categoryIds     String[]
+  categories      Category[]
+  isAlcohol       Boolean         @default(false)
+  isAgeRestricted Boolean         @default(false)
+  tags            Tag[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 }
 
 model VendorProduct {
-  id            String    @id @default(uuid())
-  vendor        Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  vendorId      String
-  product       Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  productId     String
-  price         Float
-  name          String
-  description   String?
+  id              String      @id @default(uuid())
+  vendor          Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  vendorId        String
+  product         Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId       String
+  price           Float
+  name            String
+  description     String?
   discountedPrice Float?
-  images        String[]
-  weight      Float?
-  weightUnit  String?
-  stock         Int?
-  isAvailable   Boolean   @default(true)
-  isAlcohol   Boolean  @default(false)
-  isAgeRestricted Boolean  @default(false)
-  attributes    Json?
-  categoryIds String[]
-  categories  Category[]
-  tags        Tag[]
-  cartItems     CartItem[] //Opposite relation to CartItem
-  orderItems    OrderItem[] //Opposite relation to OrderItem
+  images          String[]
+  weight          Float?
+  weightUnit      String?
+  stock           Int?
+  isAvailable     Boolean     @default(true)
+  isAlcohol       Boolean     @default(false)
+  isAgeRestricted Boolean     @default(false)
+  attributes      Json?
+  categoryIds     String[]
+  categories      Category[]
+  tags            Tag[]
+  cartItems       CartItem[] //Opposite relation to CartItem
+  orderItems      OrderItem[] //Opposite relation to OrderItem
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
   @@unique([vendorId, productId])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
 }
 
 model Cart {
-  id         String    @id @default(uuid())
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId String
-  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  vendorId String
-  items      CartItem[]
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id        String     @id @default(uuid())
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  vendor    Vendor     @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  vendorId  String
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
   @@unique([userId, vendorId]) // Ensure one cart per user-vendor pair
 }
 
 model CartItem {
-  id              String    @id @default(uuid())
+  id              String        @id @default(uuid())
   cartId          String
-  cart            Cart      @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  cart            Cart          @relation(fields: [cartId], references: [id], onDelete: Cascade)
   vendorProductId String
   vendorProduct   VendorProduct @relation(fields: [vendorProductId], references: [id])
   quantity        Int
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@unique([cartId, vendorProductId])
 }
@@ -133,172 +138,178 @@ model OrderItem {
   updatedAt       DateTime      @updatedAt
 }
 
-//extend the order model
 model Order {
-  id                  String    @id @default(uuid())
-  userId              String
-  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  vendorId            String // Add this field
-  vendor              Vendor @relation(fields: [vendorId], references: [id])
-  totalAmount         Float
-  deliveryFee         Float?    // Add delivery fee
-  serviceFee          Float?    // Platform service fee
-  shoppingFee         Float?    // Fee for shopping in the store
-  paymentMethod       PaymentMethods  @default(credit_card)  // e.g., "credit_card", "wallet", "cash"
-  paymentStatus       PaymentStatus   @default(pending) // e.g., "pending", "paid", "failed"
-  orderStatus         OrderStatus    @default(pending)// e.g., "pending", "processing", "shipped", "delivered", "cancelled"
-  reasonForDecline    String?
-  deliveryAddressId   String?         // ID of the DeliveryAddress used for this order (can be null if customer pickup or temporary address)
-  deliveryAddress     DeliveryAddress? @relation(fields: [deliveryAddressId], references: [id])
-  deliveryInstructions  String? // Customer's delivery instructions
-  shoppingHandlerId   String?   // ID of the User handling the shopping (Role: SHOPPER)
-  shopper             User?     @relation("OrderShopper", fields: [shoppingHandlerId], references: [id])
-  deliveryHandlerId String?   // ID of the User handling the delivery (Role: DELIVERY)
-  deliverer           User?     @relation("OrderDeliverer", fields: [deliveryHandlerId], references: [id])
-  // NEW: Defines who is responsible for shopping/preparation
-  shoppingMethod      ShoppingMethod? @default(vendor)
-  // NEW: Defines how the order will be delivered to the customer
-  deliveryMethod      DeliveryMethod? @default(customer_pickup)
-  // When the shopping for the order is scheduled to start.
-  // Orders with a future scheduledShoppingStartTime might not be visible to handlers yet.
+  id                         String           @id @default(uuid())
+  userId                     String
+  user                       User             @relation("OrderCustomer", fields: [userId], references: [id], onDelete: Cascade)
+  vendorId                   String
+  vendor                     Vendor           @relation(fields: [vendorId], references: [id])
+  totalAmount                Float
+  deliveryFee                Float?
+  serviceFee                 Float?
+  shoppingFee                Float?
+  paymentMethod              PaymentMethods   @default(credit_card)
+  paymentStatus              PaymentStatus    @default(pending)
+  orderStatus                OrderStatus      @default(pending)
+  reasonForDecline           String?
+  deliveryAddressId          String?
+  deliveryAddress            DeliveryAddress? @relation(fields: [deliveryAddressId], references: [id])
+  deliveryInstructions       String?
+  shoppingHandlerId          String?
+  shopper                    User?            @relation("OrderShopper", fields: [shoppingHandlerId], references: [id])
+  deliveryHandlerId          String?
+  deliverer                  User?            @relation("OrderDeliverer", fields: [deliveryHandlerId], references: [id])
+  shoppingMethod             ShoppingMethod?  @default(vendor)
+  deliveryMethod             DeliveryMethod?  @default(customer_pickup)
   scheduledShoppingStartTime DateTime?
-  // When the order is scheduled for delivery.
   scheduledDeliveryTime      DateTime?
-  // When the order was actually delivered.
   actualDeliveryTime         DateTime?
   orderItems                 OrderItem[]
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  createdAt                  DateTime         @default(now())
+  updatedAt                  DateTime         @updatedAt
+
+  ratings Rating[]
 }
 
 model DeliveryAddress {
-  id               String    @id @default(uuid())
-  userId           String    // Links this address to a specific user
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String  @id @default(uuid())
+  userId       String
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label        String?
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String?
+  postalCode   String?
+  country      String  @default("Nigeria")
+  latitude     Float?
+  longitude    Float?
+  isDefault    Boolean @default(false)
+  orders       Order[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  // Standard address components
-  label            String?   // e.g., "Home", "Work", "Friend's House"
-  addressLine1     String    // Street address, house number
-  addressLine2     String?   // Apartment, suite, unit, building name
-  city             String
-  state            String?   // State/Province/Region
-  postalCode       String?   // Zip/Postal Code
-  country          String    @default("Nigeria") // Default or make configurable
-
-  // Optional: For mapping and delivery optimization
-  latitude         Float?
-  longitude        Float?
-
-  isDefault        Boolean   @default(false) // Flag if this is the user's preferred default address
-
-  // Relation to Order: An address can be used for many orders
-  orders           Order[]
-
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-
-  // Ensures a user cannot have two default addresses (optional, but good for UX)
   @@unique([userId, isDefault])
-  @@index([userId]) // Index for faster lookups by user
+  @@index([userId])
 }
 
 model Fee {
-  id               String                 @id @default(uuid())
-  type             FeeType                // Distinguishes between Delivery, Service, etc.
-  amount           Float                  // The numerical value of the fee (e.g., 5.00, 0.05)
-  method           FeeCalculationMethod   // How the 'amount' is interpreted (FLAT, PERCENTAGE, PER_UNIT, PER_DISTANCE)
-  unit             String?                // Optional: Provides context for 'PER_UNIT' or 'PER_DISTANCE' (e.g., "item", "kg", "km", "mile")
-  minThreshold     Float?                 // Optional: Minimum value for the fee to apply (e.g., minimum order value for a service fee)
-  maxThreshold     Float?                 // Optional: Maximum value for the fee to apply
-  thresholdAppliesTo String?              // Optional: Defines what the threshold relates to (e.g., "order_subtotal", "total_item_count", "distance_km")
-  isActive         Boolean                @default(false) // True if this is the currently active fee for its type
-  createdAt        DateTime               @default(now())
-  updatedAt        DateTime               @updatedAt
+  id                 String               @id @default(uuid())
+  type               FeeType
+  amount             Float
+  method             FeeCalculationMethod
+  unit               String?
+  minThreshold       Float?
+  maxThreshold       Float?
+  thresholdAppliesTo String?
+  isActive           Boolean              @default(false)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 
-  @@unique([type, isActive]) // Ensures only one active fee per type at any given time
+  @@unique([type, isActive])
 }
 
-
-
 model Category {
-  id       String    @id @default(uuid())
-  name     String    @unique
+  id             String          @id @default(uuid())
+  name           String          @unique
   imageUrl       String?
-  description  String?
-  parent   Category? @relation("Subcategories", fields: [parentId], references: [id])
-  parentId String?
-  children Category[]  @relation("Subcategories")
-  products Product[]
+  description    String?
+  parent         Category?       @relation("Subcategories", fields: [parentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  parentId       String?
+  children       Category[]      @relation("Subcategories")
+  products       Product[]
   vendorProducts VendorProduct[]
-  createdAt      DateTime?        @default(now())
-  updatedAt      DateTime?        @updatedAt
+  createdAt      DateTime?       @default(now())
+  updatedAt      DateTime?       @updatedAt
 }
 
 model Tag {
-  id        String    @id @default(uuid())
-  name      String    @unique
-  products  Product[]
+  id             String          @id @default(uuid())
+  name           String          @unique
+  products       Product[]
   vendorProducts VendorProduct[]
 }
 
 model Vendor {
-  id               String     @id @default(uuid())
-  user             User       @relation("Vendor", fields: [userId], references: [id], onDelete: Restrict)
-  userId           String
-  name             String
-  email            String?
-  tagline          String?
-  details          String?
-  image            String?
-  address          String?
-  longitude        Float?
-  latitude         Float?
-  timezone         String?  @default("America/New_York")// e.g., "Africa/Lagos", "America/New_York"
-  isVerified       Boolean    @default(false)
-  meta             Json?
-  openingHours     VendorOpeningHours[] 
-  carts           Cart[]  
-  vendorProducts   VendorProduct[]
-  orders           Order[]
-  staff            User[]                 @relation("VendorStaff")
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
+  id             String               @id @default(uuid())
+  user           User                 @relation("Vendor", fields: [userId], references: [id], onDelete: Restrict)
+  userId         String
+  name           String
+  email          String?
+  tagline        String?
+  details        String?
+  image          String?
+  address        String?
+  longitude      Float?
+  latitude       Float?
+  timezone       String?              @default("America/New_York")
+  isVerified     Boolean              @default(false)
+  meta           Json?
+  openingHours   VendorOpeningHours[]
+  carts          Cart[]
+  vendorProducts VendorProduct[]
+  orders         Order[]
+  staff          User[]               @relation("VendorStaff")
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  ratings Rating[]
 }
 
 model VendorOpeningHours {
   id        String   @id @default(uuid())
-  vendor    Vendor   @relation( fields: [vendorId], references: [id], onDelete: Cascade)
+  vendor    Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   vendorId  String
-  day       Days 
-  open      String? 
-  close     String? 
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
+  day       Days
+  open      String?
+  close     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@unique([vendorId, day]) // Add the unique constraint here
+  @@unique([vendorId, day])
 }
 
-
 model Support {
-  id        String    @id @default(uuid())
-  user      User?       @relation("SupportMessages", fields: [userId], references: [id])
+  id        String   @id @default(uuid())
+  user      User?    @relation("SupportMessages", fields: [userId], references: [id])
   userId    String?
   name      String
   email     String
   message   String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Setting {
-  id        String    @id @default(uuid())
+  id        String   @id @default(uuid())
   key       String
   value     String
   type      String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
+model Rating {
+  id        String      @id @default(uuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  raterId   String // The customer who is giving the rating
+  rater     User        @relation("RatingsGiven", fields: [raterId], references: [id], onDelete: Cascade)
+
+  // Who/what is being rated
+  ratedVendorId String?
+  ratedVendor   Vendor?     @relation(fields: [ratedVendorId], references: [id], onDelete: Cascade)
+  ratedUserId   String? // If rating a shopper or deliverer
+  ratedUser     User?       @relation("RatingsReceived", fields: [ratedUserId], references: [id], onDelete: Cascade)
+
+  rating    Int // The score (e.g., 1-5)
+  comment   String?
+  type      RatingType
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([orderId, type])
+}
 
 enum Role {
   admin
@@ -318,7 +329,6 @@ enum Days {
   saturday
   sunday
 }
-
 
 enum PaymentMethods {
   credit_card
@@ -344,18 +354,16 @@ enum OrderStatus {
   delivered
 }
 
-// --- NEW ENUMS ---
 enum ShoppingMethod {
-  vendor        // The vendor prepares the order
-  shopper       // A designated shopper (e.g., delivery person who also shops) prepares the order
+  vendor
+  shopper
 }
 
 enum DeliveryMethod {
-  delivery_person // A designated delivery person delivers the order
-  customer_pickup // The customer picks up the order
+  delivery_person
+  customer_pickup
 }
 
-// Enum to define different types of fees
 enum FeeType {
   delivery
   service
@@ -363,8 +371,14 @@ enum FeeType {
 }
 
 enum FeeCalculationMethod {
-  flat          // A fixed amount in currency (e.g., $5.00)
-  percentage    // A percentage of a base value (e.g., 0.05 for 5% of subtotal)
-  per_unit      // Per unit of an item (e.g., $1.00 per item, or $0.50 per kg)
-  per_distance  // Per unit of distance (e.g., $2.00 per km)
+  flat
+  percentage
+  per_unit
+  per_distance
+}
+
+enum RatingType {
+  VENDOR
+  SHOPPER
+  DELIVERER
 }

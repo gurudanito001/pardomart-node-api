@@ -11,7 +11,8 @@ import cartRouter from './cart.routes';
 import cartItemRouter from './cartItem.routes';
 import orderRouter from './order.routes';
 import feeRouter from './fee.routes';
-import deliveryAddress from './deliveryAddress.routes';
+import deliveryAddressRouter from './deliveryAddress.routes';
+import ratingRouter from './rating.routes';
 
 // Create a new Router instance
 const router = Router();
@@ -29,6 +30,7 @@ router.use('/api/v1/cart-items', cartItemRouter);
 router.use('/api/v1/cart', cartRouter);
 router.use('/api/v1/order', orderRouter);
 router.use('/api/v1/fees', feeRouter);
-router.use('/api/v1/deliveryAddress', deliveryAddress);
+router.use('/api/v1/deliveryAddress', deliveryAddressRouter);
+router.use('/api/v1/ratings', ratingRouter);
 
 export default router;
