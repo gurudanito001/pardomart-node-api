@@ -6,6 +6,7 @@ var product_controllers_1 = require("../controllers/product.controllers");
 var router = express_1["default"].Router();
 router.get('/', product_controllers_1.getAllProducts);
 router.get('/vendor', product_controllers_1.getAllVendorProducts);
+router.get('/vendor/trending', product_controllers_1.getTrendingVendorProductsController);
 router.post('/', product_controllers_1.createProduct);
 router.post('/vendor', product_controllers_1.createVendorProduct);
 router.post('/vendor/barcode', product_controllers_1.createVendorProductWithBarcode);

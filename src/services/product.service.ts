@@ -66,3 +66,11 @@ export const deleteProduct = async (id: string): Promise<Product> => {
 export const deleteVendorProduct = async (id: string): Promise<VendorProduct> => {
   return productModel.deleteVendorProduct(id);
 };
+
+
+export const getTrendingVendorProductsService = async (
+  filters: { vendorId?: string },
+  pagination: { page: string; take: string }
+) => {
+  return productModel.getTrendingVendorProducts(filters, pagination);
+};

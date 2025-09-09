@@ -596,3 +596,49 @@ export const deleteVendorProduct = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+
+/**
+ * @swagger
+ * /product/vendor/trending:
+ *   get:
+ *     summary: Get trending vendor products
+ *     tags: [Product, Vendor]
+ *     description: Retrieves a list of vendor products that are trending, based on the number of times they have been ordered.
+ *     parameters:
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string, format: uuid }
+ *         description: Optional. Filter trending products by a specific vendor ID.
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *         description: Page number for pagination.
+ *       - in: query
+ *         name: size
+ *         schema: { type: integer, default: 5 }
+ *         description: Number of items per page.
+ *     responses:
+ *       200:
+ *         description: A paginated list of trending vendor products.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedVendorProducts'
+ */
+export const getTrendingVendorProductsController = async (req: Request, res: Response) => {
+  const { vendorId } = req.query;
+  const page = req.query.page?.toString() || "1";
+  const take = req.query.size?.toString() || "5";
+
+  try {
+    const result = await productService.getTrendingVendorProductsService(
+      { vendorId: vendorId as string | undefined },
+      { page, take }
+    );
+    res.json(result);
+  } catch (error) {
+    console.error('Error getting trending vendor products:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};

@@ -13,6 +13,7 @@ import {
   getVendorProductByBarcode,
   getVendorProductByIdController,
   getVendorProductsByCategory,
+  getTrendingVendorProductsController,
   getVendorProductsByTagIds,
   updateProductBase,
   updateVendorProduct,
@@ -21,6 +22,7 @@ import {
 const router = express.Router();
 router.get('/', getAllProducts);
 router.get('/vendor', getAllVendorProducts);
+router.get('/vendor/trending', getTrendingVendorProductsController);
 router.post('/', createProduct);
 router.post('/vendor', createVendorProduct);
 router.post('/vendor/barcode', createVendorProductWithBarcode);

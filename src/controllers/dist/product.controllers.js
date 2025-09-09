@@ -47,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteVendorProduct = exports.deleteProduct = exports.getVendorProductsByCategory = exports.getAllVendorProducts = exports.getAllProducts = exports.updateVendorProduct = exports.updateProductBase = exports.getVendorProductsByTagIds = exports.getProductsByTagIds = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.createVendorProductWithBarcode = exports.getVendorProductByIdController = exports.createVendorProduct = exports.createProduct = void 0;
+exports.getTrendingVendorProductsController = exports.deleteVendorProduct = exports.deleteProduct = exports.getVendorProductsByCategory = exports.getAllVendorProducts = exports.getAllProducts = exports.updateVendorProduct = exports.updateProductBase = exports.getVendorProductsByTagIds = exports.getProductsByTagIds = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.createVendorProductWithBarcode = exports.getVendorProductByIdController = exports.createVendorProduct = exports.createProduct = void 0;
 var productService = require("../services/product.service");
 var client_1 = require("@prisma/client");
 /**
@@ -777,6 +777,60 @@ exports.deleteVendorProduct = function (req, res) { return __awaiter(void 0, voi
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /product/vendor/trending:
+ *   get:
+ *     summary: Get trending vendor products
+ *     tags: [Product, Vendor]
+ *     description: Retrieves a list of vendor products that are trending, based on the number of times they have been ordered.
+ *     parameters:
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string, format: uuid }
+ *         description: Optional. Filter trending products by a specific vendor ID.
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *         description: Page number for pagination.
+ *       - in: query
+ *         name: size
+ *         schema: { type: integer, default: 5 }
+ *         description: Number of items per page.
+ *     responses:
+ *       200:
+ *         description: A paginated list of trending vendor products.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedVendorProducts'
+ */
+exports.getTrendingVendorProductsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var vendorId, page, take, result, error_16;
+    var _a, _b;
+    return __generator(this, function (_c) {
+        switch (_c.label) {
+            case 0:
+                vendorId = req.query.vendorId;
+                page = ((_a = req.query.page) === null || _a === void 0 ? void 0 : _a.toString()) || "1";
+                take = ((_b = req.query.size) === null || _b === void 0 ? void 0 : _b.toString()) || "5";
+                _c.label = 1;
+            case 1:
+                _c.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, productService.getTrendingVendorProductsService({ vendorId: vendorId }, { page: page, take: take })];
+            case 2:
+                result = _c.sent();
+                res.json(result);
+                return [3 /*break*/, 4];
+            case 3:
+                error_16 = _c.sent();
+                console.error('Error getting trending vendor products:', error_16);
+                res.status(500).json({ error: 'Internal server error' });
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
         }
     });
 }); };

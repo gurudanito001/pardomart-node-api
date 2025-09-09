@@ -252,9 +252,6 @@ export const getAllVendorProducts = async (filters: getVendorProductsFilters, pa
 };
 
 
-
-
-
 export const getProductsByTagIds = async (tagIds: string[]): Promise<Product[]> => {
   return prisma.product.findMany({
     where: {
@@ -330,6 +327,83 @@ export const getVendorProductById = async (vendorProductId: string): Promise<Ven
   return prisma.vendorProduct.findUnique({
     where: {id: vendorProductId},
   });
+};
+
+
+/**
+ * Retrieves a paginated list of trending vendor products.
+ * Trending is defined by the number of times a product appears in order items.
+ *
+ * @param filters - Filtering options, currently supports `vendorId`.
+ * @param pagination - Pagination options `page` and `take`.
+ * @returns A paginated list of vendor products with their trend count.
+ */
+export const getTrendingVendorProducts = async (
+  filters: { vendorId?: string },
+  pagination: { page: string; take: string }
+): Promise<{ data: (VendorProduct & { orderCount: number })[], total: number, page: number, size: number }> => {
+  const { vendorId } = filters;
+  const pageNum = parseInt(pagination.page, 10) || 1;
+  const takeNum = parseInt(pagination.take, 10) || 5;/*  */
+  const skip = (pageNum - 1) * takeNum;
+
+  const orderItemWhere: Prisma.OrderItemWhereInput = {};
+
+  if (vendorId) {
+    orderItemWhere.vendorProduct = {
+      vendorId: vendorId,
+    };
+  }
+
+  // 1. Aggregate OrderItems to get the count for each vendorProductId and paginate
+  const trendingProductCounts = await prisma.orderItem.groupBy({
+    by: ['vendorProductId'],
+    where: orderItemWhere,
+    _count: {
+      vendorProductId: true,
+    },
+    orderBy: {
+      _count: {
+        vendorProductId: 'desc',
+      },
+    },
+    
+    skip,
+    take: takeNum,
+  });
+
+  const trendingVendorProductIds = trendingProductCounts.map(
+    (item) => item.vendorProductId
+  );
+
+  if (trendingVendorProductIds.length === 0) {
+    return { data: [], total: 0, page: pageNum, size: takeNum };
+  }
+
+  // 2. Fetch the full VendorProduct details for the IDs we found
+  const vendorProducts = await prisma.vendorProduct.findMany({
+    where: { id: { in: trendingVendorProductIds } },
+  });
+
+  // 3. Combine product data with trend count
+  const productCountMap = new Map<string, number>();
+  trendingProductCounts.forEach(p => {
+    productCountMap.set(p.vendorProductId, p._count.vendorProductId);
+  });
+
+  const vendorProductsWithCount = vendorProducts.map(vp => ({
+    ...vp,
+    orderCount: productCountMap.get(vp.id) || 0,
+  }));
+
+  // 4. Re-sort the fetched products to match the trending order
+  const sortedVendorProducts = vendorProductsWithCount.sort((a, b) => trendingVendorProductIds.indexOf(a.id) - trendingVendorProductIds.indexOf(b.id));
+
+  // 5. Get total count of distinct products for pagination metadata
+  const totalDistinctProducts = await prisma.orderItem.groupBy({ by: ['vendorProductId'], where: orderItemWhere });
+  const totalCount = totalDistinctProducts.length;
+
+  return { data: sortedVendorProducts, total: totalCount, page: pageNum, size: takeNum };
 };
 
 

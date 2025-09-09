@@ -47,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteVendorProduct = exports.deleteProduct = exports.updateVendorProduct = exports.updateProductBase = exports.getVendorProductById = exports.getVendorProductsByCategory = exports.getAllProducts = exports.getVendorProductsByTagIds = exports.getProductsByTagIds = exports.getAllVendorProducts = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.createVendorProductWithBarcode = exports.createVendorProduct = exports.createProduct = void 0;
+exports.deleteVendorProduct = exports.deleteProduct = exports.updateVendorProduct = exports.updateProductBase = exports.getTrendingVendorProducts = exports.getVendorProductById = exports.getVendorProductsByCategory = exports.getAllProducts = exports.getVendorProductsByTagIds = exports.getProductsByTagIds = exports.getAllVendorProducts = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.createVendorProductWithBarcode = exports.createVendorProduct = exports.createProduct = void 0;
 // models/product.model.ts
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
@@ -314,6 +314,68 @@ exports.getVendorProductById = function (vendorProductId) { return __awaiter(voi
         return [2 /*return*/, prisma.vendorProduct.findUnique({
                 where: { id: vendorProductId }
             })];
+    });
+}); };
+/**
+ * Retrieves a paginated list of trending vendor products.
+ * Trending is defined by the number of times a product appears in order items.
+ *
+ * @param filters - Filtering options, currently supports `vendorId`.
+ * @param pagination - Pagination options `page` and `take`.
+ * @returns A paginated list of vendor products with their trend count.
+ */
+exports.getTrendingVendorProducts = function (filters, pagination) { return __awaiter(void 0, void 0, Promise, function () {
+    var vendorId, pageNum, takeNum, skip, orderItemWhere, trendingProductCounts, trendingVendorProductIds, vendorProducts, productCountMap, vendorProductsWithCount, sortedVendorProducts, totalDistinctProducts, totalCount;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                vendorId = filters.vendorId;
+                pageNum = parseInt(pagination.page, 10) || 1;
+                takeNum = parseInt(pagination.take, 10) || 5;
+                skip = (pageNum - 1) * takeNum;
+                orderItemWhere = {};
+                if (vendorId) {
+                    orderItemWhere.vendorProduct = {
+                        vendorId: vendorId
+                    };
+                }
+                return [4 /*yield*/, prisma.orderItem.groupBy({
+                        by: ['vendorProductId'],
+                        where: orderItemWhere,
+                        _count: {
+                            vendorProductId: true
+                        },
+                        orderBy: {
+                            _count: {
+                                vendorProductId: 'desc'
+                            }
+                        },
+                        skip: skip,
+                        take: takeNum
+                    })];
+            case 1:
+                trendingProductCounts = _a.sent();
+                trendingVendorProductIds = trendingProductCounts.map(function (item) { return item.vendorProductId; });
+                if (trendingVendorProductIds.length === 0) {
+                    return [2 /*return*/, { data: [], total: 0, page: pageNum, size: takeNum }];
+                }
+                return [4 /*yield*/, prisma.vendorProduct.findMany({
+                        where: { id: { "in": trendingVendorProductIds } }
+                    })];
+            case 2:
+                vendorProducts = _a.sent();
+                productCountMap = new Map();
+                trendingProductCounts.forEach(function (p) {
+                    productCountMap.set(p.vendorProductId, p._count.vendorProductId);
+                });
+                vendorProductsWithCount = vendorProducts.map(function (vp) { return (__assign(__assign({}, vp), { orderCount: productCountMap.get(vp.id) || 0 })); });
+                sortedVendorProducts = vendorProductsWithCount.sort(function (a, b) { return trendingVendorProductIds.indexOf(a.id) - trendingVendorProductIds.indexOf(b.id); });
+                return [4 /*yield*/, prisma.orderItem.groupBy({ by: ['vendorProductId'], where: orderItemWhere })];
+            case 3:
+                totalDistinctProducts = _a.sent();
+                totalCount = totalDistinctProducts.length;
+                return [2 /*return*/, { data: sortedVendorProducts, total: totalCount, page: pageNum, size: takeNum }];
+        }
     });
 }); };
 exports.updateProductBase = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
