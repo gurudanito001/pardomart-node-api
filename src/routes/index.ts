@@ -13,6 +13,7 @@ import orderRouter from './order.routes';
 import feeRouter from './fee.routes';
 import deliveryAddressRouter from './deliveryAddress.routes';
 import ratingRouter from './rating.routes';
+import wishlistRouter from './wishlist.routes';
 
 // Create a new Router instance
 const router = Router();
@@ -32,5 +33,6 @@ router.use('/api/v1/order', orderRouter);
 router.use('/api/v1/fees', feeRouter);
 router.use('/api/v1/deliveryAddress', deliveryAddressRouter);
 router.use('/api/v1/ratings', ratingRouter);
+router.use('/api/v1/wishlist', wishlistRouter);
 
 export default router;

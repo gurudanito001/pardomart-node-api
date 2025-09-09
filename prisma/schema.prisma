@@ -48,6 +48,7 @@ model User {
   // New fields for ratings
   ratingsGiven    Rating[] @relation("RatingsGiven")
   ratingsReceived Rating[] @relation("RatingsReceived")
+  wishlistItems   WishlistItem[]
 
   @@unique([mobileNumber, role])
 }
@@ -95,6 +96,7 @@ model VendorProduct {
   tags            Tag[]
   cartItems       CartItem[] //Opposite relation to CartItem
   orderItems      OrderItem[] //Opposite relation to OrderItem
+  wishlistItems   WishlistItem[]
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
@@ -309,6 +311,19 @@ model Rating {
   updatedAt DateTime @updatedAt
 
   @@unique([orderId, type])
+}
+
+model WishlistItem {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendorProductId String
+  vendorProduct   VendorProduct @relation(fields: [vendorProductId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // A user can only have a specific product in their wishlist once
+  @@unique([userId, vendorProductId])
 }
 
 enum Role {
