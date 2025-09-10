@@ -8,7 +8,6 @@ import { CreateDeliveryAddressPayload } from '../models/deliveryAddress.model';
 import { createDeliveryAddressService } from './deliveryAddress.service';
 import { calculateOrderFeesService } from './fee.service';
 import * as orderItemModel from '../models/orderItem.model';
-import * as cartModel from '../models/cart.model';
 import { getVendorById } from './vendor.service';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -205,16 +204,6 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
           },
         },
       });
-    }
-
-    // --- 7. Clear the user's cart for this vendor ---
-    // Find the cart associated with the user and vendor
-    const cartToClear = await tx.cart.findUnique({
-      where: { userId_vendorId: { userId, vendorId } },
-      select: { id: true }
-    });
-    if (cartToClear) {
-      await tx.cartItem.deleteMany({ where: { cartId: cartToClear.id } });
     }
 
     // --- 7. Return the complete order with all relations ---
