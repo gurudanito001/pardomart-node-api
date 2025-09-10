@@ -64,7 +64,6 @@ exports.startShoppingService = exports.declineOrderService = exports.acceptOrder
 var orderModel = require("../models/order.model"); // Adjust the path if needed
 var client_1 = require("@prisma/client");
 var dayjs_1 = require("dayjs");
-var deliveryAddress_service_1 = require("./deliveryAddress.service");
 var fee_service_1 = require("./fee.service");
 var orderItemModel = require("../models/orderItem.model");
 var vendor_service_1 = require("./vendor.service");
@@ -131,11 +130,11 @@ var getDayEnumFromDayjs = function (dayjsDayIndex) {
     return days[dayjsDayIndex];
 };
 exports.createOrderFromClient = function (userId, payload) { return __awaiter(void 0, void 0, void 0, function () {
-    var vendorId, paymentMethod, shippingAddressId, newShippingAddress, deliveryInstructions, orderItems, shoppingMethod, deliveryMethod, scheduledDeliveryTime, shoppingStartTime, parsedScheduledDeliveryTime, vendor, deliveryLocalDayjs, dayOfWeek_1, openingHoursToday, _a, openHours, openMinutes, _b, closeHours, closeMinutes, vendorOpenTimeUTC, vendorCloseTimeUTC, lastDeliveryTimeUTC;
+    var vendorId, paymentMethod, shippingAddressId, deliveryInstructions, orderItems, shoppingMethod, deliveryMethod, scheduledDeliveryTime, shoppingStartTime, parsedScheduledDeliveryTime, vendor, deliveryLocalDayjs, dayOfWeek_1, openingHoursToday, _a, openHours, openMinutes, _b, closeHours, closeMinutes, vendorOpenTimeUTC, vendorCloseTimeUTC, lastDeliveryTimeUTC;
     return __generator(this, function (_c) {
         switch (_c.label) {
             case 0:
-                vendorId = payload.vendorId, paymentMethod = payload.paymentMethod, shippingAddressId = payload.shippingAddressId, newShippingAddress = payload.newShippingAddress, deliveryInstructions = payload.deliveryInstructions, orderItems = payload.orderItems, shoppingMethod = payload.shoppingMethod, deliveryMethod = payload.deliveryMethod, scheduledDeliveryTime = payload.scheduledDeliveryTime;
+                vendorId = payload.vendorId, paymentMethod = payload.paymentMethod, shippingAddressId = payload.shippingAddressId, deliveryInstructions = payload.deliveryInstructions, orderItems = payload.orderItems, shoppingMethod = payload.shoppingMethod, deliveryMethod = payload.deliveryMethod, scheduledDeliveryTime = payload.scheduledDeliveryTime;
                 // --- 1. Validate payload basics ---
                 if (!orderItems || !Array.isArray(orderItems) || orderItems.length === 0) {
                     throw new OrderCreationError('Order must contain at least one item.');
@@ -186,28 +185,20 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
             case 2: 
             // --- Transactional Block ---
             return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
-                    var finalShippingAddressId, createdAddress, fees, totalEstimatedCost, deliveryFee, serviceFee, shoppingFee, newOrder, orderItemsToCreate, _i, orderItems_1, item, finalOrder;
+                    var finalShippingAddressId, fees, totalEstimatedCost, deliveryFee, serviceFee, shoppingFee, newOrder, orderItemsToCreate, _i, orderItems_1, item, finalOrder;
                     return __generator(this, function (_a) {
                         switch (_a.label) {
                             case 0:
                                 finalShippingAddressId = shippingAddressId;
-                                if (!(!shippingAddressId && newShippingAddress)) return [3 /*break*/, 2];
-                                return [4 /*yield*/, deliveryAddress_service_1.createDeliveryAddressService(__assign(__assign({}, newShippingAddress), { userId: userId }), tx)];
-                            case 1:
-                                createdAddress = _a.sent();
-                                finalShippingAddressId = createdAddress.id;
-                                return [3 /*break*/, 3];
-                            case 2:
                                 if (!shippingAddressId && deliveryMethod === client_1.DeliveryMethod.delivery_person) {
                                     throw new OrderCreationError('Delivery address is required for delivery orders.');
                                 }
-                                _a.label = 3;
-                            case 3: return [4 /*yield*/, fee_service_1.calculateOrderFeesService({
-                                    orderItems: orderItems,
-                                    vendorId: vendorId,
-                                    deliveryAddressId: finalShippingAddressId
-                                }, tx)];
-                            case 4:
+                                return [4 /*yield*/, fee_service_1.calculateOrderFeesService({
+                                        orderItems: orderItems,
+                                        vendorId: vendorId,
+                                        deliveryAddressId: finalShippingAddressId
+                                    }, tx)];
+                            case 1:
                                 fees = _a.sent();
                                 totalEstimatedCost = fees.totalEstimatedCost, deliveryFee = fees.deliveryFee, serviceFee = fees.serviceFee, shoppingFee = fees.shoppingFee;
                                 return [4 /*yield*/, orderModel.createOrder({
@@ -217,7 +208,7 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                         deliveryAddressId: finalShippingAddressId,
                                         deliveryInstructions: deliveryInstructions
                                     }, tx)];
-                            case 5:
+                            case 2:
                                 newOrder = _a.sent();
                                 orderItemsToCreate = orderItems.map(function (item) { return ({
                                     vendorProductId: item.vendorProductId,
@@ -225,12 +216,12 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                     orderId: newOrder.id
                                 }); });
                                 return [4 /*yield*/, orderItemModel.createManyOrderItems(orderItemsToCreate, tx)];
-                            case 6:
+                            case 3:
                                 _a.sent();
                                 _i = 0, orderItems_1 = orderItems;
-                                _a.label = 7;
-                            case 7:
-                                if (!(_i < orderItems_1.length)) return [3 /*break*/, 10];
+                                _a.label = 4;
+                            case 4:
+                                if (!(_i < orderItems_1.length)) return [3 /*break*/, 7];
                                 item = orderItems_1[_i];
                                 return [4 /*yield*/, tx.vendorProduct.update({
                                         where: { id: item.vendorProductId },
@@ -240,14 +231,14 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                             }
                                         }
                                     })];
-                            case 8:
+                            case 5:
                                 _a.sent();
-                                _a.label = 9;
-                            case 9:
+                                _a.label = 6;
+                            case 6:
                                 _i++;
-                                return [3 /*break*/, 7];
-                            case 10: return [4 /*yield*/, orderModel.getOrderById(newOrder.id, tx)];
-                            case 11:
+                                return [3 /*break*/, 4];
+                            case 7: return [4 /*yield*/, orderModel.getOrderById(newOrder.id, tx)];
+                            case 8:
                                 finalOrder = _a.sent();
                                 if (!finalOrder) {
                                     throw new OrderCreationError("Failed to retrieve the created order.", 500);

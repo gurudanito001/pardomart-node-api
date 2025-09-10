@@ -154,8 +154,8 @@ model Order {
   paymentStatus              PaymentStatus    @default(pending)
   orderStatus                OrderStatus      @default(pending)
   reasonForDecline           String?
-  deliveryAddressId          String?
-  deliveryAddress            DeliveryAddress? @relation(fields: [deliveryAddressId], references: [id])
+  deliveryAddressId          String
+  deliveryAddress            DeliveryAddress @relation(fields: [deliveryAddressId], references: [id])
   deliveryInstructions       String?
   shopperId                  String?
   shopper                    User?            @relation("OrderShopper", fields: [shopperId], references: [id])

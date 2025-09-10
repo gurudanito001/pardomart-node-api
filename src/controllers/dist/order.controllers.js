@@ -43,7 +43,7 @@ var client_1 = require("@prisma/client");
 /**
  * Controller for creating a new order.
  * @swagger
- * /order/from-client:
+ * /order/:
  *   post:
  *     summary: Create an order from the client
  *     tags: [Order]
@@ -74,13 +74,6 @@ var client_1 = require("@prisma/client");
  *               shippingAddressId:
  *                 type: string
  *                 format: uuid
- *                 description: The ID of an existing delivery address. Required for 'delivery_person' method if 'newShippingAddress' is not provided.
- *               newShippingAddress:
- *                 type: object
- *                 description: A new delivery address to be created. Required for 'delivery_person' method if 'shippingAddressId' is not provided.
- *                 properties:
- *                   label:
- *                     type: string
  *                     description: A label for the address (e.g., "Home", "Work").
  *                   addressLine1:
  *                     type: string
@@ -96,7 +89,7 @@ var client_1 = require("@prisma/client");
  *                     type: string
  *                   country:
  *                     type: string
- *                     default: "Nigeria"
+ *                     default: "Nigeria" Required for 'delivery_person' method if 'newShippingAddress' is not provided.
  *               deliveryInstructions:
  *                 type: string
  *                 description: Optional instructions for the delivery.

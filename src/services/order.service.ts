@@ -79,8 +79,7 @@ const getDayEnumFromDayjs = (dayjsDayIndex: number): string => {
 interface CreateOrderFromClientPayload {
   vendorId: string;
   paymentMethod: PaymentMethods; // Consider using an enum if you have fixed payment methods
-  shippingAddressId?: string;
-  newShippingAddress?: CreateDeliveryAddressPayload;
+  shippingAddressId: string;
   deliveryInstructions?: string;
   orderItems: { vendorProductId: string; quantity: number }[];
   shoppingMethod: ShoppingMethod;
@@ -94,7 +93,6 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
     vendorId,
     paymentMethod,
     shippingAddressId,
-    newShippingAddress,
     deliveryInstructions,
     orderItems,
     shoppingMethod,
@@ -163,11 +161,8 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
   // --- Transactional Block ---
   return prisma.$transaction(async (tx) => {
     // --- 3. Handle Delivery Address ---
-    let finalShippingAddressId = shippingAddressId;
-    if (!shippingAddressId && newShippingAddress) {
-      const createdAddress = await createDeliveryAddressService({ ...newShippingAddress, userId }, tx);
-      finalShippingAddressId = createdAddress.id;
-    } else if (!shippingAddressId && deliveryMethod === DeliveryMethod.delivery_person) {
+    const finalShippingAddressId = shippingAddressId;
+    if (!shippingAddressId && deliveryMethod === DeliveryMethod.delivery_person) {
       throw new OrderCreationError('Delivery address is required for delivery orders.');
     }
 
