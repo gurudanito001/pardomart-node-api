@@ -20,10 +20,11 @@ import { AuthenticatedRequest } from './vendor.controller';
 /**
  * Controller for creating a new order.
  * @swagger
- * /order:
+ * /order/from-client:
  *   post:
- *     summary: Create a new order
+ *     summary: Create an order from the client
  *     tags: [Order]
+ *     description: Creates a new order based on a payload sent from the client, which includes all order items and delivery details. This endpoint is used when the cart state is managed on the client-side.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -31,7 +32,78 @@ import { AuthenticatedRequest } from './vendor.controller';
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/CreateOrderPayload'
+ *             type: object
+ *             required:
+ *               - vendorId
+ *               - paymentMethod
+ *               - orderItems
+ *               - shoppingMethod
+ *               - deliveryMethod
+ *             properties:
+ *               vendorId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: The ID of the vendor for this order.
+ *               paymentMethod:
+ *                 type: string
+ *                 enum: [credit_card, wallet, cash]
+ *                 description: The payment method for the order.
+ *               shippingAddressId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: The ID of an existing delivery address. Required for 'delivery_person' method if 'newShippingAddress' is not provided.
+ *               newShippingAddress:
+ *                 type: object
+ *                 description: A new delivery address to be created. Required for 'delivery_person' method if 'shippingAddressId' is not provided.
+ *                 properties:
+ *                   label:
+ *                     type: string
+ *                     description: A label for the address (e.g., "Home", "Work").
+ *                   addressLine1:
+ *                     type: string
+ *                     description: The primary address line.
+ *                   addressLine2:
+ *                     type: string
+ *                     description: The secondary address line (optional).
+ *                   city:
+ *                     type: string
+ *                   state:
+ *                     type: string
+ *                   postalCode:
+ *                     type: string
+ *                   country:
+ *                     type: string
+ *                     default: "Nigeria"
+ *               deliveryInstructions:
+ *                 type: string
+ *                 description: Optional instructions for the delivery.
+ *               orderItems:
+ *                 type: array
+ *                 description: A list of items to be included in the order.
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - vendorProductId
+ *                     - quantity
+ *                   properties:
+ *                     vendorProductId:
+ *                       type: string
+ *                       format: uuid
+ *                     quantity:
+ *                       type: integer
+ *                       minimum: 1
+ *               shoppingMethod:
+ *                 type: string
+ *                 enum: [vendor, shopper]
+ *                 description: Who will be shopping for the items.
+ *               deliveryMethod:
+ *                 type: string
+ *                 enum: [delivery_person, customer_pickup]
+ *                 description: How the order will be delivered.
+ *               scheduledDeliveryTime:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Optional. The requested time for the delivery in UTC ISO 8601 format (e.g., 2023-10-27T14:30:00.000Z).
  *     responses:
  *       201:
  *         description: The created order.
@@ -40,7 +112,9 @@ import { AuthenticatedRequest } from './vendor.controller';
  *             schema:
  *               $ref: '#/components/schemas/Order'
  *       400:
- *         description: Bad request due to invalid input.
+ *         description: Bad request due to invalid input (e.g., missing fields, invalid time, item out of stock).
+ *       401:
+ *         description: Unauthorized.
  *       500:
  *         description: Internal server error.
  */
