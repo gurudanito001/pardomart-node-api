@@ -186,7 +186,7 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
             case 2: 
             // --- Transactional Block ---
             return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
-                    var finalShippingAddressId, createdAddress, fees, totalEstimatedCost, deliveryFee, serviceFee, shoppingFee, newOrder, orderItemsToCreate, _i, orderItems_1, item, cartToClear, finalOrder;
+                    var finalShippingAddressId, createdAddress, fees, totalEstimatedCost, deliveryFee, serviceFee, shoppingFee, newOrder, orderItemsToCreate, _i, orderItems_1, item, finalOrder;
                     return __generator(this, function (_a) {
                         switch (_a.label) {
                             case 0:
@@ -246,19 +246,8 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                             case 9:
                                 _i++;
                                 return [3 /*break*/, 7];
-                            case 10: return [4 /*yield*/, tx.cart.findUnique({
-                                    where: { userId_vendorId: { userId: userId, vendorId: vendorId } },
-                                    select: { id: true }
-                                })];
+                            case 10: return [4 /*yield*/, orderModel.getOrderById(newOrder.id, tx)];
                             case 11:
-                                cartToClear = _a.sent();
-                                if (!cartToClear) return [3 /*break*/, 13];
-                                return [4 /*yield*/, tx.cartItem.deleteMany({ where: { cartId: cartToClear.id } })];
-                            case 12:
-                                _a.sent();
-                                _a.label = 13;
-                            case 13: return [4 /*yield*/, orderModel.getOrderById(newOrder.id, tx)];
-                            case 14:
                                 finalOrder = _a.sent();
                                 if (!finalOrder) {
                                     throw new OrderCreationError("Failed to retrieve the created order.", 500);
