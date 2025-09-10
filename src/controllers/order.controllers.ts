@@ -20,9 +20,9 @@ import { AuthenticatedRequest } from './vendor.controller';
 /**
  * Controller for creating a new order.
  * @swagger
- * /order/:
+ * /order/from-client:
  *   post:
- *     summary: Create an order from the client
+ *     summary: Create an order from a client payload
  *     tags: [Order]
  *     description: Creates a new order based on a payload sent from the client, which includes all order items and delivery details. This endpoint is used when the cart state is managed on the client-side.
  *     security:
@@ -36,6 +36,7 @@ import { AuthenticatedRequest } from './vendor.controller';
  *             required:
  *               - vendorId
  *               - paymentMethod
+ *               - shippingAddressId
  *               - orderItems
  *               - shoppingMethod
  *               - deliveryMethod
@@ -48,25 +49,10 @@ import { AuthenticatedRequest } from './vendor.controller';
  *                 type: string
  *                 enum: [credit_card, wallet, cash]
  *                 description: The payment method for the order.
- *               shippingAddressId: 
+ *               shippingAddressId:
  *                 type: string
  *                 format: uuid
- *                     description: A label for the address (e.g., "Home", "Work").
- *                   addressLine1:
- *                     type: string
- *                     description: The primary address line.
- *                   addressLine2:
- *                     type: string
- *                     description: The secondary address line (optional).
- *                   city:
- *                     type: string
- *                   state:
- *                     type: string
- *                   postalCode:
- *                     type: string
- *                   country:
- *                     type: string
- *                     default: "Nigeria" Required for 'delivery_person' method if 'newShippingAddress' is not provided.
+ *                 description: The ID of an existing delivery address.
  *               deliveryInstructions:
  *                 type: string
  *                 description: Optional instructions for the delivery.

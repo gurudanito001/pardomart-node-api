@@ -12,7 +12,7 @@ export interface CreateOrderPayload {
   serviceFee?: number;
   shoppingFee?: number;
   paymentMethod?: PaymentMethods;
-  deliveryAddressId?: string;
+  deliveryAddressId: string;
   deliveryInstructions?: string;
   shoppingMethod?: ShoppingMethod;
   deliveryMethod?: DeliveryMethod;
