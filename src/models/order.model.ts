@@ -16,7 +16,7 @@ export interface CreateOrderPayload {
   deliveryInstructions?: string;
   shoppingMethod?: ShoppingMethod;
   deliveryMethod?: DeliveryMethod;
-  scheduledShoppingStartTime?: Date;
+  shoppingStartTime?: Date;
   scheduledDeliveryTime?: Date;
   actualDeliveryTime?: Date;
 }
@@ -43,7 +43,7 @@ export const getOrderById = async (id: string, tx?: Prisma.TransactionClient): P
         }
       },
       shopper: true,
-      deliverer: true,
+      deliveryPerson: true,
       deliveryAddress: true
     },
   });
@@ -59,7 +59,7 @@ export const getOrdersByUserId = async (userId: string): Promise<Order[]> => {
         }
       },
       shopper: true,
-      deliverer: true,
+      deliveryPerson: true,
       vendor: true
     },
   });
@@ -75,11 +75,11 @@ export interface UpdateOrderPayload {
   orderStatus?: OrderStatus;
   deliveryAddressId?: string;
   deliveryInstructions?: string;
-  shoppingHandlerId?: string;
-  deliveryHandlerId?: string;
+  shopperId?: string;
+  deliveryPersonId?: string;
   shoppingMethod?: ShoppingMethod;
   deliveryMethod?: DeliveryMethod;
-  scheduledShoppingStartTime?: Date;
+  shoppingStartTime?: Date;
   scheduledDeliveryTime?: Date;
   actualDeliveryTime?: Date;
 }

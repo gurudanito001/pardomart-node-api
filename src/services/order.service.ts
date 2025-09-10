@@ -108,7 +108,7 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
     throw new OrderCreationError('Order must contain at least one item.');
   }
 
-  let scheduledShoppingStartTime: Date | undefined;
+  let shoppingStartTime: Date | undefined;
 
   // --- 2. Validate scheduled time against vendor hours ---
   if (scheduledDeliveryTime) {
@@ -119,9 +119,9 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
 
     // Calculate scheduledShoppingStartTime based on delivery time and method
     if (deliveryMethod === DeliveryMethod.delivery_person) {
-      scheduledShoppingStartTime = parsedScheduledDeliveryTime.subtract(2, 'hour').toDate();
+      shoppingStartTime = parsedScheduledDeliveryTime.subtract(2, 'hour').toDate();
     } else if (deliveryMethod === DeliveryMethod.customer_pickup) {
-      scheduledShoppingStartTime = parsedScheduledDeliveryTime.subtract(1, 'hour').toDate();
+      shoppingStartTime = parsedScheduledDeliveryTime.subtract(1, 'hour').toDate();
     }
 
     const vendor = await getVendorById(vendorId);
@@ -156,7 +156,7 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
       throw new OrderCreationError('Scheduled delivery time cannot be in the past.');
     }
 
-    if (scheduledShoppingStartTime && dayjs.utc(scheduledShoppingStartTime).isBefore(vendorOpenTimeUTC)) {
+    if (shoppingStartTime && dayjs.utc(shoppingStartTime).isBefore(vendorOpenTimeUTC)) {
       throw new OrderCreationError(`Calculated shopping start time is before the vendor opens. Please choose a later delivery time.`);
     }
   }
@@ -183,7 +183,7 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
 
     // --- 5. Create the Order record ---
     const newOrder = await orderModel.createOrder({
-      userId, vendorId, totalAmount: totalEstimatedCost, deliveryFee, serviceFee, shoppingFee, paymentMethod, shoppingMethod, deliveryMethod, scheduledDeliveryTime, scheduledShoppingStartTime, deliveryAddressId: finalShippingAddressId, deliveryInstructions,
+      userId, vendorId, totalAmount: totalEstimatedCost, deliveryFee, serviceFee, shoppingFee, paymentMethod, shoppingMethod, deliveryMethod, scheduledDeliveryTime, shoppingStartTime, deliveryAddressId: finalShippingAddressId, deliveryInstructions,
     }, tx);
 
     // --- 6. Create the OrderItem records ---
@@ -385,7 +385,7 @@ type OrderWithRequiredRelations = Order & {
   orderItems: OrderItemWithProductDetails[];
   deliveryAddress: DeliveryAddress | null;
   shopper: { id: string; name: string | null; } | null;
-  deliverer: { id: string; name: string | null; } | null;
+  deliveryPerson: { id: string; name: string | null; } | null;
   // Add other relations needed for the dashboard (e.g., deliverer)
 };
 
@@ -428,7 +428,7 @@ export const getOrdersForVendorDashboard = async (
         ),
         // Filter by scheduledShoppingStartTime:
         // Only show orders where shopping is due now or in the past, plus those due in the next 30 minutes.
-        scheduledShoppingStartTime: {
+        shoppingStartTime: {
           lte: dayjs().add(30, 'minutes').utc().toDate(), // Show overdue orders and scheduled orders up to 30 mins in future
         },
       },
@@ -443,10 +443,10 @@ export const getOrdersForVendorDashboard = async (
         },
         deliveryAddress: true, // The specific address used for this order
         shopper: { select: { id: true, name: true, } }, // The assigned shopping handler (staff user)
-        deliverer: { select: { id: true, name: true } }, // The assigned delivery handler
+        deliveryPerson: { select: { id: true, name: true } }, // The assigned delivery handler
       },
       orderBy: {
-        scheduledShoppingStartTime: 'asc', // Sort upcoming orders by when they need to be prepared
+        shoppingStartTime: 'asc', // Sort upcoming orders by when they need to be prepared
         createdAt: 'asc', // Fallback sort
       },
     });
@@ -484,11 +484,11 @@ export const acceptOrderService = async (
         vendorId: vendorId, // Crucial: ensure order belongs to this vendor
         orderStatus: OrderStatus.pending, // Only accept orders that are currently pending
         shoppingMethod: ShoppingMethod.vendor, // Only accept if vendor is responsible for shopping
-        shoppingHandlerId: null, // Ensure it's not already assigned
+        shopperId: null, // Ensure it's not already assigned
       },
       data: {
         orderStatus: OrderStatus.accepted_for_shopping, // Change status to accepted
-        shoppingHandlerId: shoppingHandlerUserId, // Assign the handler (the accepting staff)
+        shopperId: shoppingHandlerUserId, // Assign the handler (the accepting staff)
       },
     });
     return acceptedOrder;
@@ -529,7 +529,7 @@ export const declineOrderService = async (
       data: {
         orderStatus: OrderStatus.declined_by_vendor, // Change status to declined
         reasonForDecline: reason, // Store the reason
-        shoppingHandlerId: null, // Clear any potential assignment if it was somehow set
+        shopperId: null, // Clear any potential assignment if it was somehow set
       },
     });
     return declinedOrder;
@@ -582,7 +582,7 @@ export const startShoppingService = async (
       },
       data: {
         orderStatus: OrderStatus.currently_shopping, // Transition to shopping
-        shoppingHandlerId: shoppingHandlerUserId, // Re-confirm handler, or assign if not already done by accept
+        shopperId: shoppingHandlerUserId, // Re-confirm handler, or assign if not already done by accept
       },
     });
     return order;

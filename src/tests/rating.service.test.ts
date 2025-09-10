@@ -37,8 +37,8 @@ describe('Rating Service', () => {
       userId: raterId,
       vendorId: vendorId,
       orderStatus: OrderStatus.delivered,
-      shoppingHandlerId: 'shopper-456',
-      deliveryHandlerId: 'deliverer-789',
+      shopperId: 'shopper-456',
+      deliveryPersonId: 'deliverer-789',
     } as any;
 
     const createVendorRatingPayload: Omit<ratingModel.CreateRatingPayload, 'raterId'> = {
@@ -135,7 +135,7 @@ describe('Rating Service', () => {
 
         expect(mockRatingModel.createRating).toHaveBeenCalledWith(
             expect.objectContaining({
-                ratedUserId: mockOrder.shoppingHandlerId,
+                ratedUserId: mockOrder.shopperId,
                 ratedVendorId: undefined,
             }),
             expect.anything()
@@ -144,7 +144,7 @@ describe('Rating Service', () => {
 
     it('should throw a 400 error if trying to rate a shopper on an order without one', async () => {
         const shopperRatingPayload = { ...createVendorRatingPayload, type: RatingType.SHOPPER };
-        mockOrderModel.getOrderById.mockResolvedValue({ ...mockOrder, shoppingHandlerId: null });
+        mockOrderModel.getOrderById.mockResolvedValue({ ...mockOrder, shopperId: null });
 
         await expect(ratingService.createRatingService(raterId, shopperRatingPayload))
             .rejects.toThrow(new RatingError('This order does not have an assigned shopper to rate.', 400));

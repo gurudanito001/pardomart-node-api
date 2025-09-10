@@ -51,12 +51,12 @@ export const createRatingService = async (
       ratingData.ratedVendorId = order.vendorId;
       break;
     case RatingType.SHOPPER:
-      if (!order.shoppingHandlerId) throw new RatingError('This order does not have an assigned shopper to rate.', 400);
-      ratingData.ratedUserId = order.shoppingHandlerId;
+      if (!order.shopperId) throw new RatingError('This order does not have an assigned shopper to rate.', 400);
+      ratingData.ratedUserId = order.shopperId;
       break;
     case RatingType.DELIVERER:
-      if (!order.deliveryHandlerId) throw new RatingError('This order does not have an assigned deliverer to rate.', 400);
-      ratingData.ratedUserId = order.deliveryHandlerId;
+      if (!order.deliveryPersonId) throw new RatingError('This order does not have an assigned deliverer to rate.', 400);
+      ratingData.ratedUserId = order.deliveryPersonId;
       break;
     default:
       throw new RatingError('Invalid rating type specified.', 400);

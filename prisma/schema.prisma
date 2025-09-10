@@ -157,19 +157,18 @@ model Order {
   deliveryAddressId          String?
   deliveryAddress            DeliveryAddress? @relation(fields: [deliveryAddressId], references: [id])
   deliveryInstructions       String?
-  shoppingHandlerId          String?
-  shopper                    User?            @relation("OrderShopper", fields: [shoppingHandlerId], references: [id])
-  deliveryHandlerId          String?
-  deliverer                  User?            @relation("OrderDeliverer", fields: [deliveryHandlerId], references: [id])
+  shopperId                  String?
+  shopper                    User?            @relation("OrderShopper", fields: [shopperId], references: [id])
+  deliveryPersonId           String?
+  deliveryPerson             User?            @relation("OrderDeliverer", fields: [deliveryPersonId], references: [id])
   shoppingMethod             ShoppingMethod?  @default(vendor)
   deliveryMethod             DeliveryMethod?  @default(customer_pickup)
-  scheduledShoppingStartTime DateTime?
+  shoppingStartTime          DateTime?
   scheduledDeliveryTime      DateTime?
   actualDeliveryTime         DateTime?
   orderItems                 OrderItem[]
   createdAt                  DateTime         @default(now())
   updatedAt                  DateTime         @updatedAt
-
   ratings Rating[]
 }
 
