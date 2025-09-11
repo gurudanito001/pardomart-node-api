@@ -43,7 +43,7 @@ var client_1 = require("@prisma/client");
 /**
  * Controller for creating a new order.
  * @swagger
- * /order/from-client:
+ * /order:
  *   post:
  *     summary: Create an order from a client payload
  *     tags: [Order]
