@@ -213,6 +213,10 @@ const options: swaggerJsdoc.Options = {
               type: 'array',
               items: { $ref: '#/components/schemas/VendorProduct' },
             },
+            totalProducts: {
+              type: 'integer',
+              description: 'The total number of products found in the store that match the search criteria.',
+            },
           },
         },
         CategoryDetailsResult: {
