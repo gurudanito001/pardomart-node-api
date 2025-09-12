@@ -81,6 +81,15 @@ import { AuthenticatedRequest } from './vendor.controller';
  *                     quantity:
  *                       type: integer
  *                       minimum: 1
+ *                     instructions:
+ *                       type: string
+ *                       description: Optional instructions for the shopper for this specific item.
+ *                     replacementIds:
+ *                       type: array
+ *                       description: Optional. A list of vendor product IDs for potential replacements.
+ *                       items:
+ *                         type: string
+ *                         format: uuid
  *               shoppingMethod:
  *                 type: string
  *                 enum: [vendor, shopper]

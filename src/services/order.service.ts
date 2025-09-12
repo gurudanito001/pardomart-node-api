@@ -2,12 +2,9 @@
 
 import { Request, Response, Router } from 'express';
 import * as orderModel from '../models/order.model'; // Adjust the path if needed
-import { PrismaClient, Order, OrderItem, Role, ShoppingMethod, OrderStatus, DeliveryMethod, VendorProduct, Product, DeliveryAddress, Prisma, PaymentMethods  } from '@prisma/client';
+import { PrismaClient, Order, OrderItem, Role, ShoppingMethod, OrderStatus, DeliveryMethod, VendorProduct, Product, DeliveryAddress, Prisma, PaymentMethods } from '@prisma/client';
 import dayjs from 'dayjs';
-import { CreateDeliveryAddressPayload } from '../models/deliveryAddress.model';
-import { createDeliveryAddressService } from './deliveryAddress.service';
 import { calculateOrderFeesService } from './fee.service';
-import * as orderItemModel from '../models/orderItem.model';
 import { getVendorById } from './vendor.service';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -81,7 +78,12 @@ interface CreateOrderFromClientPayload {
   paymentMethod: PaymentMethods; // Consider using an enum if you have fixed payment methods
   shippingAddressId: string;
   deliveryInstructions?: string;
-  orderItems: { vendorProductId: string; quantity: number }[];
+  orderItems: {
+    vendorProductId: string;
+    quantity: number;
+    instructions?: string;
+    replacementIds?: string[];
+  }[];
   shoppingMethod: ShoppingMethod;
   deliveryMethod: DeliveryMethod;
   scheduledDeliveryTime?: Date;
@@ -200,13 +202,24 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
     }, tx);
 
     // --- 6. Create the OrderItem records ---
-    const orderItemsToCreate = orderItems.map((item: any) => ({
-      vendorProductId: item.vendorProductId,
-      quantity: item.quantity,
-      orderId: newOrder.id,
-    }));
-
-    await orderItemModel.createManyOrderItems(orderItemsToCreate, tx);
+    for (const item of orderItems) {
+      if (item.quantity <= 0) {
+        throw new OrderCreationError(`Quantity for product ${item.vendorProductId} must be positive.`);
+      }
+      await tx.orderItem.create({
+        data: {
+          orderId: newOrder.id,
+          vendorProductId: item.vendorProductId,
+          quantity: item.quantity,
+          instructions: item.instructions,
+          replacements: item.replacementIds
+            ? {
+                connect: item.replacementIds.map((id) => ({ id })),
+              }
+            : undefined,
+        },
+      });
+    }
 
     // --- NEW: Decrement stock for each product in the order ---
     for (const item of orderItems) {
@@ -490,7 +503,7 @@ export const getOrdersForVendorDashboard = async (
         shoppingMethod: ShoppingMethod.vendor, // Only show orders where this vendor is responsible for shopping
         ...(
           options?.status ? 
-          { OrderStatus: options?.status} :
+          { orderStatus: options.status } :
           { orderStatus: { in: defaultStatuses}}
         ),
         // Filter by scheduledShoppingStartTime:

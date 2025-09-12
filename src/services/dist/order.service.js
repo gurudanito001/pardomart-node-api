@@ -65,7 +65,6 @@ var orderModel = require("../models/order.model"); // Adjust the path if needed
 var client_1 = require("@prisma/client");
 var dayjs_1 = require("dayjs");
 var fee_service_1 = require("./fee.service");
-var orderItemModel = require("../models/orderItem.model");
 var vendor_service_1 = require("./vendor.service");
 var utc_1 = require("dayjs/plugin/utc");
 var timezone_1 = require("dayjs/plugin/timezone");
@@ -185,9 +184,9 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
             case 2: 
             // --- Transactional Block ---
             return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
-                    var finalShippingAddressId, fees, subtotal, deliveryFee, serviceFee, shoppingFee, finalTotalAmount, newOrder, orderItemsToCreate, _i, orderItems_1, item, finalOrder;
-                    return __generator(this, function (_a) {
-                        switch (_a.label) {
+                    var finalShippingAddressId, fees, subtotal, deliveryFee, serviceFee, shoppingFee, finalTotalAmount, newOrder, _i, orderItems_1, item, _a, orderItems_2, item, finalOrder;
+                    return __generator(this, function (_b) {
+                        switch (_b.label) {
                             case 0:
                                 finalShippingAddressId = shippingAddressId;
                                 if (!shippingAddressId && deliveryMethod === client_1.DeliveryMethod.delivery_person) {
@@ -199,7 +198,7 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                         deliveryAddressId: finalShippingAddressId
                                     }, tx)];
                             case 1:
-                                fees = _a.sent();
+                                fees = _b.sent();
                                 subtotal = fees.subtotal, deliveryFee = fees.deliveryFee, serviceFee = fees.serviceFee, shoppingFee = fees.shoppingFee;
                                 finalTotalAmount = subtotal +
                                     (deliveryFee || 0) +
@@ -219,20 +218,40 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                         deliveryInstructions: deliveryInstructions
                                     }, tx)];
                             case 2:
-                                newOrder = _a.sent();
-                                orderItemsToCreate = orderItems.map(function (item) { return ({
-                                    vendorProductId: item.vendorProductId,
-                                    quantity: item.quantity,
-                                    orderId: newOrder.id
-                                }); });
-                                return [4 /*yield*/, orderItemModel.createManyOrderItems(orderItemsToCreate, tx)];
-                            case 3:
-                                _a.sent();
+                                newOrder = _b.sent();
                                 _i = 0, orderItems_1 = orderItems;
-                                _a.label = 4;
-                            case 4:
-                                if (!(_i < orderItems_1.length)) return [3 /*break*/, 7];
+                                _b.label = 3;
+                            case 3:
+                                if (!(_i < orderItems_1.length)) return [3 /*break*/, 6];
                                 item = orderItems_1[_i];
+                                if (item.quantity <= 0) {
+                                    throw new OrderCreationError("Quantity for product " + item.vendorProductId + " must be positive.");
+                                }
+                                return [4 /*yield*/, tx.orderItem.create({
+                                        data: {
+                                            orderId: newOrder.id,
+                                            vendorProductId: item.vendorProductId,
+                                            quantity: item.quantity,
+                                            instructions: item.instructions,
+                                            replacements: item.replacementIds
+                                                ? {
+                                                    connect: item.replacementIds.map(function (id) { return ({ id: id }); })
+                                                }
+                                                : undefined
+                                        }
+                                    })];
+                            case 4:
+                                _b.sent();
+                                _b.label = 5;
+                            case 5:
+                                _i++;
+                                return [3 /*break*/, 3];
+                            case 6:
+                                _a = 0, orderItems_2 = orderItems;
+                                _b.label = 7;
+                            case 7:
+                                if (!(_a < orderItems_2.length)) return [3 /*break*/, 10];
+                                item = orderItems_2[_a];
                                 return [4 /*yield*/, tx.vendorProduct.update({
                                         where: { id: item.vendorProductId },
                                         data: {
@@ -241,15 +260,15 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                             }
                                         }
                                     })];
-                            case 5:
-                                _a.sent();
-                                _a.label = 6;
-                            case 6:
-                                _i++;
-                                return [3 /*break*/, 4];
-                            case 7: return [4 /*yield*/, orderModel.getOrderById(newOrder.id, tx)];
                             case 8:
-                                finalOrder = _a.sent();
+                                _b.sent();
+                                _b.label = 9;
+                            case 9:
+                                _a++;
+                                return [3 /*break*/, 7];
+                            case 10: return [4 /*yield*/, orderModel.getOrderById(newOrder.id, tx)];
+                            case 11:
+                                finalOrder = _b.sent();
                                 if (!finalOrder) {
                                     throw new OrderCreationError("Failed to retrieve the created order.", 500);
                                 }
@@ -471,7 +490,7 @@ exports.getOrdersForVendorDashboard = function (vendorId, options) { return __aw
                 _a.trys.push([1, 3, , 4]);
                 return [4 /*yield*/, prisma.order.findMany({
                         where: __assign(__assign({ vendorId: vendorId, shoppingMethod: client_1.ShoppingMethod.vendor }, ((options === null || options === void 0 ? void 0 : options.status) ?
-                            { OrderStatus: options === null || options === void 0 ? void 0 : options.status } :
+                            { orderStatus: options.status } :
                             { orderStatus: { "in": defaultStatuses } })), { 
                             // Filter by scheduledShoppingStartTime:
                             // Only show orders where shopping is due now or in the past, plus those due in the next 30 minutes.

@@ -61,6 +61,11 @@ exports.getOrderById = function (id, tx) { return __awaiter(void 0, void 0, Prom
                                 include: {
                                     product: true
                                 }
+                            },
+                            replacements: {
+                                include: {
+                                    product: true
+                                }
                             }
                         }
                     },

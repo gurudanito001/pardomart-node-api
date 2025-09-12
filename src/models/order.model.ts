@@ -39,8 +39,13 @@ export const getOrderById = async (id: string, tx?: Prisma.TransactionClient): P
         include: {
           vendorProduct: {
             include: {
-              product: true
-            }
+              product: true,
+            },
+          },
+          replacements: {
+            include: {
+              product: true,
+            },
           }
         }
       },

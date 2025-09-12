@@ -63,7 +63,7 @@ model Product {
   weightUnit      String?
   attributes      Json?
   meta            Json?
-  vendorProducts  VendorProduct[]
+  vendorProducts  VendorProduct[] @relation("baseProduct")
   categoryIds     String[]
   categories      Category[]
   isAlcohol       Boolean         @default(false)
@@ -77,7 +77,7 @@ model VendorProduct {
   id              String      @id @default(uuid())
   vendor          Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   vendorId        String
-  product         Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product         Product     @relation("baseProduct", fields: [productId], references: [id], onDelete: Cascade)
   productId       String
   price           Float
   name            String
@@ -94,8 +94,9 @@ model VendorProduct {
   categoryIds     String[]
   categories      Category[]
   tags            Tag[]
-  cartItems       CartItem[] //Opposite relation to CartItem
-  orderItems      OrderItem[] //Opposite relation to OrderItem
+  cartItems       CartItem[]
+  orderItems      OrderItem[] @relation("originalProduct")
+  replacementFor  OrderItem[] @relation("replacementFor")
   wishlistItems   WishlistItem[]
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
@@ -134,8 +135,10 @@ model OrderItem {
   orderId         String
   order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   vendorProductId String
-  vendorProduct   VendorProduct @relation(fields: [vendorProductId], references: [id])
+  vendorProduct   VendorProduct @relation("originalProduct", fields: [vendorProductId], references: [id])
   quantity        Int
+  instructions    String?
+  replacements    VendorProduct[] @relation("replacementFor")
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }
