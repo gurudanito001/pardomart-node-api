@@ -1,58 +1,16 @@
 "use strict";
 exports.__esModule = true;
 var express_1 = require("express");
-var wishlist_controller_1 = require("../controllers/wishlist.controller");
-// This is a placeholder for actual authentication middleware.
-// In a real application, this would verify a JWT or session and attach the user to the request.
-var isAuthenticated = function (req, res, next) {
-    // For demonstration, we'll mock a user.
-    // Replace this with your actual authentication logic.
-    if (!req.user) {
-        // Using a consistent mock user ID for testing purposes
-        req.user = { id: 'a-mock-customer-id', role: 'customer' };
-    }
-    next();
-};
-var router = express_1["default"].Router();
-/**
- * @swagger
- * tags:
- *   name: Wishlist
- *   description: API for managing user wishlists.
- */
-/**
- * @swagger
- * components:
- *   schemas:
- *     WishlistItem:
- *       type: object
- *       properties:
- *         id:
- *           type: string
- *           format: uuid
- *         userId:
- *           type: string
- *           format: uuid
- *         vendorProductId:
- *           type: string
- *           format: uuid
- *         createdAt:
- *           type: string
- *           format: date-time
- *         vendorProduct:
- *           $ref: '#/components/schemas/VendorProductWithRelations'
- *
- *     AddToWishlistPayload:
- *       type: object
- *       required:
- *         - vendorProductId
- *       properties:
- *         vendorProductId:
- *           type: string
- *           format: uuid
- *           description: The ID of the vendor product to add to the wishlist.
- */
-router.post('/', isAuthenticated, wishlist_controller_1.addToWishlistController);
-router.get('/', isAuthenticated, wishlist_controller_1.getWishlistController);
-router["delete"]('/:id', isAuthenticated, wishlist_controller_1.removeFromWishlistController);
+var wishlistController = require("../controllers/wishlist.controller");
+var validation_middleware_1 = require("../middlewares/validation.middleware");
+var auth_middleware_1 = require("../middlewares/auth.middleware");
+var router = express_1.Router();
+// All routes in this file are protected and require authentication
+router.use(auth_middleware_1.authenticate);
+// Add an item to the user's wishlist
+router.post('/', validation_middleware_1.validate(validation_middleware_1.validateAddToWishlist), wishlistController.addToWishlistController);
+// Get all items from the user's wishlist
+router.get('/me', wishlistController.getWishlistController);
+// Remove an item from the user's wishlist by its ID
+router["delete"]('/:id', validation_middleware_1.validate(validation_middleware_1.validateRemoveFromWishlist), wishlistController.removeFromWishlistController);
 exports["default"] = router;

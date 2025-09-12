@@ -65,26 +65,19 @@ var wishlist_service_1 = require("../services/wishlist.service");
  */
 exports.addToWishlistController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var userId, vendorProductId, wishlistItem, error_1;
-    var _a;
-    return __generator(this, function (_b) {
-        switch (_b.label) {
+    return __generator(this, function (_a) {
+        switch (_a.label) {
             case 0:
-                _b.trys.push([0, 2, , 3]);
-                userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
-                if (!userId) {
-                    return [2 /*return*/, res.status(401).json({ error: 'Unauthorized' })];
-                }
+                _a.trys.push([0, 2, , 3]);
+                userId = req.userId;
                 vendorProductId = req.body.vendorProductId;
-                if (!vendorProductId) {
-                    return [2 /*return*/, res.status(400).json({ error: 'vendorProductId is required.' })];
-                }
                 return [4 /*yield*/, wishlistService.addToWishlistService(userId, vendorProductId)];
             case 1:
-                wishlistItem = _b.sent();
+                wishlistItem = _a.sent();
                 res.status(201).json(wishlistItem);
                 return [3 /*break*/, 3];
             case 2:
-                error_1 = _b.sent();
+                error_1 = _a.sent();
                 if (error_1 instanceof wishlist_service_1.WishlistError) {
                     return [2 /*return*/, res.status(error_1.statusCode).json({ error: error_1.message })];
                 }
@@ -115,22 +108,18 @@ exports.addToWishlistController = function (req, res) { return __awaiter(void 0,
  */
 exports.getWishlistController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var userId, wishlist, error_2;
-    var _a;
-    return __generator(this, function (_b) {
-        switch (_b.label) {
+    return __generator(this, function (_a) {
+        switch (_a.label) {
             case 0:
-                _b.trys.push([0, 2, , 3]);
-                userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
-                if (!userId) {
-                    return [2 /*return*/, res.status(401).json({ error: 'Unauthorized' })];
-                }
+                _a.trys.push([0, 2, , 3]);
+                userId = req.userId;
                 return [4 /*yield*/, wishlistService.getWishlistService(userId)];
             case 1:
-                wishlist = _b.sent();
+                wishlist = _a.sent();
                 res.status(200).json(wishlist);
                 return [3 /*break*/, 3];
             case 2:
-                error_2 = _b.sent();
+                error_2 = _a.sent();
                 console.error('Error getting wishlist:', error_2);
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
@@ -164,23 +153,19 @@ exports.getWishlistController = function (req, res) { return __awaiter(void 0, v
  */
 exports.removeFromWishlistController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var userId, id, removedItem, error_3;
-    var _a;
-    return __generator(this, function (_b) {
-        switch (_b.label) {
+    return __generator(this, function (_a) {
+        switch (_a.label) {
             case 0:
-                _b.trys.push([0, 2, , 3]);
-                userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
-                if (!userId) {
-                    return [2 /*return*/, res.status(401).json({ error: 'Unauthorized' })];
-                }
+                _a.trys.push([0, 2, , 3]);
+                userId = req.userId;
                 id = req.params.id;
                 return [4 /*yield*/, wishlistService.removeFromWishlistService(userId, id)];
             case 1:
-                removedItem = _b.sent();
+                removedItem = _a.sent();
                 res.status(200).json(removedItem);
                 return [3 /*break*/, 3];
             case 2:
-                error_3 = _b.sent();
+                error_3 = _a.sent();
                 if (error_3 instanceof wishlist_service_1.WishlistError) {
                     return [2 /*return*/, res.status(error_3.statusCode).json({ error: error_3.message })];
                 }

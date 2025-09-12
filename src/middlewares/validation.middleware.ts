@@ -326,4 +326,13 @@ export const validateGetVendorProductsByTagIds = [
   query('tagIds').notEmpty().withMessage('tagIds query parameter is required.').isArray().withMessage('tagIds must be an array.'),
   query('tagIds.*').isUUID(4).withMessage('Each tagId must be a valid UUID.'),
 ];
+
+export const validateAddToWishlist = [
+  body('vendorProductId').isUUID(4).withMessage('A valid vendorProductId is required in the request body.'),
+];
+
+export const validateRemoveFromWishlist = [
+  param('id').isUUID(4).withMessage('A valid wishlistItemId is required in the URL path.'),
+];
+
 // Add more validation chains as needed

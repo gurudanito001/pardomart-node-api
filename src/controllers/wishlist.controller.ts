@@ -2,13 +2,9 @@ import { Request, Response } from 'express';
 import * as wishlistService from '../services/wishlist.service';
 import { WishlistError } from '../services/wishlist.service';
 
-// This interface is a placeholder for your actual authenticated request type.
-// It assumes an authentication middleware adds a `user` object to the request.
+// It assumes an authentication middleware adds a `userId` property to the request.
 interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    role: string;
-  };
+  userId?: string;
 }
 
 /**
@@ -37,17 +33,10 @@ interface AuthenticatedRequest extends Request {
  */
 export const addToWishlistController = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
+    const userId = req.userId as string;
     const { vendorProductId } = req.body;
-    if (!vendorProductId) {
-      return res.status(400).json({ error: 'vendorProductId is required.' });
-    }
 
-    const wishlistItem = await wishlistService.addToWishlistService(userId, vendorProductId);
+    const wishlistItem = await wishlistService.addToWishlistService(userId, vendorProductId as string);
     res.status(201).json(wishlistItem);
   } catch (error) {
     if (error instanceof WishlistError) {
@@ -78,11 +67,7 @@ export const addToWishlistController = async (req: AuthenticatedRequest, res: Re
  */
 export const getWishlistController = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
+    const userId = req.userId as string;
     const wishlist = await wishlistService.getWishlistService(userId);
     res.status(200).json(wishlist);
   } catch (error) {
@@ -117,13 +102,9 @@ export const getWishlistController = async (req: AuthenticatedRequest, res: Resp
  */
 export const removeFromWishlistController = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
+    const userId = req.userId as string;
     const { id } = req.params;
-    const removedItem = await wishlistService.removeFromWishlistService(userId, id);
+    const removedItem = await wishlistService.removeFromWishlistService(userId, id as string);
     res.status(200).json(removedItem);
   } catch (error) {
     if (error instanceof WishlistError) {

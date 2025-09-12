@@ -43,7 +43,7 @@ var __spreadArrays = (this && this.__spreadArrays) || function () {
     return r;
 };
 exports.__esModule = true;
-exports.validateGetVendorProductsByTagIds = exports.validateGetVendorProductsByCategory = exports.validateGetVendorProductByBarcode = exports.validateCreateVendorProductWithBarcode = exports.validateGetTrendingVendorProducts = exports.validateGetAllVendorProducts = exports.validateGetProductsByTagIds = exports.validateGetProductByBarcode = exports.validateGetAllProducts = exports.validateGetOrDeleteProduct = exports.validateUpdateVendorProduct = exports.validateCreateVendorProduct = exports.validateUpdateProduct = exports.validateCreateProduct = exports.validateUpdateTip = exports.validateGetDeliverySlots = exports.validateDeclineOrder = exports.validateVendorOrderAction = exports.validateGetVendorOrders = exports.validateUpdateOrder = exports.validateUpdateOrderStatus = exports.validateGetOrDeleteOrder = exports.validateCreateOrder = exports.validateGetOrDeleteDeliveryAddress = exports.validateUpdateDeliveryAddress = exports.validateCreateDeliveryAddress = exports.validateGetAllCategories = exports.validateGetOrDeleteCategory = exports.validateUpdateCategory = exports.validateCreateCategoriesBulk = exports.validateCreateCategory = exports.validateCreateOrUpdateVendorOpeningHours = exports.validateCreateVendor = exports.validateVerifyAndLogin = exports.validateLogin = exports.validateRegisterUser = exports.validate = void 0;
+exports.validateRemoveFromWishlist = exports.validateAddToWishlist = exports.validateGetVendorProductsByTagIds = exports.validateGetVendorProductsByCategory = exports.validateGetVendorProductByBarcode = exports.validateCreateVendorProductWithBarcode = exports.validateGetTrendingVendorProducts = exports.validateGetAllVendorProducts = exports.validateGetProductsByTagIds = exports.validateGetProductByBarcode = exports.validateGetAllProducts = exports.validateGetOrDeleteProduct = exports.validateUpdateVendorProduct = exports.validateCreateVendorProduct = exports.validateUpdateProduct = exports.validateCreateProduct = exports.validateUpdateTip = exports.validateGetDeliverySlots = exports.validateDeclineOrder = exports.validateVendorOrderAction = exports.validateGetVendorOrders = exports.validateUpdateOrder = exports.validateUpdateOrderStatus = exports.validateGetOrDeleteOrder = exports.validateCreateOrder = exports.validateGetOrDeleteDeliveryAddress = exports.validateUpdateDeliveryAddress = exports.validateCreateDeliveryAddress = exports.validateGetAllCategories = exports.validateGetOrDeleteCategory = exports.validateUpdateCategory = exports.validateCreateCategoriesBulk = exports.validateCreateCategory = exports.validateCreateOrUpdateVendorOpeningHours = exports.validateCreateVendor = exports.validateVerifyAndLogin = exports.validateLogin = exports.validateRegisterUser = exports.validate = void 0;
 var express_validator_1 = require("express-validator");
 var client_1 = require("@prisma/client");
 // Generic validation middleware
@@ -337,5 +337,11 @@ exports.validateGetVendorProductsByTagIds = [
     express_validator_1.query('vendorId').isUUID(4).withMessage('A valid vendorId is required.'),
     express_validator_1.query('tagIds').notEmpty().withMessage('tagIds query parameter is required.').isArray().withMessage('tagIds must be an array.'),
     express_validator_1.query('tagIds.*').isUUID(4).withMessage('Each tagId must be a valid UUID.'),
+];
+exports.validateAddToWishlist = [
+    express_validator_1.body('vendorProductId').isUUID(4).withMessage('A valid vendorProductId is required in the request body.'),
+];
+exports.validateRemoveFromWishlist = [
+    express_validator_1.param('id').isUUID(4).withMessage('A valid wishlistItemId is required in the URL path.'),
 ];
 // Add more validation chains as needed

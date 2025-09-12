@@ -99,9 +99,9 @@ exports.getProductsByTagIds = function (tagIds) { return __awaiter(void 0, void 
         return [2 /*return*/, productModel.getProductsByTagIds(tagIds)];
     });
 }); };
-exports.getVendorProductsByTagIds = function (tagIds, vendorId) { return __awaiter(void 0, void 0, Promise, function () {
+exports.getVendorProductsByTagIds = function (tagIds) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, productModel.getVendorProductsByTagIds(tagIds, vendorId)];
+        return [2 /*return*/, productModel.getVendorProductsByTagIds(tagIds)];
     });
 }); };
 exports.deleteProduct = function (id) { return __awaiter(void 0, void 0, Promise, function () {

@@ -1,66 +1,24 @@
-import express from 'express';
+import { Router } from 'express';
+import * as wishlistController from '../controllers/wishlist.controller';
 import {
-  addToWishlistController,
-  getWishlistController,
-  removeFromWishlistController,
-} from '../controllers/wishlist.controller';
+  validate,
+  validateAddToWishlist,
+  validateRemoveFromWishlist,
+} from '../middlewares/validation.middleware';
+import { authenticate } from '../middlewares/auth.middleware';
 
-// This is a placeholder for actual authentication middleware.
-// In a real application, this would verify a JWT or session and attach the user to the request.
-const isAuthenticated = (req: any, res: any, next: express.NextFunction) => {
-  // For demonstration, we'll mock a user.
-  // Replace this with your actual authentication logic.
-  if (!req.user) {
-    // Using a consistent mock user ID for testing purposes
-    req.user = { id: 'a-mock-customer-id', role: 'customer' };
-  }
-  next();
-};
+const router = Router();
 
-const router = express.Router();
+// All routes in this file are protected and require authentication
+router.use(authenticate);
 
-/**
- * @swagger
- * tags:
- *   name: Wishlist
- *   description: API for managing user wishlists.
- */
+// Add an item to the user's wishlist
+router.post('/', validate(validateAddToWishlist), wishlistController.addToWishlistController);
 
-/**
- * @swagger
- * components:
- *   schemas:
- *     WishlistItem:
- *       type: object
- *       properties:
- *         id:
- *           type: string
- *           format: uuid
- *         userId:
- *           type: string
- *           format: uuid
- *         vendorProductId:
- *           type: string
- *           format: uuid
- *         createdAt:
- *           type: string
- *           format: date-time
- *         vendorProduct:
- *           $ref: '#/components/schemas/VendorProductWithRelations'
- *
- *     AddToWishlistPayload:
- *       type: object
- *       required:
- *         - vendorProductId
- *       properties:
- *         vendorProductId:
- *           type: string
- *           format: uuid
- *           description: The ID of the vendor product to add to the wishlist.
- */
+// Get all items from the user's wishlist
+router.get('/me', wishlistController.getWishlistController);
 
-router.post('/', isAuthenticated, addToWishlistController);
-router.get('/', isAuthenticated, getWishlistController);
-router.delete('/:id', isAuthenticated, removeFromWishlistController);
+// Remove an item from the user's wishlist by its ID
+router.delete('/:id', validate(validateRemoveFromWishlist), wishlistController.removeFromWishlistController);
 
 export default router;

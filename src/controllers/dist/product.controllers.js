@@ -433,7 +433,7 @@ exports.getVendorProductsByTagIds = function (req, res) { return __awaiter(void 
             case 0:
                 _b.trys.push([0, 2, , 3]);
                 _a = req.query, tagIds = _a.tagIds, vendorId = _a.vendorId;
-                return [4 /*yield*/, productService.getVendorProductsByTagIds(tagIds, vendorId)];
+                return [4 /*yield*/, productService.getVendorProductsByTagIds(tagIds)];
             case 1:
                 vendorProducts = _b.sent();
                 res.json(vendorProducts);

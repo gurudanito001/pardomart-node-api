@@ -315,7 +315,7 @@ export const getProductsByTagIds = async (req: Request, res: Response) => {
 export const getVendorProductsByTagIds = async (req: Request, res: Response) => {
   try {
     const { tagIds, vendorId } = req.query;
-    const vendorProducts = await productService.getVendorProductsByTagIds(tagIds as string[], vendorId as string);
+    const vendorProducts = await productService.getVendorProductsByTagIds(tagIds as string[]);
     res.json(vendorProducts);
   } catch (error) {
     console.error('Error getting vendor products by tag IDs:', error);
