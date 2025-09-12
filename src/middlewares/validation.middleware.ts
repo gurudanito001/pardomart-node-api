@@ -1,7 +1,7 @@
 // middlewares/validation.middleware.ts
 import { Request, Response, NextFunction } from 'express';
-import { validationResult, ValidationChain, check, param, body } from 'express-validator';
-import { Days } from '@prisma/client';
+import { validationResult, ValidationChain, body } from 'express-validator';
+import { Days, Role } from '@prisma/client';
 
 // Generic validation middleware
 export const validate = (validations: ValidationChain[]) => {
@@ -19,37 +19,36 @@ export const validate = (validations: ValidationChain[]) => {
 
 // Example validation chains for specific endpoints
 export const validateRegisterUser = [
-  check('name').notEmpty().withMessage('Name is required'),
-  check('email').isEmail().withMessage('Invalid email format'),
-  check('mobileNumber').notEmpty().withMessage('Mobile number is required'),
-  check('role')
+  body('name').trim().notEmpty().withMessage('Name is required.'),
+  body('email').isEmail().normalizeEmail().withMessage('A valid email is required.'),
+  body('mobileNumber').isMobilePhone('any', { strictMode: true }).withMessage('A valid E.164 mobile number is required (e.g., +1234567890).'),
+  body('role')
     .notEmpty()
     .withMessage('Role is required')
-    .isIn(['customer', 'vendor', 'delivery', 'admin'])
-    .withMessage('Role must be one of: customer, vendor, delivery, or admin'),
+    .isIn(Object.values(Role))
+    .withMessage(`Role must be one of: ${Object.values(Role).join(', ')}`),
+  body('vendorId')
+    .if(body('role').equals(Role.vendor_staff))
+    .isUUID(4).withMessage('A valid vendorId is required for vendor_staff role.'),
 ];
 
 export const validateLogin = [
-  check('mobileNumber').notEmpty().withMessage('Mobile number is required'),
-  check('role')
+  body('mobileNumber').isMobilePhone('any', { strictMode: true }).withMessage('A valid E.164 mobile number is required (e.g., +1234567890).'),
+  body('role')
     .notEmpty()
     .withMessage('Role is required')
-    .isIn(['customer', 'vendor', 'delivery', 'admin'])
-    .withMessage('Role must be one of: customer, vendor, delivery, or admin'),
-];
-
-export const validateResendVerification = [
-  check('mobileNumber').notEmpty().withMessage('Mobile number is required'),
+    .isIn(Object.values(Role))
+    .withMessage(`Role must be one of: ${Object.values(Role).join(', ')}`),
 ];
 
 export const validateVerifyAndLogin = [
-  check('mobileNumber').notEmpty().withMessage('Mobile number is required'),
-  check('verificationCode').notEmpty().withMessage('Verification code is required'),
-  check('role')
+  body('mobileNumber').isMobilePhone('any', { strictMode: true }).withMessage('A valid E.164 mobile number is required (e.g., +1234567890).'),
+  body('verificationCode').isLength({ min: 6, max: 6 }).withMessage('Verification code must be 6 digits.').isNumeric().withMessage('Verification code must be numeric.'),
+  body('role')
     .notEmpty()
     .withMessage('Role is required')
-    .isIn(['customer', 'vendor', 'delivery', 'admin'])
-    .withMessage('Role must be one of: customer, vendor, delivery, or admin'),
+    .isIn(Object.values(Role))
+    .withMessage(`Role must be one of: ${Object.values(Role).join(', ')}`),
 ];
 
 export const validateCreateVendor = [

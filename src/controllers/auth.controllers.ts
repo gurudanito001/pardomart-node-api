@@ -4,7 +4,7 @@ import * as authService from '../services/auth.service';
 import * as userService from '../services/user.service'
 import { generateVerificationCode, sendVerificationCode } from '../utils/verification'; // Create this file.
 import Timezones from '../utils/timezones';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -65,9 +65,17 @@ export const registerUser = async (req: Request, res: Response) => {
     await sendVerificationCode(newUser?.mobileNumber, verificationCode);
 
     res.status(201).json({ message: 'Verification code sent' });
-  } catch (error) {
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        // This is the Prisma error code for a unique constraint violation
+        return res.status(409).json({
+          error: 'A user with this mobile number and role already exists.',
+        });
+      }
+    }
     console.error('Error registering user:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
 
