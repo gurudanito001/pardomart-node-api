@@ -76,7 +76,7 @@ const getDayEnumFromDayjs = (dayjsDayIndex: number): string => {
 interface CreateOrderFromClientPayload {
   vendorId: string;
   paymentMethod: PaymentMethods; // Consider using an enum if you have fixed payment methods
-  shippingAddressId: string;
+  shippingAddressId?: string | null;
   deliveryInstructions?: string;
   orderItems: {
     vendorProductId: string;
@@ -223,14 +223,27 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
 
     // --- NEW: Decrement stock for each product in the order ---
     for (const item of orderItems) {
-      await tx.vendorProduct.update({
-        where: { id: item.vendorProductId },
-        data: {
-          stock: {
-            decrement: item.quantity,
+      try {
+        await tx.vendorProduct.update({
+          where: {
+            id: item.vendorProductId,
+            stock: {
+              gte: item.quantity, // Ensure stock is sufficient at the time of update
+            },
           },
-        },
-      });
+          data: {
+            stock: {
+              decrement: item.quantity,
+            },
+          },
+        });
+      } catch (e) {
+        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {
+          // This error ("Record to update not found") is thrown when the where clause fails, including our stock check.
+          throw new OrderCreationError(`Product with ID ${item.vendorProductId} is out of stock or does not have enough quantity.`, 409); // 409 Conflict
+        }
+        throw e; // Re-throw any other unexpected errors
+      }
     }
 
     // --- 7. Return the complete order with all relations ---

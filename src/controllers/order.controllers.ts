@@ -38,7 +38,6 @@ import { AuthenticatedRequest } from './vendor.controller';
  *             required:
  *               - vendorId
  *               - paymentMethod
- *               - shippingAddressId
  *               - orderItems
  *               - shoppingMethod
  *               - deliveryMethod
@@ -54,7 +53,7 @@ import { AuthenticatedRequest } from './vendor.controller';
  *               shippingAddressId:
  *                 type: string
  *                 format: uuid
- *                 description: The ID of an existing delivery address.
+ *                 description: The ID of an existing delivery address. Required if `deliveryMethod` is `delivery_person`.
  *               shopperTip:
  *                 type: number
  *                 format: float

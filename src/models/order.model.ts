@@ -14,7 +14,7 @@ export interface CreateOrderPayload {
   shopperTip?: number;
   deliveryPersonTip?: number;
   paymentMethod?: PaymentMethods;
-  deliveryAddressId: string;
+  deliveryAddressId?: string | null;
   deliveryInstructions?: string;
   shoppingMethod?: ShoppingMethod;
   deliveryMethod?: DeliveryMethod;

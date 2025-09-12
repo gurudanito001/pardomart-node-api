@@ -184,7 +184,7 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
             case 2: 
             // --- Transactional Block ---
             return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
-                    var finalShippingAddressId, fees, subtotal, deliveryFee, serviceFee, shoppingFee, finalTotalAmount, newOrder, _i, orderItems_1, item, _a, orderItems_2, item, finalOrder;
+                    var finalShippingAddressId, fees, subtotal, deliveryFee, serviceFee, shoppingFee, finalTotalAmount, newOrder, _i, orderItems_1, item, _a, orderItems_2, item, e_1, finalOrder;
                     return __generator(this, function (_b) {
                         switch (_b.label) {
                             case 0:
@@ -250,24 +250,39 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                 _a = 0, orderItems_2 = orderItems;
                                 _b.label = 7;
                             case 7:
-                                if (!(_a < orderItems_2.length)) return [3 /*break*/, 10];
+                                if (!(_a < orderItems_2.length)) return [3 /*break*/, 12];
                                 item = orderItems_2[_a];
+                                _b.label = 8;
+                            case 8:
+                                _b.trys.push([8, 10, , 11]);
                                 return [4 /*yield*/, tx.vendorProduct.update({
-                                        where: { id: item.vendorProductId },
+                                        where: {
+                                            id: item.vendorProductId,
+                                            stock: {
+                                                gte: item.quantity
+                                            }
+                                        },
                                         data: {
                                             stock: {
                                                 decrement: item.quantity
                                             }
                                         }
                                     })];
-                            case 8:
-                                _b.sent();
-                                _b.label = 9;
                             case 9:
+                                _b.sent();
+                                return [3 /*break*/, 11];
+                            case 10:
+                                e_1 = _b.sent();
+                                if (e_1 instanceof client_1.Prisma.PrismaClientKnownRequestError && e_1.code === 'P2025') {
+                                    // This error ("Record to update not found") is thrown when the where clause fails, including our stock check.
+                                    throw new OrderCreationError("Product with ID " + item.vendorProductId + " is out of stock or does not have enough quantity.", 409); // 409 Conflict
+                                }
+                                throw e_1; // Re-throw any other unexpected errors
+                            case 11:
                                 _a++;
                                 return [3 /*break*/, 7];
-                            case 10: return [4 /*yield*/, orderModel.getOrderById(newOrder.id, tx)];
-                            case 11:
+                            case 12: return [4 /*yield*/, orderModel.getOrderById(newOrder.id, tx)];
+                            case 13:
                                 finalOrder = _b.sent();
                                 if (!finalOrder) {
                                     throw new OrderCreationError("Failed to retrieve the created order.", 500);

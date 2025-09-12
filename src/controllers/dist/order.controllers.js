@@ -59,7 +59,6 @@ var client_1 = require("@prisma/client");
  *             required:
  *               - vendorId
  *               - paymentMethod
- *               - shippingAddressId
  *               - orderItems
  *               - shoppingMethod
  *               - deliveryMethod
@@ -75,7 +74,7 @@ var client_1 = require("@prisma/client");
  *               shippingAddressId:
  *                 type: string
  *                 format: uuid
- *                 description: The ID of an existing delivery address.
+ *                 description: The ID of an existing delivery address. Required if `deliveryMethod` is `delivery_person`.
  *               shopperTip:
  *                 type: number
  *                 format: float
