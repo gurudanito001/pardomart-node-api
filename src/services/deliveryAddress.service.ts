@@ -17,8 +17,18 @@ export const createDeliveryAddressService = async (
   tx?: Prisma.TransactionClient
 ): Promise<DeliveryAddress> => {
   const createAddressInTx = async (prismaClient: Prisma.TransactionClient | PrismaClient) => {
-    if (payload.isDefault) {
-      // Deactivate any other default address for this user
+    // Check if the user has any other addresses.
+    const addressCount = await prismaClient.deliveryAddress.count({
+      where: { userId: payload.userId },
+    });
+
+    // If this is the first address for the user, it should be the default.
+    // Also respect the `isDefault` flag from the payload.
+    const makeDefault = addressCount === 0 || payload.isDefault;
+
+    if (makeDefault) {
+      // Deactivate any other default address for this user.
+      // This is safe even for the first address as it will just be a no-op.
       await prismaClient.deliveryAddress.updateMany({
         where: {
           userId: payload.userId,
@@ -30,7 +40,10 @@ export const createDeliveryAddressService = async (
       });
     }
     // The model function now simply creates the record
-    return deliveryAddressModel.createDeliveryAddress({ ...payload, isDefault: payload.isDefault ?? false }, prismaClient as Prisma.TransactionClient);
+    return deliveryAddressModel.createDeliveryAddress(
+      { ...payload, isDefault: makeDefault ?? false },
+      prismaClient as Prisma.TransactionClient
+    );
   };
 
   if (tx) {

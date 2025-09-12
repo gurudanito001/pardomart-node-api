@@ -35,10 +35,9 @@ export interface UpdateDeliveryAddressPayload {
 
 /**
  * Creates a new delivery address for a user.
- * If 'isDefault' is true, it deactivates any other default address for that user.
  *
  * @param payload The data for the new delivery address.
- * @returns The newly created DeliveryAddress object.
+ * @param tx Optional Prisma transaction client.
  */
 export const createDeliveryAddress = async (
   payload: CreateDeliveryAddressPayload,
