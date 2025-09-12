@@ -35,8 +35,15 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __spreadArrays = (this && this.__spreadArrays) || function () {
+    for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
+    for (var r = Array(s), k = 0, i = 0; i < il; i++)
+        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
+            r[k] = a[j];
+    return r;
+};
 exports.__esModule = true;
-exports.validateGetAllCategories = exports.validateGetOrDeleteCategory = exports.validateUpdateCategory = exports.validateCreateCategoriesBulk = exports.validateCreateCategory = exports.validateCreateOrUpdateVendorOpeningHours = exports.validateCreateVendor = exports.validateVerifyAndLogin = exports.validateLogin = exports.validateRegisterUser = exports.validate = void 0;
+exports.validateUpdateTip = exports.validateGetDeliverySlots = exports.validateDeclineOrder = exports.validateVendorOrderAction = exports.validateGetVendorOrders = exports.validateUpdateOrder = exports.validateUpdateOrderStatus = exports.validateGetOrDeleteOrder = exports.validateCreateOrder = exports.validateGetOrDeleteDeliveryAddress = exports.validateUpdateDeliveryAddress = exports.validateCreateDeliveryAddress = exports.validateGetAllCategories = exports.validateGetOrDeleteCategory = exports.validateUpdateCategory = exports.validateCreateCategoriesBulk = exports.validateCreateCategory = exports.validateCreateOrUpdateVendorOpeningHours = exports.validateCreateVendor = exports.validateVerifyAndLogin = exports.validateLogin = exports.validateRegisterUser = exports.validate = void 0;
 var express_validator_1 = require("express-validator");
 var client_1 = require("@prisma/client");
 // Generic validation middleware
@@ -151,5 +158,93 @@ exports.validateGetAllCategories = [
     express_validator_1.query('vendorId').optional().isUUID(4).withMessage('Vendor ID must be a valid UUID.'),
     express_validator_1.query('type').optional().isIn(['top', 'sub']).withMessage('Type must be either "top" or "sub".'),
     express_validator_1.query('name').optional().isString(),
+];
+exports.validateCreateDeliveryAddress = [
+    express_validator_1.body('label').optional({ nullable: true }).trim().isString().withMessage('Label must be a string.'),
+    express_validator_1.body('addressLine1').trim().notEmpty().withMessage('addressLine1 is required.'),
+    express_validator_1.body('addressLine2').optional({ nullable: true }).trim().isString(),
+    express_validator_1.body('city').trim().notEmpty().withMessage('City is required.'),
+    express_validator_1.body('state').optional({ nullable: true }).trim().isString(),
+    express_validator_1.body('postalCode').optional({ nullable: true }).trim().isString(),
+    express_validator_1.body('country').optional().trim().isString(),
+    express_validator_1.body('latitude').optional({ nullable: true }).isFloat().withMessage('Latitude must be a valid number.'),
+    express_validator_1.body('longitude').optional({ nullable: true }).isFloat().withMessage('Longitude must be a valid number.'),
+    express_validator_1.body('isDefault').optional().isBoolean().withMessage('isDefault must be a boolean.'),
+];
+exports.validateUpdateDeliveryAddress = __spreadArrays([
+    express_validator_1.param('id').isUUID(4).withMessage('A valid address ID is required in the URL.'),
+    express_validator_1.body('label').optional({ nullable: true }).trim().isString().withMessage('Label must be a string.'),
+    express_validator_1.body('addressLine1').optional().trim().notEmpty().withMessage('addressLine1 cannot be empty if provided.'),
+    express_validator_1.body('addressLine2').optional({ nullable: true }).trim().isString(),
+    express_validator_1.body('city').optional().trim().notEmpty().withMessage('City cannot be empty if provided.')
+], exports.validateCreateDeliveryAddress.slice(4));
+exports.validateGetOrDeleteDeliveryAddress = [
+    express_validator_1.param('id').isUUID(4).withMessage('A valid address ID is required in the URL.'),
+];
+exports.validateCreateOrder = [
+    express_validator_1.body('vendorId').isUUID(4).withMessage('A valid vendorId is required.'),
+    express_validator_1.body('paymentMethod').isIn(Object.values(client_1.PaymentMethods)).withMessage("paymentMethod must be one of: " + Object.values(client_1.PaymentMethods).join(', ')),
+    express_validator_1.body('shippingAddressId')["if"](express_validator_1.body('deliveryMethod').equals(client_1.DeliveryMethod.delivery_person))
+        .notEmpty().withMessage('shippingAddressId is required for delivery orders.')
+        .isUUID(4).withMessage('shippingAddressId must be a valid UUID.'),
+    express_validator_1.body('deliveryInstructions').optional().isString().isLength({ max: 500 }).withMessage('Delivery instructions cannot exceed 500 characters.'),
+    express_validator_1.body('orderItems').isArray({ min: 1 }).withMessage('Order must contain at least one item.'),
+    express_validator_1.body('orderItems.*.vendorProductId').isUUID(4).withMessage('Each order item must have a valid vendorProductId.'),
+    express_validator_1.body('orderItems.*.quantity').isInt({ min: 1 }).withMessage('Item quantity must be a positive integer.'),
+    express_validator_1.body('orderItems.*.instructions').optional().isString().isLength({ max: 500 }).withMessage('Item instructions cannot exceed 500 characters.'),
+    express_validator_1.body('orderItems.*.replacementIds').optional().isArray({ max: 10 }).withMessage('A maximum of 10 replacement IDs are allowed.'),
+    express_validator_1.body('orderItems.*.replacementIds.*').isUUID(4).withMessage('Each replacementId must be a valid UUID.'),
+    express_validator_1.body('shoppingMethod').isIn(Object.values(client_1.ShoppingMethod)).withMessage("shoppingMethod must be one of: " + Object.values(client_1.ShoppingMethod).join(', ')),
+    express_validator_1.body('deliveryMethod').isIn(Object.values(client_1.DeliveryMethod)).withMessage("deliveryMethod must be one of: " + Object.values(client_1.DeliveryMethod).join(', ')),
+    express_validator_1.body('scheduledDeliveryTime').optional({ nullable: true }).isISO8601().withMessage('scheduledDeliveryTime must be a valid ISO 8601 date.'),
+    express_validator_1.body('shopperTip').optional().isFloat({ min: 0 }).withMessage('shopperTip must be a non-negative number.'),
+    express_validator_1.body('deliveryPersonTip').optional().isFloat({ min: 0 }).withMessage('deliveryPersonTip must be a non-negative number.'),
+];
+exports.validateGetOrDeleteOrder = [
+    express_validator_1.param('id').isUUID(4).withMessage('A valid order ID is required in the URL.'),
+];
+exports.validateUpdateOrderStatus = [
+    express_validator_1.param('id').isUUID(4).withMessage('A valid order ID is required in the URL.'),
+    express_validator_1.body('status').isIn(Object.values(client_1.OrderStatus)).withMessage("Status must be one of: " + Object.values(client_1.OrderStatus).join(', ')),
+];
+exports.validateUpdateOrder = [
+    express_validator_1.param('id').isUUID(4).withMessage('A valid order ID is required in the URL.'),
+    express_validator_1.body().custom(function (value, _a) {
+        var req = _a.req;
+        if (Object.keys(req.body).length === 0) {
+            throw new Error('At least one field must be provided for update.');
+        }
+        return true;
+    }),
+    express_validator_1.body('paymentMethod').optional().isIn(Object.values(client_1.PaymentMethods)).withMessage("paymentMethod must be one of: " + Object.values(client_1.PaymentMethods).join(', ')),
+    express_validator_1.body('paymentStatus').optional().isIn(Object.values(client_1.PaymentStatus)).withMessage("paymentStatus must be one of: " + Object.values(client_1.PaymentStatus).join(', ')),
+    express_validator_1.body('orderStatus').optional().isIn(Object.values(client_1.OrderStatus)).withMessage("orderStatus must be one of: " + Object.values(client_1.OrderStatus).join(', ')),
+    express_validator_1.body('deliveryAddressId').optional({ nullable: true }).isUUID(4).withMessage('deliveryAddressId must be a valid UUID.'),
+];
+exports.validateGetVendorOrders = [
+    express_validator_1.query('status').optional().isIn(Object.values(client_1.OrderStatus)).withMessage("Status must be one of: " + Object.values(client_1.OrderStatus).join(', ')),
+];
+exports.validateVendorOrderAction = [
+    express_validator_1.param('orderId').isUUID(4).withMessage('A valid orderId is required in the URL.'),
+];
+exports.validateDeclineOrder = [
+    express_validator_1.param('orderId').isUUID(4).withMessage('A valid orderId is required in the URL.'),
+    express_validator_1.body('reason').optional().isString().isLength({ max: 500 }).withMessage('Reason cannot exceed 500 characters.'),
+];
+exports.validateGetDeliverySlots = [
+    express_validator_1.query('vendorId').notEmpty().withMessage('vendorId is required.').isUUID(4).withMessage('vendorId must be a valid UUID.'),
+    express_validator_1.query('deliveryMethod').notEmpty().withMessage('deliveryMethod is required.').isIn(Object.values(client_1.DeliveryMethod)).withMessage("deliveryMethod must be one of: " + Object.values(client_1.DeliveryMethod).join(', ')),
+];
+exports.validateUpdateTip = [
+    express_validator_1.param('orderId').isUUID(4).withMessage('A valid orderId is required in the URL.'),
+    express_validator_1.body('shopperTip').optional().isFloat({ min: 0 }).withMessage('shopperTip must be a non-negative number.'),
+    express_validator_1.body('deliveryPersonTip').optional().isFloat({ min: 0 }).withMessage('deliveryPersonTip must be a non-negative number.'),
+    express_validator_1.body().custom(function (value, _a) {
+        var req = _a.req;
+        if (req.body.shopperTip === undefined && req.body.deliveryPersonTip === undefined) {
+            throw new Error('At least one tip amount (shopperTip or deliveryPersonTip) must be provided.');
+        }
+        return true;
+    }),
 ];
 // Add more validation chains as needed

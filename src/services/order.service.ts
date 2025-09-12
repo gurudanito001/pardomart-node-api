@@ -106,11 +106,6 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
     deliveryPersonTip,
   } = payload;
 
-  // --- 1. Validate payload basics ---
-  if (!orderItems || !Array.isArray(orderItems) || orderItems.length === 0) {
-    throw new OrderCreationError('Order must contain at least one item.');
-  }
-
   let shoppingStartTime: Date | undefined;
 
   // --- 2. Validate scheduled time against vendor hours ---
@@ -167,16 +162,11 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
   // --- Transactional Block ---
   return prisma.$transaction(async (tx) => {
     // --- 3. Handle Delivery Address ---
-    const finalShippingAddressId = shippingAddressId;
-    if (!shippingAddressId && deliveryMethod === DeliveryMethod.delivery_person) {
-      throw new OrderCreationError('Delivery address is required for delivery orders.');
-    }
-
     // --- 4. Calculate Fees & Validate Items ---
     const fees = await calculateOrderFeesService({
       orderItems,
       vendorId,
-      deliveryAddressId: finalShippingAddressId!,
+      deliveryAddressId: shippingAddressId!,
     }, tx);
 
     const { subtotal, deliveryFee, serviceFee, shoppingFee } = fees;
@@ -197,8 +187,8 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
       totalAmount: finalTotalAmount,
       deliveryFee, serviceFee, shoppingFee,
       shopperTip, deliveryPersonTip,
-      paymentMethod, shoppingMethod, deliveryMethod,
-      scheduledDeliveryTime, shoppingStartTime, deliveryAddressId: finalShippingAddressId, deliveryInstructions,
+      paymentMethod, shoppingMethod, deliveryMethod, scheduledDeliveryTime,
+      shoppingStartTime, deliveryAddressId: shippingAddressId, deliveryInstructions,
     }, tx);
 
     // --- 6. Create the OrderItem records ---

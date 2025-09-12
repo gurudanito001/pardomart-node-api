@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import { createDeliveryAddressService, getDeliveryAddressByIdService, getDeliveryAddressesByUserIdService, getDefaultDeliveryAddressByUserIdService, updateDeliveryAddressService, deleteDeliveryAddressService, setDefaultDeliveryAddressService } from "../services/deliveryAddress.service";
 
-import * as deliveryAddressModel from "../models/deliveryAddress.model"
+import * as deliveryAddressModel from "../models/deliveryAddress.model";
+import { Prisma } from '@prisma/client';
 
 // A better approach would be to have this in a shared types file
 interface AuthenticatedRequest extends Request {
@@ -47,11 +48,6 @@ export const createDeliveryAddressController = async (req: AuthenticatedRequest,
       ...req.body,
       userId: userId,
     };
-
-    // Basic validation
-    if (!payload.addressLine1 || !payload.city) {
-      return res.status(400).json({ error: 'Address Line 1 and City are required.' });
-    }
 
     const newAddress = await createDeliveryAddressService(payload);
     res.status(201).json(newAddress);
@@ -211,16 +207,12 @@ export const updateDeliveryAddressController = async (req: AuthenticatedRequest,
     const { id } = req.params;
     const payload: deliveryAddressModel.UpdateDeliveryAddressPayload = req.body;
 
-    // Basic validation
-    if (Object.keys(payload).length === 0) {
-      return res.status(400).json({ error: 'No update data provided.' });
-    }
-
     const updatedAddress = await updateDeliveryAddressService(id, payload);
     res.status(200).json(updatedAddress);
   } catch (error: any) {
     console.error('Error in updateDeliveryAddressController:', error);
-    if (error.message === 'Delivery address not found') {
+    // The service/model layer throws a generic error for not found.
+    if (error.message.toLowerCase().includes('not found')) {
       return res.status(404).json({ error: error.message });
     }
     res.status(500).json({ error: error.message || 'Internal server error' });
@@ -260,8 +252,9 @@ export const deleteDeliveryAddressController = async (req: Request, res: Respons
     res.status(200).json(deletedAddress);
   } catch (error: any) {
     console.error('Error in deleteDeliveryAddressController:', error);
-    if (error.message === 'Delivery address not found') {
-      return res.status(404).json({ error: error.message });
+    // The service/model layer throws a generic error for not found.
+    if (error.message.toLowerCase().includes('not found')) {
+      return res.status(404).json({ error: 'Delivery address not found.' });
     }
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
@@ -297,10 +290,9 @@ export const deleteDeliveryAddressController = async (req: Request, res: Respons
  *       500:
  *         description: Internal server error.
  */
-export const setDefaultDeliveryAddressController = async (req: Request, res: Response) => {
+export const setDefaultDeliveryAddressController = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    // Assuming userId comes from authentication middleware
-    const userId = (req as any).userId; // Adjust type based on your AuthenticatedRequest
+    const userId = req.userId;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized: User ID not found.' });
     }
@@ -310,8 +302,8 @@ export const setDefaultDeliveryAddressController = async (req: Request, res: Res
     res.status(200).json(newDefaultAddress);
   } catch (error: any) {
     console.error('Error in setDefaultDeliveryAddressController:', error);
-    if (error.message === 'Delivery address not found') {
-      return res.status(404).json({ error: error.message });
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      return res.status(404).json({ error: 'Delivery address not found or does not belong to the user.' });
     }
     res.status(500).json({ error: error.message || 'Internal server error' });
   }

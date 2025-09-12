@@ -134,10 +134,6 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
         switch (_c.label) {
             case 0:
                 vendorId = payload.vendorId, paymentMethod = payload.paymentMethod, shippingAddressId = payload.shippingAddressId, deliveryInstructions = payload.deliveryInstructions, orderItems = payload.orderItems, shoppingMethod = payload.shoppingMethod, deliveryMethod = payload.deliveryMethod, scheduledDeliveryTime = payload.scheduledDeliveryTime, shopperTip = payload.shopperTip, deliveryPersonTip = payload.deliveryPersonTip;
-                // --- 1. Validate payload basics ---
-                if (!orderItems || !Array.isArray(orderItems) || orderItems.length === 0) {
-                    throw new OrderCreationError('Order must contain at least one item.');
-                }
                 if (!scheduledDeliveryTime) return [3 /*break*/, 2];
                 parsedScheduledDeliveryTime = dayjs_1["default"].utc(scheduledDeliveryTime);
                 if (!parsedScheduledDeliveryTime.isValid()) {
@@ -184,19 +180,14 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
             case 2: 
             // --- Transactional Block ---
             return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
-                    var finalShippingAddressId, fees, subtotal, deliveryFee, serviceFee, shoppingFee, finalTotalAmount, newOrder, _i, orderItems_1, item, _a, orderItems_2, item, e_1, finalOrder;
+                    var fees, subtotal, deliveryFee, serviceFee, shoppingFee, finalTotalAmount, newOrder, _i, orderItems_1, item, _a, orderItems_2, item, e_1, finalOrder;
                     return __generator(this, function (_b) {
                         switch (_b.label) {
-                            case 0:
-                                finalShippingAddressId = shippingAddressId;
-                                if (!shippingAddressId && deliveryMethod === client_1.DeliveryMethod.delivery_person) {
-                                    throw new OrderCreationError('Delivery address is required for delivery orders.');
-                                }
-                                return [4 /*yield*/, fee_service_1.calculateOrderFeesService({
-                                        orderItems: orderItems,
-                                        vendorId: vendorId,
-                                        deliveryAddressId: finalShippingAddressId
-                                    }, tx)];
+                            case 0: return [4 /*yield*/, fee_service_1.calculateOrderFeesService({
+                                    orderItems: orderItems,
+                                    vendorId: vendorId,
+                                    deliveryAddressId: shippingAddressId
+                                }, tx)];
                             case 1:
                                 fees = _b.sent();
                                 subtotal = fees.subtotal, deliveryFee = fees.deliveryFee, serviceFee = fees.serviceFee, shoppingFee = fees.shoppingFee;
@@ -212,9 +203,9 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                         totalAmount: finalTotalAmount,
                                         deliveryFee: deliveryFee, serviceFee: serviceFee, shoppingFee: shoppingFee,
                                         shopperTip: shopperTip, deliveryPersonTip: deliveryPersonTip,
-                                        paymentMethod: paymentMethod, shoppingMethod: shoppingMethod, deliveryMethod: deliveryMethod,
-                                        scheduledDeliveryTime: scheduledDeliveryTime, shoppingStartTime: shoppingStartTime,
-                                        deliveryAddressId: finalShippingAddressId,
+                                        paymentMethod: paymentMethod, shoppingMethod: shoppingMethod, deliveryMethod: deliveryMethod, scheduledDeliveryTime: scheduledDeliveryTime,
+                                        shoppingStartTime: shoppingStartTime,
+                                        deliveryAddressId: shippingAddressId,
                                         deliveryInstructions: deliveryInstructions
                                     }, tx)];
                             case 2:

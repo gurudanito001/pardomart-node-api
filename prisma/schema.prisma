@@ -194,8 +194,6 @@ model DeliveryAddress {
   orders       Order[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-
-  @@unique([userId, isDefault])
   @@index([userId])
 }
 

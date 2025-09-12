@@ -1,31 +1,37 @@
-import { Router } from "express";
-import { createOrderController, getOrderByIdController, getOrdersByUserController, updateOrderController, updateOrderStatusController,
-  getVendorOrdersController,
-  acceptOrderController,
-  declineOrderController,
-  startShoppingController,
-  getAvailableDeliverySlotsController,
- } from "../controllers/order.controllers";
-import { authenticate, authorizeVendorAccess } from "../middlewares/auth.middleware";
+import { Router } from 'express';
+import * as orderController from '../controllers/order.controllers';
+import {
+  validate,
+  validateCreateOrder,
+  validateGetOrDeleteOrder,
+  validateUpdateOrderStatus,
+  validateUpdateOrder,
+  validateGetVendorOrders,
+  validateVendorOrderAction,
+  validateDeclineOrder,
+  validateGetDeliverySlots,
+  validateUpdateTip,
+} from '../middlewares/validation.middleware';
+import { authenticate, authorizeVendorAccess } from '../middlewares/auth.middleware';
 
-// --- Cart Routes ---
 const router = Router();
 
-// Specific GET routes must be defined before any dynamic GET routes (like /:id)
-router.get('/vendorOrders', authenticate, authorizeVendorAccess, getVendorOrdersController);
-router.get('/delivery-slots', authenticate, getAvailableDeliverySlotsController);
-router.get('/user/getByUserId', authenticate, getOrdersByUserController);
+// All routes below require a logged-in user
+router.use(authenticate);
 
-router.post('/', authenticate, createOrderController); // Changed route to /
-router.get('/:id', authenticate, getOrderByIdController);
-router.patch('/:id', authenticate, updateOrderController);
-router.patch('/:id/status', authenticate, updateOrderStatusController);
+// --- Customer-facing routes ---
+router.post('/', validate(validateCreateOrder), orderController.createOrderController);
+router.get('/user/me', orderController.getOrdersByUserController);
+router.get('/delivery-slots', validate(validateGetDeliverySlots), orderController.getAvailableDeliverySlotsController);
+router.get('/:id', validate(validateGetOrDeleteOrder), orderController.getOrderByIdController);
+router.patch('/:id', validate(validateUpdateOrder), orderController.updateOrderController);
+router.patch('/:id/status', validate(validateUpdateOrderStatus), orderController.updateOrderStatusController);
+router.patch('/:orderId/tip', validate(validateUpdateTip), orderController.updateOrderTipController);
 
-router.patch('/:orderId/accept', authenticate, authorizeVendorAccess, acceptOrderController);
-
-// Body: { "reason": "Optional reason for declining" }
-router.patch('/:orderId/decline', authenticate, authorizeVendorAccess, declineOrderController);
-
-router.patch('/:orderId/start-shopping', authenticate, authorizeVendorAccess, startShoppingController);
+// --- Vendor-facing routes ---
+router.get('/vendor', authorizeVendorAccess, validate(validateGetVendorOrders), orderController.getVendorOrdersController);
+router.patch('/:orderId/accept', authorizeVendorAccess, validate(validateVendorOrderAction), orderController.acceptOrderController);
+router.patch('/:orderId/decline', authorizeVendorAccess, validate(validateDeclineOrder), orderController.declineOrderController);
+router.patch('/:orderId/start-shopping', authorizeVendorAccess, validate(validateVendorOrderAction), orderController.startShoppingController);
 
 export default router;

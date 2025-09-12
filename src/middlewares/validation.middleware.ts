@@ -1,7 +1,7 @@
 // middlewares/validation.middleware.ts
 import { Request, Response, NextFunction } from 'express';
 import { validationResult, ValidationChain, body, param, query } from 'express-validator';
-import { Days, Role } from '@prisma/client';
+import { Days, Role, PaymentMethods, ShoppingMethod, DeliveryMethod, OrderStatus, PaymentStatus } from '@prisma/client';
 
 // Generic validation middleware
 export const validate = (validations: ValidationChain[]) => {
@@ -120,5 +120,105 @@ export const validateGetAllCategories = [
   query('vendorId').optional().isUUID(4).withMessage('Vendor ID must be a valid UUID.'),
   query('type').optional().isIn(['top', 'sub']).withMessage('Type must be either "top" or "sub".'),
   query('name').optional().isString(),
+];
+
+export const validateCreateDeliveryAddress = [
+  body('label').optional({ nullable: true }).trim().isString().withMessage('Label must be a string.'),
+  body('addressLine1').trim().notEmpty().withMessage('addressLine1 is required.'),
+  body('addressLine2').optional({ nullable: true }).trim().isString(),
+  body('city').trim().notEmpty().withMessage('City is required.'),
+  body('state').optional({ nullable: true }).trim().isString(),
+  body('postalCode').optional({ nullable: true }).trim().isString(),
+  body('country').optional().trim().isString(),
+  body('latitude').optional({ nullable: true }).isFloat().withMessage('Latitude must be a valid number.'),
+  body('longitude').optional({ nullable: true }).isFloat().withMessage('Longitude must be a valid number.'),
+  body('isDefault').optional().isBoolean().withMessage('isDefault must be a boolean.'),
+];
+
+export const validateUpdateDeliveryAddress = [
+  param('id').isUUID(4).withMessage('A valid address ID is required in the URL.'),
+  body('label').optional({ nullable: true }).trim().isString().withMessage('Label must be a string.'),
+  body('addressLine1').optional().trim().notEmpty().withMessage('addressLine1 cannot be empty if provided.'),
+  body('addressLine2').optional({ nullable: true }).trim().isString(),
+  body('city').optional().trim().notEmpty().withMessage('City cannot be empty if provided.'),
+  ...validateCreateDeliveryAddress.slice(4), // Reuse remaining optional validators
+];
+
+export const validateGetOrDeleteDeliveryAddress = [
+  param('id').isUUID(4).withMessage('A valid address ID is required in the URL.'),
+];
+
+export const validateCreateOrder = [
+  body('vendorId').isUUID(4).withMessage('A valid vendorId is required.'),
+  body('paymentMethod').isIn(Object.values(PaymentMethods)).withMessage(`paymentMethod must be one of: ${Object.values(PaymentMethods).join(', ')}`),
+  body('shippingAddressId')
+    .if(body('deliveryMethod').equals(DeliveryMethod.delivery_person))
+    .notEmpty().withMessage('shippingAddressId is required for delivery orders.')
+    .isUUID(4).withMessage('shippingAddressId must be a valid UUID.'),
+  body('deliveryInstructions').optional().isString().isLength({ max: 500 }).withMessage('Delivery instructions cannot exceed 500 characters.'),
+  body('orderItems').isArray({ min: 1 }).withMessage('Order must contain at least one item.'),
+  body('orderItems.*.vendorProductId').isUUID(4).withMessage('Each order item must have a valid vendorProductId.'),
+  body('orderItems.*.quantity').isInt({ min: 1 }).withMessage('Item quantity must be a positive integer.'),
+  body('orderItems.*.instructions').optional().isString().isLength({ max: 500 }).withMessage('Item instructions cannot exceed 500 characters.'),
+  body('orderItems.*.replacementIds').optional().isArray({ max: 10 }).withMessage('A maximum of 10 replacement IDs are allowed.'),
+  body('orderItems.*.replacementIds.*').isUUID(4).withMessage('Each replacementId must be a valid UUID.'),
+  body('shoppingMethod').isIn(Object.values(ShoppingMethod)).withMessage(`shoppingMethod must be one of: ${Object.values(ShoppingMethod).join(', ')}`),
+  body('deliveryMethod').isIn(Object.values(DeliveryMethod)).withMessage(`deliveryMethod must be one of: ${Object.values(DeliveryMethod).join(', ')}`),
+  body('scheduledDeliveryTime').optional({ nullable: true }).isISO8601().withMessage('scheduledDeliveryTime must be a valid ISO 8601 date.'),
+  body('shopperTip').optional().isFloat({ min: 0 }).withMessage('shopperTip must be a non-negative number.'),
+  body('deliveryPersonTip').optional().isFloat({ min: 0 }).withMessage('deliveryPersonTip must be a non-negative number.'),
+];
+
+export const validateGetOrDeleteOrder = [
+  param('id').isUUID(4).withMessage('A valid order ID is required in the URL.'),
+];
+
+export const validateUpdateOrderStatus = [
+  param('id').isUUID(4).withMessage('A valid order ID is required in the URL.'),
+  body('status').isIn(Object.values(OrderStatus)).withMessage(`Status must be one of: ${Object.values(OrderStatus).join(', ')}`),
+];
+
+export const validateUpdateOrder = [
+  param('id').isUUID(4).withMessage('A valid order ID is required in the URL.'),
+  body().custom((value, { req }) => {
+    if (Object.keys(req.body).length === 0) {
+      throw new Error('At least one field must be provided for update.');
+    }
+    return true;
+  }),
+  body('paymentMethod').optional().isIn(Object.values(PaymentMethods)).withMessage(`paymentMethod must be one of: ${Object.values(PaymentMethods).join(', ')}`),
+  body('paymentStatus').optional().isIn(Object.values(PaymentStatus)).withMessage(`paymentStatus must be one of: ${Object.values(PaymentStatus).join(', ')}`),
+  body('orderStatus').optional().isIn(Object.values(OrderStatus)).withMessage(`orderStatus must be one of: ${Object.values(OrderStatus).join(', ')}`),
+  body('deliveryAddressId').optional({ nullable: true }).isUUID(4).withMessage('deliveryAddressId must be a valid UUID.'),
+];
+
+export const validateGetVendorOrders = [
+  query('status').optional().isIn(Object.values(OrderStatus)).withMessage(`Status must be one of: ${Object.values(OrderStatus).join(', ')}`),
+];
+
+export const validateVendorOrderAction = [
+  param('orderId').isUUID(4).withMessage('A valid orderId is required in the URL.'),
+];
+
+export const validateDeclineOrder = [
+  param('orderId').isUUID(4).withMessage('A valid orderId is required in the URL.'),
+  body('reason').optional().isString().isLength({ max: 500 }).withMessage('Reason cannot exceed 500 characters.'),
+];
+
+export const validateGetDeliverySlots = [
+  query('vendorId').notEmpty().withMessage('vendorId is required.').isUUID(4).withMessage('vendorId must be a valid UUID.'),
+  query('deliveryMethod').notEmpty().withMessage('deliveryMethod is required.').isIn(Object.values(DeliveryMethod)).withMessage(`deliveryMethod must be one of: ${Object.values(DeliveryMethod).join(', ')}`),
+];
+
+export const validateUpdateTip = [
+  param('orderId').isUUID(4).withMessage('A valid orderId is required in the URL.'),
+  body('shopperTip').optional().isFloat({ min: 0 }).withMessage('shopperTip must be a non-negative number.'),
+  body('deliveryPersonTip').optional().isFloat({ min: 0 }).withMessage('deliveryPersonTip must be a non-negative number.'),
+  body().custom((value, { req }) => {
+    if (req.body.shopperTip === undefined && req.body.deliveryPersonTip === undefined) {
+      throw new Error('At least one tip amount (shopperTip or deliveryPersonTip) must be provided.');
+    }
+    return true;
+  }),
 ];
 // Add more validation chains as needed

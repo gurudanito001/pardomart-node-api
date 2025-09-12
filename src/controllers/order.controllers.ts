@@ -118,9 +118,6 @@ import { AuthenticatedRequest } from './vendor.controller';
 export const createOrderController = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.userId as string; // Get userId from authenticated request
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
     const finalOrder = await createOrderFromClient(userId, req.body);
     res.status(201).json(finalOrder);
   } catch (error: any) {
@@ -196,10 +193,7 @@ export const getOrderByIdController = async (req: Request, res: Response) => {
 export const getOrdersByUserController = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.userId;
-    if (!userId) {
-      return res.status(400).json({ error: 'User ID is required.' });
-    }
-    const orders = await getOrdersByUserIdService(userId);
+    const orders = await getOrdersByUserIdService(userId as string);
     res.status(200).json(orders);
   } catch (error: any) {
     res.status(500).json({ error: 'Failed to retrieve orders: ' + error.message });
@@ -385,10 +379,6 @@ export const acceptOrderController = async (req: OrderAuthenticatedRequest, res:
     const shoppingHandlerUserId = req.userId as string; // ID of the accepting staff
     const vendorId = req.vendorId as string; // Vendor ID of the staff
 
-    if (!orderId || !shoppingHandlerUserId || !vendorId) {
-      return res.status(400).json({ error: 'Missing required parameters.' });
-    }
-
     const acceptedOrder = await acceptOrderService(orderId, shoppingHandlerUserId, vendorId);
     res.status(200).json(acceptedOrder);
   } catch (error: any) {
@@ -448,17 +438,9 @@ export const acceptOrderController = async (req: OrderAuthenticatedRequest, res:
  */
 export const getAvailableDeliverySlotsController = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { vendorId, deliveryMethod } = req.query;
-
-    if (!vendorId || typeof vendorId !== 'string') {
-      return res.status(400).json({ error: 'Vendor ID is required.' });
-    }
-
-    if (!deliveryMethod || (deliveryMethod !== DeliveryMethod.customer_pickup && deliveryMethod !== DeliveryMethod.delivery_person)) {
-      return res.status(400).json({ error: 'A valid delivery method is required.' });
-    }
-
-    const slots = await getAvailableDeliverySlots(vendorId, deliveryMethod as DeliveryMethod);
+    const { vendorId, deliveryMethod } = req.query as {vendorId: string, deliveryMethod: DeliveryMethod};
+    
+    const slots = await getAvailableDeliverySlots(vendorId, deliveryMethod);
     res.status(200).json(slots);
   } catch (error: any) {
     console.error('Error getting delivery slots:', error);
@@ -505,10 +487,6 @@ export const declineOrderController = async (req: OrderAuthenticatedRequest, res
     const { reason } = req.body; // Optional reason for decline
     const vendorId = req.vendorId as string; // Vendor ID of the staff
 
-    if (!orderId || !vendorId) {
-      return res.status(400).json({ error: 'Missing required parameters.' });
-    }
-
     const declinedOrder = await declineOrderService(orderId, vendorId, reason);
     res.status(200).json(declinedOrder);
   } catch (error: any) {
@@ -553,10 +531,6 @@ export const startShoppingController = async (req: OrderAuthenticatedRequest, re
     const { orderId } = req.params;
     const shoppingHandlerUserId = req.userId as string; // ID of the staff starting shopping
     const vendorId = req.vendorId as string; // Vendor ID of the staff
-
-    if (!orderId || !shoppingHandlerUserId || !vendorId) {
-      return res.status(400).json({ error: 'Missing required parameters.' });
-    }
 
     const updatedOrder = await startShoppingService(orderId, shoppingHandlerUserId, vendorId);
     res.status(200).json(updatedOrder);
@@ -624,9 +598,6 @@ export const updateOrderTipController = async (req: AuthenticatedRequest, res: R
     const userId = req.userId as string;
     const { orderId } = req.params;
     const payload: UpdateTipPayload = req.body;
-    if (payload.shopperTip === undefined && payload.deliveryPersonTip === undefined) {
-      return res.status(400).json({ error: 'At least one tip amount (shopperTip or deliveryPersonTip) must be provided.' });
-    }
     const updatedOrder = await updateOrderTipService(orderId, userId, payload);
     res.status(200).json(updatedOrder);
   } catch (error: any) {
