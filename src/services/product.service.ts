@@ -2,16 +2,67 @@
 import * as productModel from '../models/product.model';
 import { Product, VendorProduct } from '@prisma/client';
 
-export const createProduct = async (payload: any): Promise<Product> => {
+export interface CreateProductPayload {
+  barcode: string;
+  name: string;
+  description?: string;
+  images?: string[];
+  categoryIds: string[];
+  tags?: string[];
+  isAlcohol?: boolean;
+  isAgeRestricted?: boolean;
+}
+
+export interface UpdateProductBasePayload {
+  id: string;
+  name?: string;
+  description?: string;
+  images?: string[];
+  categoryIds?: string[];
+}
+
+export interface CreateVendorProductPayload {
+  vendorId: string;
+  productId: string;
+  price: number;
+  name: string;
+  description?: string;
+  discountedPrice?: number;
+  stock?: number;
+  isAvailable?: boolean;
+  categoryIds: string[];
+}
+
+export interface CreateVendorProductWithBarcodePayload {
+  vendorId: string;
+  barcode: string;
+  price: number;
+  name: string;
+  description?: string;
+  categoryIds: string[];
+  discountedPrice?: number;
+  stock?: number;
+  isAvailable?: boolean;
+}
+
+export interface UpdateVendorProductPayload {
+  id: string;
+  price?: number;
+  name?: string;
+  stock?: number;
+  isAvailable?: boolean;
+}
+
+export const createProduct = async (payload: CreateProductPayload): Promise<Product> => {
   return productModel.createProduct(payload);
 };
 
-export const createVendorProduct = async (payload: any): Promise<VendorProduct> => {
+export const createVendorProduct = async (payload: CreateVendorProductPayload): Promise<VendorProduct> => {
   return productModel.createVendorProduct(payload);
 };
 
 export const createVendorProductWithBarcode = async (
-  payload: any
+  payload: CreateVendorProductWithBarcodePayload
 ): Promise<VendorProduct> => {
   return productModel.createVendorProductWithBarcode(payload);
 };
@@ -35,11 +86,11 @@ export const getVendorProductsByCategory = async (
   return productModel.getVendorProductsByCategory(vendorId, categoryId);
 };
 
-export const updateProductBase = async (payload: any): Promise<Product> => {
+export const updateProductBase = async (payload: UpdateProductBasePayload): Promise<Product> => {
   return productModel.updateProductBase(payload);
 };
 
-export const updateVendorProduct = async (payload: any): Promise<VendorProduct> => {
+export const updateVendorProduct = async (payload: UpdateVendorProductPayload): Promise<VendorProduct> => {
   return productModel.updateVendorProduct(payload);
 };
 
@@ -55,7 +106,7 @@ export const getProductsByTagIds = async (tagIds: string[]): Promise<Product[]> 
   return productModel.getProductsByTagIds(tagIds);
 };
 
-export const getVendorProductsByTagIds = async (tagIds: string[]): Promise<VendorProduct[]> => {
+export const getVendorProductsByTagIds = async (tagIds: string[], vendorId: string): Promise<VendorProduct[]> => {
   return productModel.getVendorProductsByTagIds(tagIds);
 };
 
