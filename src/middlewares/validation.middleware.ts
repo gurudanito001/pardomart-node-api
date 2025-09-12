@@ -1,6 +1,6 @@
 // middlewares/validation.middleware.ts
 import { Request, Response, NextFunction } from 'express';
-import { validationResult, ValidationChain, body } from 'express-validator';
+import { validationResult, ValidationChain, body, param, query } from 'express-validator';
 import { Days, Role } from '@prisma/client';
 
 // Generic validation middleware
@@ -91,4 +91,34 @@ export const validateCreateOrUpdateVendorOpeningHours = [
   body('id').optional().isUUID().withMessage('Id must be a valid UUID'),
 ];
 
+export const validateCreateCategory = [
+  body('name').trim().notEmpty().withMessage('Category name is required.'),
+  body('description').optional().isString(),
+  body('parentId').optional({ nullable: true }).isUUID(4).withMessage('Parent ID must be a valid UUID.'),
+];
+
+export const validateCreateCategoriesBulk = [
+  body('categories').isArray({ min: 1 }).withMessage('Categories must be a non-empty array.'),
+  body('categories.*.name').trim().notEmpty().withMessage('Each category must have a name.'),
+  body('categories.*.description').optional().isString(),
+  body('categories.*.parentId').optional({ nullable: true }).isUUID(4).withMessage('Each parent ID must be a valid UUID.'),
+];
+
+export const validateUpdateCategory = [
+  param('id').isUUID(4).withMessage('Category ID must be a valid UUID.'),
+  body('name').optional().trim().notEmpty().withMessage('Category name cannot be empty.'),
+  body('description').optional().isString(),
+  body('parentId').optional({ nullable: true }).isUUID(4).withMessage('Parent ID must be a valid UUID.'),
+];
+
+export const validateGetOrDeleteCategory = [
+  param('id').isUUID(4).withMessage('Category ID must be a valid UUID.'),
+];
+
+export const validateGetAllCategories = [
+  query('parentId').optional().isUUID(4).withMessage('Parent ID must be a valid UUID.'),
+  query('vendorId').optional().isUUID(4).withMessage('Vendor ID must be a valid UUID.'),
+  query('type').optional().isIn(['top', 'sub']).withMessage('Type must be either "top" or "sub".'),
+  query('name').optional().isString(),
+];
 // Add more validation chains as needed

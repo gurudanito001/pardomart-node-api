@@ -2,6 +2,7 @@
 import { Request, Response } from 'express';
 import * as categoryService from '../services/category.service';
 import { CategoryFilters } from '../models/category.model';
+import { Prisma } from '@prisma/client';
 
 /**
  * @swagger
@@ -33,15 +34,10 @@ import { CategoryFilters } from '../models/category.model';
  */
 export const createCategoriesBulk = async (req: Request, res: Response) => {
   try {
-    const {categories} = req.body;
-
-    if (!categories || !Array.isArray(categories) || categories.length === 0) {
-      return res.status(400).json({ error: 'Category list is required and must not be empty' });
-    }
-
+    const { categories } = req.body;
     const createdCategories = await categoryService.createCategoriesBulk(categories);
     res.status(201).json(createdCategories);
-  } catch (error) {
+  } catch (error: any) {
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     console.error('Error creating categories in bulk:', error);
     res.status(500).json({ error: errorMessage });
@@ -76,8 +72,14 @@ export const createCategory = async (req: Request, res: Response) => {
   try {
     const category = await categoryService.createCategory(req.body);
     res.status(201).json(category);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      // Handle unique constraint violation (e.g., duplicate category name)
+      if (error.code === 'P2002') {
+        return res.status(409).json({ error: 'A category with this name already exists.' });
+      }
+    }
+    const errorMessage = error.message || 'Internal server error';
     console.error('Error creating category:', error);
     res.status(500).json({ error: errorMessage });
   }
@@ -206,10 +208,14 @@ export const updateCategory = async (req: Request, res: Response) => {
     const category = await categoryService.updateCategory({ id: req.params.id, ...req.body });
     res.json(category);
   } catch (error: any) {
-    console.error('Error updating category:', error);
-    // Assuming the service throws an error with a specific message for not found
-    if (error.message.includes('not found')) {
-      return res.status(404).json({ error: 'Category not found' });
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2025') {
+        return res.status(404).json({ error: 'Category not found.' });
+      }
+      // Handle unique constraint violation on update
+      if (error.code === 'P2002') {
+        return res.status(409).json({ error: 'A category with this name already exists.' });
+      }
     }
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -242,9 +248,8 @@ export const deleteCategory = async (req: Request, res: Response) => {
     const category = await categoryService.deleteCategory(req.params.id);
     res.json(category);
   } catch (error: any) {
-    console.error('Error deleting category:', error);
-    if (error.message.includes('not found')) {
-      return res.status(404).json({ error: 'Category not found' });
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      return res.status(404).json({ error: 'Category not found.' });
     }
     res.status(500).json({ error: 'Internal server error' });
   }
