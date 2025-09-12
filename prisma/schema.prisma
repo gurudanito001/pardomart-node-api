@@ -150,6 +150,8 @@ model Order {
   deliveryFee                Float?
   serviceFee                 Float?
   shoppingFee                Float?
+  shopperTip                 Float? 
+  deliveryPersonTip          Float?
   paymentMethod              PaymentMethods   @default(credit_card)
   paymentStatus              PaymentStatus    @default(pending)
   orderStatus                OrderStatus      @default(pending)

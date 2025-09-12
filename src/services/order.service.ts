@@ -85,6 +85,8 @@ interface CreateOrderFromClientPayload {
   shoppingMethod: ShoppingMethod;
   deliveryMethod: DeliveryMethod;
   scheduledDeliveryTime?: Date;
+  shopperTip?: number;
+  deliveryPersonTip?: number;
 }
 
 export const createOrderFromClient = async (userId: string, payload: CreateOrderFromClientPayload) => {
@@ -98,6 +100,8 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
     shoppingMethod,
     deliveryMethod,
     scheduledDeliveryTime,
+    shopperTip,
+    deliveryPersonTip,
   } = payload;
 
   // --- 1. Validate payload basics ---
@@ -173,11 +177,26 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
       deliveryAddressId: finalShippingAddressId!,
     }, tx);
 
-    const { totalEstimatedCost, deliveryFee, serviceFee, shoppingFee } = fees;
+    const { subtotal, deliveryFee, serviceFee, shoppingFee } = fees;
+
+    // The total amount is the subtotal + all fees + any tips.
+    const finalTotalAmount =
+      subtotal +
+      (deliveryFee || 0) +
+      (serviceFee || 0) +
+      (shoppingFee || 0) +
+      (shopperTip || 0) +
+      (deliveryPersonTip || 0);
 
     // --- 5. Create the Order record ---
     const newOrder = await orderModel.createOrder({
-      userId, vendorId, totalAmount: totalEstimatedCost, deliveryFee, serviceFee, shoppingFee, paymentMethod, shoppingMethod, deliveryMethod, scheduledDeliveryTime, shoppingStartTime, deliveryAddressId: finalShippingAddressId, deliveryInstructions,
+      userId,
+      vendorId,
+      totalAmount: finalTotalAmount,
+      deliveryFee, serviceFee, shoppingFee,
+      shopperTip, deliveryPersonTip,
+      paymentMethod, shoppingMethod, deliveryMethod,
+      scheduledDeliveryTime, shoppingStartTime, deliveryAddressId: finalShippingAddressId, deliveryInstructions,
     }, tx);
 
     // --- 6. Create the OrderItem records ---
@@ -210,6 +229,70 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
   });
 };
 
+export interface UpdateTipPayload {
+  shopperTip?: number;
+  deliveryPersonTip?: number;
+}
+
+/**
+ * Allows a customer to add or update a tip for an order.
+ * Recalculates the order's total amount.
+ *
+ * @param orderId The ID of the order to update.
+ * @param userId The ID of the customer making the request (for authorization).
+ * @param payload An object containing `shopperTip` and/or `deliveryPersonTip`.
+ * @returns The updated order object.
+ * @throws OrderCreationError if the order is not found, user is not authorized, or tips are invalid.
+ */
+export const updateOrderTipService = async (
+  orderId: string,
+  userId: string,
+  payload: UpdateTipPayload
+): Promise<Order> => {
+  return prisma.$transaction(async (tx) => {
+    // 1. Fetch the existing order
+    const existingOrder = await tx.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!existingOrder) {
+      throw new OrderCreationError('Order not found.', 404);
+    }
+
+    // 2. Authorize: Ensure the user owns the order
+    if (existingOrder.userId !== userId) {
+      throw new OrderCreationError('You are not authorized to update this order.', 403);
+    }
+
+    // 3. Validate tip amounts
+    if (payload.shopperTip !== undefined && payload.shopperTip < 0) {
+      throw new OrderCreationError('Shopper tip cannot be negative.');
+    }
+    if (payload.deliveryPersonTip !== undefined && payload.deliveryPersonTip < 0) {
+      throw new OrderCreationError('Delivery person tip cannot be negative.');
+    }
+
+    // 4. Calculate the difference in tips to adjust the total amount
+    const oldShopperTip = existingOrder.shopperTip || 0;
+    const oldDeliveryPersonTip = existingOrder.deliveryPersonTip || 0;
+    const newShopperTip = payload.shopperTip ?? oldShopperTip;
+    const newDeliveryPersonTip = payload.deliveryPersonTip ?? oldDeliveryPersonTip;
+    const tipDifference = newShopperTip - oldShopperTip + (newDeliveryPersonTip - oldDeliveryPersonTip);
+
+    // 5. Update the order with new tips and recalculated total amount
+    // NOTE: A full implementation would also handle payment adjustments here (e.g., capture more funds).
+    return tx.order.update({
+      where: { id: orderId },
+      data: {
+        shopperTip: newShopperTip,
+        deliveryPersonTip: newDeliveryPersonTip,
+        totalAmount: {
+          increment: tipDifference,
+        },
+      },
+    });
+  });
+};
 
 
 

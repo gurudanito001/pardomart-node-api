@@ -60,7 +60,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.startShoppingService = exports.declineOrderService = exports.acceptOrderService = exports.getOrdersForVendorDashboard = exports.getAvailableDeliverySlots = exports.updateOrderStatusService = exports.updateOrderService = exports.createOrderFromClient = exports.getOrdersByUserIdService = exports.OrderCreationError = exports.getOrderByIdService = exports.createOrderService = void 0;
+exports.startShoppingService = exports.declineOrderService = exports.acceptOrderService = exports.getOrdersForVendorDashboard = exports.getAvailableDeliverySlots = exports.updateOrderStatusService = exports.updateOrderService = exports.updateOrderTipService = exports.createOrderFromClient = exports.getOrdersByUserIdService = exports.OrderCreationError = exports.getOrderByIdService = exports.createOrderService = void 0;
 var orderModel = require("../models/order.model"); // Adjust the path if needed
 var client_1 = require("@prisma/client");
 var dayjs_1 = require("dayjs");
@@ -130,11 +130,11 @@ var getDayEnumFromDayjs = function (dayjsDayIndex) {
     return days[dayjsDayIndex];
 };
 exports.createOrderFromClient = function (userId, payload) { return __awaiter(void 0, void 0, void 0, function () {
-    var vendorId, paymentMethod, shippingAddressId, deliveryInstructions, orderItems, shoppingMethod, deliveryMethod, scheduledDeliveryTime, shoppingStartTime, parsedScheduledDeliveryTime, vendor, deliveryLocalDayjs, dayOfWeek_1, openingHoursToday, _a, openHours, openMinutes, _b, closeHours, closeMinutes, vendorOpenTimeUTC, vendorCloseTimeUTC, lastDeliveryTimeUTC;
+    var vendorId, paymentMethod, shippingAddressId, deliveryInstructions, orderItems, shoppingMethod, deliveryMethod, scheduledDeliveryTime, shopperTip, deliveryPersonTip, shoppingStartTime, parsedScheduledDeliveryTime, vendor, deliveryLocalDayjs, dayOfWeek_1, openingHoursToday, _a, openHours, openMinutes, _b, closeHours, closeMinutes, vendorOpenTimeUTC, vendorCloseTimeUTC, lastDeliveryTimeUTC;
     return __generator(this, function (_c) {
         switch (_c.label) {
             case 0:
-                vendorId = payload.vendorId, paymentMethod = payload.paymentMethod, shippingAddressId = payload.shippingAddressId, deliveryInstructions = payload.deliveryInstructions, orderItems = payload.orderItems, shoppingMethod = payload.shoppingMethod, deliveryMethod = payload.deliveryMethod, scheduledDeliveryTime = payload.scheduledDeliveryTime;
+                vendorId = payload.vendorId, paymentMethod = payload.paymentMethod, shippingAddressId = payload.shippingAddressId, deliveryInstructions = payload.deliveryInstructions, orderItems = payload.orderItems, shoppingMethod = payload.shoppingMethod, deliveryMethod = payload.deliveryMethod, scheduledDeliveryTime = payload.scheduledDeliveryTime, shopperTip = payload.shopperTip, deliveryPersonTip = payload.deliveryPersonTip;
                 // --- 1. Validate payload basics ---
                 if (!orderItems || !Array.isArray(orderItems) || orderItems.length === 0) {
                     throw new OrderCreationError('Order must contain at least one item.');
@@ -185,7 +185,7 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
             case 2: 
             // --- Transactional Block ---
             return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
-                    var finalShippingAddressId, fees, totalEstimatedCost, deliveryFee, serviceFee, shoppingFee, newOrder, orderItemsToCreate, _i, orderItems_1, item, finalOrder;
+                    var finalShippingAddressId, fees, subtotal, deliveryFee, serviceFee, shoppingFee, finalTotalAmount, newOrder, orderItemsToCreate, _i, orderItems_1, item, finalOrder;
                     return __generator(this, function (_a) {
                         switch (_a.label) {
                             case 0:
@@ -200,11 +200,21 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                     }, tx)];
                             case 1:
                                 fees = _a.sent();
-                                totalEstimatedCost = fees.totalEstimatedCost, deliveryFee = fees.deliveryFee, serviceFee = fees.serviceFee, shoppingFee = fees.shoppingFee;
+                                subtotal = fees.subtotal, deliveryFee = fees.deliveryFee, serviceFee = fees.serviceFee, shoppingFee = fees.shoppingFee;
+                                finalTotalAmount = subtotal +
+                                    (deliveryFee || 0) +
+                                    (serviceFee || 0) +
+                                    (shoppingFee || 0) +
+                                    (shopperTip || 0) +
+                                    (deliveryPersonTip || 0);
                                 return [4 /*yield*/, orderModel.createOrder({
-                                        userId: userId, vendorId: vendorId,
-                                        totalAmount: totalEstimatedCost,
-                                        deliveryFee: deliveryFee, serviceFee: serviceFee, shoppingFee: shoppingFee, paymentMethod: paymentMethod, shoppingMethod: shoppingMethod, deliveryMethod: deliveryMethod, scheduledDeliveryTime: scheduledDeliveryTime, shoppingStartTime: shoppingStartTime,
+                                        userId: userId,
+                                        vendorId: vendorId,
+                                        totalAmount: finalTotalAmount,
+                                        deliveryFee: deliveryFee, serviceFee: serviceFee, shoppingFee: shoppingFee,
+                                        shopperTip: shopperTip, deliveryPersonTip: deliveryPersonTip,
+                                        paymentMethod: paymentMethod, shoppingMethod: shoppingMethod, deliveryMethod: deliveryMethod,
+                                        scheduledDeliveryTime: scheduledDeliveryTime, shoppingStartTime: shoppingStartTime,
                                         deliveryAddressId: finalShippingAddressId,
                                         deliveryInstructions: deliveryInstructions
                                     }, tx)];
@@ -248,6 +258,64 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                     });
                 }); })];
         }
+    });
+}); };
+/**
+ * Allows a customer to add or update a tip for an order.
+ * Recalculates the order's total amount.
+ *
+ * @param orderId The ID of the order to update.
+ * @param userId The ID of the customer making the request (for authorization).
+ * @param payload An object containing `shopperTip` and/or `deliveryPersonTip`.
+ * @returns The updated order object.
+ * @throws OrderCreationError if the order is not found, user is not authorized, or tips are invalid.
+ */
+exports.updateOrderTipService = function (orderId, userId, payload) { return __awaiter(void 0, void 0, Promise, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
+                var existingOrder, oldShopperTip, oldDeliveryPersonTip, newShopperTip, newDeliveryPersonTip, tipDifference;
+                var _a, _b;
+                return __generator(this, function (_c) {
+                    switch (_c.label) {
+                        case 0: return [4 /*yield*/, tx.order.findUnique({
+                                where: { id: orderId }
+                            })];
+                        case 1:
+                            existingOrder = _c.sent();
+                            if (!existingOrder) {
+                                throw new OrderCreationError('Order not found.', 404);
+                            }
+                            // 2. Authorize: Ensure the user owns the order
+                            if (existingOrder.userId !== userId) {
+                                throw new OrderCreationError('You are not authorized to update this order.', 403);
+                            }
+                            // 3. Validate tip amounts
+                            if (payload.shopperTip !== undefined && payload.shopperTip < 0) {
+                                throw new OrderCreationError('Shopper tip cannot be negative.');
+                            }
+                            if (payload.deliveryPersonTip !== undefined && payload.deliveryPersonTip < 0) {
+                                throw new OrderCreationError('Delivery person tip cannot be negative.');
+                            }
+                            oldShopperTip = existingOrder.shopperTip || 0;
+                            oldDeliveryPersonTip = existingOrder.deliveryPersonTip || 0;
+                            newShopperTip = (_a = payload.shopperTip) !== null && _a !== void 0 ? _a : oldShopperTip;
+                            newDeliveryPersonTip = (_b = payload.deliveryPersonTip) !== null && _b !== void 0 ? _b : oldDeliveryPersonTip;
+                            tipDifference = newShopperTip - oldShopperTip + (newDeliveryPersonTip - oldDeliveryPersonTip);
+                            // 5. Update the order with new tips and recalculated total amount
+                            // NOTE: A full implementation would also handle payment adjustments here (e.g., capture more funds).
+                            return [2 /*return*/, tx.order.update({
+                                    where: { id: orderId },
+                                    data: {
+                                        shopperTip: newShopperTip,
+                                        deliveryPersonTip: newDeliveryPersonTip,
+                                        totalAmount: {
+                                            increment: tipDifference
+                                        }
+                                    }
+                                })];
+                    }
+                });
+            }); })];
     });
 }); };
 /**

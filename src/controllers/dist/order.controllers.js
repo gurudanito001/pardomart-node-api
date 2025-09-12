@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.startShoppingController = exports.declineOrderController = exports.getAvailableDeliverySlotsController = exports.acceptOrderController = exports.getVendorOrdersController = exports.updateOrderController = exports.updateOrderStatusController = exports.getOrdersByUserController = exports.getOrderByIdController = exports.createOrderController = void 0;
+exports.updateOrderTipController = exports.startShoppingController = exports.declineOrderController = exports.getAvailableDeliverySlotsController = exports.acceptOrderController = exports.getVendorOrdersController = exports.updateOrderController = exports.updateOrderStatusController = exports.getOrdersByUserController = exports.getOrderByIdController = exports.createOrderController = void 0;
 var order_service_1 = require("../services/order.service"); // Adjust the path if needed
 var client_1 = require("@prisma/client");
 // --- Order Controllers ---
@@ -76,6 +76,14 @@ var client_1 = require("@prisma/client");
  *                 type: string
  *                 format: uuid
  *                 description: The ID of an existing delivery address.
+ *               shopperTip:
+ *                 type: number
+ *                 format: float
+ *                 description: Optional. Tip for the shopper.
+ *               deliveryPersonTip:
+ *                 type: number
+ *                 format: float
+ *                 description: Optional. Tip for the delivery person.
  *               deliveryInstructions:
  *                 type: string
  *                 description: Optional instructions for the delivery.
@@ -643,6 +651,83 @@ exports.startShoppingController = function (req, res) { return __awaiter(void 0,
                     return [2 /*return*/, res.status(400).json({ error: error_10.message })];
                 }
                 res.status(500).json({ error: error_10.message || 'Internal server error' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /order/{orderId}/tip:
+ *   patch:
+ *     summary: Add or update a tip for an order
+ *     tags: [Order]
+ *     description: Allows a customer to add or update tips for the shopper and/or delivery person after an order has been placed. This will recalculate the order's total amount.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the order to add a tip to.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               shopperTip:
+ *                 type: number
+ *                 format: float
+ *                 description: The tip amount for the shopper.
+ *               deliveryPersonTip:
+ *                 type: number
+ *                 format: float
+ *                 description: The tip amount for the delivery person.
+ *     responses:
+ *       200:
+ *         description: The updated order with the new tip amount.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Order'
+ *       400:
+ *         description: Bad request (e.g., invalid tip amount).
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: Forbidden (user does not own this order).
+ *       404:
+ *         description: Order not found.
+ */
+exports.updateOrderTipController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var userId, orderId, payload, updatedOrder, error_11;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                userId = req.userId;
+                orderId = req.params.orderId;
+                payload = req.body;
+                if (payload.shopperTip === undefined && payload.deliveryPersonTip === undefined) {
+                    return [2 /*return*/, res.status(400).json({ error: 'At least one tip amount (shopperTip or deliveryPersonTip) must be provided.' })];
+                }
+                return [4 /*yield*/, order_service_1.updateOrderTipService(orderId, userId, payload)];
+            case 1:
+                updatedOrder = _a.sent();
+                res.status(200).json(updatedOrder);
+                return [3 /*break*/, 3];
+            case 2:
+                error_11 = _a.sent();
+                if (error_11 instanceof order_service_1.OrderCreationError) {
+                    return [2 /*return*/, res.status(error_11.statusCode).json({ error: error_11.message })];
+                }
+                console.error('Error in updateOrderTipController:', error_11);
+                res.status(500).json({ error: error_11.message || 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }

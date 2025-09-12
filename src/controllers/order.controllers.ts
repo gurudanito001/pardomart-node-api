@@ -8,6 +8,8 @@ import {
   getOrdersForVendorDashboard,
   getAvailableDeliverySlots,
   acceptOrderService,
+  updateOrderTipService,
+  UpdateTipPayload,
   declineOrderService,
   startShoppingService,
   OrderCreationError,
@@ -53,6 +55,14 @@ import { AuthenticatedRequest } from './vendor.controller';
  *                 type: string
  *                 format: uuid
  *                 description: The ID of an existing delivery address.
+ *               shopperTip:
+ *                 type: number
+ *                 format: float
+ *                 description: Optional. Tip for the shopper.
+ *               deliveryPersonTip:
+ *                 type: number
+ *                 format: float
+ *                 description: Optional. Tip for the delivery person.
  *               deliveryInstructions:
  *                 type: string
  *                 description: Optional instructions for the delivery.
@@ -547,6 +557,73 @@ export const startShoppingController = async (req: OrderAuthenticatedRequest, re
     if (error.message.includes('not found') || error.message.includes('cannot start shopping')) {
       return res.status(400).json({ error: error.message });
     }
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+
+
+/**
+ * @swagger
+ * /order/{orderId}/tip:
+ *   patch:
+ *     summary: Add or update a tip for an order
+ *     tags: [Order]
+ *     description: Allows a customer to add or update tips for the shopper and/or delivery person after an order has been placed. This will recalculate the order's total amount.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the order to add a tip to.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               shopperTip:
+ *                 type: number
+ *                 format: float
+ *                 description: The tip amount for the shopper.
+ *               deliveryPersonTip:
+ *                 type: number
+ *                 format: float
+ *                 description: The tip amount for the delivery person.
+ *     responses:
+ *       200:
+ *         description: The updated order with the new tip amount.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Order'
+ *       400:
+ *         description: Bad request (e.g., invalid tip amount).
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: Forbidden (user does not own this order).
+ *       404:
+ *         description: Order not found.
+ */
+export const updateOrderTipController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.userId as string;
+    const { orderId } = req.params;
+    const payload: UpdateTipPayload = req.body;
+    if (payload.shopperTip === undefined && payload.deliveryPersonTip === undefined) {
+      return res.status(400).json({ error: 'At least one tip amount (shopperTip or deliveryPersonTip) must be provided.' });
+    }
+    const updatedOrder = await updateOrderTipService(orderId, userId, payload);
+    res.status(200).json(updatedOrder);
+  } catch (error: any) {
+    if (error instanceof OrderCreationError) { return res.status(error.statusCode).json({ error: error.message }); }
+    console.error('Error in updateOrderTipController:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };

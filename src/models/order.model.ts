@@ -11,6 +11,8 @@ export interface CreateOrderPayload {
   deliveryFee?: number;
   serviceFee?: number;
   shoppingFee?: number;
+  shopperTip?: number;
+  deliveryPersonTip?: number;
   paymentMethod?: PaymentMethods;
   deliveryAddressId: string;
   deliveryInstructions?: string;
@@ -70,6 +72,8 @@ export interface UpdateOrderPayload {
   deliveryFee?: number;
   serviceFee?: number;
   shoppingFee?: number;
+  shopperTip?: number;
+  deliveryPersonTip?: number;
   paymentMethod?: PaymentMethods;
   paymentStatus?: PaymentStatus;
   orderStatus?: OrderStatus;
