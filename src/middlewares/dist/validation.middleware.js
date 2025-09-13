@@ -43,7 +43,7 @@ var __spreadArrays = (this && this.__spreadArrays) || function () {
     return r;
 };
 exports.__esModule = true;
-exports.validateCalculateFees = exports.validateFeeType = exports.validateFeeId = exports.validateUpdateFee = exports.validateCreateFee = exports.validateRemoveFromWishlist = exports.validateAddToWishlist = exports.validateGetVendorProductsByTagIds = exports.validateGetVendorProductsByCategory = exports.validateGetVendorProductByBarcode = exports.validateCreateVendorProductWithBarcode = exports.validateGetTrendingVendorProducts = exports.validateGetAllVendorProducts = exports.validateGetProductsByTagIds = exports.validateGetProductByBarcode = exports.validateGetAllProducts = exports.validateGetOrDeleteProduct = exports.validateUpdateVendorProduct = exports.validateCreateVendorProduct = exports.validateUpdateProduct = exports.validateCreateProduct = exports.validateUpdateTip = exports.validateGetDeliverySlots = exports.validateDeclineOrder = exports.validateVendorOrderAction = exports.validateGetVendorOrders = exports.validateUpdateOrder = exports.validateUpdateOrderStatus = exports.validateGetOrDeleteOrder = exports.validateCreateOrder = exports.validateGetOrDeleteDeliveryAddress = exports.validateUpdateDeliveryAddress = exports.validateCreateDeliveryAddress = exports.validateGetAllCategories = exports.validateGetOrDeleteCategory = exports.validateUpdateCategory = exports.validateCreateCategoriesBulk = exports.validateCreateCategory = exports.validateCreateOrUpdateVendorOpeningHours = exports.validateCreateVendor = exports.validateVerifyAndLogin = exports.validateLogin = exports.validateRegisterUser = exports.validate = void 0;
+exports.validateSearchStoreProducts = exports.validateGeneralSearch = exports.validateCalculateFees = exports.validateFeeType = exports.validateFeeId = exports.validateUpdateFee = exports.validateCreateFee = exports.validateRemoveFromWishlist = exports.validateAddToWishlist = exports.validateGetVendorProductsByTagIds = exports.validateGetVendorProductsByCategory = exports.validateGetVendorProductByBarcode = exports.validateCreateVendorProductWithBarcode = exports.validateGetTrendingVendorProducts = exports.validateGetAllVendorProducts = exports.validateGetProductsByTagIds = exports.validateGetProductByBarcode = exports.validateGetAllProducts = exports.validateGetOrDeleteProduct = exports.validateUpdateVendorProduct = exports.validateCreateVendorProduct = exports.validateUpdateProduct = exports.validateCreateProduct = exports.validateUpdateTip = exports.validateGetDeliverySlots = exports.validateDeclineOrder = exports.validateVendorOrderAction = exports.validateGetVendorOrders = exports.validateUpdateOrder = exports.validateUpdateOrderStatus = exports.validateGetOrDeleteOrder = exports.validateCreateOrder = exports.validateGetOrDeleteDeliveryAddress = exports.validateUpdateDeliveryAddress = exports.validateCreateDeliveryAddress = exports.validateGetAllCategories = exports.validateGetOrDeleteCategory = exports.validateUpdateCategory = exports.validateCreateCategoriesBulk = exports.validateCreateCategory = exports.validateCreateOrUpdateVendorOpeningHours = exports.validateCreateVendor = exports.validateVerifyAndLogin = exports.validateLogin = exports.validateRegisterUser = exports.validate = void 0;
 var express_validator_1 = require("express-validator");
 var client_1 = require("@prisma/client");
 // Generic validation middleware
@@ -393,4 +393,14 @@ exports.validateCalculateFees = [
     express_validator_1.body('orderItems.*.quantity').isInt({ gt: 0 }).withMessage('Each order item must have a positive integer quantity.'),
     express_validator_1.body('vendorId').isUUID(4).withMessage('A valid vendorId is required.'),
     express_validator_1.body('deliveryAddressId').isUUID(4).withMessage('A valid deliveryAddressId is required.'),
+];
+exports.validateGeneralSearch = [
+    express_validator_1.query('search').trim().notEmpty().withMessage('The "search" query parameter is required.'),
+    express_validator_1.query('latitude').isFloat().withMessage('A valid "latitude" query parameter is required.'),
+    express_validator_1.query('longitude').isFloat().withMessage('A valid "longitude" query parameter is required.'),
+];
+exports.validateSearchStoreProducts = [
+    express_validator_1.param('storeId').isUUID(4).withMessage('A valid storeId is required in the URL path.'),
+    express_validator_1.query('searchTerm').optional().isString().withMessage('searchTerm must be a string if provided.'),
+    express_validator_1.query('categoryId').optional().isUUID(4).withMessage('categoryId must be a valid UUID if provided.'),
 ];

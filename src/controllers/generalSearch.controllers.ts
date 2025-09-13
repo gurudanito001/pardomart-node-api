@@ -41,24 +41,11 @@ import { searchProductsService, searchStoreService, searchByCategoryService, sea
  *         description: Bad request due to missing or invalid parameters.
  */
 export const searchByProductController = async (req: Request, res: Response) => {
-  //const { productId } = req.params;
   const {search, latitude, longitude } = req.query;
 
-  // Input validation
-  if (!search) {
-    return res.status(400).json({ error: 'Search Term is required' });
-  }
-  if (!latitude || !longitude) {
-    return res.status(400).json({ error: 'Latitude and Longitude are required' });
-  }
-
-  const userSearchTerm = search.toString();
+  const userSearchTerm = search as string;
   const userLatitude = parseFloat(latitude as string);
   const userLongitude = parseFloat(longitude as string);
-
-    if (isNaN(userLatitude) || isNaN(userLongitude)) {
-        return res.status(400).json({ error: 'Invalid latitude or longitude values' });
-    }
 
   try {
     const result = await searchProductsService(userSearchTerm, userLatitude, userLongitude);
@@ -110,20 +97,9 @@ export const searchByProductController = async (req: Request, res: Response) => 
 export const searchByStoreController = async (req: Request, res: Response) => {
   const {search, latitude, longitude } = req.query;
 
-  if (!search) {
-    return res.status(400).json({ error: 'Search Term is required' });
-  }
-  if (!latitude || !longitude) {
-    return res.status(400).json({ error: 'Latitude and Longitude are required' });
-  }
-
-  const userSearchTerm = search.toString();
+  const userSearchTerm = search as string;
   const userLatitude = parseFloat(latitude as string);
   const userLongitude = parseFloat(longitude as string);
-
-  if (isNaN(userLatitude) || isNaN(userLongitude)) {
-      return res.status(400).json({ error: 'Invalid latitude or longitude values' });
-  }
 
   try {
     const result = await searchStoreService(userSearchTerm, userLatitude, userLongitude);
@@ -174,14 +150,7 @@ export const searchByStoreController = async (req: Request, res: Response) => {
 export const searchByCategoryController = async (req: Request, res: Response) => {
   const { search, latitude, longitude } = req.query;
 
-  if (!search) {
-    return res.status(400).json({ error: 'Search Term is required' });
-  }
-  if (!latitude || !longitude) {
-    return res.status(400).json({ error: 'Latitude and Longitude are required' });
-  }
-
-  const userSearchTerm = search.toString();
+  const userSearchTerm = search as string;
   const userLatitude = parseFloat(latitude as string);
   const userLongitude = parseFloat(longitude as string);
 

@@ -401,3 +401,15 @@ export const validateCalculateFees = [
   body('vendorId').isUUID(4).withMessage('A valid vendorId is required.'),
   body('deliveryAddressId').isUUID(4).withMessage('A valid deliveryAddressId is required.'),
 ];
+
+export const validateGeneralSearch = [
+  query('search').trim().notEmpty().withMessage('The "search" query parameter is required.'),
+  query('latitude').isFloat().withMessage('A valid "latitude" query parameter is required.'),
+  query('longitude').isFloat().withMessage('A valid "longitude" query parameter is required.'),
+];
+
+export const validateSearchStoreProducts = [
+  param('storeId').isUUID(4).withMessage('A valid storeId is required in the URL path.'),
+  query('searchTerm').optional().isString().withMessage('searchTerm must be a string if provided.'),
+  query('categoryId').optional().isUUID(4).withMessage('categoryId must be a valid UUID if provided.'),
+];
