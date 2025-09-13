@@ -10,7 +10,7 @@ interface CheckUserFilters {
 
 
 
-export const getAllUsers = async (filters: GetUserFilters, pagination: {page: string, take: string}) => {
+export const getAllUsers = async (filters: GetUserFilters, pagination: { page: number; take: number }) => {
   return userModel.getAllUsers(filters, pagination);
 };
 

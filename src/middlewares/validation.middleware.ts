@@ -442,3 +442,29 @@ export const validateSearchStoreProducts = [
   query('searchTerm').optional().isString().withMessage('searchTerm must be a string if provided.'),
   query('categoryId').optional().isUUID(4).withMessage('categoryId must be a valid UUID if provided.'),
 ];
+
+export const validateGetAllUsers = [
+  query('mobileVerified').optional().isBoolean().toBoolean().withMessage('mobileVerified must be a boolean.'),
+  query('active').optional().isBoolean().toBoolean().withMessage('active must be a boolean.'),
+  query('role').optional().isIn(Object.values(Role)).withMessage(`Role must be one of: ${Object.values(Role).join(', ')}`),
+  query('language').optional().isString().withMessage('language must be a string.'),
+  query('page').optional().isInt({ min: 1 }).toInt().withMessage('page must be a positive integer.'),
+  query('size').optional().isInt({ min: 1, max: 100 }).toInt().withMessage('size must be an integer between 1 and 100.'),
+];
+
+export const validateUserId = [param('id').isUUID(4).withMessage('A valid user ID is required in the URL.')];
+
+export const validateUpdateUser = [
+  param('id').isUUID(4).withMessage('A valid user ID is required in the URL.'),
+  body('name').optional().trim().notEmpty().withMessage('Name cannot be empty if provided.'),
+  body('email').optional({ checkFalsy: true }).isEmail().normalizeEmail().withMessage('A valid email is required if provided.'),
+  body('mobileNumber')
+    .optional()
+    .isMobilePhone('any', { strictMode: true })
+    .withMessage('A valid E.164 mobile number is required if provided (e.g., +1234567890).'),
+  body('role').optional().isIn(Object.values(Role)).withMessage(`Role must be one of: ${Object.values(Role).join(', ')}`),
+  body('mobileVerified').optional().isBoolean().withMessage('mobileVerified must be a boolean if provided.'),
+  body('active').optional().isBoolean().withMessage('active must be a boolean if provided.'),
+  body('language').optional().isString().withMessage('language must be a string if provided.'),
+  body('notification').optional().isObject().withMessage('notification must be an object if provided.'),
+];

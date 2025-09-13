@@ -26,9 +26,9 @@ export interface GetUserFilters {
   // Add other filter fields as needed
 }
 
-export const getAllUsers = async (filters: GetUserFilters, pagination: {page: string, take: string}) => {
-  const skip = ( (parseInt(pagination.page) ) - 1) * parseInt(pagination.take) 
-  const takeVal = parseInt(pagination.take)
+export const getAllUsers = async (filters: GetUserFilters, pagination: { page: number; take: number }) => {
+  const skip = (pagination.page - 1) * pagination.take;
+  const takeVal = pagination.take;
   const users = await prisma.user.findMany({
     where: {
       ...(filters.mobileVerified !== undefined && { mobileVerified: filters.mobileVerified }), // Assuming mobileVerified maps to verified filter
@@ -54,8 +54,8 @@ export const getAllUsers = async (filters: GetUserFilters, pagination: {page: st
     },
   });
 
-  const totalPages = Math.ceil( totalCount / parseInt(pagination.take));
-  return {page: parseInt(pagination.page), totalPages, pageSize: takeVal, totalCount, data: users}
+  const totalPages = Math.ceil(totalCount / takeVal);
+  return { page: pagination.page, totalPages, pageSize: takeVal, totalCount, data: users };
 };
 
 export const getAllVerificationCodes = async (): Promise<Verification[]> => {

@@ -43,7 +43,7 @@ var __spreadArrays = (this && this.__spreadArrays) || function () {
     return r;
 };
 exports.__esModule = true;
-exports.validateSearchStoreProducts = exports.validateGeneralSearch = exports.validateCalculateFees = exports.validateFeeType = exports.validateFeeId = exports.validateUpdateFee = exports.validateCreateFee = exports.validateRemoveFromWishlist = exports.validateAddToWishlist = exports.validateGetVendorProductsByTagIds = exports.validateGetVendorProductsByCategory = exports.validateGetVendorProductByBarcode = exports.validateCreateVendorProductWithBarcode = exports.validateGetTrendingVendorProducts = exports.validateGetAllVendorProducts = exports.validateGetProductsByTagIds = exports.validateGetProductByBarcode = exports.validateGetAllProducts = exports.validateGetOrDeleteProduct = exports.validateUpdateVendorProduct = exports.validateCreateVendorProduct = exports.validateUpdateProduct = exports.validateCreateProduct = exports.validateUpdateTip = exports.validateGetDeliverySlots = exports.validateDeclineOrder = exports.validateVendorOrderAction = exports.validateGetVendorOrders = exports.validateUpdateOrder = exports.validateUpdateOrderStatus = exports.validateGetOrDeleteOrder = exports.validateCreateOrder = exports.validateGetOrDeleteDeliveryAddress = exports.validateUpdateDeliveryAddress = exports.validateCreateDeliveryAddress = exports.validateGetAllCategories = exports.validateGetOrDeleteCategory = exports.validateUpdateCategory = exports.validateCreateCategoriesBulk = exports.validateCreateCategory = exports.validateCreateOrUpdateVendorOpeningHours = exports.validateUpdateVendor = exports.validateGetAllVendors = exports.validateGetVendorById = exports.validateVendorId = exports.validateCreateVendor = exports.validateVerifyAndLogin = exports.validateLogin = exports.validateRegisterUser = exports.validate = void 0;
+exports.validateUpdateUser = exports.validateUserId = exports.validateGetAllUsers = exports.validateSearchStoreProducts = exports.validateGeneralSearch = exports.validateCalculateFees = exports.validateFeeType = exports.validateFeeId = exports.validateUpdateFee = exports.validateCreateFee = exports.validateRemoveFromWishlist = exports.validateAddToWishlist = exports.validateGetVendorProductsByTagIds = exports.validateGetVendorProductsByCategory = exports.validateGetVendorProductByBarcode = exports.validateCreateVendorProductWithBarcode = exports.validateGetTrendingVendorProducts = exports.validateGetAllVendorProducts = exports.validateGetProductsByTagIds = exports.validateGetProductByBarcode = exports.validateGetAllProducts = exports.validateGetOrDeleteProduct = exports.validateUpdateVendorProduct = exports.validateCreateVendorProduct = exports.validateUpdateProduct = exports.validateCreateProduct = exports.validateUpdateTip = exports.validateGetDeliverySlots = exports.validateDeclineOrder = exports.validateVendorOrderAction = exports.validateGetVendorOrders = exports.validateUpdateOrder = exports.validateUpdateOrderStatus = exports.validateGetOrDeleteOrder = exports.validateCreateOrder = exports.validateGetOrDeleteDeliveryAddress = exports.validateUpdateDeliveryAddress = exports.validateCreateDeliveryAddress = exports.validateGetAllCategories = exports.validateGetOrDeleteCategory = exports.validateUpdateCategory = exports.validateCreateCategoriesBulk = exports.validateCreateCategory = exports.validateCreateOrUpdateVendorOpeningHours = exports.validateUpdateVendor = exports.validateGetAllVendors = exports.validateGetVendorById = exports.validateVendorId = exports.validateCreateVendor = exports.validateVerifyAndLogin = exports.validateLogin = exports.validateRegisterUser = exports.validate = void 0;
 var express_validator_1 = require("express-validator");
 var client_1 = require("@prisma/client");
 // Generic validation middleware
@@ -428,4 +428,27 @@ exports.validateSearchStoreProducts = [
     express_validator_1.param('storeId').isUUID(4).withMessage('A valid storeId is required in the URL path.'),
     express_validator_1.query('searchTerm').optional().isString().withMessage('searchTerm must be a string if provided.'),
     express_validator_1.query('categoryId').optional().isUUID(4).withMessage('categoryId must be a valid UUID if provided.'),
+];
+exports.validateGetAllUsers = [
+    express_validator_1.query('mobileVerified').optional().isBoolean().toBoolean().withMessage('mobileVerified must be a boolean.'),
+    express_validator_1.query('active').optional().isBoolean().toBoolean().withMessage('active must be a boolean.'),
+    express_validator_1.query('role').optional().isIn(Object.values(client_1.Role)).withMessage("Role must be one of: " + Object.values(client_1.Role).join(', ')),
+    express_validator_1.query('language').optional().isString().withMessage('language must be a string.'),
+    express_validator_1.query('page').optional().isInt({ min: 1 }).toInt().withMessage('page must be a positive integer.'),
+    express_validator_1.query('size').optional().isInt({ min: 1, max: 100 }).toInt().withMessage('size must be an integer between 1 and 100.'),
+];
+exports.validateUserId = [express_validator_1.param('id').isUUID(4).withMessage('A valid user ID is required in the URL.')];
+exports.validateUpdateUser = [
+    express_validator_1.param('id').isUUID(4).withMessage('A valid user ID is required in the URL.'),
+    express_validator_1.body('name').optional().trim().notEmpty().withMessage('Name cannot be empty if provided.'),
+    express_validator_1.body('email').optional({ checkFalsy: true }).isEmail().normalizeEmail().withMessage('A valid email is required if provided.'),
+    express_validator_1.body('mobileNumber')
+        .optional()
+        .isMobilePhone('any', { strictMode: true })
+        .withMessage('A valid E.164 mobile number is required if provided (e.g., +1234567890).'),
+    express_validator_1.body('role').optional().isIn(Object.values(client_1.Role)).withMessage("Role must be one of: " + Object.values(client_1.Role).join(', ')),
+    express_validator_1.body('mobileVerified').optional().isBoolean().withMessage('mobileVerified must be a boolean if provided.'),
+    express_validator_1.body('active').optional().isBoolean().withMessage('active must be a boolean if provided.'),
+    express_validator_1.body('language').optional().isString().withMessage('language must be a string if provided.'),
+    express_validator_1.body('notification').optional().isObject().withMessage('notification must be an object if provided.'),
 ];
