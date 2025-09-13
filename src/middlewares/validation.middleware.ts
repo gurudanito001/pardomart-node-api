@@ -63,16 +63,45 @@ export const validateVerifyAndLogin = [
 
 export const validateCreateVendor = [
   //body('userId').notEmpty().withMessage('User ID is required'),
-  body('name').notEmpty().withMessage('Name is required'),
-  body('email').optional().isEmail().withMessage('Invalid email format'),
-  body('tagline').optional().isString().withMessage('Tagline must be a string'),
-  body('details').optional().isString().withMessage('Details must be a string'),
-  body('image').optional().isString().withMessage('Image must be a string'),
-  body('address').optional().isString().withMessage('Address must be a string'),
-  body('longitude').optional().isNumeric().withMessage('Longitude must be a number'),
-  body('latitude').optional().isNumeric().withMessage('Latitude must be a number'),
-  body('meta').optional().isObject().withMessage('Meta must be an object'),
-  body('categories').optional().isArray().withMessage('Categories must be an array'),
+  body('name').trim().notEmpty().withMessage('Name is required'),
+  body('email').optional({ checkFalsy: true }).isEmail().normalizeEmail().withMessage('Invalid email format'),
+  body('tagline').optional({ checkFalsy: true }).isString().withMessage('Tagline must be a string'),
+  body('details').optional({ checkFalsy: true }).isString().withMessage('Details must be a string'),
+  body('image').optional({ checkFalsy: true }).isURL().withMessage('Image must be a valid URL'),
+  body('address').optional({ checkFalsy: true }).isString().withMessage('Address must be a string'),
+  body('longitude').optional({ checkFalsy: true }).isFloat().withMessage('Longitude must be a number'),
+  body('latitude').optional({ checkFalsy: true }).isFloat().withMessage('Latitude must be a number'),
+  body('meta').optional({ checkFalsy: true }).isObject().withMessage('Meta must be an object'),
+];
+
+export const validateVendorId = [param('id').isUUID(4).withMessage('A valid vendor ID is required in the URL.')];
+
+export const validateGetVendorById = [
+  param('id').isUUID(4).withMessage('A valid vendor ID is required in the URL.'),
+  query('latitude').optional().isFloat().withMessage('Latitude must be a valid number.'),
+  query('longitude').optional().isFloat().withMessage('Longitude must be a valid number.'),
+];
+
+export const validateGetAllVendors = [
+  query('name').optional().isString().withMessage('Name must be a string.'),
+  query('latitude').optional().isFloat().withMessage('Latitude must be a valid number.'),
+  query('longitude').optional().isFloat().withMessage('Longitude must be a valid number.'),
+  query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer.'),
+  query('size').optional().isInt({ min: 1, max: 100 }).withMessage('Size must be an integer between 1 and 100.'),
+];
+
+export const validateUpdateVendor = [
+  param('id').isUUID(4).withMessage('A valid vendor ID is required in the URL.'),
+  body('name').optional().trim().notEmpty().withMessage('Name cannot be empty.'),
+  body('email').optional({ checkFalsy: true }).isEmail().normalizeEmail().withMessage('Invalid email format'),
+  body('tagline').optional({ checkFalsy: true }).isString().withMessage('Tagline must be a string'),
+  body('details').optional({ checkFalsy: true }).isString().withMessage('Details must be a string'),
+  body('image').optional({ checkFalsy: true }).isURL().withMessage('Image must be a valid URL'),
+  body('address').optional({ checkFalsy: true }).isString().withMessage('Address must be a string'),
+  body('longitude').optional({ checkFalsy: true }).isFloat().withMessage('Longitude must be a number'),
+  body('latitude').optional({ checkFalsy: true }).isFloat().withMessage('Latitude must be a number'),
+  body('isVerified').optional().isBoolean().withMessage('isVerified must be a boolean.'),
+  body('meta').optional({ checkFalsy: true }).isObject().withMessage('Meta must be an object'),
 ];
 
 export const validateCreateOrUpdateVendorOpeningHours = [

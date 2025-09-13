@@ -43,7 +43,7 @@ var __spreadArrays = (this && this.__spreadArrays) || function () {
     return r;
 };
 exports.__esModule = true;
-exports.validateSearchStoreProducts = exports.validateGeneralSearch = exports.validateCalculateFees = exports.validateFeeType = exports.validateFeeId = exports.validateUpdateFee = exports.validateCreateFee = exports.validateRemoveFromWishlist = exports.validateAddToWishlist = exports.validateGetVendorProductsByTagIds = exports.validateGetVendorProductsByCategory = exports.validateGetVendorProductByBarcode = exports.validateCreateVendorProductWithBarcode = exports.validateGetTrendingVendorProducts = exports.validateGetAllVendorProducts = exports.validateGetProductsByTagIds = exports.validateGetProductByBarcode = exports.validateGetAllProducts = exports.validateGetOrDeleteProduct = exports.validateUpdateVendorProduct = exports.validateCreateVendorProduct = exports.validateUpdateProduct = exports.validateCreateProduct = exports.validateUpdateTip = exports.validateGetDeliverySlots = exports.validateDeclineOrder = exports.validateVendorOrderAction = exports.validateGetVendorOrders = exports.validateUpdateOrder = exports.validateUpdateOrderStatus = exports.validateGetOrDeleteOrder = exports.validateCreateOrder = exports.validateGetOrDeleteDeliveryAddress = exports.validateUpdateDeliveryAddress = exports.validateCreateDeliveryAddress = exports.validateGetAllCategories = exports.validateGetOrDeleteCategory = exports.validateUpdateCategory = exports.validateCreateCategoriesBulk = exports.validateCreateCategory = exports.validateCreateOrUpdateVendorOpeningHours = exports.validateCreateVendor = exports.validateVerifyAndLogin = exports.validateLogin = exports.validateRegisterUser = exports.validate = void 0;
+exports.validateSearchStoreProducts = exports.validateGeneralSearch = exports.validateCalculateFees = exports.validateFeeType = exports.validateFeeId = exports.validateUpdateFee = exports.validateCreateFee = exports.validateRemoveFromWishlist = exports.validateAddToWishlist = exports.validateGetVendorProductsByTagIds = exports.validateGetVendorProductsByCategory = exports.validateGetVendorProductByBarcode = exports.validateCreateVendorProductWithBarcode = exports.validateGetTrendingVendorProducts = exports.validateGetAllVendorProducts = exports.validateGetProductsByTagIds = exports.validateGetProductByBarcode = exports.validateGetAllProducts = exports.validateGetOrDeleteProduct = exports.validateUpdateVendorProduct = exports.validateCreateVendorProduct = exports.validateUpdateProduct = exports.validateCreateProduct = exports.validateUpdateTip = exports.validateGetDeliverySlots = exports.validateDeclineOrder = exports.validateVendorOrderAction = exports.validateGetVendorOrders = exports.validateUpdateOrder = exports.validateUpdateOrderStatus = exports.validateGetOrDeleteOrder = exports.validateCreateOrder = exports.validateGetOrDeleteDeliveryAddress = exports.validateUpdateDeliveryAddress = exports.validateCreateDeliveryAddress = exports.validateGetAllCategories = exports.validateGetOrDeleteCategory = exports.validateUpdateCategory = exports.validateCreateCategoriesBulk = exports.validateCreateCategory = exports.validateCreateOrUpdateVendorOpeningHours = exports.validateUpdateVendor = exports.validateGetAllVendors = exports.validateGetVendorById = exports.validateVendorId = exports.validateCreateVendor = exports.validateVerifyAndLogin = exports.validateLogin = exports.validateRegisterUser = exports.validate = void 0;
 var express_validator_1 = require("express-validator");
 var client_1 = require("@prisma/client");
 // Generic validation middleware
@@ -97,16 +97,41 @@ exports.validateVerifyAndLogin = [
 ];
 exports.validateCreateVendor = [
     //body('userId').notEmpty().withMessage('User ID is required'),
-    express_validator_1.body('name').notEmpty().withMessage('Name is required'),
-    express_validator_1.body('email').optional().isEmail().withMessage('Invalid email format'),
-    express_validator_1.body('tagline').optional().isString().withMessage('Tagline must be a string'),
-    express_validator_1.body('details').optional().isString().withMessage('Details must be a string'),
-    express_validator_1.body('image').optional().isString().withMessage('Image must be a string'),
-    express_validator_1.body('address').optional().isString().withMessage('Address must be a string'),
-    express_validator_1.body('longitude').optional().isNumeric().withMessage('Longitude must be a number'),
-    express_validator_1.body('latitude').optional().isNumeric().withMessage('Latitude must be a number'),
-    express_validator_1.body('meta').optional().isObject().withMessage('Meta must be an object'),
-    express_validator_1.body('categories').optional().isArray().withMessage('Categories must be an array'),
+    express_validator_1.body('name').trim().notEmpty().withMessage('Name is required'),
+    express_validator_1.body('email').optional({ checkFalsy: true }).isEmail().normalizeEmail().withMessage('Invalid email format'),
+    express_validator_1.body('tagline').optional({ checkFalsy: true }).isString().withMessage('Tagline must be a string'),
+    express_validator_1.body('details').optional({ checkFalsy: true }).isString().withMessage('Details must be a string'),
+    express_validator_1.body('image').optional({ checkFalsy: true }).isURL().withMessage('Image must be a valid URL'),
+    express_validator_1.body('address').optional({ checkFalsy: true }).isString().withMessage('Address must be a string'),
+    express_validator_1.body('longitude').optional({ checkFalsy: true }).isFloat().withMessage('Longitude must be a number'),
+    express_validator_1.body('latitude').optional({ checkFalsy: true }).isFloat().withMessage('Latitude must be a number'),
+    express_validator_1.body('meta').optional({ checkFalsy: true }).isObject().withMessage('Meta must be an object'),
+];
+exports.validateVendorId = [express_validator_1.param('id').isUUID(4).withMessage('A valid vendor ID is required in the URL.')];
+exports.validateGetVendorById = [
+    express_validator_1.param('id').isUUID(4).withMessage('A valid vendor ID is required in the URL.'),
+    express_validator_1.query('latitude').optional().isFloat().withMessage('Latitude must be a valid number.'),
+    express_validator_1.query('longitude').optional().isFloat().withMessage('Longitude must be a valid number.'),
+];
+exports.validateGetAllVendors = [
+    express_validator_1.query('name').optional().isString().withMessage('Name must be a string.'),
+    express_validator_1.query('latitude').optional().isFloat().withMessage('Latitude must be a valid number.'),
+    express_validator_1.query('longitude').optional().isFloat().withMessage('Longitude must be a valid number.'),
+    express_validator_1.query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer.'),
+    express_validator_1.query('size').optional().isInt({ min: 1, max: 100 }).withMessage('Size must be an integer between 1 and 100.'),
+];
+exports.validateUpdateVendor = [
+    express_validator_1.param('id').isUUID(4).withMessage('A valid vendor ID is required in the URL.'),
+    express_validator_1.body('name').optional().trim().notEmpty().withMessage('Name cannot be empty.'),
+    express_validator_1.body('email').optional({ checkFalsy: true }).isEmail().normalizeEmail().withMessage('Invalid email format'),
+    express_validator_1.body('tagline').optional({ checkFalsy: true }).isString().withMessage('Tagline must be a string'),
+    express_validator_1.body('details').optional({ checkFalsy: true }).isString().withMessage('Details must be a string'),
+    express_validator_1.body('image').optional({ checkFalsy: true }).isURL().withMessage('Image must be a valid URL'),
+    express_validator_1.body('address').optional({ checkFalsy: true }).isString().withMessage('Address must be a string'),
+    express_validator_1.body('longitude').optional({ checkFalsy: true }).isFloat().withMessage('Longitude must be a number'),
+    express_validator_1.body('latitude').optional({ checkFalsy: true }).isFloat().withMessage('Latitude must be a number'),
+    express_validator_1.body('isVerified').optional().isBoolean().withMessage('isVerified must be a boolean.'),
+    express_validator_1.body('meta').optional({ checkFalsy: true }).isObject().withMessage('Meta must be an object'),
 ];
 exports.validateCreateOrUpdateVendorOpeningHours = [
     express_validator_1.body('vendorId').notEmpty().withMessage('Vendor ID is required'),
