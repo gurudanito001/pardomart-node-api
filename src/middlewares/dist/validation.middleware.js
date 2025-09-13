@@ -43,7 +43,7 @@ var __spreadArrays = (this && this.__spreadArrays) || function () {
     return r;
 };
 exports.__esModule = true;
-exports.validateRemoveFromWishlist = exports.validateAddToWishlist = exports.validateGetVendorProductsByTagIds = exports.validateGetVendorProductsByCategory = exports.validateGetVendorProductByBarcode = exports.validateCreateVendorProductWithBarcode = exports.validateGetTrendingVendorProducts = exports.validateGetAllVendorProducts = exports.validateGetProductsByTagIds = exports.validateGetProductByBarcode = exports.validateGetAllProducts = exports.validateGetOrDeleteProduct = exports.validateUpdateVendorProduct = exports.validateCreateVendorProduct = exports.validateUpdateProduct = exports.validateCreateProduct = exports.validateUpdateTip = exports.validateGetDeliverySlots = exports.validateDeclineOrder = exports.validateVendorOrderAction = exports.validateGetVendorOrders = exports.validateUpdateOrder = exports.validateUpdateOrderStatus = exports.validateGetOrDeleteOrder = exports.validateCreateOrder = exports.validateGetOrDeleteDeliveryAddress = exports.validateUpdateDeliveryAddress = exports.validateCreateDeliveryAddress = exports.validateGetAllCategories = exports.validateGetOrDeleteCategory = exports.validateUpdateCategory = exports.validateCreateCategoriesBulk = exports.validateCreateCategory = exports.validateCreateOrUpdateVendorOpeningHours = exports.validateCreateVendor = exports.validateVerifyAndLogin = exports.validateLogin = exports.validateRegisterUser = exports.validate = void 0;
+exports.validateCalculateFees = exports.validateFeeType = exports.validateFeeId = exports.validateUpdateFee = exports.validateCreateFee = exports.validateRemoveFromWishlist = exports.validateAddToWishlist = exports.validateGetVendorProductsByTagIds = exports.validateGetVendorProductsByCategory = exports.validateGetVendorProductByBarcode = exports.validateCreateVendorProductWithBarcode = exports.validateGetTrendingVendorProducts = exports.validateGetAllVendorProducts = exports.validateGetProductsByTagIds = exports.validateGetProductByBarcode = exports.validateGetAllProducts = exports.validateGetOrDeleteProduct = exports.validateUpdateVendorProduct = exports.validateCreateVendorProduct = exports.validateUpdateProduct = exports.validateCreateProduct = exports.validateUpdateTip = exports.validateGetDeliverySlots = exports.validateDeclineOrder = exports.validateVendorOrderAction = exports.validateGetVendorOrders = exports.validateUpdateOrder = exports.validateUpdateOrderStatus = exports.validateGetOrDeleteOrder = exports.validateCreateOrder = exports.validateGetOrDeleteDeliveryAddress = exports.validateUpdateDeliveryAddress = exports.validateCreateDeliveryAddress = exports.validateGetAllCategories = exports.validateGetOrDeleteCategory = exports.validateUpdateCategory = exports.validateCreateCategoriesBulk = exports.validateCreateCategory = exports.validateCreateOrUpdateVendorOpeningHours = exports.validateCreateVendor = exports.validateVerifyAndLogin = exports.validateLogin = exports.validateRegisterUser = exports.validate = void 0;
 var express_validator_1 = require("express-validator");
 var client_1 = require("@prisma/client");
 // Generic validation middleware
@@ -344,4 +344,53 @@ exports.validateAddToWishlist = [
 exports.validateRemoveFromWishlist = [
     express_validator_1.param('id').isUUID(4).withMessage('A valid wishlistItemId is required in the URL path.'),
 ];
-// Add more validation chains as needed
+exports.validateCreateFee = [
+    express_validator_1.body('type')
+        .trim()
+        .notEmpty()
+        .withMessage('Fee type is required.')
+        .isIn(Object.values(client_1.FeeType))
+        .withMessage("type must be one of: " + Object.values(client_1.FeeType).join(', ')),
+    express_validator_1.body('amount').isFloat({ min: 0 }).withMessage('Amount must be a non-negative number.'),
+    express_validator_1.body('method')
+        .trim()
+        .notEmpty()
+        .withMessage('Fee calculation method is required.')
+        .isIn(Object.values(client_1.FeeCalculationMethod))
+        .withMessage("method must be one of: " + Object.values(client_1.FeeCalculationMethod).join(', ')),
+    express_validator_1.body('unit').optional({ nullable: true }).isString().withMessage('unit must be a string.'),
+    express_validator_1.body('minThreshold').optional({ nullable: true }).isFloat().withMessage('minThreshold must be a number.'),
+    express_validator_1.body('maxThreshold').optional({ nullable: true }).isFloat().withMessage('maxThreshold must be a number.'),
+    express_validator_1.body('thresholdAppliesTo').optional({ nullable: true }).isString().withMessage('thresholdAppliesTo must be a string.'),
+    express_validator_1.body('isActive').isBoolean().withMessage('isActive must be a boolean.'),
+];
+exports.validateUpdateFee = [
+    express_validator_1.param('id').isUUID(4).withMessage('A valid fee ID is required in the URL.'),
+    express_validator_1.body('amount').optional().isFloat({ min: 0 }).withMessage('Amount must be a non-negative number if provided.'),
+    express_validator_1.body('method')
+        .optional()
+        .trim()
+        .isIn(Object.values(client_1.FeeCalculationMethod))
+        .withMessage("method must be one of: " + Object.values(client_1.FeeCalculationMethod).join(', ')),
+    express_validator_1.body('unit').optional({ nullable: true }).isString().withMessage('unit must be a string.'),
+    express_validator_1.body('minThreshold').optional({ nullable: true }).isFloat().withMessage('minThreshold must be a number.'),
+    express_validator_1.body('maxThreshold').optional({ nullable: true }).isFloat().withMessage('maxThreshold must be a number.'),
+    express_validator_1.body('thresholdAppliesTo').optional({ nullable: true }).isString().withMessage('thresholdAppliesTo must be a string.'),
+    express_validator_1.body('isActive').optional().isBoolean().withMessage('isActive must be a boolean if provided.'),
+];
+exports.validateFeeId = [express_validator_1.param('id').isUUID(4).withMessage('A valid fee ID is required in the URL.')];
+exports.validateFeeType = [
+    express_validator_1.param('type')
+        .trim()
+        .notEmpty()
+        .withMessage('Fee type is required in the URL.')
+        .isIn(Object.values(client_1.FeeType))
+        .withMessage("type must be one of: " + Object.values(client_1.FeeType).join(', ')),
+];
+exports.validateCalculateFees = [
+    express_validator_1.body('orderItems').isArray({ min: 1 }).withMessage('orderItems array is required and cannot be empty.'),
+    express_validator_1.body('orderItems.*.vendorProductId').isUUID(4).withMessage('Each order item must have a valid vendorProductId.'),
+    express_validator_1.body('orderItems.*.quantity').isInt({ gt: 0 }).withMessage('Each order item must have a positive integer quantity.'),
+    express_validator_1.body('vendorId').isUUID(4).withMessage('A valid vendorId is required.'),
+    express_validator_1.body('deliveryAddressId').isUUID(4).withMessage('A valid deliveryAddressId is required.'),
+];

@@ -51,3 +51,16 @@ export const authorizeVendorAccess = (req: Request, res: Response, next: NextFun
   }
   next();
 };
+
+// Generic role-based authorization middleware
+export const authorize = (allowedRoles: Role[]) => {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (!req.userRole) {
+      return res.status(403).json({ error: 'Forbidden: User role not available on request.' });
+    }
+    if (!allowedRoles.includes(req.userRole)) {
+      return res.status(403).json({ error: `Forbidden: Requires one of the following roles: ${allowedRoles.join(', ')}` });
+    }
+    next();
+  };
+};

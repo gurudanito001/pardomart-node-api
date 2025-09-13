@@ -1,7 +1,17 @@
 // middlewares/validation.middleware.ts
 import { Request, Response, NextFunction } from 'express';
 import { validationResult, ValidationChain, body, param, query } from 'express-validator';
-import { Days, Role, PaymentMethods, ShoppingMethod, DeliveryMethod, OrderStatus, PaymentStatus } from '@prisma/client';
+import {
+  Days,
+  Role,
+  PaymentMethods,
+  ShoppingMethod,
+  DeliveryMethod,
+  OrderStatus,
+  PaymentStatus,
+  FeeType,
+  FeeCalculationMethod,
+} from '@prisma/client';
 
 // Generic validation middleware
 export const validate = (validations: ValidationChain[]) => {
@@ -335,4 +345,59 @@ export const validateRemoveFromWishlist = [
   param('id').isUUID(4).withMessage('A valid wishlistItemId is required in the URL path.'),
 ];
 
-// Add more validation chains as needed
+
+
+export const validateCreateFee = [
+  body('type')
+    .trim()
+    .notEmpty()
+    .withMessage('Fee type is required.')
+    .isIn(Object.values(FeeType))
+    .withMessage(`type must be one of: ${Object.values(FeeType).join(', ')}`),
+  body('amount').isFloat({ min: 0 }).withMessage('Amount must be a non-negative number.'),
+  body('method')
+    .trim()
+    .notEmpty()
+    .withMessage('Fee calculation method is required.')
+    .isIn(Object.values(FeeCalculationMethod))
+    .withMessage(`method must be one of: ${Object.values(FeeCalculationMethod).join(', ')}`),
+  body('unit').optional({ nullable: true }).isString().withMessage('unit must be a string.'),
+  body('minThreshold').optional({ nullable: true }).isFloat().withMessage('minThreshold must be a number.'),
+  body('maxThreshold').optional({ nullable: true }).isFloat().withMessage('maxThreshold must be a number.'),
+  body('thresholdAppliesTo').optional({ nullable: true }).isString().withMessage('thresholdAppliesTo must be a string.'),
+  body('isActive').isBoolean().withMessage('isActive must be a boolean.'),
+];
+
+export const validateUpdateFee = [
+  param('id').isUUID(4).withMessage('A valid fee ID is required in the URL.'),
+  body('amount').optional().isFloat({ min: 0 }).withMessage('Amount must be a non-negative number if provided.'),
+  body('method')
+    .optional()
+    .trim()
+    .isIn(Object.values(FeeCalculationMethod))
+    .withMessage(`method must be one of: ${Object.values(FeeCalculationMethod).join(', ')}`),
+  body('unit').optional({ nullable: true }).isString().withMessage('unit must be a string.'),
+  body('minThreshold').optional({ nullable: true }).isFloat().withMessage('minThreshold must be a number.'),
+  body('maxThreshold').optional({ nullable: true }).isFloat().withMessage('maxThreshold must be a number.'),
+  body('thresholdAppliesTo').optional({ nullable: true }).isString().withMessage('thresholdAppliesTo must be a string.'),
+  body('isActive').optional().isBoolean().withMessage('isActive must be a boolean if provided.'),
+];
+
+export const validateFeeId = [param('id').isUUID(4).withMessage('A valid fee ID is required in the URL.')];
+
+export const validateFeeType = [
+  param('type')
+    .trim()
+    .notEmpty()
+    .withMessage('Fee type is required in the URL.')
+    .isIn(Object.values(FeeType))
+    .withMessage(`type must be one of: ${Object.values(FeeType).join(', ')}`),
+];
+
+export const validateCalculateFees = [
+  body('orderItems').isArray({ min: 1 }).withMessage('orderItems array is required and cannot be empty.'),
+  body('orderItems.*.vendorProductId').isUUID(4).withMessage('Each order item must have a valid vendorProductId.'),
+  body('orderItems.*.quantity').isInt({ gt: 0 }).withMessage('Each order item must have a positive integer quantity.'),
+  body('vendorId').isUUID(4).withMessage('A valid vendorId is required.'),
+  body('deliveryAddressId').isUUID(4).withMessage('A valid deliveryAddressId is required.'),
+];
