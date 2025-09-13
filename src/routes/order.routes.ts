@@ -19,6 +19,14 @@ const router = Router();
 // All routes below require a logged-in user
 router.use(authenticate);
 
+
+// --- Vendor-facing routes ---
+router.get('/vendorOrders', authorizeVendorAccess, validate(validateGetVendorOrders), orderController.getVendorOrdersController);
+router.patch('/:orderId/accept', authorizeVendorAccess, validate(validateVendorOrderAction), orderController.acceptOrderController);
+router.patch('/:orderId/decline', authorizeVendorAccess, validate(validateDeclineOrder), orderController.declineOrderController);
+router.patch('/:orderId/start-shopping', authorizeVendorAccess, validate(validateVendorOrderAction), orderController.startShoppingController);
+
+
 // --- Customer-facing routes ---
 router.post('/', validate(validateCreateOrder), orderController.createOrderController);
 router.get('/user/me', orderController.getOrdersByUserController);
@@ -28,10 +36,5 @@ router.patch('/:id', validate(validateUpdateOrder), orderController.updateOrderC
 router.patch('/:id/status', validate(validateUpdateOrderStatus), orderController.updateOrderStatusController);
 router.patch('/:orderId/tip', validate(validateUpdateTip), orderController.updateOrderTipController);
 
-// --- Vendor-facing routes ---
-router.get('/vendor', authorizeVendorAccess, validate(validateGetVendorOrders), orderController.getVendorOrdersController);
-router.patch('/:orderId/accept', authorizeVendorAccess, validate(validateVendorOrderAction), orderController.acceptOrderController);
-router.patch('/:orderId/decline', authorizeVendorAccess, validate(validateDeclineOrder), orderController.declineOrderController);
-router.patch('/:orderId/start-shopping', authorizeVendorAccess, validate(validateVendorOrderAction), orderController.startShoppingController);
 
 export default router;

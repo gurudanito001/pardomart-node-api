@@ -326,15 +326,16 @@ export const validateGetProductsByTagIds = [
 ];
 
 export const validateGetAllVendorProducts = [
-  query('vendorId').isUUID(4).withMessage('A valid vendorId is required.'),
+  query('vendorId').optional().isUUID(4).withMessage('Vendor id must be a valid UUID.'),
   query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer.'),
   query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100.'),
   query('search').optional().isString(),
 ];
 
 export const validateGetTrendingVendorProducts = [
-  query('latitude').notEmpty().isFloat().withMessage('Latitude is required and must be a number.'),
-  query('longitude').notEmpty().isFloat().withMessage('Longitude is required and must be a number.'),
+  query('vendorId').isUUID(4).withMessage('A valid vendorId is required.'),
+  query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer.'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100.'),
 ];
 
 export const validateCreateVendorProductWithBarcode = [

@@ -329,14 +329,15 @@ exports.validateGetProductsByTagIds = [
     express_validator_1.query('tagIds.*').isUUID(4).withMessage('Each tagId must be a valid UUID.'),
 ];
 exports.validateGetAllVendorProducts = [
-    express_validator_1.query('vendorId').isUUID(4).withMessage('A valid vendorId is required.'),
+    express_validator_1.query('vendorId').optional().isUUID(4).withMessage('Vendor id must be a valid UUID.'),
     express_validator_1.query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer.'),
     express_validator_1.query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100.'),
     express_validator_1.query('search').optional().isString(),
 ];
 exports.validateGetTrendingVendorProducts = [
-    express_validator_1.query('latitude').notEmpty().isFloat().withMessage('Latitude is required and must be a number.'),
-    express_validator_1.query('longitude').notEmpty().isFloat().withMessage('Longitude is required and must be a number.'),
+    express_validator_1.query('vendorId').isUUID(4).withMessage('A valid vendorId is required.'),
+    express_validator_1.query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer.'),
+    express_validator_1.query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100.'),
 ];
 exports.validateCreateVendorProductWithBarcode = [
     express_validator_1.body('vendorId').isUUID(4).withMessage('A valid vendorId is required.'),
