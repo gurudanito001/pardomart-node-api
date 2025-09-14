@@ -47,17 +47,21 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteUser = exports.updateUser = exports.createUser = exports.getUserById = exports.getAllVerificationCodes = exports.getAllUsers = exports.checkUserExistence = void 0;
-var client_1 = require("@prisma/client"); // Assuming you're using @prisma/client
-var prisma = new client_1.PrismaClient();
+exports.deleteUser = exports.updateUser = exports.createUser = exports.getUserById = exports.getAllVerificationCodes = exports.getAllUsers = exports.findMany = exports.checkUserExistence = void 0;
+var prisma_1 = require("../config/prisma");
 exports.checkUserExistence = function (filters) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.user.findFirst({
+        return [2 /*return*/, prisma_1.prisma.user.findFirst({
                 where: {
                     mobileNumber: filters.mobileNumber,
                     role: filters.role
                 }
             })];
+    });
+}); };
+exports.findMany = function (args) { return __awaiter(void 0, void 0, Promise, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, prisma_1.prisma.user.findMany(args)];
     });
 }); };
 exports.getAllUsers = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
@@ -67,7 +71,7 @@ exports.getAllUsers = function (filters, pagination) { return __awaiter(void 0, 
             case 0:
                 skip = (pagination.page - 1) * pagination.take;
                 takeVal = pagination.take;
-                return [4 /*yield*/, prisma.user.findMany({
+                return [4 /*yield*/, prisma_1.prisma.user.findMany({
                         where: __assign(__assign(__assign(__assign({}, (filters.mobileVerified !== undefined && { mobileVerified: filters.mobileVerified })), (filters.active !== undefined && { active: filters.active })), (filters.role && { role: filters.role })), (filters.language && { language: filters.language })),
                         skip: skip,
                         take: takeVal,
@@ -77,7 +81,7 @@ exports.getAllUsers = function (filters, pagination) { return __awaiter(void 0, 
                     })];
             case 1:
                 users = _a.sent();
-                return [4 /*yield*/, prisma.user.count({
+                return [4 /*yield*/, prisma_1.prisma.user.count({
                         where: __assign(__assign(__assign(__assign({}, (filters.mobileVerified !== undefined && { mobileVerified: filters.mobileVerified })), (filters.active !== undefined && { active: filters.active })), (filters.role && { role: filters.role })), (filters.language && { language: filters.language }))
                     })];
             case 2:
@@ -89,12 +93,12 @@ exports.getAllUsers = function (filters, pagination) { return __awaiter(void 0, 
 }); };
 exports.getAllVerificationCodes = function () { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.verification.findMany()];
+        return [2 /*return*/, prisma_1.prisma.verification.findMany()];
     });
 }); };
 exports.getUserById = function (userId) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.user.findUnique({
+        return [2 /*return*/, prisma_1.prisma.user.findUnique({
                 where: {
                     id: userId
                 }
@@ -103,7 +107,7 @@ exports.getUserById = function (userId) { return __awaiter(void 0, void 0, Promi
 }); };
 exports.createUser = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.user.create({
+        return [2 /*return*/, prisma_1.prisma.user.create({
                 data: {
                     name: payload.name,
                     email: payload.email,
@@ -120,7 +124,7 @@ exports.createUser = function (payload) { return __awaiter(void 0, void 0, Promi
 }); };
 exports.updateUser = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.user.update({
+        return [2 /*return*/, prisma_1.prisma.user.update({
                 where: {
                     id: payload.id
                 },
@@ -140,7 +144,7 @@ exports.updateUser = function (payload) { return __awaiter(void 0, void 0, Promi
 }); };
 exports.deleteUser = function (userId) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.user["delete"]({
+        return [2 /*return*/, prisma_1.prisma.user["delete"]({
                 where: {
                     id: userId
                 }

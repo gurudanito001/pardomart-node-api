@@ -14,6 +14,8 @@ import feeRouter from './fee.routes';
 import deliveryAddressRouter from './deliveryAddress.routes';
 import ratingRouter from './rating.routes';
 import wishlistRouter from './wishlist.routes';
+import deviceRouter from './device.routes';
+import notificationRouter from './notification.routes';
 
 // Create a new Router instance
 const router = Router();
@@ -34,5 +36,7 @@ router.use('/api/v1/fees', feeRouter);
 router.use('/api/v1/deliveryAddress', deliveryAddressRouter);
 router.use('/api/v1/ratings', ratingRouter);
 router.use('/api/v1/wishlist', wishlistRouter);
+router.use('/api/v1/devices', deviceRouter);
+router.use('/api/v1/notifications', notificationRouter);
 
 export default router;

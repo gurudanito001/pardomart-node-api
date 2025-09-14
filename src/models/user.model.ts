@@ -1,6 +1,5 @@
-import { PrismaClient, User, Role, Verification } from '@prisma/client'; // Assuming you're using @prisma/client
-
-const prisma = new PrismaClient();
+import { Prisma, User, Role, Verification } from '@prisma/client'; // Assuming you're using @prisma/client
+import { prisma } from '../config/prisma';
 
 
 export interface CheckUserFilters {
@@ -15,6 +14,10 @@ export const checkUserExistence = async (filters: CheckUserFilters): Promise<Use
       role: filters.role
     },
   });
+};
+
+export const findMany = async (args: Prisma.UserFindManyArgs): Promise<User[]> => {
+  return prisma.user.findMany(args);
 };
 
 // User CRUD Functions

@@ -1,4 +1,5 @@
 import swaggerJsdoc from 'swagger-jsdoc';
+import { NotificationType } from '@prisma/client';
 //import { version } from '../../';
 
 const options: swaggerJsdoc.Options = {
@@ -773,6 +774,29 @@ const options: swaggerJsdoc.Options = {
             createdAt: { type: 'string', format: 'date-time' },
           },
         },
+        Notification: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            userId: { type: 'string', format: 'uuid' },
+            type: { type: 'string', enum: Object.values(NotificationType) },
+            title: { type: 'string' },
+            body: { type: 'string' },
+            isRead: { type: 'boolean' },
+            meta: { type: 'object', additionalProperties: true, nullable: true, description: 'Contains related IDs, like orderId, for deep linking.' },
+            createdAt: { type: 'string', format: 'date-time' },
+          },
+        },
+        PaginatedNotifications: {
+          type: 'object',
+          properties: {
+            page: { type: 'integer' },
+            totalPages: { type: 'integer' },
+            pageSize: { type: 'integer' },
+            totalCount: { type: 'integer' },
+            data: { type: 'array', items: { $ref: '#/components/schemas/Notification' } },
+          },
+        },
         // --- Vendor Opening Hours Schemas ---
         DaysEnum: {
           type: 'string',
@@ -836,6 +860,10 @@ const options: swaggerJsdoc.Options = {
       {
         name: 'Delivery',
         description: 'Endpoints related to order delivery tracking.',
+      },
+      {
+        name: 'Notification',
+        description: 'Endpoints for managing user notifications.',
       },
       {
         name: 'Delivery Address',

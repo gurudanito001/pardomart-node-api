@@ -36,41 +36,41 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteUser = exports.updateUser = exports.createUser = exports.getUserById = exports.getAllVerificationCodes = exports.findMany = exports.getAllUsers = void 0;
-// user.service.ts
-var userModel = require("../models/user.model"); // Import functions from user.model.ts
-exports.getAllUsers = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+exports.removeDeviceByToken = exports.getDevicesByUserId = exports.upsertDevice = void 0;
+// src/models/device.model.ts
+var prisma_1 = require("../config/prisma");
+exports.upsertDevice = function (userId, fcmToken, platform) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.getAllUsers(filters, pagination)];
+        return [2 /*return*/, prisma_1.prisma.device.upsert({
+                where: { fcmToken: fcmToken },
+                update: { userId: userId, platform: platform },
+                create: { userId: userId, fcmToken: fcmToken, platform: platform }
+            })];
     });
 }); };
-exports.findMany = function (args) { return __awaiter(void 0, void 0, void 0, function () {
+exports.getDevicesByUserId = function (userId) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.findMany(args)];
+        return [2 /*return*/, prisma_1.prisma.device.findMany({
+                where: { userId: userId }
+            })];
     });
 }); };
-exports.getAllVerificationCodes = function () { return __awaiter(void 0, void 0, Promise, function () {
+exports.removeDeviceByToken = function (fcmToken) { return __awaiter(void 0, void 0, Promise, function () {
+    var error_1;
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.getAllVerificationCodes()];
-    });
-}); };
-exports.getUserById = function (userId) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.getUserById(userId)];
-    });
-}); };
-exports.createUser = function (payload) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.createUser(payload)];
-    });
-}); };
-exports.updateUser = function (payload) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.updateUser(payload)];
-    });
-}); };
-exports.deleteUser = function (userId) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.deleteUser(userId)];
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                return [4 /*yield*/, prisma_1.prisma.device["delete"]({
+                        where: { fcmToken: fcmToken }
+                    })];
+            case 1: return [2 /*return*/, _a.sent()];
+            case 2:
+                error_1 = _a.sent();
+                // Prisma throws an error if the record to delete is not found
+                console.warn("Attempted to delete a non-existent device token: " + fcmToken);
+                return [2 /*return*/, null];
+            case 3: return [2 /*return*/];
+        }
     });
 }); };

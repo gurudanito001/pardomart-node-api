@@ -1,4 +1,5 @@
 "use strict";
+// src/utils/fcm.util.ts
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -36,41 +37,15 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteUser = exports.updateUser = exports.createUser = exports.getUserById = exports.getAllVerificationCodes = exports.findMany = exports.getAllUsers = void 0;
-// user.service.ts
-var userModel = require("../models/user.model"); // Import functions from user.model.ts
-exports.getAllUsers = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+exports.sendPushNotification = void 0;
+exports.sendPushNotification = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.getAllUsers(filters, pagination)];
-    });
-}); };
-exports.findMany = function (args) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.findMany(args)];
-    });
-}); };
-exports.getAllVerificationCodes = function () { return __awaiter(void 0, void 0, Promise, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.getAllVerificationCodes()];
-    });
-}); };
-exports.getUserById = function (userId) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.getUserById(userId)];
-    });
-}); };
-exports.createUser = function (payload) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.createUser(payload)];
-    });
-}); };
-exports.updateUser = function (payload) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.updateUser(payload)];
-    });
-}); };
-exports.deleteUser = function (userId) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.deleteUser(userId)];
+        console.log('--- Sending Push Notification ---');
+        console.log("To tokens: " + payload.tokens.join(', '));
+        console.log("Title: " + payload.title);
+        console.log("Body: " + payload.body);
+        console.log("Data: " + JSON.stringify(payload.data));
+        console.log('---------------------------------');
+        return [2 /*return*/];
     });
 }); };

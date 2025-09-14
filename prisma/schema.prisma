@@ -48,7 +48,9 @@ model User {
   // New fields for ratings
   ratingsGiven    Rating[] @relation("RatingsGiven")
   ratingsReceived Rating[] @relation("RatingsReceived")
-  wishlistItems   WishlistItem[]
+  wishlistItems   WishlistItem[] 
+  notifications   Notification[]
+  devices         Device[]
 
   @@unique([mobileNumber, role])
 }
@@ -153,6 +155,33 @@ model DeliveryPersonLocation {
   order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId, createdAt])
+}
+
+model Device {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fcmToken  String   @unique // A token should be unique across all devices
+  platform  String   // e.g., "ios", "android", "web"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String
+  isRead    Boolean          @default(false)
+  meta      Json? // To store related IDs like orderId, etc. for deep linking
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([userId, isRead, createdAt])
 }
 
 model Order {
@@ -411,4 +440,28 @@ enum RatingType {
   VENDOR
   SHOPPER
   DELIVERER
+}
+
+enum NotificationType {
+  // Order related for Customer
+  ORDER_ACCEPTED
+  ORDER_DECLINED
+  ORDER_SHOPPING_STARTED
+  ORDER_READY_FOR_PICKUP
+  ORDER_READY_FOR_DELIVERY
+  EN_ROUTE
+  DELIVERED
+  COMPLETED
+  ORDER_CANCELLED
+
+  // Order related for Vendor/Staff
+  NEW_ORDER_PLACED
+
+  // Order related for Shopper/Delivery Person
+  ASSIGNED_TO_ORDER
+
+  // General
+  NEW_MESSAGE
+  PROMOTIONAL
+  ACCOUNT_UPDATE
 }

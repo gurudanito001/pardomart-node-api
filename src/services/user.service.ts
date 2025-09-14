@@ -1,6 +1,6 @@
 // user.service.ts
 import * as userModel from '../models/user.model'; // Import functions from user.model.ts
-import { Verification, User } from '@prisma/client';
+import { Verification, User, Prisma } from '@prisma/client';
 import { GetUserFilters, CreateUserPayload, UpdateUserPayload } from '../models/user.model'; // Import types
 
 
@@ -12,6 +12,10 @@ interface CheckUserFilters {
 
 export const getAllUsers = async (filters: GetUserFilters, pagination: { page: number; take: number }) => {
   return userModel.getAllUsers(filters, pagination);
+};
+
+export const findMany = async (args: Prisma.UserFindManyArgs) => {
+  return userModel.findMany(args);
 };
 
 export const getAllVerificationCodes = async (): Promise<Verification[]> => {

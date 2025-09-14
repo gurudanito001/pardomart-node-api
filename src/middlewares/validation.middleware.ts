@@ -11,6 +11,7 @@ import {
   PaymentStatus,
   FeeType,
   FeeCalculationMethod,
+  NotificationType,
 } from '@prisma/client';
 
 // Generic validation middleware
@@ -483,3 +484,21 @@ export const validateAddLocation = [
 ];
 
 export const validateGetPath = [param('orderId').isUUID(4).withMessage('A valid order ID is required in the URL.')];
+
+// --- Device Validation ---
+export const validateRegisterDevice = [
+  body('fcmToken').isString().notEmpty().withMessage('fcmToken is required.'),
+  body('platform').isIn(['ios', 'android', 'web']).withMessage('Platform must be ios, android, or web.'),
+];
+
+export const validateUnregisterDevice = [param('fcmToken').isString().notEmpty().withMessage('fcmToken is required in path.')];
+
+// --- Notification Validation ---
+export const validateGetNotifications = [
+  query('page').optional().isInt({ min: 1 }).toInt().withMessage('Page must be a positive integer.'),
+  query('size').optional().isInt({ min: 1, max: 100 }).toInt().withMessage('Size must be an integer between 1 and 100.'),
+];
+
+export const validateNotificationId = [
+  param('notificationId').isUUID(4).withMessage('A valid notification ID is required in the URL.'),
+];

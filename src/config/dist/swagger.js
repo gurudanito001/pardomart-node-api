@@ -1,6 +1,7 @@
 "use strict";
 exports.__esModule = true;
 var swagger_jsdoc_1 = require("swagger-jsdoc");
+var client_1 = require("@prisma/client");
 //import { version } from '../../';
 var options = {
     definition: {
@@ -772,6 +773,29 @@ var options = {
                         createdAt: { type: 'string', format: 'date-time' }
                     }
                 },
+                Notification: {
+                    type: 'object',
+                    properties: {
+                        id: { type: 'string', format: 'uuid' },
+                        userId: { type: 'string', format: 'uuid' },
+                        type: { type: 'string', "enum": Object.values(client_1.NotificationType) },
+                        title: { type: 'string' },
+                        body: { type: 'string' },
+                        isRead: { type: 'boolean' },
+                        meta: { type: 'object', additionalProperties: true, nullable: true, description: 'Contains related IDs, like orderId, for deep linking.' },
+                        createdAt: { type: 'string', format: 'date-time' }
+                    }
+                },
+                PaginatedNotifications: {
+                    type: 'object',
+                    properties: {
+                        page: { type: 'integer' },
+                        totalPages: { type: 'integer' },
+                        pageSize: { type: 'integer' },
+                        totalCount: { type: 'integer' },
+                        data: { type: 'array', items: { $ref: '#/components/schemas/Notification' } }
+                    }
+                },
                 // --- Vendor Opening Hours Schemas ---
                 DaysEnum: {
                     type: 'string',
@@ -835,6 +859,10 @@ var options = {
             {
                 name: 'Delivery',
                 description: 'Endpoints related to order delivery tracking.'
+            },
+            {
+                name: 'Notification',
+                description: 'Endpoints for managing user notifications.'
             },
             {
                 name: 'Delivery Address',
