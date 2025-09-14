@@ -235,6 +235,108 @@ export const searchByCategoryName = async (
   }
 };
 
+export const searchByCategoryId = async (
+  categoryId: string,
+  userLatitude: number,
+  userLongitude: number
+): Promise<{ stores: StoreWithProducts[] }> => {
+  try {
+    // This logic to find descendants can be expensive.
+    // For a production system with many categories, consider a recursive CTE in raw SQL
+    // or denormalizing the category tree.
+    const allCategories = await prisma.category.findMany({
+      select: { id: true, parentId: true },
+    });
+    const childrenMap = new Map<string, string[]>();
+    allCategories.forEach(c => {
+      if (c.parentId) {
+        if (!childrenMap.has(c.parentId)) {
+          childrenMap.set(c.parentId, []);
+        }
+        childrenMap.get(c.parentId)!.push(c.id);
+      }
+    });
+
+    const getDescendantIds = (catId: string): string[] => {
+      const descendants: string[] = [];
+      const queue: string[] = [...(childrenMap.get(catId) || [])];
+      const visited = new Set<string>(queue);
+
+      while (queue.length > 0) {
+        const currentId = queue.shift()!;
+        descendants.push(currentId);
+        const children = childrenMap.get(currentId) || [];
+        for (const childId of children) {
+          if (!visited.has(childId)) {
+            visited.add(childId);
+            queue.push(childId);
+          }
+        }
+      }
+      return descendants;
+    };
+
+    const descendantIds = getDescendantIds(categoryId);
+    const allCategoryIds = [categoryId, ...descendantIds];
+
+    // Find vendors that have products in any of the matched categories.
+    const vendors = await prisma.vendor.findMany({
+      where: {
+        vendorProducts: {
+          some: {
+            categories: {
+              some: {
+                id: { in: allCategoryIds },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!vendors || vendors.length === 0) {
+      return { stores: [] };
+    }
+
+    // For each vendor, fetch products and calculate distance.
+    const storesWithProducts: StoreWithProducts[] = await Promise.all(
+      vendors.map(async (vendor) => {
+        const [products, totalProducts] = await prisma.$transaction([
+          prisma.vendorProduct.findMany({
+            where: {
+              vendorId: vendor.id,
+              categories: {
+                some: { id: { in: allCategoryIds } },
+              },
+            },
+            take: 10,
+            orderBy: { createdAt: 'desc' },
+          }),
+          prisma.vendorProduct.count({
+            where: {
+              vendorId: vendor.id,
+              categories: {
+                some: { id: { in: allCategoryIds } },
+              },
+            },
+          }),
+        ]);
+
+        const distance = getDistance({ latitude: userLatitude, longitude: userLongitude }, { latitude: vendor.latitude || 0, longitude: vendor.longitude || 0 });
+
+        return { vendor: { ...vendor, distance: distance / 1000 }, products, totalProducts };
+      })
+    );
+
+    // Sort stores by distance
+    storesWithProducts.sort((a, b) => a.vendor.distance! - b.vendor.distance!);
+
+    return { stores: storesWithProducts };
+  } catch (error) {
+    console.error('Error in searchByCategoryId:', error);
+    throw error;
+  }
+};
 
 interface CategoryWithProducts {
   category: Category;

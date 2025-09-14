@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.searchStoreProductsController = exports.searchByCategoryController = exports.searchByStoreController = exports.searchByProductController = void 0;
+exports.searchStoreProductsController = exports.searchByCategoryIdController = exports.searchByCategoryController = exports.searchByStoreController = exports.searchByProductController = void 0;
 var generalSearch_service_1 = require("../services/generalSearch.service");
 /**
  * @swagger
@@ -83,8 +83,8 @@ exports.searchByProductController = function (req, res) { return __awaiter(void 
             case 0:
                 _a = req.query, search = _a.search, latitude = _a.latitude, longitude = _a.longitude;
                 userSearchTerm = search;
-                userLatitude = parseFloat(latitude);
-                userLongitude = parseFloat(longitude);
+                userLatitude = latitude;
+                userLongitude = longitude;
                 _b.label = 1;
             case 1:
                 _b.trys.push([1, 3, , 4]);
@@ -147,8 +147,8 @@ exports.searchByStoreController = function (req, res) { return __awaiter(void 0,
             case 0:
                 _a = req.query, search = _a.search, latitude = _a.latitude, longitude = _a.longitude;
                 userSearchTerm = search;
-                userLatitude = parseFloat(latitude);
-                userLongitude = parseFloat(longitude);
+                userLatitude = latitude;
+                userLongitude = longitude;
                 _b.label = 1;
             case 1:
                 _b.trys.push([1, 3, , 4]);
@@ -210,8 +210,8 @@ exports.searchByCategoryController = function (req, res) { return __awaiter(void
             case 0:
                 _a = req.query, search = _a.search, latitude = _a.latitude, longitude = _a.longitude;
                 userSearchTerm = search;
-                userLatitude = parseFloat(latitude);
-                userLongitude = parseFloat(longitude);
+                userLatitude = latitude;
+                userLongitude = longitude;
                 _b.label = 1;
             case 1:
                 _b.trys.push([1, 3, , 4]);
@@ -223,6 +223,68 @@ exports.searchByCategoryController = function (req, res) { return __awaiter(void
             case 3:
                 error_3 = _b.sent();
                 res.status(500).json({ error: error_3.message || 'Internal server error' });
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /generalSearch/category/{categoryId}:
+ *   get:
+ *     summary: Find stores by category ID
+ *     tags: [General Search]
+ *     description: Searches for a category by ID and returns a list of stores that sell products in that category (and its sub-categories), sorted by proximity to the user.
+ *     parameters:
+ *       - in: path
+ *         name: categoryId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the category to search for.
+ *       - in: query
+ *         name: latitude
+ *         required: true
+ *         schema:
+ *           type: number
+ *           format: float
+ *         description: User's current latitude.
+ *       - in: query
+ *         name: longitude
+ *         required: true
+ *         schema:
+ *           type: number
+ *           format: float
+ *         description: User's current longitude.
+ *     responses:
+ *       200:
+ *         description: A list of stores matching the category search, sorted by distance.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/StoresByProductResult'
+ *       400:
+ *         description: Bad request due to missing or invalid parameters.
+ */
+exports.searchByCategoryIdController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var categoryId, _a, latitude, longitude, result, error_4;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                categoryId = req.params.categoryId;
+                _a = req.query, latitude = _a.latitude, longitude = _a.longitude;
+                _b.label = 1;
+            case 1:
+                _b.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, generalSearch_service_1.searchByCategoryIdService(categoryId, latitude, longitude)];
+            case 2:
+                result = _b.sent();
+                res.json(result);
+                return [3 /*break*/, 4];
+            case 3:
+                error_4 = _b.sent();
+                res.status(500).json({ error: error_4.message || 'Internal server error' });
                 return [3 /*break*/, 4];
             case 4: return [2 /*return*/];
         }
@@ -268,7 +330,7 @@ exports.searchByCategoryController = function (req, res) { return __awaiter(void
  *         description: Internal server error.
  */
 exports.searchStoreProductsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var storeId, _a, searchTerm, categoryId, result, error_4;
+    var storeId, _a, searchTerm, categoryId, result, error_5;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -286,9 +348,9 @@ exports.searchStoreProductsController = function (req, res) { return __awaiter(v
                 res.json(result);
                 return [3 /*break*/, 4];
             case 3:
-                error_4 = _b.sent();
-                console.error('Error searching store products:', error_4);
-                res.status(500).json({ error: error_4.message || 'Internal server error' });
+                error_5 = _b.sent();
+                console.error('Error searching store products:', error_5);
+                res.status(500).json({ error: error_5.message || 'Internal server error' });
                 return [3 /*break*/, 4];
             case 4: return [2 /*return*/];
         }

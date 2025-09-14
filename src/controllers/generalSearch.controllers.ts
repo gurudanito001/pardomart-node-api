@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { searchProductsService, searchStoreService, searchByCategoryService, searchStoreProductsService } from '../services/generalSearch.service';
+import { searchProductsService, searchStoreService, searchByCategoryService, searchStoreProductsService, searchByCategoryIdService } from '../services/generalSearch.service';
 
 
 /**
@@ -43,9 +43,9 @@ import { searchProductsService, searchStoreService, searchByCategoryService, sea
 export const searchByProductController = async (req: Request, res: Response) => {
   const {search, latitude, longitude } = req.query;
 
-  const userSearchTerm = search as string;
-  const userLatitude = parseFloat(latitude as string);
-  const userLongitude = parseFloat(longitude as string);
+  const userSearchTerm = search as string; // Already validated
+  const userLatitude = latitude as unknown as number; // Validated and converted by middleware
+  const userLongitude = longitude as unknown as number; // Validated and converted by middleware
 
   try {
     const result = await searchProductsService(userSearchTerm, userLatitude, userLongitude);
@@ -97,9 +97,9 @@ export const searchByProductController = async (req: Request, res: Response) => 
 export const searchByStoreController = async (req: Request, res: Response) => {
   const {search, latitude, longitude } = req.query;
 
-  const userSearchTerm = search as string;
-  const userLatitude = parseFloat(latitude as string);
-  const userLongitude = parseFloat(longitude as string);
+  const userSearchTerm = search as string; // Already validated
+  const userLatitude = latitude as unknown as number; // Validated and converted by middleware
+  const userLongitude = longitude as unknown as number; // Validated and converted by middleware
 
   try {
     const result = await searchStoreService(userSearchTerm, userLatitude, userLongitude);
@@ -150,12 +150,63 @@ export const searchByStoreController = async (req: Request, res: Response) => {
 export const searchByCategoryController = async (req: Request, res: Response) => {
   const { search, latitude, longitude } = req.query;
 
-  const userSearchTerm = search as string;
-  const userLatitude = parseFloat(latitude as string);
-  const userLongitude = parseFloat(longitude as string);
+  const userSearchTerm = search as string; // Already validated
+  const userLatitude = latitude as unknown as number; // Validated and converted by middleware
+  const userLongitude = longitude as unknown as number; // Validated and converted by middleware
 
   try {
     const result = await searchByCategoryService(userSearchTerm, userLatitude, userLongitude);
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
+ * /generalSearch/category/{categoryId}:
+ *   get:
+ *     summary: Find stores by category ID
+ *     tags: [General Search]
+ *     description: Searches for a category by ID and returns a list of stores that sell products in that category (and its sub-categories), sorted by proximity to the user.
+ *     parameters:
+ *       - in: path
+ *         name: categoryId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the category to search for.
+ *       - in: query
+ *         name: latitude
+ *         required: true
+ *         schema:
+ *           type: number
+ *           format: float
+ *         description: User's current latitude.
+ *       - in: query
+ *         name: longitude
+ *         required: true
+ *         schema:
+ *           type: number
+ *           format: float
+ *         description: User's current longitude.
+ *     responses:
+ *       200:
+ *         description: A list of stores matching the category search, sorted by distance.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/StoresByProductResult'
+ *       400:
+ *         description: Bad request due to missing or invalid parameters.
+ */
+export const searchByCategoryIdController = async (req: Request, res: Response) => {
+  const { categoryId } = req.params;
+  const { latitude, longitude } = req.query;
+
+  try {
+    const result = await searchByCategoryIdService(categoryId, latitude as unknown as number, longitude as unknown as number);
     res.json(result);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal server error' });

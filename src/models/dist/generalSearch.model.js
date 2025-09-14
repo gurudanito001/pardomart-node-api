@@ -65,7 +65,7 @@ var __spreadArrays = (this && this.__spreadArrays) || function () {
     return r;
 };
 exports.__esModule = true;
-exports.searchStoreProducts = exports.vendorCategoryWithProducts = exports.searchByCategoryName = exports.searchByStoreName = exports.searchByProductName = void 0;
+exports.searchStoreProducts = exports.vendorCategoryWithProducts = exports.searchByCategoryId = exports.searchByCategoryName = exports.searchByStoreName = exports.searchByProductName = void 0;
 var client_1 = require("@prisma/client");
 var getPreciseDistance_1 = require("geolib/es/getPreciseDistance");
 var prisma = new client_1.PrismaClient();
@@ -290,13 +290,15 @@ exports.searchByCategoryName = function (searchTerm, userLatitude, userLongitude
         }
     });
 }); };
-exports.vendorCategoryWithProducts = function (vendorId, parentCategoryId) { return __awaiter(void 0, void 0, Promise, function () {
-    var allCategories, childrenMap_1, getDescendantIds, baseCategories, results, _i, baseCategories_1, baseCategory, descendantIds, categoryIdsToFetch, products, error_4;
+exports.searchByCategoryId = function (categoryId, userLatitude, userLongitude) { return __awaiter(void 0, void 0, Promise, function () {
+    var allCategories, childrenMap_1, getDescendantIds, descendantIds, allCategoryIds_2, vendors, storesWithProducts, error_4;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                _a.trys.push([0, 6, , 7]);
-                return [4 /*yield*/, prisma.category.findMany()];
+                _a.trys.push([0, 4, , 5]);
+                return [4 /*yield*/, prisma.category.findMany({
+                        select: { id: true, parentId: true }
+                    })];
             case 1:
                 allCategories = _a.sent();
                 childrenMap_1 = new Map();
@@ -308,9 +310,9 @@ exports.vendorCategoryWithProducts = function (vendorId, parentCategoryId) { ret
                         childrenMap_1.get(c.parentId).push(c.id);
                     }
                 });
-                getDescendantIds = function (categoryId) {
+                getDescendantIds = function (catId) {
                     var descendants = [];
-                    var queue = __spreadArrays((childrenMap_1.get(categoryId) || []));
+                    var queue = __spreadArrays((childrenMap_1.get(catId) || []));
                     var visited = new Set(queue);
                     while (queue.length > 0) {
                         var currentId = queue.shift();
@@ -318,6 +320,106 @@ exports.vendorCategoryWithProducts = function (vendorId, parentCategoryId) { ret
                         var children = childrenMap_1.get(currentId) || [];
                         for (var _i = 0, children_1 = children; _i < children_1.length; _i++) {
                             var childId = children_1[_i];
+                            if (!visited.has(childId)) {
+                                visited.add(childId);
+                                queue.push(childId);
+                            }
+                        }
+                    }
+                    return descendants;
+                };
+                descendantIds = getDescendantIds(categoryId);
+                allCategoryIds_2 = __spreadArrays([categoryId], descendantIds);
+                return [4 /*yield*/, prisma.vendor.findMany({
+                        where: {
+                            vendorProducts: {
+                                some: {
+                                    categories: {
+                                        some: {
+                                            id: { "in": allCategoryIds_2 }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    })];
+            case 2:
+                vendors = _a.sent();
+                if (!vendors || vendors.length === 0) {
+                    return [2 /*return*/, { stores: [] }];
+                }
+                return [4 /*yield*/, Promise.all(vendors.map(function (vendor) { return __awaiter(void 0, void 0, void 0, function () {
+                        var _a, products, totalProducts, distance;
+                        return __generator(this, function (_b) {
+                            switch (_b.label) {
+                                case 0: return [4 /*yield*/, prisma.$transaction([
+                                        prisma.vendorProduct.findMany({
+                                            where: {
+                                                vendorId: vendor.id,
+                                                categories: {
+                                                    some: { id: { "in": allCategoryIds_2 } }
+                                                }
+                                            },
+                                            take: 10,
+                                            orderBy: { createdAt: 'desc' }
+                                        }),
+                                        prisma.vendorProduct.count({
+                                            where: {
+                                                vendorId: vendor.id,
+                                                categories: {
+                                                    some: { id: { "in": allCategoryIds_2 } }
+                                                }
+                                            }
+                                        }),
+                                    ])];
+                                case 1:
+                                    _a = _b.sent(), products = _a[0], totalProducts = _a[1];
+                                    distance = getPreciseDistance_1["default"]({ latitude: userLatitude, longitude: userLongitude }, { latitude: vendor.latitude || 0, longitude: vendor.longitude || 0 });
+                                    return [2 /*return*/, { vendor: __assign(__assign({}, vendor), { distance: distance / 1000 }), products: products, totalProducts: totalProducts }];
+                            }
+                        });
+                    }); }))];
+            case 3:
+                storesWithProducts = _a.sent();
+                // Sort stores by distance
+                storesWithProducts.sort(function (a, b) { return a.vendor.distance - b.vendor.distance; });
+                return [2 /*return*/, { stores: storesWithProducts }];
+            case 4:
+                error_4 = _a.sent();
+                console.error('Error in searchByCategoryId:', error_4);
+                throw error_4;
+            case 5: return [2 /*return*/];
+        }
+    });
+}); };
+exports.vendorCategoryWithProducts = function (vendorId, parentCategoryId) { return __awaiter(void 0, void 0, Promise, function () {
+    var allCategories, childrenMap_2, getDescendantIds, baseCategories, results, _i, baseCategories_1, baseCategory, descendantIds, categoryIdsToFetch, products, error_5;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 6, , 7]);
+                return [4 /*yield*/, prisma.category.findMany()];
+            case 1:
+                allCategories = _a.sent();
+                childrenMap_2 = new Map();
+                allCategories.forEach(function (c) {
+                    if (c.parentId) {
+                        if (!childrenMap_2.has(c.parentId)) {
+                            childrenMap_2.set(c.parentId, []);
+                        }
+                        childrenMap_2.get(c.parentId).push(c.id);
+                    }
+                });
+                getDescendantIds = function (categoryId) {
+                    var descendants = [];
+                    var queue = __spreadArrays((childrenMap_2.get(categoryId) || []));
+                    var visited = new Set(queue);
+                    while (queue.length > 0) {
+                        var currentId = queue.shift();
+                        descendants.push(currentId);
+                        var children = childrenMap_2.get(currentId) || [];
+                        for (var _i = 0, children_2 = children; _i < children_2.length; _i++) {
+                            var childId = children_2[_i];
                             if (!visited.has(childId)) {
                                 visited.add(childId);
                                 queue.push(childId);
@@ -362,9 +464,9 @@ exports.vendorCategoryWithProducts = function (vendorId, parentCategoryId) { ret
                 return [3 /*break*/, 2];
             case 5: return [2 /*return*/, results];
             case 6:
-                error_4 = _a.sent();
-                console.error('Error fetching categories with products for vendor:', error_4);
-                throw error_4; // Re-throw for centralized error handling
+                error_5 = _a.sent();
+                console.error('Error fetching categories with products for vendor:', error_5);
+                throw error_5; // Re-throw for centralized error handling
             case 7: return [2 /*return*/];
         }
     });
