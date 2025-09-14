@@ -143,6 +143,18 @@ model OrderItem {
   updatedAt       DateTime      @updatedAt
 }
 
+model DeliveryPersonLocation {
+  id        String   @id @default(cuid())
+  latitude  Float
+  longitude Float
+  createdAt DateTime @default(now())
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+}
+
 model Order {
   id                         String           @id @default(uuid())
   userId                     String
@@ -175,6 +187,7 @@ model Order {
   createdAt                  DateTime         @default(now())
   updatedAt                  DateTime         @updatedAt
   ratings Rating[]
+  deliveryPersonLocations DeliveryPersonLocation[]
 }
 
 model DeliveryAddress {

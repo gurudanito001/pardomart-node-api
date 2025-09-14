@@ -1,7 +1,7 @@
-import { PrismaClient, VendorProduct, Vendor, Category, Prisma } from '@prisma/client';
+import { VendorProduct, Vendor, Category, Prisma } from '@prisma/client';
 import getDistance from 'geolib/es/getPreciseDistance';
+import { prisma } from '../config/prisma';
 
-const prisma = new PrismaClient();
 
 
 

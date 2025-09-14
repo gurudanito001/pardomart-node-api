@@ -12,7 +12,10 @@ import {
   validateGetDeliverySlots,
   validateUpdateTip,
 } from '../middlewares/validation.middleware';
-import { authenticate, authorizeVendorAccess } from '../middlewares/auth.middleware';
+import { authenticate, authorizeVendorAccess, authorize } from '../middlewares/auth.middleware';
+import { Role } from '@prisma/client';
+import { validateAddLocation, validateGetPath } from '../middlewares/validation.middleware';
+import { addLocationController, getPathController } from '../controllers/deliveryPersonLocation.controller';
 
 const router = Router();
 
@@ -35,6 +38,24 @@ router.get('/:id', validate(validateGetOrDeleteOrder), orderController.getOrderB
 router.patch('/:id', validate(validateUpdateOrder), orderController.updateOrderController);
 router.patch('/:id/status', validate(validateUpdateOrderStatus), orderController.updateOrderStatusController);
 router.patch('/:orderId/tip', validate(validateUpdateTip), orderController.updateOrderTipController);
+
+// Add a location point for a delivery person
+router.post(
+  '/:orderId/delivery-location',
+  authenticate,
+  authorize([Role.delivery]), // Ensure this role exists
+  validate(validateAddLocation),
+  addLocationController
+);
+
+// Get the delivery path for an order
+router.get(
+  '/:orderId/delivery-path',
+  authenticate,
+  authorize([Role.customer, Role.admin, Role.delivery]),
+  validate(validateGetPath),
+  getPathController // You would add this controller to order.controller.ts
+);
 
 
 export default router;

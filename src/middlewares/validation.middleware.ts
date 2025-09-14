@@ -475,3 +475,11 @@ export const validateUpdateUser = [
   body('language').optional().isString().withMessage('language must be a string if provided.'),
   body('notification').optional().isObject().withMessage('notification must be an object if provided.'),
 ];
+
+export const validateAddLocation = [
+  param('orderId').isUUID(4).withMessage('A valid order ID is required in the URL.'),
+  body('latitude').isFloat({ min: -90, max: 90 }).withMessage('A valid latitude is required.'),
+  body('longitude').isFloat({ min: -180, max: 180 }).withMessage('A valid longitude is required.'),
+];
+
+export const validateGetPath = [param('orderId').isUUID(4).withMessage('A valid order ID is required in the URL.')];

@@ -4,6 +4,9 @@ var express_1 = require("express");
 var orderController = require("../controllers/order.controllers");
 var validation_middleware_1 = require("../middlewares/validation.middleware");
 var auth_middleware_1 = require("../middlewares/auth.middleware");
+var client_1 = require("@prisma/client");
+var validation_middleware_2 = require("../middlewares/validation.middleware");
+var deliveryPersonLocation_controller_1 = require("../controllers/deliveryPersonLocation.controller");
 var router = express_1.Router();
 // All routes below require a logged-in user
 router.use(auth_middleware_1.authenticate);
@@ -20,4 +23,10 @@ router.get('/:id', validation_middleware_1.validate(validation_middleware_1.vali
 router.patch('/:id', validation_middleware_1.validate(validation_middleware_1.validateUpdateOrder), orderController.updateOrderController);
 router.patch('/:id/status', validation_middleware_1.validate(validation_middleware_1.validateUpdateOrderStatus), orderController.updateOrderStatusController);
 router.patch('/:orderId/tip', validation_middleware_1.validate(validation_middleware_1.validateUpdateTip), orderController.updateOrderTipController);
+// Add a location point for a delivery person
+router.post('/:orderId/delivery-location', auth_middleware_1.authenticate, auth_middleware_1.authorize([client_1.Role.delivery]), // Ensure this role exists
+validation_middleware_1.validate(validation_middleware_2.validateAddLocation), deliveryPersonLocation_controller_1.addLocationController);
+// Get the delivery path for an order
+router.get('/:orderId/delivery-path', auth_middleware_1.authenticate, auth_middleware_1.authorize([client_1.Role.customer, client_1.Role.admin, client_1.Role.delivery]), validation_middleware_1.validate(validation_middleware_2.validateGetPath), deliveryPersonLocation_controller_1.getPathController // You would add this controller to order.controller.ts
+);
 exports["default"] = router;

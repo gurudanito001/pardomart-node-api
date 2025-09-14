@@ -481,7 +481,7 @@ const options: swaggerJsdoc.Options = {
             deliveryAddressId: { type: 'string', format: 'uuid' },
             deliveryInstructions: { type: 'string' },
             shoppingHandlerId: { type: 'string', format: 'uuid' },
-            deliveryHandlerId: { type: 'string', format: 'uuid' },
+            deliveryPersonId: { type: 'string', format: 'uuid' },
             shoppingMethod: { $ref: '#/components/schemas/ShoppingMethod' },
             deliveryMethod: { $ref: '#/components/schemas/DeliveryMethod' },
             scheduledShoppingStartTime: { type: 'string', format: 'date-time' }
@@ -512,7 +512,7 @@ const options: swaggerJsdoc.Options = {
             deliveryMethod: { $ref: '#/components/schemas/DeliveryMethod' },
             scheduledShoppingStartTime: { type: 'string', format: 'date-time', nullable: true },
             shoppingHandlerId: { type: 'string', format: 'uuid', nullable: true },
-            deliveryHandlerId: { type: 'string', format: 'uuid', nullable: true },
+            deliveryPersonId: { type: 'string', format: 'uuid', nullable: true },
             reasonForDecline: { type: 'string', nullable: true },
             createdAt: { type: 'string', format: 'date-time' },
             updatedAt: { type: 'string', format: 'date-time' },
@@ -745,6 +745,25 @@ const options: swaggerJsdoc.Options = {
             },
           },
         },
+        DeliveryPathPoint: {
+          type: 'object',
+          description: 'A single geographic point in a delivery path.',
+          properties: {
+            latitude: { type: 'number', format: 'float' },
+            longitude: { type: 'number', format: 'float' },
+            createdAt: { type: 'string', format: 'date-time' },
+          },
+        },
+        DeliveryPersonLocation: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            orderId: { type: 'string', format: 'uuid' },
+            latitude: { type: 'number', format: 'float' },
+            longitude: { type: 'number', format: 'float' },
+            createdAt: { type: 'string', format: 'date-time' },
+          },
+        },
         // --- Vendor Opening Hours Schemas ---
         DaysEnum: {
           type: 'string',
@@ -804,6 +823,10 @@ const options: swaggerJsdoc.Options = {
       {
         name: 'Order',
         description: 'Order management endpoints',
+      },
+      {
+        name: 'Delivery',
+        description: 'Endpoints related to order delivery tracking.',
       },
       {
         name: 'Delivery Address',

@@ -66,16 +66,15 @@ var __spreadArrays = (this && this.__spreadArrays) || function () {
 };
 exports.__esModule = true;
 exports.searchStoreProducts = exports.vendorCategoryWithProducts = exports.searchByCategoryId = exports.searchByCategoryName = exports.searchByStoreName = exports.searchByProductName = void 0;
-var client_1 = require("@prisma/client");
 var getPreciseDistance_1 = require("geolib/es/getPreciseDistance");
-var prisma = new client_1.PrismaClient();
+var prisma_1 = require("../config/prisma");
 exports.searchByProductName = function (searchTerm, userLatitude, userLongitude) { return __awaiter(void 0, void 0, Promise, function () {
     var vendors, storesWithProducts, error_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 3, , 4]);
-                return [4 /*yield*/, prisma.vendor.findMany({
+                return [4 /*yield*/, prisma_1.prisma.vendor.findMany({
                         where: {
                             vendorProducts: {
                                 some: {
@@ -98,8 +97,8 @@ exports.searchByProductName = function (searchTerm, userLatitude, userLongitude)
                         var _a, products, totalProducts, distance;
                         return __generator(this, function (_b) {
                             switch (_b.label) {
-                                case 0: return [4 /*yield*/, prisma.$transaction([
-                                        prisma.vendorProduct.findMany({
+                                case 0: return [4 /*yield*/, prisma_1.prisma.$transaction([
+                                        prisma_1.prisma.vendorProduct.findMany({
                                             where: {
                                                 vendorId: vendor.id,
                                                 product: {
@@ -111,7 +110,7 @@ exports.searchByProductName = function (searchTerm, userLatitude, userLongitude)
                                             },
                                             take: 10
                                         }),
-                                        prisma.vendorProduct.count({
+                                        prisma_1.prisma.vendorProduct.count({
                                             where: {
                                                 vendorId: vendor.id,
                                                 product: {
@@ -153,7 +152,7 @@ exports.searchByStoreName = function (searchTerm, userLatitude, userLongitude) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 3, , 4]);
-                return [4 /*yield*/, prisma.vendor.findMany({
+                return [4 /*yield*/, prisma_1.prisma.vendor.findMany({
                         where: {
                             name: {
                                 contains: searchTerm,
@@ -176,13 +175,13 @@ exports.searchByStoreName = function (searchTerm, userLatitude, userLongitude) {
                         var _a, products, totalProducts;
                         return __generator(this, function (_b) {
                             switch (_b.label) {
-                                case 0: return [4 /*yield*/, prisma.$transaction([
-                                        prisma.vendorProduct.findMany({
+                                case 0: return [4 /*yield*/, prisma_1.prisma.$transaction([
+                                        prisma_1.prisma.vendorProduct.findMany({
                                             where: { vendorId: vendor.id },
                                             take: 10,
                                             orderBy: { createdAt: 'desc' }
                                         }),
-                                        prisma.vendorProduct.count({
+                                        prisma_1.prisma.vendorProduct.count({
                                             where: { vendorId: vendor.id }
                                         }),
                                     ])];
@@ -209,7 +208,7 @@ exports.searchByCategoryName = function (searchTerm, userLatitude, userLongitude
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 4, , 5]);
-                return [4 /*yield*/, prisma.category.findMany({
+                return [4 /*yield*/, prisma_1.prisma.category.findMany({
                         where: {
                             name: {
                                 contains: searchTerm,
@@ -231,7 +230,7 @@ exports.searchByCategoryName = function (searchTerm, userLatitude, userLongitude
                     category.children.forEach(function (child) { return categoryIds_1.add(child.id); });
                 });
                 allCategoryIds_1 = Array.from(categoryIds_1);
-                return [4 /*yield*/, prisma.vendor.findMany({
+                return [4 /*yield*/, prisma_1.prisma.vendor.findMany({
                         where: {
                             vendorProducts: {
                                 some: {
@@ -262,7 +261,7 @@ exports.searchByCategoryName = function (searchTerm, userLatitude, userLongitude
                                 case 0:
                                     distance = getPreciseDistance_1["default"]({ latitude: userLatitude, longitude: userLongitude }, { latitude: vendor.latitude || 0, longitude: vendor.longitude || 0 });
                                     vendorProducts = vendor.vendorProducts, storeDetails = __rest(vendor, ["vendorProducts"]);
-                                    return [4 /*yield*/, prisma.vendorProduct.count({
+                                    return [4 /*yield*/, prisma_1.prisma.vendorProduct.count({
                                             where: {
                                                 vendorId: vendor.id,
                                                 categories: { some: { id: { "in": allCategoryIds_1 } } }
@@ -296,7 +295,7 @@ exports.searchByCategoryId = function (categoryId, userLatitude, userLongitude) 
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 4, , 5]);
-                return [4 /*yield*/, prisma.category.findMany({
+                return [4 /*yield*/, prisma_1.prisma.category.findMany({
                         select: { id: true, parentId: true }
                     })];
             case 1:
@@ -330,7 +329,7 @@ exports.searchByCategoryId = function (categoryId, userLatitude, userLongitude) 
                 };
                 descendantIds = getDescendantIds(categoryId);
                 allCategoryIds_2 = __spreadArrays([categoryId], descendantIds);
-                return [4 /*yield*/, prisma.vendor.findMany({
+                return [4 /*yield*/, prisma_1.prisma.vendor.findMany({
                         where: {
                             vendorProducts: {
                                 some: {
@@ -352,8 +351,8 @@ exports.searchByCategoryId = function (categoryId, userLatitude, userLongitude) 
                         var _a, products, totalProducts, distance;
                         return __generator(this, function (_b) {
                             switch (_b.label) {
-                                case 0: return [4 /*yield*/, prisma.$transaction([
-                                        prisma.vendorProduct.findMany({
+                                case 0: return [4 /*yield*/, prisma_1.prisma.$transaction([
+                                        prisma_1.prisma.vendorProduct.findMany({
                                             where: {
                                                 vendorId: vendor.id,
                                                 categories: {
@@ -363,7 +362,7 @@ exports.searchByCategoryId = function (categoryId, userLatitude, userLongitude) 
                                             take: 10,
                                             orderBy: { createdAt: 'desc' }
                                         }),
-                                        prisma.vendorProduct.count({
+                                        prisma_1.prisma.vendorProduct.count({
                                             where: {
                                                 vendorId: vendor.id,
                                                 categories: {
@@ -398,7 +397,7 @@ exports.vendorCategoryWithProducts = function (vendorId, parentCategoryId) { ret
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 6, , 7]);
-                return [4 /*yield*/, prisma.category.findMany()];
+                return [4 /*yield*/, prisma_1.prisma.category.findMany()];
             case 1:
                 allCategories = _a.sent();
                 childrenMap_2 = new Map();
@@ -439,7 +438,7 @@ exports.vendorCategoryWithProducts = function (vendorId, parentCategoryId) { ret
                 baseCategory = baseCategories_1[_i];
                 descendantIds = getDescendantIds(baseCategory.id);
                 categoryIdsToFetch = __spreadArrays([baseCategory.id], descendantIds);
-                return [4 /*yield*/, prisma.vendorProduct.findMany({
+                return [4 /*yield*/, prisma_1.prisma.vendorProduct.findMany({
                         where: {
                             vendorId: vendorId,
                             categories: {
@@ -476,7 +475,7 @@ exports.searchStoreProducts = function (storeId, searchTerm, categoryId) { retur
     var _a;
     return __generator(this, function (_b) {
         switch (_b.label) {
-            case 0: return [4 /*yield*/, prisma.vendor.findUnique({ where: { id: storeId } })];
+            case 0: return [4 /*yield*/, prisma_1.prisma.vendor.findUnique({ where: { id: storeId } })];
             case 1:
                 vendor = _b.sent();
                 if (!vendor) {
@@ -503,11 +502,11 @@ exports.searchStoreProducts = function (storeId, searchTerm, categoryId) { retur
                 }
                 // If searchTerm or categoryId is provided, return a flat list of products.
                 if (searchTerm || categoryId) {
-                    return [2 /*return*/, prisma.vendorProduct.findMany({
+                    return [2 /*return*/, prisma_1.prisma.vendorProduct.findMany({
                             where: where
                         })];
                 }
-                return [4 /*yield*/, prisma.vendorProduct.findMany({
+                return [4 /*yield*/, prisma_1.prisma.vendorProduct.findMany({
                         where: where,
                         include: {
                             product: true,
