@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.updateOrderTipController = exports.startShoppingController = exports.declineOrderController = exports.getAvailableDeliverySlotsController = exports.acceptOrderController = exports.getVendorOrdersController = exports.updateOrderController = exports.updateOrderStatusController = exports.getOrdersByUserController = exports.getOrderByIdController = exports.createOrderController = void 0;
+exports.updateOrderTipController = exports.startShoppingController = exports.declineOrderController = exports.getAvailableDeliverySlotsController = exports.acceptOrderController = exports.respondToReplacementController = exports.updateOrderItemShoppingStatusController = exports.getVendorOrdersController = exports.updateOrderController = exports.updateOrderStatusController = exports.getOrdersByUserController = exports.getOrderByIdController = exports.createOrderController = void 0;
 var order_service_1 = require("../services/order.service"); // Adjust the path if needed
 // --- Order Controllers ---
 /**
@@ -412,6 +412,142 @@ exports.getVendorOrdersController = function (req, res) { return __awaiter(void 
     });
 }); };
 /**
+ * @swagger
+ * /order/{orderId}/items/{itemId}/update-shopping-status:
+ *   patch:
+ *     summary: Update the shopping status of an order item
+ *     tags: [Order, Vendor]
+ *     description: Allows the assigned shopper or delivery person to update an item's status during shopping (e.g., found, not found, suggest replacement).
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: itemId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [FOUND, NOT_FOUND]
+ *               quantityFound:
+ *                 type: integer
+ *                 description: Required if status is FOUND.
+ *               chosenReplacementId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: The vendorProductId of the suggested replacement if status is NOT_FOUND.
+ *     responses:
+ *       200:
+ *         description: The updated order item.
+ *       400:
+ *         description: Bad request (e.g., invalid payload).
+ *       403:
+ *         description: Forbidden (user is not the assigned shopper).
+ *       404:
+ *         description: Order or item not found.
+ */
+exports.updateOrderItemShoppingStatusController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var shopperId, _a, orderId, itemId, payload, updatedItem, error_7;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _b.trys.push([0, 2, , 3]);
+                shopperId = req.userId;
+                _a = req.params, orderId = _a.orderId, itemId = _a.itemId;
+                payload = req.body;
+                return [4 /*yield*/, order_service_1.updateOrderItemShoppingStatusService(orderId, itemId, shopperId, payload)];
+            case 1:
+                updatedItem = _b.sent();
+                res.status(200).json(updatedItem);
+                return [3 /*break*/, 3];
+            case 2:
+                error_7 = _b.sent();
+                if (error_7 instanceof order_service_1.OrderCreationError) {
+                    return [2 /*return*/, res.status(error_7.statusCode).json({ error: error_7.message })];
+                }
+                console.error('Error in updateOrderItemShoppingStatusController:', error_7);
+                res.status(500).json({ error: error_7.message || 'Internal server error' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /order/{orderId}/items/{itemId}/respond-to-replacement:
+ *   patch:
+ *     summary: Respond to a suggested item replacement
+ *     tags: [Order]
+ *     description: Allows a customer to approve or reject a replacement suggested by the shopper.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: itemId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [approved]
+ *             properties:
+ *               approved:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: The updated order item.
+ *       400:
+ *         description: Bad request (e.g., no replacement was suggested).
+ *       403:
+ *         description: Forbidden (user does not own this order).
+ *       404:
+ *         description: Order or item not found.
+ */
+exports.respondToReplacementController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var customerId, _a, orderId, itemId, payload, updatedItem, error_8;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _b.trys.push([0, 2, , 3]);
+                customerId = req.userId;
+                _a = req.params, orderId = _a.orderId, itemId = _a.itemId;
+                payload = req.body;
+                return [4 /*yield*/, order_service_1.respondToReplacementService(orderId, itemId, customerId, payload)];
+            case 1:
+                updatedItem = _b.sent();
+                res.status(200).json(updatedItem);
+                return [3 /*break*/, 3];
+            case 2:
+                error_8 = _b.sent();
+                if (error_8 instanceof order_service_1.OrderCreationError) {
+                    return [2 /*return*/, res.status(error_8.statusCode).json({ error: error_8.message })];
+                }
+                console.error('Error in respondToReplacementController:', error_8);
+                res.status(500).json({ error: error_8.message || 'Internal server error' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
  * Controller to accept a pending order.
  * @swagger
  * /order/{orderId}/accept:
@@ -439,7 +575,7 @@ exports.getVendorOrdersController = function (req, res) { return __awaiter(void 
  *         description: Bad request or order cannot be accepted.
  */
 exports.acceptOrderController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var orderId, shoppingHandlerUserId, vendorId, acceptedOrder, error_7;
+    var orderId, shoppingHandlerUserId, vendorId, acceptedOrder, error_9;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -453,12 +589,12 @@ exports.acceptOrderController = function (req, res) { return __awaiter(void 0, v
                 res.status(200).json(acceptedOrder);
                 return [3 /*break*/, 3];
             case 2:
-                error_7 = _a.sent();
-                console.error('Error in acceptOrderController:', error_7);
-                if (error_7.message.includes('not found') || error_7.message.includes('cannot be accepted')) {
-                    return [2 /*return*/, res.status(400).json({ error: error_7.message })];
+                error_9 = _a.sent();
+                console.error('Error in acceptOrderController:', error_9);
+                if (error_9.message.includes('not found') || error_9.message.includes('cannot be accepted')) {
+                    return [2 /*return*/, res.status(400).json({ error: error_9.message })];
                 }
-                res.status(500).json({ error: error_7.message || 'Internal server error' });
+                res.status(500).json({ error: error_9.message || 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
@@ -511,7 +647,7 @@ exports.acceptOrderController = function (req, res) { return __awaiter(void 0, v
  *         description: Internal server error.
  */
 exports.getAvailableDeliverySlotsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, vendorId, deliveryMethod, slots, error_8;
+    var _a, vendorId, deliveryMethod, slots, error_10;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -523,9 +659,9 @@ exports.getAvailableDeliverySlotsController = function (req, res) { return __awa
                 res.status(200).json(slots);
                 return [3 /*break*/, 3];
             case 2:
-                error_8 = _b.sent();
-                console.error('Error getting delivery slots:', error_8);
-                res.status(500).json({ error: error_8.message || 'Internal server error' });
+                error_10 = _b.sent();
+                console.error('Error getting delivery slots:', error_10);
+                res.status(500).json({ error: error_10.message || 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
@@ -564,7 +700,7 @@ exports.getAvailableDeliverySlotsController = function (req, res) { return __awa
  *         description: Bad request or order cannot be declined.
  */
 exports.declineOrderController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var orderId, reason, vendorId, declinedOrder, error_9;
+    var orderId, reason, vendorId, declinedOrder, error_11;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -578,12 +714,12 @@ exports.declineOrderController = function (req, res) { return __awaiter(void 0, 
                 res.status(200).json(declinedOrder);
                 return [3 /*break*/, 3];
             case 2:
-                error_9 = _a.sent();
-                console.error('Error in declineOrderController:', error_9);
-                if (error_9.message.includes('not found') || error_9.message.includes('cannot be declined')) {
-                    return [2 /*return*/, res.status(400).json({ error: error_9.message })];
+                error_11 = _a.sent();
+                console.error('Error in declineOrderController:', error_11);
+                if (error_11.message.includes('not found') || error_11.message.includes('cannot be declined')) {
+                    return [2 /*return*/, res.status(400).json({ error: error_11.message })];
                 }
-                res.status(500).json({ error: error_9.message || 'Internal server error' });
+                res.status(500).json({ error: error_11.message || 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
@@ -617,7 +753,7 @@ exports.declineOrderController = function (req, res) { return __awaiter(void 0, 
  *         description: Bad request or shopping cannot be started for this order.
  */
 exports.startShoppingController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var orderId, shoppingHandlerUserId, vendorId, updatedOrder, error_10;
+    var orderId, shoppingHandlerUserId, vendorId, updatedOrder, error_12;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -631,12 +767,12 @@ exports.startShoppingController = function (req, res) { return __awaiter(void 0,
                 res.status(200).json(updatedOrder);
                 return [3 /*break*/, 3];
             case 2:
-                error_10 = _a.sent();
-                console.error('Error in startShoppingController:', error_10);
-                if (error_10.message.includes('not found') || error_10.message.includes('cannot start shopping')) {
-                    return [2 /*return*/, res.status(400).json({ error: error_10.message })];
+                error_12 = _a.sent();
+                console.error('Error in startShoppingController:', error_12);
+                if (error_12.message.includes('not found') || error_12.message.includes('cannot start shopping')) {
+                    return [2 /*return*/, res.status(400).json({ error: error_12.message })];
                 }
-                res.status(500).json({ error: error_10.message || 'Internal server error' });
+                res.status(500).json({ error: error_12.message || 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
@@ -691,7 +827,7 @@ exports.startShoppingController = function (req, res) { return __awaiter(void 0,
  *         description: Order not found.
  */
 exports.updateOrderTipController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var userId, orderId, payload, updatedOrder, error_11;
+    var userId, orderId, payload, updatedOrder, error_13;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -705,12 +841,12 @@ exports.updateOrderTipController = function (req, res) { return __awaiter(void 0
                 res.status(200).json(updatedOrder);
                 return [3 /*break*/, 3];
             case 2:
-                error_11 = _a.sent();
-                if (error_11 instanceof order_service_1.OrderCreationError) {
-                    return [2 /*return*/, res.status(error_11.statusCode).json({ error: error_11.message })];
+                error_13 = _a.sent();
+                if (error_13 instanceof order_service_1.OrderCreationError) {
+                    return [2 /*return*/, res.status(error_13.statusCode).json({ error: error_13.message })];
                 }
-                console.error('Error in updateOrderTipController:', error_11);
-                res.status(500).json({ error: error_11.message || 'Internal server error' });
+                console.error('Error in updateOrderTipController:', error_13);
+                res.status(500).json({ error: error_13.message || 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }

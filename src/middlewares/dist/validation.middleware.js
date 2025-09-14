@@ -43,7 +43,7 @@ var __spreadArrays = (this && this.__spreadArrays) || function () {
     return r;
 };
 exports.__esModule = true;
-exports.validateNotificationId = exports.validateGetNotifications = exports.validateUnregisterDevice = exports.validateRegisterDevice = exports.validateMarkMessagesAsRead = exports.validateSendMessage = exports.validateGetPath = exports.validateAddLocation = exports.validateUpdateUser = exports.validateUserId = exports.validateGetAllUsers = exports.validateSearchByCategoryId = exports.validateSearchStoreProducts = exports.validateGeneralSearch = exports.validateCalculateFees = exports.validateFeeType = exports.validateFeeId = exports.validateUpdateFee = exports.validateCreateFee = exports.validateRemoveFromWishlist = exports.validateAddToWishlist = exports.validateGetVendorProductsByTagIds = exports.validateGetVendorProductsByCategory = exports.validateGetVendorProductByBarcode = exports.validateCreateVendorProductWithBarcode = exports.validateGetTrendingVendorProducts = exports.validateGetAllVendorProducts = exports.validateGetProductsByTagIds = exports.validateGetProductByBarcode = exports.validateGetAllProducts = exports.validateGetOrDeleteProduct = exports.validateUpdateVendorProduct = exports.validateCreateVendorProduct = exports.validateUpdateProduct = exports.validateCreateProduct = exports.validateUpdateTip = exports.validateGetDeliverySlots = exports.validateDeclineOrder = exports.validateVendorOrderAction = exports.validateGetVendorOrders = exports.validateUpdateOrder = exports.validateUpdateOrderStatus = exports.validateGetOrDeleteOrder = exports.validateCreateOrder = exports.validateGetOrDeleteDeliveryAddress = exports.validateUpdateDeliveryAddress = exports.validateCreateDeliveryAddress = exports.validateGetAllCategories = exports.validateGetOrDeleteCategory = exports.validateUpdateCategory = exports.validateCreateCategoriesBulk = exports.validateCreateCategory = exports.validateCreateOrUpdateVendorOpeningHours = exports.validateUpdateVendor = exports.validateGetAllVendors = exports.validateGetVendorById = exports.validateVendorId = exports.validateCreateVendor = exports.validateVerifyAndLogin = exports.validateLogin = exports.validateRegisterUser = exports.validate = void 0;
+exports.validateNotificationId = exports.validateGetNotifications = exports.validateUnregisterDevice = exports.validateRegisterDevice = exports.validateRespondToReplacement = exports.validateUpdateOrderItemShoppingStatus = exports.validateMarkMessagesAsRead = exports.validateSendMessage = exports.validateGetPath = exports.validateAddLocation = exports.validateUpdateUser = exports.validateUserId = exports.validateGetAllUsers = exports.validateSearchByCategoryId = exports.validateSearchStoreProducts = exports.validateGeneralSearch = exports.validateCalculateFees = exports.validateFeeType = exports.validateFeeId = exports.validateUpdateFee = exports.validateCreateFee = exports.validateRemoveFromWishlist = exports.validateAddToWishlist = exports.validateGetVendorProductsByTagIds = exports.validateGetVendorProductsByCategory = exports.validateGetVendorProductByBarcode = exports.validateCreateVendorProductWithBarcode = exports.validateGetTrendingVendorProducts = exports.validateGetAllVendorProducts = exports.validateGetProductsByTagIds = exports.validateGetProductByBarcode = exports.validateGetAllProducts = exports.validateGetOrDeleteProduct = exports.validateUpdateVendorProduct = exports.validateCreateVendorProduct = exports.validateUpdateProduct = exports.validateCreateProduct = exports.validateUpdateTip = exports.validateGetDeliverySlots = exports.validateDeclineOrder = exports.validateVendorOrderAction = exports.validateGetVendorOrders = exports.validateUpdateOrder = exports.validateUpdateOrderStatus = exports.validateGetOrDeleteOrder = exports.validateCreateOrder = exports.validateGetOrDeleteDeliveryAddress = exports.validateUpdateDeliveryAddress = exports.validateCreateDeliveryAddress = exports.validateGetAllCategories = exports.validateGetOrDeleteCategory = exports.validateUpdateCategory = exports.validateCreateCategoriesBulk = exports.validateCreateCategory = exports.validateCreateOrUpdateVendorOpeningHours = exports.validateUpdateVendor = exports.validateGetAllVendors = exports.validateGetVendorById = exports.validateVendorId = exports.validateCreateVendor = exports.validateVerifyAndLogin = exports.validateLogin = exports.validateRegisterUser = exports.validate = void 0;
 var express_validator_1 = require("express-validator");
 var client_1 = require("@prisma/client");
 // Generic validation middleware
@@ -472,6 +472,26 @@ exports.validateSendMessage = [
 ];
 exports.validateMarkMessagesAsRead = [
     express_validator_1.param('orderId').isUUID(4).withMessage('A valid orderId is required in the URL.'),
+];
+// --- Live Shopping Validation ---
+exports.validateUpdateOrderItemShoppingStatus = [
+    express_validator_1.param('orderId').isUUID(4).withMessage('A valid orderId is required.'),
+    express_validator_1.param('itemId').isUUID(4).withMessage('A valid itemId is required.'),
+    express_validator_1.body('status').isIn(Object.values(client_1.OrderItemStatus)).withMessage("Status must be one of: " + Object.values(client_1.OrderItemStatus).join(', ')),
+    express_validator_1.body('quantityFound').optional().isInt({ min: 0 }).withMessage('quantityFound must be a non-negative integer.'),
+    express_validator_1.body('chosenReplacementId').optional({ nullable: true }).isUUID(4).withMessage('chosenReplacementId must be a valid UUID.'),
+    express_validator_1.body().custom(function (value, _a) {
+        var req = _a.req;
+        if (req.body.status === 'FOUND' && req.body.quantityFound === undefined) {
+            throw new Error('quantityFound is required when status is FOUND.');
+        }
+        return true;
+    }),
+];
+exports.validateRespondToReplacement = [
+    express_validator_1.param('orderId').isUUID(4).withMessage('A valid orderId is required.'),
+    express_validator_1.param('itemId').isUUID(4).withMessage('A valid itemId is required.'),
+    express_validator_1.body('approved').isBoolean().withMessage('approved must be a boolean.'),
 ];
 // --- Device Validation ---
 exports.validateRegisterDevice = [

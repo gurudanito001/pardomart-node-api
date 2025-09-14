@@ -60,7 +60,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.startShoppingService = exports.declineOrderService = exports.acceptOrderService = exports.getOrdersForVendorDashboard = exports.getAvailableDeliverySlots = exports.updateOrderStatusService = exports.updateOrderService = exports.updateOrderTipService = exports.createOrderFromClient = exports.getOrdersByUserIdService = exports.OrderCreationError = exports.getOrderByIdService = exports.createOrderService = void 0;
+exports.respondToReplacementService = exports.updateOrderItemShoppingStatusService = exports.startShoppingService = exports.declineOrderService = exports.acceptOrderService = exports.getOrdersForVendorDashboard = exports.getAvailableDeliverySlots = exports.updateOrderStatusService = exports.updateOrderService = exports.updateOrderTipService = exports.createOrderFromClient = exports.getOrdersByUserIdService = exports.OrderCreationError = exports.getOrderByIdService = exports.createOrderService = void 0;
 var orderModel = require("../models/order.model"); // Adjust the path if needed
 var client_1 = require("@prisma/client");
 var dayjs_1 = require("dayjs");
@@ -69,6 +69,7 @@ var vendor_service_1 = require("./vendor.service");
 var utc_1 = require("dayjs/plugin/utc");
 var timezone_1 = require("dayjs/plugin/timezone");
 var customParseFormat_1 = require("dayjs/plugin/customParseFormat");
+var socket_1 = require("../socket");
 dayjs_1["default"].extend(utc_1["default"]);
 dayjs_1["default"].extend(timezone_1["default"]);
 dayjs_1["default"].extend(customParseFormat_1["default"]);
@@ -681,6 +682,129 @@ exports.startShoppingService = function (orderId, shoppingHandlerUserId, vendorI
                 console.error("Error starting shopping for order " + orderId + ":", error_5);
                 throw new Error('Failed to start shopping: ' + error_5.message);
             case 4: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * Updates the shopping status of an order item.
+ * Performed by the shopper/vendor.
+ * @param orderId The ID of the order.
+ * @param itemId The ID of the order item to update.
+ * @param shopperId The ID of the user performing the action.
+ * @param payload The update payload.
+ * @returns The updated order item.
+ */
+exports.updateOrderItemShoppingStatusService = function (orderId, itemId, shopperId, payload) { return __awaiter(void 0, void 0, Promise, function () {
+    var status, quantityFound, chosenReplacementId, order, updatedItem, io;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                status = payload.status, quantityFound = payload.quantityFound, chosenReplacementId = payload.chosenReplacementId;
+                return [4 /*yield*/, prisma.order.findUnique({
+                        where: { id: orderId },
+                        select: { shopperId: true, deliveryPersonId: true, userId: true }
+                    })];
+            case 1:
+                order = _a.sent();
+                if (!order) {
+                    throw new OrderCreationError('Order not found.', 404);
+                }
+                // Authorize: only the assigned shopper or delivery person can update
+                if (order.shopperId !== shopperId && order.deliveryPersonId !== shopperId) {
+                    throw new OrderCreationError('You are not authorized to update this order.', 403);
+                }
+                // Validate payload logic
+                if (status === 'FOUND' && quantityFound === undefined) {
+                    throw new OrderCreationError('quantityFound is required when status is FOUND.');
+                }
+                return [4 /*yield*/, prisma.orderItem.update({
+                        where: { id: itemId, orderId: orderId },
+                        data: {
+                            status: status,
+                            quantityFound: quantityFound,
+                            chosenReplacementId: chosenReplacementId,
+                            isReplacementApproved: chosenReplacementId ? null : undefined
+                        },
+                        include: {
+                            vendorProduct: { include: { product: true } },
+                            chosenReplacement: { include: { product: true } }
+                        }
+                    })];
+            case 2:
+                updatedItem = _a.sent();
+                // Emit real-time update to the customer
+                try {
+                    io = socket_1.getIO();
+                    // The room is the orderId. The customer and shopper should be in this room.
+                    io.to(orderId).emit('order_item_updated', updatedItem);
+                }
+                catch (error) {
+                    console.error('Socket.IO error in updateOrderItemShoppingStatusService:', error);
+                }
+                return [2 /*return*/, updatedItem];
+        }
+    });
+}); };
+/**
+ * Allows a customer to approve or reject a suggested replacement for an order item.
+ * @param orderId The ID of the order.
+ * @param itemId The ID of the order item.
+ * @param customerId The ID of the customer.
+ * @param payload The response payload.
+ * @returns The updated order item.
+ */
+exports.respondToReplacementService = function (orderId, itemId, customerId, payload) { return __awaiter(void 0, void 0, Promise, function () {
+    var approved, order, itemToUpdate, updatedItem, io;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                approved = payload.approved;
+                return [4 /*yield*/, prisma.order.findUnique({
+                        where: { id: orderId },
+                        select: { userId: true }
+                    })];
+            case 1:
+                order = _a.sent();
+                if (!order) {
+                    throw new OrderCreationError('Order not found.', 404);
+                }
+                // Authorize: only the customer who placed the order can respond
+                if (order.userId !== customerId) {
+                    throw new OrderCreationError('You are not authorized to respond to this item.', 403);
+                }
+                return [4 /*yield*/, prisma.orderItem.findFirst({
+                        where: { id: itemId, orderId: orderId }
+                    })];
+            case 2:
+                itemToUpdate = _a.sent();
+                if (!itemToUpdate) {
+                    throw new OrderCreationError('Order item not found.', 404);
+                }
+                if (!itemToUpdate.chosenReplacementId) {
+                    throw new OrderCreationError('No replacement has been suggested for this item.', 400);
+                }
+                return [4 /*yield*/, prisma.orderItem.update({
+                        where: { id: itemId },
+                        data: {
+                            isReplacementApproved: approved,
+                            status: approved ? client_1.OrderItemStatus.REPLACED : itemToUpdate.status
+                        },
+                        include: {
+                            vendorProduct: { include: { product: true } },
+                            chosenReplacement: { include: { product: true } }
+                        }
+                    })];
+            case 3:
+                updatedItem = _a.sent();
+                // Emit real-time update to the shopper/vendor
+                try {
+                    io = socket_1.getIO();
+                    io.to(orderId).emit('replacement_responded', updatedItem);
+                }
+                catch (error) {
+                    console.error('Socket.IO error in respondToReplacementService:', error);
+                }
+                return [2 /*return*/, updatedItem];
         }
     });
 }); };

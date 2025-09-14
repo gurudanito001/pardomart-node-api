@@ -13,6 +13,8 @@ import {
   validateUpdateTip,
   validateSendMessage,
   validateMarkMessagesAsRead,
+  validateUpdateOrderItemShoppingStatus,
+  validateRespondToReplacement,
 } from '../middlewares/validation.middleware';
 import { authenticate, authorizeVendorAccess, authorize } from '../middlewares/auth.middleware';
 import { Role } from '@prisma/client';
@@ -46,6 +48,22 @@ router.patch('/:orderId/tip', validate(validateUpdateTip), orderController.updat
 router.post('/:orderId/messages', validate(validateSendMessage), messageController.sendMessageController);
 router.get('/:orderId/messages', messageController.getMessagesForOrderController);
 router.patch('/:orderId/messages/read', validate(validateMarkMessagesAsRead), messageController.markMessagesAsReadController);
+
+// --- Live Shopping Actions ---
+router.patch(
+  '/:orderId/items/:itemId/update-shopping-status',
+  authorize([Role.vendor, Role.vendor_staff, Role.shopper, Role.delivery]),
+  validate(validateUpdateOrderItemShoppingStatus),
+  orderController.updateOrderItemShoppingStatusController
+);
+
+router.patch(
+  '/:orderId/items/:itemId/respond-to-replacement',
+  authorize([Role.customer]),
+  validate(validateRespondToReplacement),
+  orderController.respondToReplacementController
+);
+
 
 // Add a location point for a delivery person
 router.post(

@@ -13,8 +13,12 @@ import {
   declineOrderService,
   startShoppingService,
   OrderCreationError,
+  updateOrderItemShoppingStatusService,
+  respondToReplacementService,
+  UpdateOrderItemShoppingStatusPayload,
+  RespondToReplacementPayload,
 } from '../services/order.service'; // Adjust the path if needed
-import { Order, PaymentMethods, PaymentStatus, OrderStatus, DeliveryMethod } from '@prisma/client';
+import { Order, PaymentMethods, PaymentStatus, OrderStatus, DeliveryMethod, OrderItemStatus } from '@prisma/client';
 import { AuthenticatedRequest } from './vendor.controller';
 
 // --- Order Controllers ---
@@ -340,6 +344,124 @@ export const getVendorOrdersController = async (req: OrderAuthenticatedRequest, 
     res.status(200).json(orders);
   } catch (error: any) {
     console.error('Error in getVendorOrdersController:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
+ * /order/{orderId}/items/{itemId}/update-shopping-status:
+ *   patch:
+ *     summary: Update the shopping status of an order item
+ *     tags: [Order, Vendor]
+ *     description: Allows the assigned shopper or delivery person to update an item's status during shopping (e.g., found, not found, suggest replacement).
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: itemId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [FOUND, NOT_FOUND]
+ *               quantityFound:
+ *                 type: integer
+ *                 description: Required if status is FOUND.
+ *               chosenReplacementId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: The vendorProductId of the suggested replacement if status is NOT_FOUND.
+ *     responses:
+ *       200:
+ *         description: The updated order item.
+ *       400:
+ *         description: Bad request (e.g., invalid payload).
+ *       403:
+ *         description: Forbidden (user is not the assigned shopper).
+ *       404:
+ *         description: Order or item not found.
+ */
+export const updateOrderItemShoppingStatusController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const shopperId = req.userId as string;
+    const { orderId, itemId } = req.params;
+    const payload: UpdateOrderItemShoppingStatusPayload = req.body;
+
+    const updatedItem = await updateOrderItemShoppingStatusService(orderId, itemId, shopperId, payload);
+    res.status(200).json(updatedItem);
+  } catch (error: any) {
+    if (error instanceof OrderCreationError) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+    console.error('Error in updateOrderItemShoppingStatusController:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
+ * /order/{orderId}/items/{itemId}/respond-to-replacement:
+ *   patch:
+ *     summary: Respond to a suggested item replacement
+ *     tags: [Order]
+ *     description: Allows a customer to approve or reject a replacement suggested by the shopper.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: itemId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [approved]
+ *             properties:
+ *               approved:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: The updated order item.
+ *       400:
+ *         description: Bad request (e.g., no replacement was suggested).
+ *       403:
+ *         description: Forbidden (user does not own this order).
+ *       404:
+ *         description: Order or item not found.
+ */
+export const respondToReplacementController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const customerId = req.userId as string;
+    const { orderId, itemId } = req.params;
+    const payload: RespondToReplacementPayload = req.body;
+
+    const updatedItem = await respondToReplacementService(orderId, itemId, customerId, payload);
+    res.status(200).json(updatedItem);
+  } catch (error: any) {
+    if (error instanceof OrderCreationError) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+    console.error('Error in respondToReplacementController:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };

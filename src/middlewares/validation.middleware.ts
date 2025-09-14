@@ -12,6 +12,7 @@ import {
   FeeType,
   FeeCalculationMethod,
   NotificationType,
+  OrderItemStatus,
 } from '@prisma/client';
 
 // Generic validation middleware
@@ -494,6 +495,27 @@ export const validateSendMessage = [
 
 export const validateMarkMessagesAsRead = [
   param('orderId').isUUID(4).withMessage('A valid orderId is required in the URL.'),
+];
+
+// --- Live Shopping Validation ---
+export const validateUpdateOrderItemShoppingStatus = [
+  param('orderId').isUUID(4).withMessage('A valid orderId is required.'),
+  param('itemId').isUUID(4).withMessage('A valid itemId is required.'),
+  body('status').isIn(Object.values(OrderItemStatus)).withMessage(`Status must be one of: ${Object.values(OrderItemStatus).join(', ')}`),
+  body('quantityFound').optional().isInt({ min: 0 }).withMessage('quantityFound must be a non-negative integer.'),
+  body('chosenReplacementId').optional({ nullable: true }).isUUID(4).withMessage('chosenReplacementId must be a valid UUID.'),
+  body().custom((value, { req }) => {
+    if (req.body.status === 'FOUND' && req.body.quantityFound === undefined) {
+      throw new Error('quantityFound is required when status is FOUND.');
+    }
+    return true;
+  }),
+];
+
+export const validateRespondToReplacement = [
+  param('orderId').isUUID(4).withMessage('A valid orderId is required.'),
+  param('itemId').isUUID(4).withMessage('A valid itemId is required.'),
+  body('approved').isBoolean().withMessage('approved must be a boolean.'),
 ];
 
 // --- Device Validation ---
