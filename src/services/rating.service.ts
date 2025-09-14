@@ -141,3 +141,13 @@ export const getAggregateRatingService = async (filters: { ratedVendorId?: strin
   }
   return ratingModel.getAggregateRating(filters);
 };
+
+/**
+ * Gets aggregate ratings for a list of vendor IDs.
+ * @param vendorIds - An array of vendor IDs.
+ * @returns A Map where keys are vendor IDs and values are their aggregate rating.
+ */
+export const getAggregateRatingsForVendorsService = async (vendorIds: string[]): Promise<Map<string, { average: number; count: number }>> => {
+  if (vendorIds.length === 0) return new Map();
+  return ratingModel.getAggregateRatingsForVendors(vendorIds);
+};

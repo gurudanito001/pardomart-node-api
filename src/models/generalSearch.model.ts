@@ -6,7 +6,7 @@ import { prisma } from '../config/prisma';
 
 
 
-interface StoreWithProducts {
+export interface StoreWithProducts {
   vendor: Vendor & { distance?: number }; // Embed distance in Vendor
   products: VendorProduct[];
   totalProducts: number;

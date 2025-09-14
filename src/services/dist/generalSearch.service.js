@@ -1,4 +1,15 @@
 "use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -38,41 +49,65 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 exports.__esModule = true;
 exports.searchByCategoryService = exports.searchStoreService = exports.searchStoreProductsService = exports.searchByCategoryIdService = exports.searchProductsService = void 0;
 var generalSearch_model_1 = require("../models/generalSearch.model");
-// Service Function
-exports.searchProductsService = function (searchTerm, userLatitude, userLongitude) { return __awaiter(void 0, void 0, void 0, function () {
-    var result, error_1;
+var rating_service_1 = require("./rating.service");
+// Helper to attach ratings to a list of stores
+var attachRatingsToStores = function (stores) { return __awaiter(void 0, void 0, Promise, function () {
+    var vendorIds, ratingsMap;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                _a.trys.push([0, 2, , 3]);
+                if (!stores || stores.length === 0) {
+                    return [2 /*return*/, []];
+                }
+                vendorIds = stores.map(function (store) { return store.vendor.id; });
+                return [4 /*yield*/, rating_service_1.getAggregateRatingsForVendorsService(vendorIds)];
+            case 1:
+                ratingsMap = _a.sent();
+                return [2 /*return*/, stores.map(function (store) { return (__assign(__assign({}, store), { vendor: __assign(__assign({}, store.vendor), { rating: ratingsMap.get(store.vendor.id) || { average: 0, count: 0 } }) })); })];
+        }
+    });
+}); };
+// Service Function
+exports.searchProductsService = function (searchTerm, userLatitude, userLongitude) { return __awaiter(void 0, void 0, void 0, function () {
+    var searchResult, storesWithRatings, error_1;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 3, , 4]);
                 return [4 /*yield*/, generalSearch_model_1.searchByProductName(searchTerm, userLatitude, userLongitude)];
             case 1:
-                result = _a.sent();
-                return [2 /*return*/, result];
+                searchResult = _a.sent();
+                return [4 /*yield*/, attachRatingsToStores(searchResult.stores)];
             case 2:
+                storesWithRatings = _a.sent();
+                return [2 /*return*/, { stores: storesWithRatings }];
+            case 3:
                 error_1 = _a.sent();
                 // Handle errors (e.g., logging, specific error types)
                 console.error('Error searching by product name:', error_1);
                 throw error_1; // Re-throw to be caught by the controller
-            case 3: return [2 /*return*/];
+            case 4: return [2 /*return*/];
         }
     });
 }); };
 exports.searchByCategoryIdService = function (categoryId, latitude, longitude) { return __awaiter(void 0, void 0, void 0, function () {
-    var result, error_2;
+    var searchResult, storesWithRatings, error_2;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                _a.trys.push([0, 2, , 3]);
+                _a.trys.push([0, 3, , 4]);
                 return [4 /*yield*/, generalSearch_model_1.searchByCategoryId(categoryId, latitude, longitude)];
             case 1:
-                result = _a.sent();
-                return [2 /*return*/, result];
+                searchResult = _a.sent();
+                return [4 /*yield*/, attachRatingsToStores(searchResult.stores)];
             case 2:
+                storesWithRatings = _a.sent();
+                return [2 /*return*/, { stores: storesWithRatings }];
+            case 3:
                 error_2 = _a.sent();
                 console.error('Error searching by category id:', error_2);
                 throw error_2; // Re-throw to be caught by the controller
-            case 3: return [2 /*return*/];
+            case 4: return [2 /*return*/];
         }
     });
 }); };
@@ -96,40 +131,46 @@ exports.searchStoreProductsService = function (storeId, searchTerm, categoryId) 
     });
 }); };
 exports.searchStoreService = function (searchTerm, userLatitude, userLongitude) { return __awaiter(void 0, void 0, void 0, function () {
-    var result, error_4;
+    var searchResult, storesWithRatings, error_4;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                _a.trys.push([0, 2, , 3]);
+                _a.trys.push([0, 3, , 4]);
                 return [4 /*yield*/, generalSearch_model_1.searchByStoreName(searchTerm, userLatitude, userLongitude)];
             case 1:
-                result = _a.sent();
-                return [2 /*return*/, result];
+                searchResult = _a.sent();
+                return [4 /*yield*/, attachRatingsToStores(searchResult.stores)];
             case 2:
+                storesWithRatings = _a.sent();
+                return [2 /*return*/, { stores: storesWithRatings }];
+            case 3:
                 error_4 = _a.sent();
                 // Handle errors (e.g., logging, specific error types)
                 console.error('Error searching by store name:', error_4);
                 throw error_4; // Re-throw to be caught by the controller
-            case 3: return [2 /*return*/];
+            case 4: return [2 /*return*/];
         }
     });
 }); };
 exports.searchByCategoryService = function (searchTerm, latitude, longitude) { return __awaiter(void 0, void 0, void 0, function () {
-    var result, error_5;
+    var searchResult, storesWithRatings, error_5;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                _a.trys.push([0, 2, , 3]);
+                _a.trys.push([0, 3, , 4]);
                 return [4 /*yield*/, generalSearch_model_1.searchByCategoryName(searchTerm, latitude, longitude)];
             case 1:
-                result = _a.sent();
-                return [2 /*return*/, result];
+                searchResult = _a.sent();
+                return [4 /*yield*/, attachRatingsToStores(searchResult.stores)];
             case 2:
+                storesWithRatings = _a.sent();
+                return [2 /*return*/, { stores: storesWithRatings }];
+            case 3:
                 error_5 = _a.sent();
                 // Handle errors (e.g., logging, specific error types)
                 console.error('Error searching by category name:', error_5);
                 throw error_5; // Re-throw to be caught by the controller
-            case 3: return [2 /*return*/];
+            case 4: return [2 /*return*/];
         }
     });
 }); };

@@ -103,3 +103,37 @@ export const getAggregateRating = async (filters: { ratedVendorId?: string; rate
 
   return { average: _avg.rating || 0, count: _count._all };
 };
+
+
+export const getAggregateRatingsForVendors = async (vendorIds: string[]): Promise<Map<string, { average: number; count: number }>> => {
+  if (vendorIds.length === 0) {
+    return new Map();
+  }
+
+  const aggregates = await prisma.rating.groupBy({
+    by: ['ratedVendorId'],
+    where: {
+      ratedVendorId: {
+        in: vendorIds,
+      },
+      type: RatingType.VENDOR,
+    },
+    _avg: {
+      rating: true,
+    },
+    _count: {
+      ratedVendorId: true,
+    },
+  });
+
+  const ratingsMap = new Map<string, { average: number; count: number }>();
+  for (const agg of aggregates) {
+    if (agg.ratedVendorId) {
+      ratingsMap.set(agg.ratedVendorId, {
+        average: agg._avg.rating || 0,
+        count: agg._count.ratedVendorId,
+      });
+    }
+  }
+  return ratingsMap;
+};

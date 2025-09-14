@@ -55,6 +55,15 @@ const options: swaggerJsdoc.Options = {
             latitude: { type: 'number', format: 'float' },
             longitude: { type: 'number', format: 'float' },
             distance: { type: 'number', format: 'float', description: 'Distance in kilometers from the user.' },
+            rating: {
+              type: 'object',
+              properties: {
+                average: { type: 'number', format: 'float', description: 'The average rating score, from 1 to 5.' },
+                count: { type: 'integer', description: 'The total number of ratings.' },
+              },
+              description: 'Aggregate rating for the vendor.',
+              nullable: true,
+            },
           },
         },
         // --- Product Schemas ---

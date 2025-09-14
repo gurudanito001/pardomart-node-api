@@ -60,7 +60,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.getAggregateRatingService = exports.deleteRatingService = exports.updateRatingService = exports.getRatingsService = exports.getRatingByIdService = exports.createRatingService = exports.RatingError = void 0;
+exports.getAggregateRatingsForVendorsService = exports.getAggregateRatingService = exports.deleteRatingService = exports.updateRatingService = exports.getRatingsService = exports.getRatingByIdService = exports.createRatingService = exports.RatingError = void 0;
 var client_1 = require("@prisma/client");
 var ratingModel = require("../models/rating.model");
 var orderModel = require("../models/order.model");
@@ -231,5 +231,17 @@ exports.getAggregateRatingService = function (filters) { return __awaiter(void 0
             throw new RatingError('A vendor ID or user ID must be provided to get aggregate ratings.', 400);
         }
         return [2 /*return*/, ratingModel.getAggregateRating(filters)];
+    });
+}); };
+/**
+ * Gets aggregate ratings for a list of vendor IDs.
+ * @param vendorIds - An array of vendor IDs.
+ * @returns A Map where keys are vendor IDs and values are their aggregate rating.
+ */
+exports.getAggregateRatingsForVendorsService = function (vendorIds) { return __awaiter(void 0, void 0, Promise, function () {
+    return __generator(this, function (_a) {
+        if (vendorIds.length === 0)
+            return [2 /*return*/, new Map()];
+        return [2 /*return*/, ratingModel.getAggregateRatingsForVendors(vendorIds)];
     });
 }); };
