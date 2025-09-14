@@ -11,11 +11,14 @@ import {
   validateDeclineOrder,
   validateGetDeliverySlots,
   validateUpdateTip,
+  validateSendMessage,
+  validateMarkMessagesAsRead,
 } from '../middlewares/validation.middleware';
 import { authenticate, authorizeVendorAccess, authorize } from '../middlewares/auth.middleware';
 import { Role } from '@prisma/client';
 import { validateAddLocation, validateGetPath } from '../middlewares/validation.middleware';
 import { addLocationController, getPathController } from '../controllers/deliveryPersonLocation.controller';
+import * as messageController from '../controllers/message.controller';
 
 const router = Router();
 
@@ -38,6 +41,11 @@ router.get('/:id', validate(validateGetOrDeleteOrder), orderController.getOrderB
 router.patch('/:id', validate(validateUpdateOrder), orderController.updateOrderController);
 router.patch('/:id/status', validate(validateUpdateOrderStatus), orderController.updateOrderStatusController);
 router.patch('/:orderId/tip', validate(validateUpdateTip), orderController.updateOrderTipController);
+
+// --- Messaging within an Order ---
+router.post('/:orderId/messages', validate(validateSendMessage), messageController.sendMessageController);
+router.get('/:orderId/messages', messageController.getMessagesForOrderController);
+router.patch('/:orderId/messages/read', validate(validateMarkMessagesAsRead), messageController.markMessagesAsReadController);
 
 // Add a location point for a delivery person
 router.post(

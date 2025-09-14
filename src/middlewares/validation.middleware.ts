@@ -485,6 +485,17 @@ export const validateAddLocation = [
 
 export const validateGetPath = [param('orderId').isUUID(4).withMessage('A valid order ID is required in the URL.')];
 
+// --- Messaging Validation ---
+export const validateSendMessage = [
+  param('orderId').isUUID(4).withMessage('A valid orderId is required in the URL.'),
+  body('recipientId').isUUID(4).withMessage('A valid recipientId is required.'),
+  body('content').trim().notEmpty().withMessage('Message content cannot be empty.'),
+];
+
+export const validateMarkMessagesAsRead = [
+  param('orderId').isUUID(4).withMessage('A valid orderId is required in the URL.'),
+];
+
 // --- Device Validation ---
 export const validateRegisterDevice = [
   body('fcmToken').isString().notEmpty().withMessage('fcmToken is required.'),

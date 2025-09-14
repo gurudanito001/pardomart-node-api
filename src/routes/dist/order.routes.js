@@ -7,6 +7,7 @@ var auth_middleware_1 = require("../middlewares/auth.middleware");
 var client_1 = require("@prisma/client");
 var validation_middleware_2 = require("../middlewares/validation.middleware");
 var deliveryPersonLocation_controller_1 = require("../controllers/deliveryPersonLocation.controller");
+var messageController = require("../controllers/message.controller");
 var router = express_1.Router();
 // All routes below require a logged-in user
 router.use(auth_middleware_1.authenticate);
@@ -23,6 +24,10 @@ router.get('/:id', validation_middleware_1.validate(validation_middleware_1.vali
 router.patch('/:id', validation_middleware_1.validate(validation_middleware_1.validateUpdateOrder), orderController.updateOrderController);
 router.patch('/:id/status', validation_middleware_1.validate(validation_middleware_1.validateUpdateOrderStatus), orderController.updateOrderStatusController);
 router.patch('/:orderId/tip', validation_middleware_1.validate(validation_middleware_1.validateUpdateTip), orderController.updateOrderTipController);
+// --- Messaging within an Order ---
+router.post('/:orderId/messages', validation_middleware_1.validate(validation_middleware_1.validateSendMessage), messageController.sendMessageController);
+router.get('/:orderId/messages', messageController.getMessagesForOrderController);
+router.patch('/:orderId/messages/read', validation_middleware_1.validate(validation_middleware_1.validateMarkMessagesAsRead), messageController.markMessagesAsReadController);
 // Add a location point for a delivery person
 router.post('/:orderId/delivery-location', auth_middleware_1.authenticate, auth_middleware_1.authorize([client_1.Role.delivery]), // Ensure this role exists
 validation_middleware_1.validate(validation_middleware_2.validateAddLocation), deliveryPersonLocation_controller_1.addLocationController);

@@ -49,6 +49,8 @@ model User {
   ratingsGiven    Rating[] @relation("RatingsGiven")
   ratingsReceived Rating[] @relation("RatingsReceived")
   wishlistItems   WishlistItem[] 
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
   notifications   Notification[]
   devices         Device[]
 
@@ -217,6 +219,7 @@ model Order {
   updatedAt                  DateTime         @updatedAt
   ratings Rating[]
   deliveryPersonLocations DeliveryPersonLocation[]
+  messages                   Message[]
 }
 
 model DeliveryAddress {
@@ -368,6 +371,22 @@ model WishlistItem {
 
   // A user can only have a specific product in their wishlist once
   @@unique([userId, vendorProductId])
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  content     String
+  senderId    String
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   User     @relation("ReceivedMessages", fields: [recipientId], references: [id], onDelete: Cascade)
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([orderId, createdAt])
 }
 
 enum Role {
