@@ -2,7 +2,7 @@
 
 import { Request, Response, Router } from 'express';
 import * as orderModel from '../models/order.model'; // Adjust the path if needed
-import { PrismaClient, Order, OrderItem, Role, ShoppingMethod, OrderStatus, DeliveryMethod, VendorProduct, Product, DeliveryAddress, Prisma, PaymentMethods, OrderItemStatus } from '@prisma/client';
+import { PrismaClient, Order, OrderItem, Role, ShoppingMethod, OrderStatus, DeliveryMethod, VendorProduct, Product, DeliveryAddress, Prisma, PaymentMethods, OrderItemStatus, PaymentStatus } from '@prisma/client';
 import dayjs from 'dayjs';
 import { calculateOrderFeesService } from './fee.service';
 import { getVendorById } from './vendor.service';
@@ -10,6 +10,7 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { getIO } from '../socket';
+import { creditWallet } from './wallet.service';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -185,6 +186,7 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
     const newOrder = await orderModel.createOrder({
       userId,
       vendorId,
+      subtotal,
       totalAmount: finalTotalAmount,
       deliveryFee, serviceFee, shoppingFee,
       shopperTip, deliveryPersonTip,
@@ -359,10 +361,58 @@ export const updateOrderStatusService = async (
   status: OrderStatus
 ): Promise<Order> => {
   const updates: orderModel.UpdateOrderPayload = { orderStatus: status };
-  if (status === OrderStatus.delivered) { // When order is delivered
-    updates.actualDeliveryTime = new Date(); // Set the actual delivery time
+
+  // If order is delivered, handle payments to wallets
+  if (status === OrderStatus.delivered) {
+    updates.actualDeliveryTime = new Date();
+
+    return prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { id },
+        include: { vendor: true }, // includes the nested user object for the vendor
+      });
+      if (!order) {
+        throw new OrderCreationError('Order not found', 404);
+      }
+
+      // 1. Pay Vendor
+      // The vendor gets paid the subtotal of the items. Platform fees are handled separately.
+      const vendorAmount = order.subtotal;
+      if (vendorAmount > 0 && order.vendor.userId) {
+        await creditWallet({
+          userId: order.vendor.userId,
+          amount: vendorAmount,
+          description: `Payment for order #${order.id.substring(0, 8)}`,
+          meta: { orderId: order.id },
+        }, tx);
+      }
+
+      // 2. Pay Shopper Tip
+      if (order.shopperId && order.shopperTip && order.shopperTip > 0) {
+        await creditWallet({
+          userId: order.shopperId,
+          amount: order.shopperTip,
+          description: `Tip for order #${order.id.substring(0, 8)}`,
+          meta: { orderId: order.id },
+        }, tx);
+      }
+
+      // 3. Pay Delivery Person Tip
+      if (order.deliveryPersonId && order.deliveryPersonTip && order.deliveryPersonTip > 0) {
+        await creditWallet({
+          userId: order.deliveryPersonId,
+          amount: order.deliveryPersonTip,
+          description: `Tip for order #${order.id.substring(0, 8)}`,
+          meta: { orderId: order.id },
+        }, tx);
+      }
+
+      // 4. Update the order status
+      return orderModel.updateOrder(id, updates, tx);
+    });
   }
-  return orderModel.updateOrder(id, updates);
+
+  return orderModel.updateOrder(id, updates, prisma);
 };
 
 interface TimeSlot {
@@ -614,28 +664,58 @@ export const declineOrderService = async (
   vendorId: string, // Pass vendorId for stricter security check at service layer
   reason?: string
 ): Promise<Order> => {
-  try {
-    const declinedOrder = await prisma.order.update({
+  return prisma.$transaction(async (tx) => {
+    // 1. Find the order to get customerId, totalAmount, and items for refund/restock
+    const orderToDecline = await tx.order.findFirst({
       where: {
         id: orderId,
-        vendorId: vendorId, // Crucial: ensure order belongs to this vendor
-        orderStatus: OrderStatus.pending, // Only decline orders that are currently pending
-        shoppingMethod: ShoppingMethod.vendor, // Only decline if vendor is responsible for shopping
+        vendorId: vendorId,
+        orderStatus: OrderStatus.pending,
+        shoppingMethod: ShoppingMethod.vendor,
       },
-      data: {
-        orderStatus: OrderStatus.declined_by_vendor, // Change status to declined
-        reasonForDecline: reason, // Store the reason
-        shopperId: null, // Clear any potential assignment if it was somehow set
+      include: {
+        orderItems: true, // Need order items to restock
       },
     });
-    return declinedOrder;
-  } catch (error: any) {
-    if (error.code === 'P2025') { // Prisma error for record not found
-      throw new Error('Order not found or cannot be declined in its current state/by this vendor.');
+
+    if (!orderToDecline) {
+      throw new OrderCreationError('Order not found or cannot be declined in its current state/by this vendor.', 404);
     }
-    console.error(`Error declining order ${orderId}:`, error);
-    throw new Error('Failed to decline order: ' + error.message);
-  }
+
+    // 2. Refund the customer's payment to their wallet
+    await creditWallet({
+      userId: orderToDecline.userId,
+      amount: orderToDecline.totalAmount,
+      description: `Refund for declined order #${orderId.substring(0, 8)}`,
+      meta: { orderId },
+    }, tx);
+
+    // 3. Restore stock for each item in the order
+    for (const item of orderToDecline.orderItems) {
+      await tx.vendorProduct.update({
+        where: { id: item.vendorProductId },
+        data: {
+          stock: {
+            increment: item.quantity,
+          },
+        },
+      });
+    }
+
+    // 4. Update the order status to declined
+    const declinedOrder = await tx.order.update({
+      where: { id: orderId },
+      data: {
+        orderStatus: OrderStatus.declined_by_vendor,
+        paymentStatus: PaymentStatus.refunded,
+        reasonForDecline: reason,
+      },
+    });
+
+    // TODO: Notify customer of the declined order and refund.
+
+    return declinedOrder;
+  });
 };
 
 

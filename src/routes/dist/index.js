@@ -18,6 +18,7 @@ var rating_routes_1 = require("./rating.routes");
 var wishlist_routes_1 = require("./wishlist.routes");
 var device_routes_1 = require("./device.routes");
 var notification_routes_1 = require("./notification.routes");
+var wallet_routes_1 = require("./wallet.routes");
 // Create a new Router instance
 var router = express_1.Router();
 // Mount the routers
@@ -38,4 +39,5 @@ router.use('/api/v1/ratings', rating_routes_1["default"]);
 router.use('/api/v1/wishlist', wishlist_routes_1["default"]);
 router.use('/api/v1/devices', device_routes_1["default"]);
 router.use('/api/v1/notifications', notification_routes_1["default"]);
+router.use('/api/v1/wallet', wallet_routes_1["default"]);
 exports["default"] = router;

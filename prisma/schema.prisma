@@ -53,6 +53,7 @@ model User {
   receivedMessages Message[] @relation("ReceivedMessages")
   notifications   Notification[]
   devices         Device[]
+  wallet          Wallet?
 
   @@unique([mobileNumber, role])
 }
@@ -201,6 +202,7 @@ model Order {
   user                       User             @relation("OrderCustomer", fields: [userId], references: [id], onDelete: Cascade)
   vendorId                   String
   vendor                     Vendor           @relation(fields: [vendorId], references: [id])
+  subtotal                   Float
   totalAmount                Float
   deliveryFee                Float?
   serviceFee                 Float?
@@ -398,6 +400,37 @@ model Message {
   @@index([orderId, createdAt])
 }
 
+model Wallet {
+  id           String              @id @default(uuid())
+  userId       String              @unique
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance      Float               @default(0.0)
+  transactions WalletTransaction[]
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+}
+
+model WalletTransaction {
+  id          String            @id @default(uuid())
+  walletId    String
+  wallet      Wallet            @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  amount      Float // Positive for credit, negative for debit
+  type        TransactionType
+  status      TransactionStatus @default(COMPLETED)
+  description String?
+  meta        Json? // To store related IDs like orderId, etc.
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([walletId, createdAt])
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
+
+
 enum Role {
   admin
   vendor
@@ -427,6 +460,7 @@ enum PaymentStatus {
   pending
   paid
   failed
+  refunded
 }
 
 enum OrderStatus {
@@ -468,6 +502,13 @@ enum RatingType {
   VENDOR
   SHOPPER
   DELIVERER
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
 }
 
 enum OrderItemStatus {

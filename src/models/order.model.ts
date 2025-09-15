@@ -7,6 +7,7 @@ const prisma = new PrismaClient();
 export interface CreateOrderPayload {
   userId: string;
   vendorId: string;
+  subtotal: number;
   totalAmount: number;
   deliveryFee?: number;
   serviceFee?: number;
@@ -76,6 +77,7 @@ export const getOrdersByUserId = async (userId: string): Promise<Order[]> => {
 };
 
 export interface UpdateOrderPayload {
+  subtotal?: number;
   totalAmount?: number;
   deliveryFee?: number;
   serviceFee?: number;
@@ -98,9 +100,11 @@ export interface UpdateOrderPayload {
 
 export const updateOrder = async (
   id: string,
-  payload: UpdateOrderPayload
+  payload: UpdateOrderPayload,
+  tx?: Prisma.TransactionClient
 ): Promise<Order> => {
-  return prisma.order.update({
+  const db = tx || prisma;
+  return db.order.update({
     where: { id },
     data: payload,
   });

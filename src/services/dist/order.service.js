@@ -70,6 +70,7 @@ var utc_1 = require("dayjs/plugin/utc");
 var timezone_1 = require("dayjs/plugin/timezone");
 var customParseFormat_1 = require("dayjs/plugin/customParseFormat");
 var socket_1 = require("../socket");
+var wallet_service_1 = require("./wallet.service");
 dayjs_1["default"].extend(utc_1["default"]);
 dayjs_1["default"].extend(timezone_1["default"]);
 dayjs_1["default"].extend(customParseFormat_1["default"]);
@@ -201,6 +202,7 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                 return [4 /*yield*/, orderModel.createOrder({
                                         userId: userId,
                                         vendorId: vendorId,
+                                        subtotal: subtotal,
                                         totalAmount: finalTotalAmount,
                                         deliveryFee: deliveryFee, serviceFee: serviceFee, shoppingFee: shoppingFee,
                                         shopperTip: shopperTip, deliveryPersonTip: deliveryPersonTip,
@@ -388,10 +390,63 @@ exports.updateOrderStatusService = function (id, status) { return __awaiter(void
     var updates;
     return __generator(this, function (_a) {
         updates = { orderStatus: status };
-        if (status === client_1.OrderStatus.delivered) { // When order is delivered
-            updates.actualDeliveryTime = new Date(); // Set the actual delivery time
+        // If order is delivered, handle payments to wallets
+        if (status === client_1.OrderStatus.delivered) {
+            updates.actualDeliveryTime = new Date();
+            return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
+                    var order, vendorAmount;
+                    return __generator(this, function (_a) {
+                        switch (_a.label) {
+                            case 0: return [4 /*yield*/, tx.order.findUnique({
+                                    where: { id: id },
+                                    include: { vendor: true }
+                                })];
+                            case 1:
+                                order = _a.sent();
+                                if (!order) {
+                                    throw new OrderCreationError('Order not found', 404);
+                                }
+                                vendorAmount = order.subtotal;
+                                if (!(vendorAmount > 0 && order.vendor.userId)) return [3 /*break*/, 3];
+                                return [4 /*yield*/, wallet_service_1.creditWallet({
+                                        userId: order.vendor.userId,
+                                        amount: vendorAmount,
+                                        description: "Payment for order #" + order.id.substring(0, 8),
+                                        meta: { orderId: order.id }
+                                    }, tx)];
+                            case 2:
+                                _a.sent();
+                                _a.label = 3;
+                            case 3:
+                                if (!(order.shopperId && order.shopperTip && order.shopperTip > 0)) return [3 /*break*/, 5];
+                                return [4 /*yield*/, wallet_service_1.creditWallet({
+                                        userId: order.shopperId,
+                                        amount: order.shopperTip,
+                                        description: "Tip for order #" + order.id.substring(0, 8),
+                                        meta: { orderId: order.id }
+                                    }, tx)];
+                            case 4:
+                                _a.sent();
+                                _a.label = 5;
+                            case 5:
+                                if (!(order.deliveryPersonId && order.deliveryPersonTip && order.deliveryPersonTip > 0)) return [3 /*break*/, 7];
+                                return [4 /*yield*/, wallet_service_1.creditWallet({
+                                        userId: order.deliveryPersonId,
+                                        amount: order.deliveryPersonTip,
+                                        description: "Tip for order #" + order.id.substring(0, 8),
+                                        meta: { orderId: order.id }
+                                    }, tx)];
+                            case 6:
+                                _a.sent();
+                                _a.label = 7;
+                            case 7: 
+                            // 4. Update the order status
+                            return [2 /*return*/, orderModel.updateOrder(id, updates, tx)];
+                        }
+                    });
+                }); })];
         }
-        return [2 /*return*/, orderModel.updateOrder(id, updates)];
+        return [2 /*return*/, orderModel.updateOrder(id, updates, prisma)];
     });
 }); };
 /**
@@ -601,36 +656,71 @@ exports.acceptOrderService = function (orderId, shoppingHandlerUserId, vendorId 
  */
 exports.declineOrderService = function (orderId, vendorId, // Pass vendorId for stricter security check at service layer
 reason) { return __awaiter(void 0, void 0, Promise, function () {
-    var declinedOrder, error_4;
     return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, prisma.order.update({
-                        where: {
-                            id: orderId,
-                            vendorId: vendorId,
-                            orderStatus: client_1.OrderStatus.pending,
-                            shoppingMethod: client_1.ShoppingMethod.vendor
-                        },
-                        data: {
-                            orderStatus: client_1.OrderStatus.declined_by_vendor,
-                            reasonForDecline: reason,
-                            shopperId: null
-                        }
-                    })];
-            case 1:
-                declinedOrder = _a.sent();
-                return [2 /*return*/, declinedOrder];
-            case 2:
-                error_4 = _a.sent();
-                if (error_4.code === 'P2025') { // Prisma error for record not found
-                    throw new Error('Order not found or cannot be declined in its current state/by this vendor.');
-                }
-                console.error("Error declining order " + orderId + ":", error_4);
-                throw new Error('Failed to decline order: ' + error_4.message);
-            case 3: return [2 /*return*/];
-        }
+        return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
+                var orderToDecline, _i, _a, item, declinedOrder;
+                return __generator(this, function (_b) {
+                    switch (_b.label) {
+                        case 0: return [4 /*yield*/, tx.order.findFirst({
+                                where: {
+                                    id: orderId,
+                                    vendorId: vendorId,
+                                    orderStatus: client_1.OrderStatus.pending,
+                                    shoppingMethod: client_1.ShoppingMethod.vendor
+                                },
+                                include: {
+                                    orderItems: true
+                                }
+                            })];
+                        case 1:
+                            orderToDecline = _b.sent();
+                            if (!orderToDecline) {
+                                throw new OrderCreationError('Order not found or cannot be declined in its current state/by this vendor.', 404);
+                            }
+                            // 2. Refund the customer's payment to their wallet
+                            return [4 /*yield*/, wallet_service_1.creditWallet({
+                                    userId: orderToDecline.userId,
+                                    amount: orderToDecline.totalAmount,
+                                    description: "Refund for declined order #" + orderId.substring(0, 8),
+                                    meta: { orderId: orderId }
+                                }, tx)];
+                        case 2:
+                            // 2. Refund the customer's payment to their wallet
+                            _b.sent();
+                            _i = 0, _a = orderToDecline.orderItems;
+                            _b.label = 3;
+                        case 3:
+                            if (!(_i < _a.length)) return [3 /*break*/, 6];
+                            item = _a[_i];
+                            return [4 /*yield*/, tx.vendorProduct.update({
+                                    where: { id: item.vendorProductId },
+                                    data: {
+                                        stock: {
+                                            increment: item.quantity
+                                        }
+                                    }
+                                })];
+                        case 4:
+                            _b.sent();
+                            _b.label = 5;
+                        case 5:
+                            _i++;
+                            return [3 /*break*/, 3];
+                        case 6: return [4 /*yield*/, tx.order.update({
+                                where: { id: orderId },
+                                data: {
+                                    orderStatus: client_1.OrderStatus.declined_by_vendor,
+                                    paymentStatus: client_1.PaymentStatus.refunded,
+                                    reasonForDecline: reason
+                                }
+                            })];
+                        case 7:
+                            declinedOrder = _b.sent();
+                            // TODO: Notify customer of the declined order and refund.
+                            return [2 /*return*/, declinedOrder];
+                    }
+                });
+            }); })];
     });
 }); };
 /**
@@ -645,7 +735,7 @@ reason) { return __awaiter(void 0, void 0, Promise, function () {
  */
 exports.startShoppingService = function (orderId, shoppingHandlerUserId, vendorId // Pass vendorId for stricter security check at service layer
 ) { return __awaiter(void 0, void 0, Promise, function () {
-    var user, order, error_5;
+    var user, order, error_4;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -675,12 +765,12 @@ exports.startShoppingService = function (orderId, shoppingHandlerUserId, vendorI
                 order = _a.sent();
                 return [2 /*return*/, order];
             case 3:
-                error_5 = _a.sent();
-                if (error_5.code === 'P2025') {
+                error_4 = _a.sent();
+                if (error_4.code === 'P2025') {
                     throw new Error('Order not found or cannot start shopping in its current state/by this vendor.');
                 }
-                console.error("Error starting shopping for order " + orderId + ":", error_5);
-                throw new Error('Failed to start shopping: ' + error_5.message);
+                console.error("Error starting shopping for order " + orderId + ":", error_4);
+                throw new Error('Failed to start shopping: ' + error_4.message);
             case 4: return [2 /*return*/];
         }
     });

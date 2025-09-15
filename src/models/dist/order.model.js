@@ -96,9 +96,11 @@ exports.getOrdersByUserId = function (userId) { return __awaiter(void 0, void 0,
             })];
     });
 }); };
-exports.updateOrder = function (id, payload) { return __awaiter(void 0, void 0, Promise, function () {
+exports.updateOrder = function (id, payload, tx) { return __awaiter(void 0, void 0, Promise, function () {
+    var db;
     return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.order.update({
+        db = tx || prisma;
+        return [2 /*return*/, db.order.update({
                 where: { id: id },
                 data: payload
             })];
