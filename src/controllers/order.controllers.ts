@@ -38,86 +38,126 @@ import { AuthenticatedRequest } from './vendor.controller';
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - vendorId
- *               - paymentMethod
- *               - orderItems
- *               - shoppingMethod
- *               - deliveryMethod
- *             properties:
- *               vendorId:
- *                 type: string
- *                 format: uuid
- *                 description: The ID of the vendor for this order.
- *               paymentMethod:
- *                 type: string
- *                 enum: [credit_card, wallet, cash]
- *                 description: The payment method for the order.
- *               shippingAddressId:
- *                 type: string
- *                 format: uuid
- *                 description: The ID of an existing delivery address. Required if `deliveryMethod` is `delivery_person`.
- *               shopperTip:
- *                 type: number
- *                 format: float
- *                 description: Optional. Tip for the shopper.
- *               deliveryPersonTip:
- *                 type: number
- *                 format: float
- *                 description: Optional. Tip for the delivery person.
- *               deliveryInstructions:
- *                 type: string
- *                 description: Optional instructions for the delivery.
- *               orderItems:
- *                 type: array
- *                 description: A list of items to be included in the order.
- *                 items:
- *                   type: object
- *                   required:
- *                     - vendorProductId
- *                     - quantity
- *                   properties:
- *                     vendorProductId:
- *                       type: string
- *                       format: uuid
- *                     quantity:
- *                       type: integer
- *                       minimum: 1
- *                     instructions:
- *                       type: string
- *                       description: Optional instructions for the shopper for this specific item.
- *                     replacementIds:
- *                       type: array
- *                       description: Optional. A list of vendor product IDs for potential replacements.
- *                       items:
- *                         type: string
- *                         format: uuid
- *               shoppingMethod:
- *                 type: string
- *                 enum: [vendor, shopper]
- *                 description: Who will be shopping for the items.
- *               deliveryMethod:
- *                 type: string
- *                 enum: [delivery_person, customer_pickup]
- *                 description: How the order will be delivered.
- *               scheduledDeliveryTime:
- *                 type: string
- *                 format: date-time
- *                 description: Optional. The requested time for the delivery in UTC ISO 8601 format (e.g., 2023-10-27T14:30:00.000Z).
+ *             $ref: '#/components/schemas/CreateOrderClientPayload'
  *     responses:
  *       201:
  *         description: The created order.
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Order'
+ *               $ref: '#/components/schemas/VendorOrder'
  *       400:
  *         description: Bad request due to invalid input (e.g., missing fields, invalid time, item out of stock).
  *       401:
  *         description: Unauthorized.
  *       500:
  *         description: Internal server error.
+ * components:
+ *   schemas:
+ *     OrderItemStatus:
+ *       type: string
+ *       enum: [PENDING, FOUND, NOT_FOUND, REPLACED]
+ *     UpdateOrderItemShoppingStatusPayload:
+ *       type: object
+ *       required: [status]
+ *       properties:
+ *         status:
+ *           $ref: '#/components/schemas/OrderItemStatus'
+ *         quantityFound:
+ *           type: integer
+ *           description: Required if status is FOUND.
+ *         chosenReplacementId:
+ *           type: string
+ *           format: uuid
+ *           description: The vendorProductId of the suggested replacement if status is NOT_FOUND.
+ *     RespondToReplacementPayload:
+ *       type: object
+ *       required: [approved]
+ *       properties:
+ *         approved:
+ *           type: boolean
+ *     OrderItem:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         orderId: { type: string, format: uuid }
+ *         vendorProductId: { type: string, format: uuid }
+ *         quantity: { type: integer }
+ *         instructions: { type: string, nullable: true }
+ *         status: { $ref: '#/components/schemas/OrderItemStatus' }
+ *         quantityFound: { type: integer, nullable: true }
+ *         chosenReplacementId: { type: string, format: uuid, nullable: true }
+ *         isReplacementApproved: { type: boolean, nullable: true }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
+ *     OrderItemWithRelations:
+ *       allOf:
+ *         - $ref: '#/components/schemas/OrderItem'
+ *         - type: object
+ *           properties:
+ *             vendorProduct:
+ *               $ref: '#/components/schemas/VendorProduct'
+ *             chosenReplacement:
+ *               $ref: '#/components/schemas/VendorProduct'
+ *             replacements:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/VendorProduct'
+ *     UserSummary:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         name: { type: string, nullable: true }
+ *         mobileNumber: { type: string, nullable: true }
+ *     VendorOrder:
+ *       allOf:
+ *         - $ref: '#/components/schemas/Order'
+ *         - type: object
+ *           properties:
+ *             user: { $ref: '#/components/schemas/UserSummary' }
+ *             shopper: { $ref: '#/components/schemas/UserSummary' }
+ *             deliveryPerson: { $ref: '#/components/schemas/UserSummary' }
+ *             orderItems:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/OrderItemWithRelations'
+ *     CreateOrderClientPayload:
+ *       type: object
+ *       required: [vendorId, paymentMethod, orderItems, shoppingMethod, deliveryMethod]
+ *       properties:
+ *         vendorId: { type: string, format: uuid }
+ *         paymentMethod: { $ref: '#/components/schemas/PaymentMethods' }
+ *         shippingAddressId: { type: string, format: uuid, nullable: true, description: "ID of an existing delivery address. Required if `deliveryMethod` is `delivery_person`." }
+ *         shopperTip: { type: number, format: float, description: "Optional. Tip for the shopper." }
+ *         deliveryPersonTip: { type: number, format: float, description: "Optional. Tip for the delivery person." }
+ *         deliveryInstructions: { type: string, nullable: true, example: "Leave at the front door." }
+ *         orderItems:
+ *           type: array
+ *           items:
+ *             type: object
+ *             required: [vendorProductId, quantity]
+ *             properties:
+ *               vendorProductId: { type: string, format: uuid }
+ *               quantity: { type: integer, minimum: 1 }
+ *               instructions: { type: string, nullable: true }
+ *               replacementIds:
+ *                 type: array
+ *                 items: { type: string, format: uuid }
+ *         shoppingMethod: { $ref: '#/components/schemas/ShoppingMethod' }
+ *         deliveryMethod: { $ref: '#/components/schemas/DeliveryMethod' }
+ *         scheduledDeliveryTime: { type: string, format: date-time, nullable: true }
+ *     UpdateTipPayload:
+ *       type: object
+ *       properties:
+ *         shopperTip: { type: number, format: float }
+ *         deliveryPersonTip: { type: number, format: float }
+ *     DeliverySlot:
+ *       type: object
+ *       properties:
+ *         date: { type: string, example: "27-09-2025" }
+ *         timeSlots:
+ *           type: array
+ *           items: { type: string, example: "9:00am - 10:00am" }
  */
 export const createOrderController = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -176,7 +216,7 @@ export const getOrderByIdController = async (req: Request, res: Response) => {
 /**
  * Controller for getting all orders for a user.
  * @swagger
- * /order/user/getByUserId:
+ * /order/user/me:
  *   get:
  *     summary: Get all orders for the authenticated user
  *     tags: [Order]
@@ -190,9 +230,7 @@ export const getOrderByIdController = async (req: Request, res: Response) => {
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/Order'
- *       400:
- *         description: User ID is required.
+ *                 $ref: '#/components/schemas/VendorOrder'
  */
 export const getOrdersByUserController = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -330,10 +368,10 @@ interface OrderAuthenticatedRequest extends Request {
  *         description: A list of orders for the vendor.
  *         content:
  *           application/json:
- *             schema:
+ *             schema: 
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/Order'
+ *                 $ref: '#/components/schemas/VendorOrder'
  */
 export const getVendorOrdersController = async (req: OrderAuthenticatedRequest, res: Response) => {
   try {
@@ -370,23 +408,11 @@ export const getVendorOrdersController = async (req: OrderAuthenticatedRequest, 
  *       required: true
  *       content:
  *         application/json:
- *           schema:
- *             type: object
- *             required: [status]
- *             properties:
- *               status:
- *                 type: string
- *                 enum: [FOUND, NOT_FOUND]
- *               quantityFound:
- *                 type: integer
- *                 description: Required if status is FOUND.
- *               chosenReplacementId:
- *                 type: string
- *                 format: uuid
- *                 description: The vendorProductId of the suggested replacement if status is NOT_FOUND.
+ *           schema: { $ref: '#/components/schemas/UpdateOrderItemShoppingStatusPayload' }
  *     responses:
  *       200:
  *         description: The updated order item.
+ *         content: { application/json: { schema: { $ref: '#/components/schemas/OrderItemWithRelations' } } }
  *       400:
  *         description: Bad request (e.g., invalid payload).
  *       403:
@@ -433,15 +459,11 @@ export const updateOrderItemShoppingStatusController = async (req: Authenticated
  *       required: true
  *       content:
  *         application/json:
- *           schema:
- *             type: object
- *             required: [approved]
- *             properties:
- *               approved:
- *                 type: boolean
+ *           schema: { $ref: '#/components/schemas/RespondToReplacementPayload' }
  *     responses:
  *       200:
  *         description: The updated order item.
+ *         content: { application/json: { schema: { $ref: '#/components/schemas/OrderItemWithRelations' } } }
  *       400:
  *         description: Bad request (e.g., no replacement was suggested).
  *       403:
@@ -542,17 +564,8 @@ export const acceptOrderController = async (req: OrderAuthenticatedRequest, res:
  *           application/json:
  *             schema:
  *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   date:
- *                     type: string
- *                     example: "27-09-2025"
- *                   timeSlots:
- *                     type: array
- *                     items:
- *                       type: string
- *                       example: "9:00am - 10:00am"
+ *               items: 
+ *                 $ref: '#/components/schemas/DeliverySlot'
  *       400:
  *         description: Bad request due to missing or invalid parameters.
  *       500:
@@ -688,17 +701,7 @@ export const startShoppingController = async (req: OrderAuthenticatedRequest, re
  *       required: true
  *       content:
  *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               shopperTip:
- *                 type: number
- *                 format: float
- *                 description: The tip amount for the shopper.
- *               deliveryPersonTip:
- *                 type: number
- *                 format: float
- *                 description: The tip amount for the delivery person.
+ *           schema: { $ref: '#/components/schemas/UpdateTipPayload' }
  *     responses:
  *       200:
  *         description: The updated order with the new tip amount.

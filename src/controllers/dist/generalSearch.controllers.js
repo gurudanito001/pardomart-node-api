@@ -75,6 +75,154 @@ var generalSearch_service_1 = require("../services/generalSearch.service");
  *               $ref: '#/components/schemas/StoresByProductResult'
  *       400:
  *         description: Bad request due to missing or invalid parameters.
+ * components:
+ *   schemas:
+ *     VendorProduct:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *         vendorId:
+ *           type: string
+ *           format: uuid
+ *         productId:
+ *           type: string
+ *           format: uuid
+ *         price:
+ *           type: number
+ *           format: float
+ *         name:
+ *           type: string
+ *         description:
+ *           type: string
+ *           nullable: true
+ *         discountedPrice:
+ *           type: number
+ *           format: float
+ *           nullable: true
+ *         images:
+ *           type: array
+ *           items:
+ *             type: string
+ *             format: uri
+ *         weight:
+ *           type: number
+ *           format: float
+ *           nullable: true
+ *         weightUnit:
+ *           type: string
+ *           nullable: true
+ *         stock:
+ *           type: integer
+ *           nullable: true
+ *         isAvailable:
+ *           type: boolean
+ *         isAlcohol:
+ *           type: boolean
+ *         isAgeRestricted:
+ *           type: boolean
+ *         attributes:
+ *           type: object
+ *           nullable: true
+ *         categoryIds:
+ *           type: array
+ *           items:
+ *             type: string
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *     Vendor:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *         userId:
+ *           type: string
+ *           format: uuid
+ *         name:
+ *           type: string
+ *         email:
+ *           type: string
+ *           nullable: true
+ *         tagline:
+ *           type: string
+ *           nullable: true
+ *         details:
+ *           type: string
+ *           nullable: true
+ *         image:
+ *           type: string
+ *           format: uri
+ *           nullable: true
+ *         address:
+ *           type: string
+ *           nullable: true
+ *         longitude:
+ *           type: number
+ *           format: float
+ *           nullable: true
+ *         latitude:
+ *           type: number
+ *           format: float
+ *           nullable: true
+ *         timezone:
+ *           type: string
+ *           nullable: true
+ *         isVerified:
+ *           type: boolean
+ *         meta:
+ *           type: object
+ *           nullable: true
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *     VendorWithExtras:
+ *       allOf:
+ *         - $ref: '#/components/schemas/Vendor'
+ *         - type: object
+ *           properties:
+ *             distance:
+ *               type: number
+ *               format: float
+ *               description: Distance to the vendor from the user's location in kilometers.
+ *             rating:
+ *               type: object
+ *               properties:
+ *                 average:
+ *                   type: number
+ *                   format: float
+ *                   description: The average rating score.
+ *                 count:
+ *                   type: integer
+ *                   description: The total number of ratings.
+ *     StoreWithProducts:
+ *       type: object
+ *       properties:
+ *         vendor:
+ *           $ref: '#/components/schemas/VendorWithExtras'
+ *         products:
+ *           type: array
+ *           description: A sample of products from the store that match the search criteria (if applicable).
+ *           items:
+ *             $ref: '#/components/schemas/VendorProduct'
+ *         totalProducts:
+ *           type: integer
+ *           description: The total number of products in the store that match the search criteria (if applicable).
+ *     StoresByProductResult:
+ *       type: object
+ *       properties:
+ *         stores:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/StoreWithProducts'
  */
 exports.searchByProductController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var _a, search, latitude, longitude, userSearchTerm, userLatitude, userLongitude, result, error_1;
@@ -321,7 +469,36 @@ exports.searchByCategoryIdController = function (req, res) { return __awaiter(vo
  *         description: The ID of the category to filter products by. If provided, results will not be grouped.
  *     responses:
  *       200:
- *         description: A list of products, either grouped by category or as a flat list.
+ *         description: A list of products from the store. The structure depends on whether `categoryId` is provided.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - type: array
+ *                   description: "Returned when categoryId is not provided. Products are grouped by parent category."
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       name:
+ *                         type: string
+ *                       imageUrl:
+ *                         type: string
+ *                         format: uri
+ *                         nullable: true
+ *                       description:
+ *                         type: string
+ *                         nullable: true
+ *                       products:
+ *                         type: array
+ *                         items:
+ *                           $ref: '#/components/schemas/VendorProduct'
+ *                 - type: array
+ *                   description: "Returned when categoryId is provided. A flat list of products."
+ *                   items:
+ *                     $ref: '#/components/schemas/VendorProduct'
  *       400:
  *         description: Bad request due to missing storeId.
  *       404:

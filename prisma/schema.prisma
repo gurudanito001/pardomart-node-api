@@ -206,12 +206,12 @@ model Order {
   vendorId                   String
   vendor                     Vendor           @relation(fields: [vendorId], references: [id])
   subtotal                   Float
-  totalAmount                Float
   deliveryFee                Float?
   serviceFee                 Float?
   shoppingFee                Float?
   shopperTip                 Float? 
   deliveryPersonTip          Float?
+  totalAmount                Float
   paymentMethod              PaymentMethods   @default(credit_card)
   paymentStatus              PaymentStatus    @default(pending)
   orderStatus                OrderStatus      @default(pending)
