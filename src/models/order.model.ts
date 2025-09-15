@@ -64,14 +64,11 @@ export const getOrdersByUserId = async (userId: string): Promise<Order[]> => {
   return prisma.order.findMany({
     where: { userId },
     include: {
-      orderItems: {       // Include CartItems
+      orderItems: {
         include: {
            vendorProduct: true
         }
       },
-      shopper: true,
-      deliveryPerson: true,
-      vendor: true
     },
   });
 };

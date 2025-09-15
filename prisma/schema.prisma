@@ -503,15 +503,28 @@ enum PaymentStatus {
 }
 
 enum OrderStatus {
-  pending
+  // Initial state
+  pending // Order placed, awaiting vendor action.
+
+  // Active Shopping Flow
   accepted_for_shopping
+  currently_shopping
+
+  // Handoff States (Shopping is complete)
+  ready_for_pickup
+  ready_for_delivery
+
+  // Active Delivery Flow
+  accepted_for_delivery
+  en_route // Delivery person has the order and is on the way.
+
+  // Terminal Success States
+  delivered
+  picked_up_by_customer // Order successfully picked up by the customer.
+
+  // Terminal Failure/Cancellation States
   declined_by_vendor
   cancelled_by_customer
-  currently_shopping
-  ready_for_delivery
-  ready_for_pickup
-  en_route
-  delivered
 }
 
 enum ShoppingMethod {

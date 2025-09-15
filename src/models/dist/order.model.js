@@ -88,10 +88,7 @@ exports.getOrdersByUserId = function (userId) { return __awaiter(void 0, void 0,
                         include: {
                             vendorProduct: true
                         }
-                    },
-                    shopper: true,
-                    deliveryPerson: true,
-                    vendor: true
+                    }
                 }
             })];
     });
