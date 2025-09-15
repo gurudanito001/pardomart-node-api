@@ -241,7 +241,7 @@ export const searchByCategoryId = async (
   userLongitude: number
 ): Promise<{ stores: StoreWithProducts[] }> => {
   try {
-    // This logic to find descendants can be expensive.
+    // This logic to find descendants can be expensive. Remember to review performance.
     // For a production system with many categories, consider a recursive CTE in raw SQL
     // or denormalizing the category tree.
     const allCategories = await prisma.category.findMany({
