@@ -216,18 +216,6 @@ exports.createOrderController = function (req, res) { return __awaiter(void 0, v
  *           type: string
  *           format: uuid
  *         description: The ID of the order to retrieve.
- *       - in: query
- *         name: latitude
- *         schema:
- *           type: number
- *           format: float
- *         description: Optional. User's current latitude to calculate distance to the vendor.
- *       - in: query
- *         name: longitude
- *         schema:
- *           type: number
- *           format: float
- *         description: Optional. User's current longitude to calculate distance to the vendor.
  *     responses:
  *       200:
  *         description: The requested order, with vendor distance and rating included.
@@ -239,25 +227,22 @@ exports.createOrderController = function (req, res) { return __awaiter(void 0, v
  *         description: Order not found.
  */
 exports.getOrderByIdController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var orderId, _a, latitude, longitude, lat, lon, order, error_2;
-    return __generator(this, function (_b) {
-        switch (_b.label) {
+    var orderId, order, error_2;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
             case 0:
-                _b.trys.push([0, 2, , 3]);
+                _a.trys.push([0, 2, , 3]);
                 orderId = req.params.id;
-                _a = req.query, latitude = _a.latitude, longitude = _a.longitude;
-                lat = latitude ? parseFloat(latitude) : undefined;
-                lon = longitude ? parseFloat(longitude) : undefined;
-                return [4 /*yield*/, order_service_1.getOrderByIdService(orderId, lat, lon)];
+                return [4 /*yield*/, order_service_1.getOrderByIdService(orderId)];
             case 1:
-                order = _b.sent();
+                order = _a.sent();
                 if (!order) {
                     return [2 /*return*/, res.status(404).json({ error: 'Order not found' })];
                 }
                 res.status(200).json(order);
                 return [3 /*break*/, 3];
             case 2:
-                error_2 = _b.sent();
+                error_2 = _a.sent();
                 res.status(500).json({ error: 'Failed to retrieve order: ' + error_2.message });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];

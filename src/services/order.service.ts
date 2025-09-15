@@ -63,26 +63,23 @@ export const createOrderService = async (payload: orderModel.CreateOrderPayload)
  * @param id - The ID of the order to retrieve.
  * @returns The order, or null if not found.
  */
-export const getOrderByIdService = async (id: string, latitude?: number, longitude?: number): Promise<any | null> => {
+export const getOrderByIdService = async (id: string): Promise<any | null> => {
   const order = await orderModel.getOrderById(id);
 
   if (!order || !order.vendor) {
     return null;
   }
 
-  // 1. Get aggregate rating for the vendor
+  // 1. Get aggregate rating for the vendor.
   const rating = await getAggregateRatingService({ ratedVendorId: order.vendorId });
 
-  // 2. Calculate distance if coordinates are provided
+  // 2. Calculate distance using the order's delivery address.
   let distance: number | undefined;
-  if (latitude && longitude && order.vendor.latitude && order.vendor.longitude) {
-    const customerLatitude = latitude;
-    const customerLongitude = longitude;
-
-    if (!isNaN(customerLatitude) && !isNaN(customerLongitude)) {
+  if (order.deliveryAddress && order.deliveryAddress.latitude && order.deliveryAddress.longitude && order.vendor.latitude && order.vendor.longitude) {
+    if (!isNaN(order.deliveryAddress.latitude) && !isNaN(order.deliveryAddress.longitude)) {
       const calculatedDistance = calculateDistance(
-        customerLatitude,
-        customerLongitude,
+        order.deliveryAddress.latitude,
+        order.deliveryAddress.longitude,
         order.vendor.latitude,
         order.vendor.longitude
       );
@@ -90,7 +87,7 @@ export const getOrderByIdService = async (id: string, latitude?: number, longitu
     }
   }
 
-  // 3. Combine the results
+  // 3. Combine the results.
   const orderWithExtras = {
     ...order,
     vendor: {

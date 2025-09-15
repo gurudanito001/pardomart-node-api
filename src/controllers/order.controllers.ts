@@ -190,18 +190,6 @@ export const createOrderController = async (req: AuthenticatedRequest, res: Resp
  *           type: string
  *           format: uuid
  *         description: The ID of the order to retrieve.
- *       - in: query
- *         name: latitude
- *         schema:
- *           type: number
- *           format: float
- *         description: Optional. User's current latitude to calculate distance to the vendor.
- *       - in: query
- *         name: longitude
- *         schema:
- *           type: number
- *           format: float
- *         description: Optional. User's current longitude to calculate distance to the vendor.
  *     responses:
  *       200:
  *         description: The requested order, with vendor distance and rating included.
@@ -215,12 +203,8 @@ export const createOrderController = async (req: AuthenticatedRequest, res: Resp
 export const getOrderByIdController = async (req: Request, res: Response) => {
   try {
     const orderId = req.params.id;
-    const { latitude, longitude } = req.query;
 
-    const lat = latitude ? parseFloat(latitude as string) : undefined;
-    const lon = longitude ? parseFloat(longitude as string) : undefined;
-
-    const order = await getOrderByIdService(orderId, lat, lon);
+    const order = await getOrderByIdService(orderId);
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
     }

@@ -115,8 +115,8 @@ exports.createOrderService = function (payload) { return __awaiter(void 0, void 
  * @param id - The ID of the order to retrieve.
  * @returns The order, or null if not found.
  */
-exports.getOrderByIdService = function (id, latitude, longitude) { return __awaiter(void 0, void 0, Promise, function () {
-    var order, rating, distance, customerLatitude, customerLongitude, calculatedDistance, orderWithExtras;
+exports.getOrderByIdService = function (id) { return __awaiter(void 0, void 0, Promise, function () {
+    var order, rating, distance, calculatedDistance, orderWithExtras;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4 /*yield*/, orderModel.getOrderById(id)];
@@ -128,11 +128,9 @@ exports.getOrderByIdService = function (id, latitude, longitude) { return __awai
                 return [4 /*yield*/, rating_service_1.getAggregateRatingService({ ratedVendorId: order.vendorId })];
             case 2:
                 rating = _a.sent();
-                if (latitude && longitude && order.vendor.latitude && order.vendor.longitude) {
-                    customerLatitude = latitude;
-                    customerLongitude = longitude;
-                    if (!isNaN(customerLatitude) && !isNaN(customerLongitude)) {
-                        calculatedDistance = calculateDistance(customerLatitude, customerLongitude, order.vendor.latitude, order.vendor.longitude);
+                if (order.deliveryAddress && order.deliveryAddress.latitude && order.deliveryAddress.longitude && order.vendor.latitude && order.vendor.longitude) {
+                    if (!isNaN(order.deliveryAddress.latitude) && !isNaN(order.deliveryAddress.longitude)) {
+                        calculatedDistance = calculateDistance(order.deliveryAddress.latitude, order.deliveryAddress.longitude, order.vendor.latitude, order.vendor.longitude);
                         distance = parseFloat(calculatedDistance.toFixed(2));
                     }
                 }
