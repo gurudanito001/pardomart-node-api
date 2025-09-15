@@ -29,6 +29,7 @@ model User {
   language         String?
   notification     Json?
   rememberToken    String?
+  stripeCustomerId String?           @unique
   referralCode     String?
   role             Role
   // NEW: Link Vendor Staff to their Vendor
@@ -52,6 +53,8 @@ model User {
   receivedMessages Message[] @relation("ReceivedMessages")
   notifications   Notification[]
   supportTickets  SupportTicket[]
+  payments        Payment[]
+  savedPaymentMethods SavedPaymentMethod[]
   devices         Device[]
   wallet          Wallet?
 
@@ -231,6 +234,7 @@ model Order {
   ratings Rating[]
   deliveryPersonLocations DeliveryPersonLocation[]
   messages                   Message[]
+  payment                   Payment?
 }
 
 model DeliveryAddress {
@@ -402,6 +406,37 @@ model Message {
   updatedAt   DateTime @updatedAt
 
   @@index([orderId, createdAt])
+}
+
+model Payment {
+  id                    String   @id @default(uuid())
+  amount                Float
+  currency              String   @default("usd")
+  status                PaymentStatus
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete:Cascade)
+  orderId               String   @unique // Each order has one payment
+  order                 Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  stripePaymentIntentId String   @unique
+  paymentMethodDetails  Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([userId, orderId])
+}
+
+model SavedPaymentMethod {
+  id                 String   @id @default(uuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripePaymentMethodId String   @unique
+  cardBrand          String   // e.g., "visa", "mastercard"
+  cardLast4          String
+  isDefault          Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Wallet {

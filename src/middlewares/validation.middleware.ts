@@ -533,6 +533,11 @@ export const validateUpdateSupportTicketStatus = [
   body('status').isIn(Object.values(TicketStatus)).withMessage(`Status must be one of: ${Object.values(TicketStatus).join(', ')}`),
 ];
 
+// --- Payment Validation ---
+export const validateDetachPaymentMethod = [
+  param('paymentMethodId').isString().notEmpty().withMessage('A valid paymentMethodId is required in the URL.'),
+];
+
 // --- Device Validation ---
 export const validateRegisterDevice = [
   body('fcmToken').isString().notEmpty().withMessage('fcmToken is required.'),
