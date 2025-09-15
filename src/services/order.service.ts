@@ -11,12 +11,36 @@ import timezone from 'dayjs/plugin/timezone';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { getIO } from '../socket';
 import { creditWallet } from './wallet.service';
+import { getAggregateRatingService } from './rating.service';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(customParseFormat);
 
 const prisma = new PrismaClient();
+
+const toRadians = (degrees: number): number => {
+  return degrees * (Math.PI / 180);
+};
+
+const calculateDistance = (
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number => {
+  const R = 6371; // Radius of the Earth in km
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(lat1)) *
+      Math.cos(toRadians(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Distance in km
+};
 
 
 // --- Order Service Functions ---
@@ -39,8 +63,44 @@ export const createOrderService = async (payload: orderModel.CreateOrderPayload)
  * @param id - The ID of the order to retrieve.
  * @returns The order, or null if not found.
  */
-export const getOrderByIdService = async (id: string): Promise<Order | null> => {
-  return orderModel.getOrderById(id);
+export const getOrderByIdService = async (id: string, latitude?: number, longitude?: number): Promise<any | null> => {
+  const order = await orderModel.getOrderById(id);
+
+  if (!order || !order.vendor) {
+    return null;
+  }
+
+  // 1. Get aggregate rating for the vendor
+  const rating = await getAggregateRatingService({ ratedVendorId: order.vendorId });
+
+  // 2. Calculate distance if coordinates are provided
+  let distance: number | undefined;
+  if (latitude && longitude && order.vendor.latitude && order.vendor.longitude) {
+    const customerLatitude = latitude;
+    const customerLongitude = longitude;
+
+    if (!isNaN(customerLatitude) && !isNaN(customerLongitude)) {
+      const calculatedDistance = calculateDistance(
+        customerLatitude,
+        customerLongitude,
+        order.vendor.latitude,
+        order.vendor.longitude
+      );
+      distance = parseFloat(calculatedDistance.toFixed(2));
+    }
+  }
+
+  // 3. Combine the results
+  const orderWithExtras = {
+    ...order,
+    vendor: {
+      ...order.vendor,
+      rating: rating || { average: 0, count: 0 },
+      distance: distance,
+    },
+  };
+
+  return orderWithExtras;
 };
 
 

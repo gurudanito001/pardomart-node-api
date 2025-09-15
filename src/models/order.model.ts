@@ -31,7 +31,36 @@ export const createOrder = async (payload: CreateOrderPayload, tx?: Prisma.Trans
   });
 };
 
-export const getOrderById = async (id: string, tx?: Prisma.TransactionClient): Promise<Order | null> => {
+const orderWithRelations = Prisma.validator<Prisma.OrderDefaultArgs>()({
+  include: {
+    orderItems: {
+      include: {
+        vendorProduct: {
+          include: {
+            product: true,
+          },
+        },
+        chosenReplacement: {
+          include: { product: true },
+        },
+        replacements: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    },
+    shopper: true,
+    deliveryPerson: true,
+    deliveryAddress: true,
+    vendor: true,
+    user: true,
+  },
+});
+
+export type OrderWithRelations = Prisma.OrderGetPayload<typeof orderWithRelations>;
+
+export const getOrderById = async (id: string, tx?: Prisma.TransactionClient): Promise<OrderWithRelations | null> => {
   const db = tx || prisma;
   return db.order.findUnique({
     where: { id },
@@ -55,7 +84,9 @@ export const getOrderById = async (id: string, tx?: Prisma.TransactionClient): P
       },
       shopper: true,
       deliveryPerson: true,
-      deliveryAddress: true
+      deliveryAddress: true,
+      vendor: true,
+      user: true
     },
   });
 };

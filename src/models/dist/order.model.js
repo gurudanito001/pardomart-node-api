@@ -48,6 +48,32 @@ exports.createOrder = function (payload, tx) { return __awaiter(void 0, void 0, 
             })];
     });
 }); };
+var orderWithRelations = client_1.Prisma.validator()({
+    include: {
+        orderItems: {
+            include: {
+                vendorProduct: {
+                    include: {
+                        product: true
+                    }
+                },
+                chosenReplacement: {
+                    include: { product: true }
+                },
+                replacements: {
+                    include: {
+                        product: true
+                    }
+                }
+            }
+        },
+        shopper: true,
+        deliveryPerson: true,
+        deliveryAddress: true,
+        vendor: true,
+        user: true
+    }
+});
 exports.getOrderById = function (id, tx) { return __awaiter(void 0, void 0, Promise, function () {
     var db;
     return __generator(this, function (_a) {
@@ -74,7 +100,9 @@ exports.getOrderById = function (id, tx) { return __awaiter(void 0, void 0, Prom
                     },
                     shopper: true,
                     deliveryPerson: true,
-                    deliveryAddress: true
+                    deliveryAddress: true,
+                    vendor: true,
+                    user: true
                 }
             })];
     });

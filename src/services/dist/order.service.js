@@ -71,10 +71,26 @@ var timezone_1 = require("dayjs/plugin/timezone");
 var customParseFormat_1 = require("dayjs/plugin/customParseFormat");
 var socket_1 = require("../socket");
 var wallet_service_1 = require("./wallet.service");
+var rating_service_1 = require("./rating.service");
 dayjs_1["default"].extend(utc_1["default"]);
 dayjs_1["default"].extend(timezone_1["default"]);
 dayjs_1["default"].extend(customParseFormat_1["default"]);
 var prisma = new client_1.PrismaClient();
+var toRadians = function (degrees) {
+    return degrees * (Math.PI / 180);
+};
+var calculateDistance = function (lat1, lon1, lat2, lon2) {
+    var R = 6371; // Radius of the Earth in km
+    var dLat = toRadians(lat2 - lat1);
+    var dLon = toRadians(lon2 - lon1);
+    var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRadians(lat1)) *
+            Math.cos(toRadians(lat2)) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in km
+};
 // --- Order Service Functions ---
 /**
  * Creates a new order.
@@ -99,9 +115,30 @@ exports.createOrderService = function (payload) { return __awaiter(void 0, void 
  * @param id - The ID of the order to retrieve.
  * @returns The order, or null if not found.
  */
-exports.getOrderByIdService = function (id) { return __awaiter(void 0, void 0, Promise, function () {
+exports.getOrderByIdService = function (id, latitude, longitude) { return __awaiter(void 0, void 0, Promise, function () {
+    var order, rating, distance, customerLatitude, customerLongitude, calculatedDistance, orderWithExtras;
     return __generator(this, function (_a) {
-        return [2 /*return*/, orderModel.getOrderById(id)];
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, orderModel.getOrderById(id)];
+            case 1:
+                order = _a.sent();
+                if (!order || !order.vendor) {
+                    return [2 /*return*/, null];
+                }
+                return [4 /*yield*/, rating_service_1.getAggregateRatingService({ ratedVendorId: order.vendorId })];
+            case 2:
+                rating = _a.sent();
+                if (latitude && longitude && order.vendor.latitude && order.vendor.longitude) {
+                    customerLatitude = latitude;
+                    customerLongitude = longitude;
+                    if (!isNaN(customerLatitude) && !isNaN(customerLongitude)) {
+                        calculatedDistance = calculateDistance(customerLatitude, customerLongitude, order.vendor.latitude, order.vendor.longitude);
+                        distance = parseFloat(calculatedDistance.toFixed(2));
+                    }
+                }
+                orderWithExtras = __assign(__assign({}, order), { vendor: __assign(__assign({}, order.vendor), { rating: rating || { average: 0, count: 0 }, distance: distance }) });
+                return [2 /*return*/, orderWithExtras];
+        }
     });
 }); };
 var OrderCreationError = /** @class */ (function (_super) {
