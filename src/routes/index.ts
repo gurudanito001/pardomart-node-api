@@ -17,6 +17,7 @@ import wishlistRouter from './wishlist.routes';
 import deviceRouter from './device.routes';
 import notificationRouter from './notification.routes';
 import walletRoutes from './wallet.routes';
+import supportRoutes from './support.routes';
 
 // Create a new Router instance
 const router = Router();
@@ -40,5 +41,6 @@ router.use('/api/v1/wishlist', wishlistRouter);
 router.use('/api/v1/devices', deviceRouter);
 router.use('/api/v1/notifications', notificationRouter);
 router.use('/api/v1/wallet', walletRoutes);
+router.use('/api/v1/support', supportRoutes);
 
 export default router;

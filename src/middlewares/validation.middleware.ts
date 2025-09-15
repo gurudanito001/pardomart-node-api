@@ -13,6 +13,8 @@ import {
   FeeCalculationMethod,
   NotificationType,
   OrderItemStatus,
+  TicketCategory,
+  TicketStatus,
 } from '@prisma/client';
 
 // Generic validation middleware
@@ -516,6 +518,19 @@ export const validateRespondToReplacement = [
   param('orderId').isUUID(4).withMessage('A valid orderId is required.'),
   param('itemId').isUUID(4).withMessage('A valid itemId is required.'),
   body('approved').isBoolean().withMessage('approved must be a boolean.'),
+];
+
+// --- Support Ticket Validation ---
+export const validateCreateSupportTicket = [
+  body('title').trim().notEmpty().withMessage('Title is required.'),
+  body('description').trim().notEmpty().withMessage('Description is required.'),
+  body('category').isIn(Object.values(TicketCategory)).withMessage(`Category must be one of: ${Object.values(TicketCategory).join(', ')}`),
+  body('meta').optional({ nullable: true }).isObject().withMessage('Meta must be an object.'),
+];
+
+export const validateUpdateSupportTicketStatus = [
+  param('ticketId').isUUID(4).withMessage('A valid ticketId is required in the URL.'),
+  body('status').isIn(Object.values(TicketStatus)).withMessage(`Status must be one of: ${Object.values(TicketStatus).join(', ')}`),
 ];
 
 // --- Device Validation ---

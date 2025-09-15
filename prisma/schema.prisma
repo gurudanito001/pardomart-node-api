@@ -35,8 +35,7 @@ model User {
   vendorId         String? // ID of the Vendor this staff user belongs to (null for customers/delivery_persons)
   vendor           Vendor? @relation("VendorStaff", fields: [vendorId], references: [id], onDelete: SetNull)
 
-  vendors           Vendor[]          @relation("Vendor")
-  supportMessages   Support[]         @relation("SupportMessages")
+  vendors           Vendor[]        @relation("Vendor")
   orderShoppers     Order[]           @relation("OrderShopper")
   orderDeliverers   Order[]           @relation("OrderDeliverer")
   deliveryAddresses DeliveryAddress[]
@@ -52,6 +51,7 @@ model User {
   sentMessages     Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
   notifications   Notification[]
+  supportTickets  SupportTicket[]
   devices         Device[]
   wallet          Wallet?
 
@@ -329,15 +329,19 @@ model VendorOpeningHours {
   @@unique([vendorId, day])
 }
 
-model Support {
-  id        String   @id @default(uuid())
-  user      User?    @relation("SupportMessages", fields: [userId], references: [id])
-  userId    String?
-  name      String
-  email     String
-  message   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model SupportTicket {
+  id          String         @id @default(uuid())
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  title       String
+  description String
+  category    TicketCategory
+  status      TicketStatus   @default(OPEN)
+  meta        Json? // e.g., { "orderId": "..." }
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([userId, status])
 }
 
 model Setting {
@@ -502,6 +506,22 @@ enum RatingType {
   VENDOR
   SHOPPER
   DELIVERER
+}
+
+enum TicketCategory {
+  BUG_REPORT
+  FEATURE_REQUEST
+  ORDER_ISSUE
+  PAYMENT_ISSUE
+  ACCOUNT_ISSUE
+  OTHER
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
 }
 
 enum TransactionStatus {
