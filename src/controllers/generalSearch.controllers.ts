@@ -77,9 +77,6 @@ import { searchProductsService, searchStoreService, searchByCategoryService, sea
  *         weightUnit:
  *           type: string
  *           nullable: true
- *         stock:
- *           type: integer
- *           nullable: true
  *         isAvailable:
  *           type: boolean
  *         isAlcohol:

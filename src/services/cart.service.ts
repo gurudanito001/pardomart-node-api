@@ -103,15 +103,9 @@ export const addItemToCartService = async (userId: string, payload: AddItemPaylo
 
   if (existingItem) {
     // 4a. If item exists, update its quantity.
-    if (vendorProduct.stock !== null && vendorProduct.stock < quantity) {
-      throw new CartError(`Not enough stock. Only ${vendorProduct.stock} items available.`);
-    }
     await cartItemModel.updateCartItem(existingItem.id, { quantity });
   } else {
     // 4b. If item does not exist, create a new cart item
-    if (vendorProduct.stock !== null && vendorProduct.stock < quantity) {
-        throw new CartError(`Not enough stock. Only ${vendorProduct.stock} items available.`);
-    }
     await cartItemModel.createCartItem({
       cartId: cart.id,
       vendorProductId,

@@ -305,13 +305,12 @@ export const calculateOrderFeesService = async (
         id: true,
         price: true,
         isAvailable: true,
-        stock: true,
       },
     });
 
     // Create a map for quick price lookup
-    const productDetailsMap = new Map<string, { price: number; isAvailable: boolean; stock: number | null }>();
-    vendorProducts.forEach((vp) => productDetailsMap.set(vp.id, { price: vp.price, isAvailable: vp.isAvailable, stock: vp.stock }));
+    const productDetailsMap = new Map<string, { price: number; isAvailable: boolean; }>();
+    vendorProducts.forEach((vp) => productDetailsMap.set(vp.id, { price: vp.price, isAvailable: vp.isAvailable }));
 
     // Fetch active fee configurations
     const activeFees = await prismaClient.fee.findMany({
@@ -336,8 +335,8 @@ export const calculateOrderFeesService = async (
       if (!productDetails) {
         throw new Error(`Price not found for vendor product ID: ${item.vendorProductId}`);
       }
-      if (!productDetails.isAvailable || (productDetails.stock !== null && productDetails.stock < item.quantity)) {
-        throw new Error(`Product ID ${item.vendorProductId} is not available or out of stock.`);
+      if (!productDetails.isAvailable) {
+        throw new Error(`Product ID ${item.vendorProductId} is not available.`);
       }
       subtotal += productDetails.price * item.quantity;
       totalItemCount += item.quantity;

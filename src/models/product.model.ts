@@ -21,7 +21,6 @@ interface CreateVendorProductPayload {
   discountedPrice?: number;
   sku?: string;
   images?: string[];
-  stock?: number;
   isAvailable?: boolean;
   attributes?: any;
   name: string;
@@ -37,7 +36,6 @@ interface UpdateVendorProductPayload {
   discountedPrice?: number;
   sku?: string;
   images?: string[];
-  stock?: number;
   isAvailable?: boolean;
   attributes?: any;
   name?: string;
@@ -139,7 +137,6 @@ export const createVendorProductWithBarcode = async (
     discountedPrice: payload.discountedPrice,
     sku: payload.sku,
     images: payload.images || [],
-    stock: payload.stock,
     isAvailable: payload.isAvailable,
     attributes: payload.attributes,
     categories: {

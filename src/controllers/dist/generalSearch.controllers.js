@@ -113,9 +113,6 @@ var generalSearch_service_1 = require("../services/generalSearch.service");
  *         weightUnit:
  *           type: string
  *           nullable: true
- *         stock:
- *           type: integer
- *           nullable: true
  *         isAvailable:
  *           type: boolean
  *         isAlcohol:

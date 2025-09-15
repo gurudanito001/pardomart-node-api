@@ -271,31 +271,6 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
       });
     }
 
-    // --- NEW: Decrement stock for each product in the order ---
-    for (const item of orderItems) {
-      try {
-        await tx.vendorProduct.update({
-          where: {
-            id: item.vendorProductId,
-            stock: {
-              gte: item.quantity, // Ensure stock is sufficient at the time of update
-            },
-          },
-          data: {
-            stock: {
-              decrement: item.quantity,
-            },
-          },
-        });
-      } catch (e) {
-        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {
-          // This error ("Record to update not found") is thrown when the where clause fails, including our stock check.
-          throw new OrderCreationError(`Product with ID ${item.vendorProductId} is out of stock or does not have enough quantity.`, 409); // 409 Conflict
-        }
-        throw e; // Re-throw any other unexpected errors
-      }
-    }
-
     // --- 7. Return the complete order with all relations ---
     const finalOrder = await orderModel.getOrderById(newOrder.id, tx);
     if (!finalOrder) {
@@ -746,18 +721,6 @@ export const declineOrderService = async (
       description: `Refund for declined order #${orderId.substring(0, 8)}`,
       meta: { orderId },
     }, tx);
-
-    // 3. Restore stock for each item in the order
-    for (const item of orderToDecline.orderItems) {
-      await tx.vendorProduct.update({
-        where: { id: item.vendorProductId },
-        data: {
-          stock: {
-            increment: item.quantity,
-          },
-        },
-      });
-    }
 
     // 4. Update the order status to declined
     const declinedOrder = await tx.order.update({

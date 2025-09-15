@@ -217,16 +217,16 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
             case 2: 
             // --- Transactional Block ---
             return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
-                    var fees, subtotal, deliveryFee, serviceFee, shoppingFee, finalTotalAmount, newOrder, _i, orderItems_1, item, _a, orderItems_2, item, e_1, finalOrder;
-                    return __generator(this, function (_b) {
-                        switch (_b.label) {
+                    var fees, subtotal, deliveryFee, serviceFee, shoppingFee, finalTotalAmount, newOrder, _i, orderItems_1, item, finalOrder;
+                    return __generator(this, function (_a) {
+                        switch (_a.label) {
                             case 0: return [4 /*yield*/, fee_service_1.calculateOrderFeesService({
                                     orderItems: orderItems,
                                     vendorId: vendorId,
                                     deliveryAddressId: shippingAddressId
                                 }, tx)];
                             case 1:
-                                fees = _b.sent();
+                                fees = _a.sent();
                                 subtotal = fees.subtotal, deliveryFee = fees.deliveryFee, serviceFee = fees.serviceFee, shoppingFee = fees.shoppingFee;
                                 finalTotalAmount = subtotal +
                                     (deliveryFee || 0) +
@@ -247,9 +247,9 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                         deliveryInstructions: deliveryInstructions
                                     }, tx)];
                             case 2:
-                                newOrder = _b.sent();
+                                newOrder = _a.sent();
                                 _i = 0, orderItems_1 = orderItems;
-                                _b.label = 3;
+                                _a.label = 3;
                             case 3:
                                 if (!(_i < orderItems_1.length)) return [3 /*break*/, 6];
                                 item = orderItems_1[_i];
@@ -270,49 +270,14 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                         }
                                     })];
                             case 4:
-                                _b.sent();
-                                _b.label = 5;
+                                _a.sent();
+                                _a.label = 5;
                             case 5:
                                 _i++;
                                 return [3 /*break*/, 3];
-                            case 6:
-                                _a = 0, orderItems_2 = orderItems;
-                                _b.label = 7;
+                            case 6: return [4 /*yield*/, orderModel.getOrderById(newOrder.id, tx)];
                             case 7:
-                                if (!(_a < orderItems_2.length)) return [3 /*break*/, 12];
-                                item = orderItems_2[_a];
-                                _b.label = 8;
-                            case 8:
-                                _b.trys.push([8, 10, , 11]);
-                                return [4 /*yield*/, tx.vendorProduct.update({
-                                        where: {
-                                            id: item.vendorProductId,
-                                            stock: {
-                                                gte: item.quantity
-                                            }
-                                        },
-                                        data: {
-                                            stock: {
-                                                decrement: item.quantity
-                                            }
-                                        }
-                                    })];
-                            case 9:
-                                _b.sent();
-                                return [3 /*break*/, 11];
-                            case 10:
-                                e_1 = _b.sent();
-                                if (e_1 instanceof client_1.Prisma.PrismaClientKnownRequestError && e_1.code === 'P2025') {
-                                    // This error ("Record to update not found") is thrown when the where clause fails, including our stock check.
-                                    throw new OrderCreationError("Product with ID " + item.vendorProductId + " is out of stock or does not have enough quantity.", 409); // 409 Conflict
-                                }
-                                throw e_1; // Re-throw any other unexpected errors
-                            case 11:
-                                _a++;
-                                return [3 /*break*/, 7];
-                            case 12: return [4 /*yield*/, orderModel.getOrderById(newOrder.id, tx)];
-                            case 13:
-                                finalOrder = _b.sent();
+                                finalOrder = _a.sent();
                                 if (!finalOrder) {
                                     throw new OrderCreationError("Failed to retrieve the created order.", 500);
                                 }
@@ -693,9 +658,9 @@ exports.declineOrderService = function (orderId, vendorId, // Pass vendorId for 
 reason) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
         return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
-                var orderToDecline, _i, _a, item, declinedOrder;
-                return __generator(this, function (_b) {
-                    switch (_b.label) {
+                var orderToDecline, declinedOrder;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
                         case 0: return [4 /*yield*/, tx.order.findFirst({
                                 where: {
                                     id: orderId,
@@ -708,7 +673,7 @@ reason) { return __awaiter(void 0, void 0, Promise, function () {
                                 }
                             })];
                         case 1:
-                            orderToDecline = _b.sent();
+                            orderToDecline = _a.sent();
                             if (!orderToDecline) {
                                 throw new OrderCreationError('Order not found or cannot be declined in its current state/by this vendor.', 404);
                             }
@@ -721,36 +686,17 @@ reason) { return __awaiter(void 0, void 0, Promise, function () {
                                 }, tx)];
                         case 2:
                             // 2. Refund the customer's payment to their wallet
-                            _b.sent();
-                            _i = 0, _a = orderToDecline.orderItems;
-                            _b.label = 3;
-                        case 3:
-                            if (!(_i < _a.length)) return [3 /*break*/, 6];
-                            item = _a[_i];
-                            return [4 /*yield*/, tx.vendorProduct.update({
-                                    where: { id: item.vendorProductId },
+                            _a.sent();
+                            return [4 /*yield*/, tx.order.update({
+                                    where: { id: orderId },
                                     data: {
-                                        stock: {
-                                            increment: item.quantity
-                                        }
+                                        orderStatus: client_1.OrderStatus.declined_by_vendor,
+                                        paymentStatus: client_1.PaymentStatus.refunded,
+                                        reasonForDecline: reason
                                     }
                                 })];
-                        case 4:
-                            _b.sent();
-                            _b.label = 5;
-                        case 5:
-                            _i++;
-                            return [3 /*break*/, 3];
-                        case 6: return [4 /*yield*/, tx.order.update({
-                                where: { id: orderId },
-                                data: {
-                                    orderStatus: client_1.OrderStatus.declined_by_vendor,
-                                    paymentStatus: client_1.PaymentStatus.refunded,
-                                    reasonForDecline: reason
-                                }
-                            })];
-                        case 7:
-                            declinedOrder = _b.sent();
+                        case 3:
+                            declinedOrder = _a.sent();
                             // TODO: Notify customer of the declined order and refund.
                             return [2 /*return*/, declinedOrder];
                     }

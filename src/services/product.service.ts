@@ -28,7 +28,6 @@ export interface CreateVendorProductPayload {
   name: string;
   description?: string;
   discountedPrice?: number;
-  stock?: number;
   isAvailable?: boolean;
   categoryIds: string[];
 }
@@ -41,7 +40,6 @@ export interface CreateVendorProductWithBarcodePayload {
   description?: string;
   categoryIds: string[];
   discountedPrice?: number;
-  stock?: number;
   isAvailable?: boolean;
 }
 
@@ -49,7 +47,6 @@ export interface UpdateVendorProductPayload {
   id: string;
   price?: number;
   name?: string;
-  stock?: number;
   isAvailable?: boolean;
 }
 

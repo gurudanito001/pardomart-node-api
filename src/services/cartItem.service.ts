@@ -38,9 +38,6 @@ export const updateCartItemService = async (
   if (!cartItem?.vendorProduct) {
     throw new CartError('Cart item or associated product not found.', 404);
   }
-  if (cartItem.vendorProduct.stock !== null && cartItem.vendorProduct.stock < quantity) {
-    throw new CartError(`Not enough stock. Only ${cartItem.vendorProduct.stock} items available.`);
-  }
   return cartItemModel.updateCartItem(id, { quantity });
 };
 
