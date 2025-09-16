@@ -83,8 +83,7 @@ var message_service_1 = require("../services/message.service");
  *         description: The created message.
  *         content:
  *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Message'
+ *             schema: { $ref: '#/components/schemas/MessageWithRelations' }
  *       400:
  *         description: Bad request (e.g., invalid input).
  *       401:
@@ -95,6 +94,34 @@ var message_service_1 = require("../services/message.service");
  *         description: Order not found.
  *       500:
  *         description: Internal server error.
+ * components:
+ *   schemas:
+ *     Message:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         content: { type: string }
+ *         senderId: { type: string, format: uuid }
+ *         recipientId: { type: string, format: uuid }
+ *         orderId: { type: string, format: uuid }
+ *         readAt: { type: string, format: date-time, nullable: true }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
+ *     UserSummary:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         name: { type: string, nullable: true }
+ *         mobileNumber: { type: string, nullable: true }
+ *     MessageWithRelations:
+ *       allOf:
+ *         - $ref: '#/components/schemas/Message'
+ *         - type: object
+ *           properties:
+ *             sender:
+ *               $ref: '#/components/schemas/UserSummary'
+ *             recipient:
+ *               $ref: '#/components/schemas/UserSummary'
  */
 exports.sendMessageController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var senderId, orderId, _a, recipientId, content, message, error_1;
@@ -154,8 +181,7 @@ exports.sendMessageController = function (req, res) { return __awaiter(void 0, v
  *           application/json:
  *             schema:
  *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Message'
+ *               items: { $ref: '#/components/schemas/MessageWithRelations' }
  *       401:
  *         description: Unauthorized.
  *       403:

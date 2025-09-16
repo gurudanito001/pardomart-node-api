@@ -16,7 +16,7 @@ interface CreateNotificationArgs {
 /**
  * A generic function to create a notification record and send a push notification.
  */
-export const createAndSendNotification = async (args: CreateNotificationArgs) => {
+export const createNotification = async (args: CreateNotificationArgs) => {
   const { userId, title, body, type, meta } = args;
 
   // 1. Store notification in the database for in-app history
@@ -71,7 +71,7 @@ export const notifyVendorOfNewOrder = async (vendorId: string, orderId: string) 
   const body = `A new order has been placed. Tap to view.`;
 
   const notificationPromises = vendorUsers.map(user =>
-    createAndSendNotification({ userId: user.id, title, body, type: NotificationType.NEW_ORDER_PLACED, meta: { orderId } })
+    createNotification({ userId: user.id, title, body, type: NotificationType.NEW_ORDER_PLACED, meta: { orderId } })
   );
 
   await Promise.all(notificationPromises);

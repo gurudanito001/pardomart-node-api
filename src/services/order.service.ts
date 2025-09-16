@@ -12,6 +12,7 @@ import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { getIO } from '../socket';
 import { creditWallet } from './wallet.service';
 import { getAggregateRatingService } from './rating.service';
+import * as notificationService from './notification.service';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -110,6 +111,27 @@ export class OrderCreationError extends Error {
   }
 }
 
+const generateUniqueOrderCode = async (tx: Prisma.TransactionClient): Promise<string> => {
+  let orderCode;
+  let isUnique = false;
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+  while (!isUnique) {
+    orderCode = '';
+    for (let i = 0; i < 6; i++) {
+      orderCode += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    const existingOrder = await tx.order.findUnique({
+      where: { orderCode },
+    });
+
+    if (!existingOrder) {
+      isUnique = true;
+    }
+  }
+  return orderCode as string;
+};
 
 
 
@@ -239,10 +261,13 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
       (shopperTip || 0) +
       (deliveryPersonTip || 0);
 
+    const orderCode = await generateUniqueOrderCode(tx);
+
     // --- 5. Create the Order record ---
     const newOrder = await orderModel.createOrder({
       userId,
       vendorId,
+      orderCode,
       subtotal,
       totalAmount: finalTotalAmount,
       deliveryFee, serviceFee, shoppingFee,
@@ -276,6 +301,20 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
     if (!finalOrder) {
         throw new OrderCreationError("Failed to retrieve the created order.", 500);
     }
+
+    // --- Add Notification Logic Here ---
+    // --- Add Notification Logic Here ---
+    await notificationService.createNotification({
+      userId: finalOrder.vendor.userId, // The vendor's user ID
+      type: 'NEW_ORDER_PLACED',
+      title: 'New Order Received!',
+      body: `You have a new order #${finalOrder.orderCode} from ${finalOrder.user.name}.`,
+      meta: { orderId: finalOrder.id }
+    });
+    // --- End Notification Logic ---
+    // --- End Notification Logic ---
+
+
     return finalOrder;
   });
 };
@@ -443,6 +482,36 @@ export const updateOrderStatusService = async (
       return orderModel.updateOrder(id, updates, tx);
     });
   }
+
+
+   // --- Add Notification Logic Here ---
+  const orderDetails = await orderModel.getOrderById(id); // Fetch details for notification
+  if (orderDetails) {
+    switch (status) {
+      case 'ready_for_pickup':
+        await notificationService.createNotification({
+          userId: orderDetails.userId,
+          type: 'ORDER_READY_FOR_PICKUP',
+          title: 'Your order is ready for pickup!',
+          body: `Order #${orderDetails.orderCode} is now ready for pickup at ${orderDetails.vendor.name}.`,
+          meta: { orderId: id }
+        });
+        break;
+
+      case 'en_route':
+        await notificationService.createNotification({
+          userId: orderDetails.userId,
+          type: 'EN_ROUTE',
+          title: 'Your order is on the way!',
+          body: `Your delivery person is en route with order #${orderDetails.orderCode}.`,
+          meta: { orderId: id }
+        });
+        break;
+      
+      // Add other cases like DELIVERED, etc.
+    }
+  }
+  // --- End Notification Logic ---
 
   return orderModel.updateOrder(id, updates, prisma);
 };
@@ -669,6 +738,18 @@ export const acceptOrderService = async (
         shopperId: shoppingHandlerUserId, // Assign the handler (the accepting staff)
       },
     });
+
+    // --- Add Notification Logic Here ---
+    await notificationService.createNotification({
+      userId: acceptedOrder.userId,
+      type: 'ORDER_ACCEPTED',
+      title: 'Your order has been accepted!',
+      body: `Your order with code #${acceptedOrder.orderCode} has been accepted  and will begin preparing it shortly.`,
+      meta: { orderId: acceptedOrder.id }
+    });
+    // --- End Notification Logic ---
+
+
     return acceptedOrder;
   } catch (error: any) {
     if (error.code === 'P2025') { // Prisma error for record not found
@@ -732,7 +813,15 @@ export const declineOrderService = async (
       },
     });
 
-    // TODO: Notify customer of the declined order and refund.
+     // --- Replace TODO with Notification Logic Here ---
+    await notificationService.createNotification({
+      userId: orderToDecline.userId,
+      type: 'ORDER_DECLINED',
+      title: 'Your order has been declined',
+      body: `Unfortunately, your order #${orderToDecline.orderCode} was declined. You have been refunded ${orderToDecline.totalAmount} in your wallet.`,
+      meta: { orderId: orderToDecline.id }
+    });
+    // --- End Notification Logic ---
 
     return declinedOrder;
   });

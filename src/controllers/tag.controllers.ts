@@ -24,6 +24,46 @@ import { TagFilters } from '../models/tag.model';
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Tag'
+ * components:
+ *   schemas:
+ *     Tag:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *         name:
+ *           type: string
+ *           example: "organic"
+ *     CreateTagPayload:
+ *       type: object
+ *       required:
+ *         - name
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: The name for the new tag.
+ *           example: "gluten-free"
+ *     CreateTagsBulkPayload:
+ *       type: object
+ *       required:
+ *         - names
+ *       properties:
+ *         names:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: A list of names for the tags to be created.
+ *           example: ["organic", "local", "fresh"]
+ *     UpdateTagPayload:
+ *       type: object
+ *       required:
+ *         - name
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: The new name for the tag.
+ *           example: "vegan"
  */
 export const createTag = async (req: Request, res: Response) => {
   try {

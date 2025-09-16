@@ -54,6 +54,21 @@ import { AuthenticatedRequest } from './vendor.controller';
  *         description: Internal server error.
  * components:
  *   schemas:
+ *     PaymentMethods:
+ *       type: string
+ *       enum: [credit_card, wallet, cash]
+ *     PaymentStatus:
+ *       type: string
+ *       enum: [pending, paid, failed, refunded]
+ *     OrderStatus:
+ *       type: string
+ *       enum: [pending, accepted_for_shopping, currently_shopping, ready_for_pickup, ready_for_delivery, accepted_for_delivery, en_route, delivered, picked_up_by_customer, declined_by_vendor, cancelled_by_customer]
+ *     ShoppingMethod:
+ *       type: string
+ *       enum: [vendor, delivery_person]
+ *     DeliveryMethod:
+ *       type: string
+ *       enum: [delivery_person, customer_pickup]
  *     OrderItemStatus:
  *       type: string
  *       enum: [PENDING, FOUND, NOT_FOUND, REPLACED]
@@ -119,8 +134,82 @@ import { AuthenticatedRequest } from './vendor.controller';
  *             deliveryPerson: { $ref: '#/components/schemas/UserSummary' }
  *             orderItems:
  *               type: array
- *               items:
- *                 $ref: '#/components/schemas/OrderItemWithRelations'
+ *               items: { $ref: '#/components/schemas/OrderItemWithRelations' }
+ *             vendor: { $ref: '#/components/schemas/VendorWithRatingAndDistance' }
+ *             deliveryAddress: { $ref: '#/components/schemas/DeliveryAddress', nullable: true }
+ *     Vendor:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         userId: { type: string, format: uuid }
+ *         name: { type: string }
+ *         email: { type: string, nullable: true }
+ *         tagline: { type: string, nullable: true }
+ *         details: { type: string, nullable: true }
+ *         image: { type: string, format: uri, nullable: true }
+ *         address: { type: string, nullable: true }
+ *         longitude: { type: number, format: float, nullable: true }
+ *         latitude: { type: number, format: float, nullable: true }
+ *         timezone: { type: string, nullable: true }
+ *         isVerified: { type: boolean }
+ *         meta: { type: object, nullable: true }
+ *     VendorWithRatingAndDistance:
+ *       allOf:
+ *         - $ref: '#/components/schemas/Vendor'
+ *         - type: object
+ *           properties:
+ *             rating:
+ *               type: object
+ *               properties:
+ *                 average: { type: number, format: float }
+ *                 count: { type: integer }
+ *             distance:
+ *               type: number
+ *               format: float
+ *               description: "Distance to the vendor from the order's delivery address in kilometers."
+ *               nullable: true
+ *     DeliveryAddress:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         label: { type: string, nullable: true }
+ *         addressLine1: { type: string }
+ *         addressLine2: { type: string, nullable: true }
+ *         city: { type: string }
+ *         state: { type: string, nullable: true }
+ *         postalCode: { type: string, nullable: true }
+ *         country: { type: string }
+ *         latitude: { type: number, format: float, nullable: true }
+ *         longitude: { type: number, format: float, nullable: true }
+ *         isDefault: { type: boolean }
+ *     UpdateOrderStatusPayload:
+ *       type: object
+ *       required: [status]
+ *       properties:
+ *         status:
+ *           $ref: '#/components/schemas/OrderStatus'
+ *     UpdateOrderPayload:
+ *       type: object
+ *       properties:
+ *         subtotal: { type: number, format: float }
+ *         totalAmount: { type: number, format: float }
+ *         deliveryFee: { type: number, format: float }
+ *         serviceFee: { type: number, format: float }
+ *         shoppingFee: { type: number, format: float }
+ *         shopperTip: { type: number, format: float }
+ *         deliveryPersonTip: { type: number, format: float }
+ *         paymentMethod: { $ref: '#/components/schemas/PaymentMethods' }
+ *         paymentStatus: { $ref: '#/components/schemas/PaymentStatus' }
+ *         orderStatus: { $ref: '#/components/schemas/OrderStatus' }
+ *         deliveryAddressId: { type: string, format: uuid }
+ *         deliveryInstructions: { type: string }
+ *         shopperId: { type: string, format: uuid }
+ *         deliveryPersonId: { type: string, format: uuid }
+ *         shoppingMethod: { $ref: '#/components/schemas/ShoppingMethod' }
+ *         deliveryMethod: { $ref: '#/components/schemas/DeliveryMethod' }
+ *         shoppingStartTime: { type: string, format: date-time }
+ *         scheduledDeliveryTime: { type: string, format: date-time }
+ *         actualDeliveryTime: { type: string, format: date-time }
  *     CreateOrderClientPayload:
  *       type: object
  *       required: [vendorId, paymentMethod, orderItems, shoppingMethod, deliveryMethod]
@@ -158,6 +247,12 @@ import { AuthenticatedRequest } from './vendor.controller';
  *         timeSlots:
  *           type: array
  *           items: { type: string, example: "9:00am - 10:00am" }
+ *     DeclineOrderPayload:
+ *       type: object
+ *       properties:
+ *         reason:
+ *           type: string
+ *           nullable: true
  */
 export const createOrderController = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -271,8 +366,7 @@ export const getOrdersByUserController = async (req: AuthenticatedRequest, res: 
  *         description: The updated order.
  *         content:
  *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Order'
+ *             schema: { $ref: '#/components/schemas/Order' }
  *       404:
  *         description: Order not found.
  */
@@ -320,9 +414,7 @@ export const updateOrderStatusController = async (req: Request, res: Response) =
  *       200:
  *         description: The updated order.
  *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Order'
+ *           application/json: { schema: { $ref: '#/components/schemas/Order' } }
  *       404:
  *         description: Order not found.
  */
@@ -605,15 +697,11 @@ export const getAvailableDeliverySlotsController = async (req: AuthenticatedRequ
  *     requestBody:
  *       content:
  *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/DeclineOrderPayload'
+ *           schema: { $ref: '#/components/schemas/DeclineOrderPayload' }
  *     responses:
  *       200:
  *         description: The declined order.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Order'
+ *         content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } }
  *       400:
  *         description: Bad request or order cannot be declined.
  */

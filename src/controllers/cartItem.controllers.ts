@@ -8,6 +8,77 @@ import { AuthenticatedRequest } from './vendor.controller';
 
 /**
  * @swagger
+ * tags:
+ *   name: CartItem
+ *   description: Operations on items within a shopping cart
+ * components:
+ *   schemas:
+ *     VendorProduct:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         vendorId: { type: string, format: uuid }
+ *         productId: { type: string, format: uuid }
+ *         price: { type: number, format: float }
+ *         name: { type: string }
+ *         description: { type: string, nullable: true }
+ *         discountedPrice: { type: number, format: float, nullable: true }
+ *         images: { type: array, items: { type: string, format: uri } }
+ *         isAvailable: { type: boolean }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
+ *     Vendor:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         name: { type: string }
+ *         image: { type: string, format: uri, nullable: true }
+ *         address: { type: string, nullable: true }
+ *     CartItem:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         cartId: { type: string, format: uuid }
+ *         vendorProductId: { type: string, format: uuid }
+ *         quantity: { type: integer }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
+ *     CartItemWithProduct:
+ *       allOf:
+ *         - $ref: '#/components/schemas/CartItem'
+ *         - type: object
+ *           properties:
+ *             vendorProduct:
+ *               $ref: '#/components/schemas/VendorProduct'
+ *     Cart:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         userId: { type: string, format: uuid }
+ *         vendorId: { type: string, format: uuid }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
+ *         items:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/CartItemWithProduct'
+ *         vendor:
+ *           $ref: '#/components/schemas/Vendor'
+ *     AddCartItemPayload:
+ *       type: object
+ *       required: [vendorProductId, quantity]
+ *       properties:
+ *         vendorProductId: { type: string, format: uuid }
+ *         quantity: { type: integer, minimum: 1 }
+ *     UpdateCartItemPayload:
+ *       type: object
+ *       required: [quantity]
+ *       properties:
+ *         quantity: { type: integer, minimum: 0, description: "Set to 0 to remove the item from the cart." }
+ */
+
+/**
+ * @swagger
  * /cart-items:
  *   post:
  *     summary: Add or update an item in the cart.
@@ -77,7 +148,7 @@ export const addItemToCartController = async (req: AuthenticatedRequest, res: Re
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/CartItem'
+ *               $ref: '#/components/schemas/CartItemWithProduct'
  *       404:
  *         description: Cart item not found.
  *       500:
@@ -131,8 +202,7 @@ export const getCartItemByIdController = async (req: AuthenticatedRequest, res: 
  *         description: The updated cart item.
  *         content:
  *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/CartItem'
+ *             schema: { $ref: '#/components/schemas/CartItemWithProduct' }
  *       500:
  *         description: Internal server error.
  */
@@ -194,8 +264,7 @@ export const updateCartItemController = async (req: AuthenticatedRequest, res: R
  *         description: The deleted cart item.
  *         content:
  *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/CartItem'
+ *             schema: { $ref: '#/components/schemas/CartItemWithProduct' }
  *       500:
  *         description: Internal server error.
  */

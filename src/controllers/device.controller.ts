@@ -29,6 +29,21 @@ import * as deviceService from '../services/device.service';
  *     responses:
  *       201:
  *         description: Device registered successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Device'
+ * components:
+ *   schemas:
+ *     Device:
+ *       type: object
+ *       properties:
+ *         id: { type: string, description: "CUID" }
+ *         userId: { type: string, format: uuid }
+ *         fcmToken: { type: string }
+ *         platform: { type: string, enum: [ios, android, web] }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
  */
 export const registerDeviceController = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -69,4 +84,3 @@ export const unregisterDeviceController = async (req: AuthenticatedRequest, res:
     res.status(500).json({ error: 'Failed to unregister device.' });
   }
 };
-

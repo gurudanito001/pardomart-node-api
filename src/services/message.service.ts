@@ -1,5 +1,6 @@
 import { PrismaClient, Message } from '@prisma/client';
 import { getIO, userSocketMap } from '../socket';
+import * as notificationService from './notification.service';
 
 const prisma = new PrismaClient();
 
@@ -63,6 +64,16 @@ export const sendMessageService = async ({
       },
     },
   });
+
+  // --- Add Notification Logic Here ---
+  await notificationService.createNotification({
+    userId: recipientId,
+    type: 'NEW_MESSAGE',
+    title: `New message from ${message.sender.name}`,
+    body: content,
+    meta: { orderId: orderId, senderId: senderId }
+  });
+  // --- End Notification Logic ---
 
   // 4. Trigger a real-time event to the recipient
   try {

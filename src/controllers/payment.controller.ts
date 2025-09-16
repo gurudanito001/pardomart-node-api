@@ -57,6 +57,35 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
  *         description: Forbidden.
  *       404:
  *         description: Order or User not found.
+ * components:
+ *   schemas:
+ *     PaymentStatus:
+ *       type: string
+ *       enum: [pending, paid, failed, refunded]
+ *     Payment:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         amount: { type: number, format: float }
+ *         currency: { type: string, example: "usd" }
+ *         status: { $ref: '#/components/schemas/PaymentStatus' }
+ *         userId: { type: string, format: uuid }
+ *         orderId: { type: string, format: uuid }
+ *         stripePaymentIntentId: { type: string }
+ *         paymentMethodDetails: { type: object, nullable: true, description: "Details about the payment method used, from Stripe." }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
+ *     SavedPaymentMethod:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         userId: { type: string, format: uuid }
+ *         stripePaymentMethodId: { type: string }
+ *         cardBrand: { type: string, example: "visa" }
+ *         cardLast4: { type: string, example: "4242" }
+ *         isDefault: { type: boolean }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
  */
 export const createPaymentIntentController = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -190,6 +219,12 @@ export const detachPaymentMethodController = async (req: AuthenticatedRequest, r
  *     responses:
  *       200:
  *         description: A list of the user's payments.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Payment'
  */
 export const listMyPaymentsController = async (req: AuthenticatedRequest, res: Response) => {
   try {

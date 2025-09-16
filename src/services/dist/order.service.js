@@ -72,6 +72,7 @@ var customParseFormat_1 = require("dayjs/plugin/customParseFormat");
 var socket_1 = require("../socket");
 var wallet_service_1 = require("./wallet.service");
 var rating_service_1 = require("./rating.service");
+var notificationService = require("./notification.service");
 dayjs_1["default"].extend(utc_1["default"]);
 dayjs_1["default"].extend(timezone_1["default"]);
 dayjs_1["default"].extend(customParseFormat_1["default"]);
@@ -151,6 +152,33 @@ var OrderCreationError = /** @class */ (function (_super) {
     return OrderCreationError;
 }(Error));
 exports.OrderCreationError = OrderCreationError;
+var generateUniqueOrderCode = function (tx) { return __awaiter(void 0, void 0, Promise, function () {
+    var orderCode, isUnique, chars, i, existingOrder;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                isUnique = false;
+                chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+                _a.label = 1;
+            case 1:
+                if (!!isUnique) return [3 /*break*/, 3];
+                orderCode = '';
+                for (i = 0; i < 6; i++) {
+                    orderCode += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                return [4 /*yield*/, tx.order.findUnique({
+                        where: { orderCode: orderCode }
+                    })];
+            case 2:
+                existingOrder = _a.sent();
+                if (!existingOrder) {
+                    isUnique = true;
+                }
+                return [3 /*break*/, 1];
+            case 3: return [2 /*return*/, orderCode];
+        }
+    });
+}); };
 /**
  * Retrieves all orders for a specific user.
  * @param userId - The ID of the user whose orders are to be retrieved.
@@ -217,7 +245,7 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
             case 2: 
             // --- Transactional Block ---
             return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
-                    var fees, subtotal, deliveryFee, serviceFee, shoppingFee, finalTotalAmount, newOrder, _i, orderItems_1, item, finalOrder;
+                    var fees, subtotal, deliveryFee, serviceFee, shoppingFee, finalTotalAmount, orderCode, newOrder, _i, orderItems_1, item, finalOrder;
                     return __generator(this, function (_a) {
                         switch (_a.label) {
                             case 0: return [4 /*yield*/, fee_service_1.calculateOrderFeesService({
@@ -234,9 +262,13 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                     (shoppingFee || 0) +
                                     (shopperTip || 0) +
                                     (deliveryPersonTip || 0);
+                                return [4 /*yield*/, generateUniqueOrderCode(tx)];
+                            case 2:
+                                orderCode = _a.sent();
                                 return [4 /*yield*/, orderModel.createOrder({
                                         userId: userId,
                                         vendorId: vendorId,
+                                        orderCode: orderCode,
                                         subtotal: subtotal,
                                         totalAmount: finalTotalAmount,
                                         deliveryFee: deliveryFee, serviceFee: serviceFee, shoppingFee: shoppingFee,
@@ -246,12 +278,12 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                         deliveryAddressId: shippingAddressId,
                                         deliveryInstructions: deliveryInstructions
                                     }, tx)];
-                            case 2:
+                            case 3:
                                 newOrder = _a.sent();
                                 _i = 0, orderItems_1 = orderItems;
-                                _a.label = 3;
-                            case 3:
-                                if (!(_i < orderItems_1.length)) return [3 /*break*/, 6];
+                                _a.label = 4;
+                            case 4:
+                                if (!(_i < orderItems_1.length)) return [3 /*break*/, 7];
                                 item = orderItems_1[_i];
                                 if (item.quantity <= 0) {
                                     throw new OrderCreationError("Quantity for product " + item.vendorProductId + " must be positive.");
@@ -269,18 +301,33 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                                 : undefined
                                         }
                                     })];
-                            case 4:
-                                _a.sent();
-                                _a.label = 5;
                             case 5:
+                                _a.sent();
+                                _a.label = 6;
+                            case 6:
                                 _i++;
-                                return [3 /*break*/, 3];
-                            case 6: return [4 /*yield*/, orderModel.getOrderById(newOrder.id, tx)];
-                            case 7:
+                                return [3 /*break*/, 4];
+                            case 7: return [4 /*yield*/, orderModel.getOrderById(newOrder.id, tx)];
+                            case 8:
                                 finalOrder = _a.sent();
                                 if (!finalOrder) {
                                     throw new OrderCreationError("Failed to retrieve the created order.", 500);
                                 }
+                                // --- Add Notification Logic Here ---
+                                // --- Add Notification Logic Here ---
+                                return [4 /*yield*/, notificationService.createNotification({
+                                        userId: finalOrder.vendor.userId,
+                                        type: 'NEW_ORDER_PLACED',
+                                        title: 'New Order Received!',
+                                        body: "You have a new order #" + finalOrder.orderCode + " from " + finalOrder.user.name + ".",
+                                        meta: { orderId: finalOrder.id }
+                                    })];
+                            case 9:
+                                // --- Add Notification Logic Here ---
+                                // --- Add Notification Logic Here ---
+                                _a.sent();
+                                // --- End Notification Logic ---
+                                // --- End Notification Logic ---
                                 return [2 /*return*/, finalOrder];
                         }
                     });
@@ -387,66 +434,101 @@ exports.updateOrderService = function (orderId, updates) { return __awaiter(void
  * @returns The updated order.
  */
 exports.updateOrderStatusService = function (id, status) { return __awaiter(void 0, void 0, Promise, function () {
-    var updates;
-    return __generator(this, function (_a) {
-        updates = { orderStatus: status };
-        // If order is delivered, handle payments to wallets
-        if (status === client_1.OrderStatus.delivered) {
-            updates.actualDeliveryTime = new Date();
-            return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
-                    var order, vendorAmount;
-                    return __generator(this, function (_a) {
-                        switch (_a.label) {
-                            case 0: return [4 /*yield*/, tx.order.findUnique({
-                                    where: { id: id },
-                                    include: { vendor: true }
-                                })];
-                            case 1:
-                                order = _a.sent();
-                                if (!order) {
-                                    throw new OrderCreationError('Order not found', 404);
+    var updates, orderDetails, _a;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                updates = { orderStatus: status };
+                // If order is delivered, handle payments to wallets
+                if (status === client_1.OrderStatus.delivered) {
+                    updates.actualDeliveryTime = new Date();
+                    return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
+                            var order, vendorAmount;
+                            return __generator(this, function (_a) {
+                                switch (_a.label) {
+                                    case 0: return [4 /*yield*/, tx.order.findUnique({
+                                            where: { id: id },
+                                            include: { vendor: true }
+                                        })];
+                                    case 1:
+                                        order = _a.sent();
+                                        if (!order) {
+                                            throw new OrderCreationError('Order not found', 404);
+                                        }
+                                        vendorAmount = order.subtotal;
+                                        if (!(vendorAmount > 0 && order.vendor.userId)) return [3 /*break*/, 3];
+                                        return [4 /*yield*/, wallet_service_1.creditWallet({
+                                                userId: order.vendor.userId,
+                                                amount: vendorAmount,
+                                                description: "Payment for order #" + order.id.substring(0, 8),
+                                                meta: { orderId: order.id }
+                                            }, tx)];
+                                    case 2:
+                                        _a.sent();
+                                        _a.label = 3;
+                                    case 3:
+                                        if (!(order.shopperId && order.shopperTip && order.shopperTip > 0)) return [3 /*break*/, 5];
+                                        return [4 /*yield*/, wallet_service_1.creditWallet({
+                                                userId: order.shopperId,
+                                                amount: order.shopperTip,
+                                                description: "Tip for order #" + order.id.substring(0, 8),
+                                                meta: { orderId: order.id }
+                                            }, tx)];
+                                    case 4:
+                                        _a.sent();
+                                        _a.label = 5;
+                                    case 5:
+                                        if (!(order.deliveryPersonId && order.deliveryPersonTip && order.deliveryPersonTip > 0)) return [3 /*break*/, 7];
+                                        return [4 /*yield*/, wallet_service_1.creditWallet({
+                                                userId: order.deliveryPersonId,
+                                                amount: order.deliveryPersonTip,
+                                                description: "Tip for order #" + order.id.substring(0, 8),
+                                                meta: { orderId: order.id }
+                                            }, tx)];
+                                    case 6:
+                                        _a.sent();
+                                        _a.label = 7;
+                                    case 7: 
+                                    // 4. Update the order status
+                                    return [2 /*return*/, orderModel.updateOrder(id, updates, tx)];
                                 }
-                                vendorAmount = order.subtotal;
-                                if (!(vendorAmount > 0 && order.vendor.userId)) return [3 /*break*/, 3];
-                                return [4 /*yield*/, wallet_service_1.creditWallet({
-                                        userId: order.vendor.userId,
-                                        amount: vendorAmount,
-                                        description: "Payment for order #" + order.id.substring(0, 8),
-                                        meta: { orderId: order.id }
-                                    }, tx)];
-                            case 2:
-                                _a.sent();
-                                _a.label = 3;
-                            case 3:
-                                if (!(order.shopperId && order.shopperTip && order.shopperTip > 0)) return [3 /*break*/, 5];
-                                return [4 /*yield*/, wallet_service_1.creditWallet({
-                                        userId: order.shopperId,
-                                        amount: order.shopperTip,
-                                        description: "Tip for order #" + order.id.substring(0, 8),
-                                        meta: { orderId: order.id }
-                                    }, tx)];
-                            case 4:
-                                _a.sent();
-                                _a.label = 5;
-                            case 5:
-                                if (!(order.deliveryPersonId && order.deliveryPersonTip && order.deliveryPersonTip > 0)) return [3 /*break*/, 7];
-                                return [4 /*yield*/, wallet_service_1.creditWallet({
-                                        userId: order.deliveryPersonId,
-                                        amount: order.deliveryPersonTip,
-                                        description: "Tip for order #" + order.id.substring(0, 8),
-                                        meta: { orderId: order.id }
-                                    }, tx)];
-                            case 6:
-                                _a.sent();
-                                _a.label = 7;
-                            case 7: 
-                            // 4. Update the order status
-                            return [2 /*return*/, orderModel.updateOrder(id, updates, tx)];
-                        }
-                    });
-                }); })];
+                            });
+                        }); })];
+                }
+                return [4 /*yield*/, orderModel.getOrderById(id)];
+            case 1:
+                orderDetails = _b.sent();
+                if (!orderDetails) return [3 /*break*/, 6];
+                _a = status;
+                switch (_a) {
+                    case 'ready_for_pickup': return [3 /*break*/, 2];
+                    case 'en_route': return [3 /*break*/, 4];
+                }
+                return [3 /*break*/, 6];
+            case 2: return [4 /*yield*/, notificationService.createNotification({
+                    userId: orderDetails.userId,
+                    type: 'ORDER_READY_FOR_PICKUP',
+                    title: 'Your order is ready for pickup!',
+                    body: "Order #" + orderDetails.orderCode + " is now ready for pickup at " + orderDetails.vendor.name + ".",
+                    meta: { orderId: id }
+                })];
+            case 3:
+                _b.sent();
+                return [3 /*break*/, 6];
+            case 4: return [4 /*yield*/, notificationService.createNotification({
+                    userId: orderDetails.userId,
+                    type: 'EN_ROUTE',
+                    title: 'Your order is on the way!',
+                    body: "Your delivery person is en route with order #" + orderDetails.orderCode + ".",
+                    meta: { orderId: id }
+                })];
+            case 5:
+                _b.sent();
+                return [3 /*break*/, 6];
+            case 6: 
+            // --- End Notification Logic ---
+            return [2 /*return*/, orderModel.updateOrder(id, updates, prisma)];
         }
-        return [2 /*return*/, orderModel.updateOrder(id, updates, prisma)];
     });
 }); };
 /**
@@ -616,7 +698,7 @@ exports.acceptOrderService = function (orderId, shoppingHandlerUserId, vendorId 
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                _a.trys.push([0, 2, , 3]);
+                _a.trys.push([0, 3, , 4]);
                 return [4 /*yield*/, prisma.order.update({
                         where: {
                             id: orderId,
@@ -632,8 +714,20 @@ exports.acceptOrderService = function (orderId, shoppingHandlerUserId, vendorId 
                     })];
             case 1:
                 acceptedOrder = _a.sent();
-                return [2 /*return*/, acceptedOrder];
+                // --- Add Notification Logic Here ---
+                return [4 /*yield*/, notificationService.createNotification({
+                        userId: acceptedOrder.userId,
+                        type: 'ORDER_ACCEPTED',
+                        title: 'Your order has been accepted!',
+                        body: "Your order with code #" + acceptedOrder.orderCode + " has been accepted  and will begin preparing it shortly.",
+                        meta: { orderId: acceptedOrder.id }
+                    })];
             case 2:
+                // --- Add Notification Logic Here ---
+                _a.sent();
+                // --- End Notification Logic ---
+                return [2 /*return*/, acceptedOrder];
+            case 3:
                 error_3 = _a.sent();
                 if (error_3.code === 'P2025') { // Prisma error for record not found
                     // This means the order was not found OR it didn't match the where conditions (e.g., not pending, wrong vendor)
@@ -641,7 +735,7 @@ exports.acceptOrderService = function (orderId, shoppingHandlerUserId, vendorId 
                 }
                 console.error("Error accepting order " + orderId + ":", error_3);
                 throw new Error('Failed to accept order: ' + error_3.message);
-            case 3: return [2 /*return*/];
+            case 4: return [2 /*return*/];
         }
     });
 }); };
@@ -697,7 +791,18 @@ reason) { return __awaiter(void 0, void 0, Promise, function () {
                                 })];
                         case 3:
                             declinedOrder = _a.sent();
-                            // TODO: Notify customer of the declined order and refund.
+                            // --- Replace TODO with Notification Logic Here ---
+                            return [4 /*yield*/, notificationService.createNotification({
+                                    userId: orderToDecline.userId,
+                                    type: 'ORDER_DECLINED',
+                                    title: 'Your order has been declined',
+                                    body: "Unfortunately, your order #" + orderToDecline.orderCode + " was declined. You have been refunded " + orderToDecline.totalAmount + " in your wallet.",
+                                    meta: { orderId: orderToDecline.id }
+                                })];
+                        case 4:
+                            // --- Replace TODO with Notification Logic Here ---
+                            _a.sent();
+                            // --- End Notification Logic ---
                             return [2 /*return*/, declinedOrder];
                     }
                 });

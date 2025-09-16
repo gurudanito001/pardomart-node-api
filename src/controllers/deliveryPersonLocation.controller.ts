@@ -51,6 +51,16 @@ import * as deliveryPersonLocationService from '../services/deliveryPersonLocati
  *         description: Forbidden. User is not the assigned delivery person for this order.
  *       404:
  *         description: Order not found.
+ * components:
+ *   schemas:
+ *     DeliveryPersonLocation:
+ *       type: object
+ *       properties:
+ *         id: { type: string, description: "CUID" }
+ *         latitude: { type: number, format: float }
+ *         longitude: { type: number, format: float }
+ *         createdAt: { type: string, format: date-time }
+ *         orderId: { type: string, format: uuid }
  */
 export const addLocationController = async (req: AuthenticatedRequest, res: Response) => {
   try {

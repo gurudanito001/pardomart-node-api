@@ -86,6 +86,16 @@ var deliveryPersonLocationService = require("../services/deliveryPersonLocation.
  *         description: Forbidden. User is not the assigned delivery person for this order.
  *       404:
  *         description: Order not found.
+ * components:
+ *   schemas:
+ *     DeliveryPersonLocation:
+ *       type: object
+ *       properties:
+ *         id: { type: string, description: "CUID" }
+ *         latitude: { type: number, format: float }
+ *         longitude: { type: number, format: float }
+ *         createdAt: { type: string, format: date-time }
+ *         orderId: { type: string, format: uuid }
  */
 exports.addLocationController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var orderId, _a, latitude, longitude, deliveryPersonId, location, error_1;

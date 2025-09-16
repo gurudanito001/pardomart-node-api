@@ -31,6 +31,48 @@ import * as notificationService from '../services/notification.service';
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/PaginatedNotifications'
+ * components:
+ *   schemas:
+ *     NotificationType:
+ *       type: string
+ *       enum:
+ *         - ORDER_ACCEPTED
+ *         - ORDER_DECLINED
+ *         - ORDER_SHOPPING_STARTED
+ *         - ORDER_READY_FOR_PICKUP
+ *         - ORDER_READY_FOR_DELIVERY
+ *         - EN_ROUTE
+ *         - DELIVERED
+ *         - COMPLETED
+ *         - ORDER_CANCELLED
+ *         - NEW_ORDER_PLACED
+ *         - ASSIGNED_TO_ORDER
+ *         - NEW_MESSAGE
+ *         - PROMOTIONAL
+ *         - ACCOUNT_UPDATE
+ *     Notification:
+ *       type: object
+ *       properties:
+ *         id: { type: string, description: "CUID" }
+ *         userId: { type: string, format: uuid }
+ *         type: { $ref: '#/components/schemas/NotificationType' }
+ *         title: { type: string }
+ *         body: { type: string }
+ *         isRead: { type: boolean }
+ *         meta: { type: object, nullable: true, description: "To store related IDs like orderId, etc. for deep linking" }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
+ *     PaginatedNotifications:
+ *       type: object
+ *       properties:
+ *         page: { type: integer }
+ *         totalPages: { type: integer }
+ *         pageSize: { type: integer }
+ *         totalCount: { type: integer }
+ *         data:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/Notification'
  */
 export const getNotificationsController = async (req: AuthenticatedRequest, res: Response) => {
   try {

@@ -7,6 +7,7 @@ const prisma = new PrismaClient();
 export interface CreateOrderPayload {
   userId: string;
   vendorId: string;
+  orderCode: string;
   subtotal: number;
   totalAmount: number;
   deliveryFee?: number;

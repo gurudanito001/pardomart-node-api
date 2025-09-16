@@ -45,6 +45,63 @@ interface AuthenticatedRequest extends Request {
  *         description: Order not found.
  *       409:
  *         description: Conflict (a rating of this type already exists for this order).
+ * components:
+ *   schemas:
+ *     RatingType:
+ *       type: string
+ *       enum: [VENDOR, SHOPPER, DELIVERER]
+ *     UserSummary:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         name: { type: string, nullable: true }
+ *     VendorSummary:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         name: { type: string }
+ *     Rating:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         orderId: { type: string, format: uuid }
+ *         raterId: { type: string, format: uuid }
+ *         ratedVendorId: { type: string, format: uuid, nullable: true }
+ *         ratedUserId: { type: string, format: uuid, nullable: true }
+ *         rating: { type: integer, minimum: 1, maximum: 5 }
+ *         comment: { type: string, nullable: true }
+ *         type: { $ref: '#/components/schemas/RatingType' }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
+ *     RatingWithRelations:
+ *       allOf:
+ *         - $ref: '#/components/schemas/Rating'
+ *         - type: object
+ *           properties:
+ *             rater:
+ *               $ref: '#/components/schemas/UserSummary'
+ *             ratedUser:
+ *               $ref: '#/components/schemas/UserSummary'
+ *               nullable: true
+ *             ratedVendor:
+ *               $ref: '#/components/schemas/VendorSummary'
+ *               nullable: true
+ *     CreateRatingPayload:
+ *       type: object
+ *       required: [orderId, rating, type]
+ *       description: "When creating a rating, either `ratedVendorId` or `ratedUserId` must be provided depending on the `type`."
+ *       properties:
+ *         orderId: { type: string, format: uuid }
+ *         rating: { type: integer, minimum: 1, maximum: 5, description: "The rating score from 1 to 5." }
+ *         comment: { type: string, nullable: true }
+ *         type: { $ref: '#/components/schemas/RatingType' }
+ *         ratedVendorId: { type: string, format: uuid, description: "Required if type is VENDOR." }
+ *         ratedUserId: { type: string, format: uuid, description: "Required if type is SHOPPER or DELIVERER." }
+ *     UpdateRatingPayload:
+ *       type: object
+ *       properties:
+ *         rating: { type: integer, minimum: 1, maximum: 5 }
+ *         comment: { type: string, nullable: true }
  */
 export const createRatingController = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -310,7 +367,7 @@ export const getAggregateRatingController = async (req: Request, res: Response) 
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/RatingWithRelations'
+ *               $ref: '#/components/schemas/Rating'
  *       404:
  *         description: Rating not found.
  */

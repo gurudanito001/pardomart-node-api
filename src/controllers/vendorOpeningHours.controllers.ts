@@ -14,29 +14,7 @@ import { Prisma } from '@prisma/client'; // Import Prisma
  *     description: Finds and updates the opening and closing times for a given vendor on a specific day of the week.
  *     requestBody:
  *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - vendorId
- *               - day
- *             properties:
- *               vendorId:
- *                 type: string
- *                 format: uuid
- *                 description: The ID of the vendor whose opening hours are being updated.
- *               day:
- *                 $ref: '#/components/schemas/Days'
- *                 description: The day of the week to update.
- *               open:
- *                 type: string
- *                 format: "HH:mm"
- *                 description: "The opening time in 24-hour format (e.g., '09:00'). Set to null to mark as closed."
- *               close:
- *                 type: string
- *                 format: "HH:mm"
- *                 description: "The closing time in 24-hour format (e.g., '18:00'). Set to null to mark as closed."
+ *       content: { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateOpeningHoursPayload" } } }
  *     responses:
  *       200:
  *         description: The updated opening hours record.
@@ -52,6 +30,43 @@ import { Prisma } from '@prisma/client'; // Import Prisma
  *         description: Conflict - this should not typically occur on an update.
  *       500:
  *         description: Internal server error.
+ * components:
+ *   schemas:
+ *     Days:
+ *       type: string
+ *       enum: [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
+ *     VendorOpeningHours:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         vendorId: { type: string, format: uuid }
+ *         day: { $ref: '#/components/schemas/Days' }
+ *         open: { type: string, format: "HH:mm", nullable: true, example: "09:00" }
+ *         close: { type: string, format: "HH:mm", nullable: true, example: "18:00" }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
+ *     UpdateOpeningHoursPayload:
+ *       type: object
+ *       required: [vendorId, day]
+ *       properties:
+ *         vendorId:
+ *           type: string
+ *           format: uuid
+ *           description: The ID of the vendor whose opening hours are being updated.
+ *         day:
+ *           $ref: '#/components/schemas/Days'
+ *         open:
+ *           type: string
+ *           format: "HH:mm"
+ *           nullable: true
+ *           description: "The opening time in 24-hour format (e.g., '09:00'). Set to null to mark as closed."
+ *           example: "09:00"
+ *         close:
+ *           type: string
+ *           format: "HH:mm"
+ *           nullable: true
+ *           description: "The closing time in 24-hour format (e.g., '18:00'). Set to null to mark as closed."
+ *           example: "18:00"
  */
 export const updateVendorOpeningHours = async (req: Request, res: Response) => {
   try {

@@ -36,6 +36,54 @@ interface AuthenticatedRequest extends Request {
  *         description: Unauthorized.
  *       500:
  *         description: Internal server error.
+ * components:
+ *   schemas:
+ *     DeliveryAddress:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         userId: { type: string, format: uuid }
+ *         label: { type: string, nullable: true }
+ *         addressLine1: { type: string }
+ *         addressLine2: { type: string, nullable: true }
+ *         city: { type: string }
+ *         state: { type: string, nullable: true }
+ *         postalCode: { type: string, nullable: true }
+ *         country: { type: string }
+ *         latitude: { type: number, format: float, nullable: true }
+ *         longitude: { type: number, format: float, nullable: true }
+ *         isDefault: { type: boolean }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
+ *     CreateDeliveryAddressPayload:
+ *       type: object
+ *       required:
+ *         - addressLine1
+ *         - city
+ *       properties:
+ *         label: { type: string, nullable: true, example: "Home" }
+ *         addressLine1: { type: string, example: "123 Main St" }
+ *         addressLine2: { type: string, nullable: true, example: "Apt 4B" }
+ *         city: { type: string, example: "Anytown" }
+ *         state: { type: string, nullable: true, example: "Anystate" }
+ *         postalCode: { type: string, nullable: true, example: "12345" }
+ *         country: { type: string, example: "Nigeria" }
+ *         latitude: { type: number, format: float, nullable: true }
+ *         longitude: { type: number, format: float, nullable: true }
+ *         isDefault: { type: boolean, description: "If true, this will become the user's new default address." }
+ *     UpdateDeliveryAddressPayload:
+ *       type: object
+ *       properties:
+ *         label: { type: string, nullable: true, example: "Work" }
+ *         addressLine1: { type: string, example: "456 Business Rd" }
+ *         addressLine2: { type: string, nullable: true }
+ *         city: { type: string, example: "Businesstown" }
+ *         state: { type: string, nullable: true, example: "Business-state" }
+ *         postalCode: { type: string, nullable: true, example: "54321" }
+ *         country: { type: string, example: "Nigeria" }
+ *         latitude: { type: number, format: float, nullable: true }
+ *         longitude: { type: number, format: float, nullable: true }
+ *         isDefault: { type: boolean }
  */
 export const createDeliveryAddressController = async (req: AuthenticatedRequest, res: Response) => {
   try {

@@ -52,6 +52,70 @@ import { GetUserFilters } from '../models/user.model';
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/PaginatedUsers'
+ * components:
+ *   schemas:
+ *     Role:
+ *       type: string
+ *       enum: [admin, vendor, vendor_staff, delivery, customer, shopper]
+ *     Verification:
+ *       type: object
+ *       properties:
+ *         mobileNumber:
+ *           type: string
+ *         code:
+ *           type: string
+ *         expiresAt:
+ *           type: string
+ *           format: date-time
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *         attempts:
+ *           type: integer
+ *           nullable: true
+ *     User:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         name: { type: string }
+ *         email: { type: string, format: email }
+ *         mobileNumber: { type: string }
+ *         mobileVerified: { type: boolean }
+ *         dynamicMediaUrls: { type: object, nullable: true }
+ *         active: { type: boolean }
+ *         language: { type: string, nullable: true }
+ *         notification: { type: object, nullable: true }
+ *         rememberToken: { type: string, nullable: true }
+ *         stripeCustomerId: { type: string, nullable: true }
+ *         referralCode: { type: string, nullable: true }
+ *         role: { $ref: '#/components/schemas/Role' }
+ *         vendorId: { type: string, format: uuid, nullable: true }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
+ *     PaginatedUsers:
+ *       type: object
+ *       properties:
+ *         page: { type: integer }
+ *         totalPages: { type: integer }
+ *         pageSize: { type: integer }
+ *         totalCount: { type: integer }
+ *         data:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/User'
+ *     UpdateUserPayload:
+ *       type: object
+ *       properties:
+ *         name: { type: string }
+ *         email: { type: string, format: email }
+ *         mobileNumber: { type: string }
+ *         role: { $ref: '#/components/schemas/Role' }
+ *         mobileVerified: { type: boolean }
+ *         active: { type: boolean }
+ *         language: { type: string }
+ *         notification: { type: object }
+ *         referralCode: { type: string }
  */
 export const getAllUsers = async (req: Request, res: Response) => {
   // express-validator has already sanitized and converted types
@@ -93,8 +157,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
  *           application/json:
  *             schema:
  *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Verification'
+ *               items: { $ref: '#/components/schemas/Verification' }
  */
 export const getAllVerificationCodes = async (req: Request, res: Response) => {
   try {

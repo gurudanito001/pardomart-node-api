@@ -38,6 +38,72 @@ import { FeeType } from '@prisma/client'; // Assuming FeeType enum is exported f
  *         description: Bad request, invalid payload.
  *       500:
  *         description: Internal server error.
+ * components:
+ *   schemas:
+ *     FeeType:
+ *       type: string
+ *       enum: [delivery, service, shopping]
+ *     FeeCalculationMethod:
+ *       type: string
+ *       enum: [flat, percentage, per_unit, per_distance]
+ *     Fee:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         type: { $ref: '#/components/schemas/FeeType' }
+ *         amount: { type: number, format: float }
+ *         method: { $ref: '#/components/schemas/FeeCalculationMethod' }
+ *         unit: { type: string, nullable: true, description: "e.g., 'km' for per_distance" }
+ *         minThreshold: { type: number, format: float, nullable: true }
+ *         maxThreshold: { type: number, format: float, nullable: true }
+ *         thresholdAppliesTo: { type: string, nullable: true, description: "e.g., 'order_subtotal'" }
+ *         isActive: { type: boolean }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
+ *     CreateFeePayload:
+ *       type: object
+ *       required: [type, amount, method, isActive]
+ *       properties:
+ *         type: { $ref: '#/components/schemas/FeeType' }
+ *         amount: { type: number, format: float }
+ *         method: { $ref: '#/components/schemas/FeeCalculationMethod' }
+ *         unit: { type: string, nullable: true }
+ *         minThreshold: { type: number, format: float, nullable: true }
+ *         maxThreshold: { type: number, format: float, nullable: true }
+ *         thresholdAppliesTo: { type: string, nullable: true }
+ *         isActive: { type: boolean }
+ *     UpdateFeePayload:
+ *       type: object
+ *       properties:
+ *         amount: { type: number, format: float }
+ *         method: { $ref: '#/components/schemas/FeeCalculationMethod' }
+ *         unit: { type: string, nullable: true }
+ *         minThreshold: { type: number, format: float, nullable: true }
+ *         maxThreshold: { type: number, format: float, nullable: true }
+ *         thresholdAppliesTo: { type: string, nullable: true }
+ *         isActive: { type: boolean }
+ *     CalculateFeesPayload:
+ *       type: object
+ *       required: [orderItems, vendorId, deliveryAddressId]
+ *       properties:
+ *         orderItems:
+ *           type: array
+ *           items:
+ *             type: object
+ *             required: [vendorProductId, quantity]
+ *             properties:
+ *               vendorProductId: { type: string, format: uuid }
+ *               quantity: { type: integer, minimum: 1 }
+ *         vendorId: { type: string, format: uuid }
+ *         deliveryAddressId: { type: string, format: uuid }
+ *     CalculateFeesResponse:
+ *       type: object
+ *       properties:
+ *         subtotal: { type: number, format: float }
+ *         shoppingFee: { type: number, format: float }
+ *         deliveryFee: { type: number, format: float }
+ *         serviceFee: { type: number, format: float }
+ *         totalEstimatedCost: { type: number, format: float }
  */
 export const createFeeController = async (req: Request, res: Response) => {
   try {

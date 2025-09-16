@@ -52,16 +52,110 @@ var wishlist_service_1 = require("../services/wishlist.service");
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/AddToWishlistPayload'
+ *             $ref: '#/components/schemas/CreateWishlistItemPayload'
  *     responses:
  *       201:
  *         description: The item added to the wishlist.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WishlistItem'
  *       401:
  *         description: Unauthorized.
  *       404:
  *         description: Product not found.
  *       409:
  *         description: Product already in wishlist.
+ * components:
+ *   schemas:
+ *     CreateWishlistItemPayload:
+ *       type: object
+ *       required:
+ *         - vendorProductId
+ *       properties:
+ *         vendorProductId:
+ *           type: string
+ *           format: uuid
+ *           description: The ID of the vendor product to add to the wishlist.
+ *     WishlistItem:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *         userId:
+ *           type: string
+ *           format: uuid
+ *         vendorProductId:
+ *           type: string
+ *           format: uuid
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *     WishlistItemWithRelations:
+ *       allOf:
+ *         - $ref: '#/components/schemas/WishlistItem'
+ *         - type: object
+ *           properties:
+ *             vendorProduct:
+ *               $ref: '#/components/schemas/VendorProductWithRelations'
+ *     VendorSummary:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *         name:
+ *           type: string
+ *     Product:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         barcode: { type: string }
+ *         name: { type: string }
+ *         description: { type: string, nullable: true }
+ *         images: { type: array, items: { type: string, format: uri } }
+ *         weight: { type: number, format: float, nullable: true }
+ *         weightUnit: { type: string, nullable: true }
+ *         attributes: { type: object, nullable: true }
+ *         meta: { type: object, nullable: true }
+ *         categoryIds: { type: array, items: { type: string } }
+ *         isAlcohol: { type: boolean }
+ *         isAgeRestricted: { type: boolean }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
+ *     VendorProduct:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         vendorId: { type: string, format: uuid }
+ *         productId: { type: string, format: uuid }
+ *         price: { type: number, format: float }
+ *         name: { type: string }
+ *         description: { type: string, nullable: true }
+ *         discountedPrice: { type: number, format: float, nullable: true }
+ *         images: { type: array, items: { type: string, format: uri } }
+ *         weight: { type: number, format: float, nullable: true }
+ *         weightUnit: { type: string, nullable: true }
+ *         isAvailable: { type: boolean }
+ *         isAlcohol: { type: boolean }
+ *         isAgeRestricted: { type: boolean }
+ *         attributes: { type: object, nullable: true }
+ *         categoryIds: { type: array, items: { type: string } }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
+ *     VendorProductWithRelations:
+ *       allOf:
+ *         - $ref: '#/components/schemas/VendorProduct'
+ *         - type: object
+ *           properties:
+ *             product:
+ *               $ref: '#/components/schemas/Product'
+ *             vendor:
+ *               $ref: '#/components/schemas/VendorSummary'
  */
 exports.addToWishlistController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var userId, vendorProductId, wishlistItem, error_1;
@@ -104,7 +198,9 @@ exports.addToWishlistController = function (req, res) { return __awaiter(void 0,
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/WishlistItem'
+ *                 $ref: '#/components/schemas/WishlistItemWithRelations'
+ *       401:
+ *         description: Unauthorized.
  */
 exports.getWishlistController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var userId, wishlist, error_2;
@@ -146,6 +242,10 @@ exports.getWishlistController = function (req, res) { return __awaiter(void 0, v
  *     responses:
  *       200:
  *         description: The removed item.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WishlistItem'
  *       403:
  *         description: Forbidden.
  *       404:

@@ -201,6 +201,7 @@ model Notification {
 
 model Order {
   id                         String           @id @default(uuid())
+  orderCode                  String           @unique
   userId                     String
   user                       User             @relation("OrderCustomer", fields: [userId], references: [id], onDelete: Cascade)
   vendorId                   String
@@ -529,7 +530,7 @@ enum OrderStatus {
 
 enum ShoppingMethod {
   vendor
-  shopper
+  delivery_person
 }
 
 enum DeliveryMethod {

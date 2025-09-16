@@ -27,6 +27,173 @@ import { getVendorProductsFilters } from '../models/product.model';
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ProductWithRelations'
+ * components:
+ *   schemas:
+ *     Product:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         barcode: { type: string }
+ *         name: { type: string }
+ *         description: { type: string, nullable: true }
+ *         images: { type: array, items: { type: string, format: uri } }
+ *         weight: { type: number, format: float, nullable: true }
+ *         weightUnit: { type: string, nullable: true }
+ *         attributes: { type: object, nullable: true }
+ *         meta: { type: object, nullable: true }
+ *         categoryIds: { type: array, items: { type: string } }
+ *         isAlcohol: { type: boolean }
+ *         isAgeRestricted: { type: boolean }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
+ *     CategorySummary:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         name: { type: string }
+ *     TagSummary:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         name: { type: string }
+ *     ProductWithRelations:
+ *       allOf:
+ *         - $ref: '#/components/schemas/Product'
+ *         - type: object
+ *           properties:
+ *             categories:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/CategorySummary'
+ *             tags:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/TagSummary'
+ *     VendorProduct:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         vendorId: { type: string, format: uuid }
+ *         productId: { type: string, format: uuid }
+ *         price: { type: number, format: float }
+ *         name: { type: string }
+ *         description: { type: string, nullable: true }
+ *         discountedPrice: { type: number, format: float, nullable: true }
+ *         images: { type: array, items: { type: string, format: uri } }
+ *         weight: { type: number, format: float, nullable: true }
+ *         weightUnit: { type: string, nullable: true }
+ *         isAvailable: { type: boolean }
+ *         isAlcohol: { type: boolean }
+ *         isAgeRestricted: { type: boolean }
+ *         attributes: { type: object, nullable: true }
+ *         categoryIds: { type: array, items: { type: string } }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
+ *     VendorProductWithRelations:
+ *       allOf:
+ *         - $ref: '#/components/schemas/VendorProduct'
+ *         - type: object
+ *           properties:
+ *             product:
+ *               $ref: '#/components/schemas/Product'
+ *             categories:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/CategorySummary'
+ *             tags:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/TagSummary'
+ *     CreateProductPayload:
+ *       type: object
+ *       required: [barcode, name, categoryIds]
+ *       properties:
+ *         barcode: { type: string }
+ *         name: { type: string }
+ *         description: { type: string, nullable: true }
+ *         images: { type: array, items: { type: string, format: uri } }
+ *         attributes: { type: object, nullable: true }
+ *         meta: { type: object, nullable: true }
+ *         categoryIds: { type: array, items: { type: string, format: uuid }, description: "Array of category IDs to associate with the product." }
+ *         tagIds: { type: array, items: { type: string, format: uuid }, description: "Array of tag IDs to associate with the product." }
+ *         isAlcohol: { type: boolean, default: false }
+ *         isAgeRestricted: { type: boolean, default: false }
+ *     CreateVendorProductPayload:
+ *       type: object
+ *       required: [vendorId, productId, price, name, categoryIds]
+ *       properties:
+ *         vendorId: { type: string, format: uuid }
+ *         productId: { type: string, format: uuid }
+ *         price: { type: number, format: float }
+ *         name: { type: string, description: "The name for the vendor-specific product, which can override the base product name." }
+ *         description: { type: string, nullable: true }
+ *         discountedPrice: { type: number, format: float, nullable: true }
+ *         isAvailable: { type: boolean, default: true }
+ *         categoryIds: { type: array, items: { type: string, format: uuid } }
+ *         tagIds: { type: array, items: { type: string, format: uuid } }
+ *     CreateVendorProductWithBarcodePayload:
+ *       type: object
+ *       required: [vendorId, barcode, price, name, categoryIds]
+ *       properties:
+ *         vendorId: { type: string, format: uuid }
+ *         barcode: { type: string }
+ *         price: { type: number, format: float }
+ *         name: { type: string }
+ *         description: { type: string, nullable: true }
+ *         categoryIds: { type: array, items: { type: string, format: uuid } }
+ *         tagIds: { type: array, items: { type: string, format: uuid } }
+ *         discountedPrice: { type: number, format: float, nullable: true }
+ *         isAvailable: { type: boolean, default: true }
+ *     UpdateProductBasePayload:
+ *       type: object
+ *       properties:
+ *         barcode: { type: string }
+ *         name: { type: string }
+ *         description: { type: string, nullable: true }
+ *         images: { type: array, items: { type: string, format: uri } }
+ *         attributes: { type: object, nullable: true }
+ *         meta: { type: object, nullable: true }
+ *         categoryIds: { type: array, items: { type: string, format: uuid } }
+ *         tagIds: { type: array, items: { type: string, format: uuid } }
+ *     UpdateVendorProductPayload:
+ *       type: object
+ *       properties:
+ *         price: { type: number, format: float }
+ *         name: { type: string }
+ *         description: { type: string, nullable: true }
+ *         discountedPrice: { type: number, format: float, nullable: true }
+ *         isAvailable: { type: boolean }
+ *         categoryIds: { type: array, items: { type: string, format: uuid } }
+ *         tagIds: { type: array, items: { type: string, format: uuid } }
+ *     PaginatedVendorProducts:
+ *       type: object
+ *       properties:
+ *         page: { type: integer }
+ *         totalPages: { type: integer }
+ *         pageSize: { type: integer }
+ *         totalCount: { type: integer }
+ *         data:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/VendorProduct'
+ *     TrendingVendorProduct:
+ *       allOf:
+ *         - $ref: '#/components/schemas/VendorProduct'
+ *         - type: object
+ *           properties:
+ *             orderCount:
+ *               type: integer
+ *               description: "The number of times this product has been ordered."
+ *     PaginatedTrendingVendorProducts:
+ *       type: object
+ *       properties:
+ *         page: { type: integer }
+ *         total: { type: integer, description: "Total number of unique trending products." }
+ *         size: { type: integer }
+ *         data:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/TrendingVendorProduct'
  */
 export const createProduct = async (req: Request, res: Response) => {
   try {
@@ -348,6 +515,12 @@ export const getVendorProductsByTagIds = async (req: Request, res: Response) => 
  *     responses:
  *       200:
  *         description: The updated product.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ProductWithRelations'
+ *       404:
+ *         description: Product not found.
  */
 export const updateProductBase = async (req: Request, res: Response) => {
   try {
@@ -387,6 +560,12 @@ export const updateProductBase = async (req: Request, res: Response) => {
  *     responses:
  *       200:
  *         description: The updated vendor product.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/VendorProductWithRelations'
+ *       404:
+ *         description: Vendor product not found.
  */
 export const updateVendorProduct = async (req: Request, res: Response) => {
   try {
@@ -507,6 +686,12 @@ export const getAllVendorProducts = async (req: Request, res: Response) => {
  *     responses:
  *       200:
  *         description: A list of vendor products in the specified category.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/VendorProductWithRelations'
  *       400:
  *         description: Vendor ID and Category ID are required.
  */
@@ -542,6 +727,12 @@ export const getVendorProductsByCategory = async (req: Request, res: Response) =
  *     responses:
  *       200:
  *         description: The deleted product.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Product'
+ *       404:
+ *         description: Product not found.
  */
 export const deleteProduct = async (req: Request, res: Response) => {
   try {
@@ -573,6 +764,12 @@ export const deleteProduct = async (req: Request, res: Response) => {
  *     responses:
  *       200:
  *         description: The deleted vendor product.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/VendorProduct'
+ *       404:
+ *         description: Vendor product not found.
  */
 export const deleteVendorProduct = async (req: Request, res: Response) => {
   try {
@@ -614,7 +811,7 @@ export const deleteVendorProduct = async (req: Request, res: Response) => {
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/PaginatedVendorProducts'
+ *               $ref: '#/components/schemas/PaginatedTrendingVendorProducts'
  */
 export const getTrendingVendorProducts = async (req: Request, res: Response) => {
   const { vendorId } = req.query;

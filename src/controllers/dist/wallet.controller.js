@@ -40,13 +40,70 @@ exports.getMyWalletTransactionsController = exports.getMyWalletController = void
 var wallet_service_1 = require("../services/wallet.service");
 /**
  * @swagger
- * tags:
- *   name: Wallet
- *   description: User wallet management
+ * /wallet/me:
+ *   get:
+ *     summary: Get my wallet
+ *     tags: [Wallet]
+ *     description: Retrieves the wallet details and balance for the authenticated user. A wallet is created automatically on first access.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: The user's wallet.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Wallet'
+ *       401:
+ *         description: Unauthorized.
+ *       500:
+ *         description: Internal server error.
+ * components:
+ *   schemas:
+ *     TransactionType:
+ *       type: string
+ *       enum: [CREDIT, DEBIT]
+ *     TransactionStatus:
+ *       type: string
+ *       enum: [PENDING, COMPLETED, FAILED, CANCELLED]
+ *     Wallet:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         userId: { type: string, format: uuid }
+ *         balance: { type: number, format: float }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
+ *     WalletTransaction:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         walletId: { type: string, format: uuid }
+ *         amount:
+ *           type: number
+ *           format: float
+ *           description: "Positive for credit, negative for debit."
+ *         type:
+ *           $ref: '#/components/schemas/TransactionType'
+ *         status:
+ *           $ref: '#/components/schemas/TransactionStatus'
+ *         description:
+ *           type: string
+ *           nullable: true
+ *         meta:
+ *           type: object
+ *           nullable: true
+ *           description: "Extra metadata, like an order ID."
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
  */
 /**
  * @swagger
- * /api/v1/wallet/me:
+ * /wallet/me:
  *   get:
  *     summary: Get my wallet
  *     tags: [Wallet]
@@ -88,7 +145,7 @@ exports.getMyWalletController = function (req, res) { return __awaiter(void 0, v
 }); };
 /**
  * @swagger
- * /api/v1/wallet/me/transactions:
+ * /wallet/me/transactions:
  *   get:
  *     summary: Get my wallet transactions
  *     tags: [Wallet]

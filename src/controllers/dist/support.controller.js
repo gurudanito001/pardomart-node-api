@@ -56,35 +56,71 @@ var support_service_1 = require("../services/support.service");
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [title, description, category]
- *             properties:
- *               title:
- *                 type: string
- *                 example: "App crashes on checkout"
- *               description:
- *                 type: string
- *                 example: "When I try to checkout my cart, the app closes unexpectedly."
- *               category:
- *                 $ref: '#/components/schemas/TicketCategory'
- *               meta:
- *                 type: object
- *                 description: "Optional. e.g., { \"orderId\": \"uuid-goes-here\" }"
+ *         application/json: { "schema": { "$ref": "#/components/schemas/CreateSupportTicketPayload" } }
  *     responses:
  *       201:
  *         description: The created support ticket.
  *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SupportTicket'
+ *           application/json: { "schema": { "$ref": "#/components/schemas/SupportTicket" } }
  *       400:
  *         description: Bad request (e.g., invalid input).
  *       401:
  *         description: Unauthorized.
  *       500:
  *         description: Internal server error.
+ * components:
+ *   schemas:
+ *     TicketCategory:
+ *       type: string
+ *       enum: [BUG_REPORT, FEATURE_REQUEST, ORDER_ISSUE, PAYMENT_ISSUE, ACCOUNT_ISSUE, OTHER]
+ *     TicketStatus:
+ *       type: string
+ *       enum: [OPEN, IN_PROGRESS, RESOLVED, CLOSED]
+ *     SupportTicket:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         userId: { type: string, format: uuid }
+ *         title: { type: string }
+ *         description: { type: string }
+ *         category: { $ref: '#/components/schemas/TicketCategory' }
+ *         status: { $ref: '#/components/schemas/TicketStatus' }
+ *         meta: { type: object, nullable: true }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
+ *     CreateSupportTicketPayload:
+ *       type: object
+ *       required: [title, description, category]
+ *       properties:
+ *         title:
+ *           type: string
+ *           example: "App crashes on checkout"
+ *         description:
+ *           type: string
+ *           example: "When I try to checkout my cart, the app closes unexpectedly."
+ *         category:
+ *           $ref: '#/components/schemas/TicketCategory'
+ *         meta:
+ *           type: object
+ *           description: "Optional. e.g., { \"orderId\": \"uuid-goes-here\" }"
+ *           nullable: true
+ *     UpdateSupportTicketStatusPayload:
+ *       type: object
+ *       required: [status]
+ *       properties:
+ *         status:
+ *           $ref: '#/components/schemas/TicketStatus'
+ *     PaginatedSupportTickets:
+ *       type: object
+ *       properties:
+ *         data:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/SupportTicket'
+ *         totalCount:
+ *           type: integer
+ *         totalPages:
+ *           type: integer
  */
 exports.createSupportTicketController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var userId, _a, title, description, category, meta, ticket, error_1;
@@ -178,18 +214,7 @@ exports.getMySupportTicketsController = function (req, res) { return __awaiter(v
  *       200:
  *         description: A paginated list of support tickets.
  *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/SupportTicket'
- *                 totalCount:
- *                   type: integer
- *                 totalPages:
- *                   type: integer
+ *           application/json: { "schema": { "$ref": "#/components/schemas/PaginatedSupportTickets" } }
  *       401:
  *         description: Unauthorized.
  *       403:
@@ -236,20 +261,11 @@ exports.getAllSupportTicketsController = function (req, res) { return __awaiter(
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [status]
- *             properties:
- *               status:
- *                 $ref: '#/components/schemas/TicketStatus'
+ *         application/json: { "schema": { "$ref": "#/components/schemas/UpdateSupportTicketStatusPayload" } }
  *     responses:
  *       200:
  *         description: The updated support ticket.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SupportTicket'
+ *         content: { "application/json": { "schema": { "$ref": "#/components/schemas/SupportTicket" } } }
  *       400:
  *         description: Bad request (e.g., invalid status).
  *       401:
