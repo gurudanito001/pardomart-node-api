@@ -46,6 +46,7 @@ exports.__esModule = true;
 exports.markMessagesAsReadService = exports.getMessagesForOrderService = exports.sendMessageService = void 0;
 var client_1 = require("@prisma/client");
 var socket_1 = require("../socket");
+var notificationService = require("./notification.service");
 var prisma = new client_1.PrismaClient();
 /**
  * Sends a message within an order.
@@ -95,6 +96,18 @@ exports.sendMessageService = function (_a) {
                         })];
                 case 2:
                     message = _b.sent();
+                    // --- Add Notification Logic Here ---
+                    return [4 /*yield*/, notificationService.createNotification({
+                            userId: recipientId,
+                            type: 'NEW_MESSAGE',
+                            title: "New message from " + message.sender.name,
+                            body: content,
+                            meta: { orderId: orderId, senderId: senderId }
+                        })];
+                case 3:
+                    // --- Add Notification Logic Here ---
+                    _b.sent();
+                    // --- End Notification Logic ---
                     // 4. Trigger a real-time event to the recipient
                     try {
                         io = socket_1.getIO();
