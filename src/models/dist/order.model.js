@@ -116,6 +116,13 @@ exports.getOrdersByUserId = function (userId) { return __awaiter(void 0, void 0,
                         include: {
                             vendorProduct: true
                         }
+                    },
+                    vendor: {
+                        select: {
+                            id: true,
+                            name: true,
+                            image: true
+                        }
                     }
                 }
             })];

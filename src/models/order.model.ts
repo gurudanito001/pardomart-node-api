@@ -98,9 +98,16 @@ export const getOrdersByUserId = async (userId: string): Promise<Order[]> => {
     include: {
       orderItems: {
         include: {
-           vendorProduct: true
+           vendorProduct: true,
         }
       },
+      vendor: {
+        select: {
+          id: true,
+          name: true,
+          image: true,
+        }
+      }
     },
   });
 };
