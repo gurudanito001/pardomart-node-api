@@ -227,7 +227,7 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
     // Allow delivery up to 30 minutes before the store closes.
     const lastDeliveryTimeUTC = vendorCloseTimeUTC.subtract(30, 'minutes');
 
-    if (parsedScheduledDeliveryTime.isBefore(vendorOpenTimeUTC) || parsedScheduledDeliveryTime.isAfter(lastDeliveryTimeUTC)) {
+    /* if (parsedScheduledDeliveryTime.isBefore(vendorOpenTimeUTC) || parsedScheduledDeliveryTime.isAfter(lastDeliveryTimeUTC)) {
       throw new OrderCreationError(`Scheduled delivery time must be between ${openingHoursToday.open} and ${lastDeliveryTimeUTC.tz(vendor.timezone || 'UTC').format('HH:mm')} vendor local time.`);
     }
 
@@ -237,7 +237,7 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
 
     if (shoppingStartTime && dayjs.utc(shoppingStartTime).isBefore(vendorOpenTimeUTC)) {
       throw new OrderCreationError(`Calculated shopping start time is before the vendor opens. Please choose a later delivery time.`);
-    }
+    } */
   }
 
   // --- Transactional Block ---
