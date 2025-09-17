@@ -16,7 +16,7 @@ router.use(authenticate);
 router.post('/', validate(validateAddToWishlist), wishlistController.addToWishlistController);
 
 // Get all items from the user's wishlist
-router.get('/me', wishlistController.getWishlistController);
+router.get('/', wishlistController.getWishlistController);
 
 // Remove an item from the user's wishlist by its ID
 router.delete('/:id', validate(validateRemoveFromWishlist), wishlistController.removeFromWishlistController);

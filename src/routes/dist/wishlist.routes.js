@@ -10,7 +10,7 @@ router.use(auth_middleware_1.authenticate);
 // Add an item to the user's wishlist
 router.post('/', validation_middleware_1.validate(validation_middleware_1.validateAddToWishlist), wishlistController.addToWishlistController);
 // Get all items from the user's wishlist
-router.get('/me', wishlistController.getWishlistController);
+router.get('/', wishlistController.getWishlistController);
 // Remove an item from the user's wishlist by its ID
 router["delete"]('/:id', validation_middleware_1.validate(validation_middleware_1.validateRemoveFromWishlist), wishlistController.removeFromWishlistController);
 exports["default"] = router;
