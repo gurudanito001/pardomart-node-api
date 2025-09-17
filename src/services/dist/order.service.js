@@ -232,15 +232,6 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                     vendorCloseTimeUTC = vendorCloseTimeUTC.add(1, 'day');
                 }
                 lastDeliveryTimeUTC = vendorCloseTimeUTC.subtract(30, 'minutes');
-                if (parsedScheduledDeliveryTime.isBefore(vendorOpenTimeUTC) || parsedScheduledDeliveryTime.isAfter(lastDeliveryTimeUTC)) {
-                    throw new OrderCreationError("Scheduled delivery time must be between " + openingHoursToday.open + " and " + lastDeliveryTimeUTC.tz(vendor.timezone || 'UTC').format('HH:mm') + " vendor local time.");
-                }
-                if (parsedScheduledDeliveryTime.isBefore(dayjs_1["default"].utc())) {
-                    throw new OrderCreationError('Scheduled delivery time cannot be in the past.');
-                }
-                if (shoppingStartTime && dayjs_1["default"].utc(shoppingStartTime).isBefore(vendorOpenTimeUTC)) {
-                    throw new OrderCreationError("Calculated shopping start time is before the vendor opens. Please choose a later delivery time.");
-                }
                 _c.label = 2;
             case 2: 
             // --- Transactional Block ---

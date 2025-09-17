@@ -26,12 +26,7 @@ export const getWishlistByUserId = async (userId: string): Promise<WishlistItem[
   return prisma.wishlistItem.findMany({
     where: { userId },
     include: {
-      vendorProduct: {
-        include: {
-          product: true,
-          vendor: { select: { id: true, name: true } },
-        },
-      },
+      vendorProduct: true,
     },
     orderBy: { createdAt: 'desc' },
   });

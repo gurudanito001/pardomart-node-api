@@ -65,12 +65,7 @@ exports.getWishlistByUserId = function (userId) { return __awaiter(void 0, void 
         return [2 /*return*/, prisma.wishlistItem.findMany({
                 where: { userId: userId },
                 include: {
-                    vendorProduct: {
-                        include: {
-                            product: true,
-                            vendor: { select: { id: true, name: true } }
-                        }
-                    }
+                    vendorProduct: true
                 },
                 orderBy: { createdAt: 'desc' }
             })];
