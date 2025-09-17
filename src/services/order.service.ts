@@ -311,6 +311,15 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
       body: `You have a new order #${finalOrder.orderCode} from ${finalOrder.user.name}.`,
       meta: { orderId: finalOrder.id }
     });
+
+    // I will remove it later
+    await notificationService.createNotification({
+      userId: finalOrder.userId, // The customer's user ID
+      type: 'ORDER_PLACED_CUSTOMER',
+      title: 'Order Placed Successfully!',
+      body: `Your order #${finalOrder.orderCode} has been placed.`,
+      meta: { orderId: finalOrder.id },
+    });
     // --- End Notification Logic ---
     // --- End Notification Logic ---
 

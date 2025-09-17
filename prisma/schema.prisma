@@ -589,6 +589,7 @@ enum OrderItemStatus {
 
 enum NotificationType {
   // Order related for Customer
+  ORDER_PLACED_CUSTOMER
   ORDER_ACCEPTED
   ORDER_DECLINED
   ORDER_SHOPPING_STARTED

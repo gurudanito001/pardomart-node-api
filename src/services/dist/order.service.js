@@ -317,6 +317,17 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                 // --- Add Notification Logic Here ---
                                 // --- Add Notification Logic Here ---
                                 _a.sent();
+                                // I will remove it later
+                                return [4 /*yield*/, notificationService.createNotification({
+                                        userId: finalOrder.userId,
+                                        type: 'ORDER_PLACED_CUSTOMER',
+                                        title: 'Order Placed Successfully!',
+                                        body: "Your order #" + finalOrder.orderCode + " has been placed.",
+                                        meta: { orderId: finalOrder.id }
+                                    })];
+                            case 10:
+                                // I will remove it later
+                                _a.sent();
                                 // --- End Notification Logic ---
                                 // --- End Notification Logic ---
                                 return [2 /*return*/, finalOrder];

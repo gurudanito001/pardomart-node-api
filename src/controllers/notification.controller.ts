@@ -46,6 +46,7 @@ import * as notificationService from '../services/notification.service';
  *         - COMPLETED
  *         - ORDER_CANCELLED
  *         - NEW_ORDER_PLACED
+ *         - ORDER_PLACED_CUSTOMER
  *         - ASSIGNED_TO_ORDER
  *         - NEW_MESSAGE
  *         - PROMOTIONAL
