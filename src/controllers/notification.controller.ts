@@ -51,6 +51,8 @@ import * as notificationService from '../services/notification.service';
  *         - NEW_MESSAGE
  *         - PROMOTIONAL
  *         - ACCOUNT_UPDATE
+ *         - BUG_REPORT_RECEIVED
+ *         - BUG_REPORT_RESOLVED
  *     Notification:
  *       type: object
  *       properties:

@@ -56,6 +56,7 @@ model User {
   payments        Payment[]
   savedPaymentMethods SavedPaymentMethod[]
   devices         Device[]
+  bugReports      BugReport[]
   wallet          Wallet?
 
   @@unique([mobileNumber, role])
@@ -465,6 +466,21 @@ model WalletTransaction {
   @@index([walletId, createdAt])
 }
 
+model BugReport {
+  id          String   @id @default(cuid())
+  description String   @db.Text
+  imageUrl    String?
+  isResolved  Boolean  @default(false)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
 enum TransactionType {
   CREDIT
   DEBIT
@@ -610,4 +626,9 @@ enum NotificationType {
   NEW_MESSAGE
   PROMOTIONAL
   ACCOUNT_UPDATE
+
+  // Add more as needed
+  BUG_REPORT_RECEIVED
+  BUG_REPORT_RESOLVED
+  
 }

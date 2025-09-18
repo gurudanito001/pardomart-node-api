@@ -555,3 +555,8 @@ export const validateGetNotifications = [
 export const validateNotificationId = [
   param('notificationId').isUUID(4).withMessage('A valid notification ID is required in the URL.'),
 ];
+
+export const validateUpdateBugReportStatus = [
+  param('id').isUUID(4).withMessage('A valid bug report ID is required in the URL.'),
+  body('isResolved').isBoolean().withMessage('isResolved must be a boolean value.'),
+];

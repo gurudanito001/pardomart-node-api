@@ -21,6 +21,7 @@ var notification_routes_1 = require("./notification.routes");
 var wallet_routes_1 = require("./wallet.routes");
 var support_routes_1 = require("./support.routes");
 var payment_routes_1 = require("./payment.routes");
+var bugReport_routes_1 = require("./bugReport.routes");
 // Create a new Router instance
 var router = express_1.Router();
 // Mount the routers
@@ -44,4 +45,5 @@ router.use('/api/v1/notifications', notification_routes_1["default"]);
 router.use('/api/v1/wallet', wallet_routes_1["default"]);
 router.use('/api/v1/support', support_routes_1["default"]);
 router.use('/api/v1/payments', payment_routes_1["default"]);
+router.use('/api/v1/bug-reports', bugReport_routes_1["default"]);
 exports["default"] = router;

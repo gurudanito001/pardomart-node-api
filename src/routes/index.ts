@@ -19,6 +19,7 @@ import notificationRouter from './notification.routes';
 import walletRoutes from './wallet.routes';
 import supportRoutes from './support.routes';
 import paymentRoutes from './payment.routes';
+import bugReportRoutes from './bugReport.routes';
 
 // Create a new Router instance
 const router = Router();
@@ -44,5 +45,6 @@ router.use('/api/v1/notifications', notificationRouter);
 router.use('/api/v1/wallet', walletRoutes);
 router.use('/api/v1/support', supportRoutes);
 router.use('/api/v1/payments', paymentRoutes);
+router.use('/api/v1/bug-reports', bugReportRoutes);
 
 export default router;
