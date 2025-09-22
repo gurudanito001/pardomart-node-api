@@ -22,9 +22,12 @@ var wallet_routes_1 = require("./wallet.routes");
 var support_routes_1 = require("./support.routes");
 var payment_routes_1 = require("./payment.routes");
 var bugReport_routes_1 = require("./bugReport.routes");
+var health_routes_1 = require("./health.routes");
+var faq_routes_1 = require("./faq.routes");
 // Create a new Router instance
 var router = express_1.Router();
 // Mount the routers
+router.use('/health', health_routes_1["default"]); // For server wake-up calls
 router.use('/api/v1/auth', auth_routes_1["default"]);
 router.use('/api/v1/users', user_routes_1["default"]);
 router.use('/api/v1/vendors', vendor_routes_1["default"]);
@@ -46,4 +49,5 @@ router.use('/api/v1/wallet', wallet_routes_1["default"]);
 router.use('/api/v1/support', support_routes_1["default"]);
 router.use('/api/v1/payments', payment_routes_1["default"]);
 router.use('/api/v1/bug-reports', bugReport_routes_1["default"]);
+router.use('/api/v1/faqs', faq_routes_1["default"]);
 exports["default"] = router;

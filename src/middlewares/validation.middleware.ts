@@ -560,3 +560,22 @@ export const validateUpdateBugReportStatus = [
   param('id').isUUID(4).withMessage('A valid bug report ID is required in the URL.'),
   body('isResolved').isBoolean().withMessage('isResolved must be a boolean value.'),
 ];
+
+// --- FAQ Validation ---
+
+export const validateCreateFaq = [
+  body('question').trim().notEmpty().withMessage('Question is required.'),
+  body('answer').trim().notEmpty().withMessage('Answer is required.'),
+  body('isActive').optional().isBoolean().withMessage('isActive must be a boolean.'),
+  body('sortOrder').optional().isInt().withMessage('sortOrder must be an integer.'),
+];
+
+export const validateUpdateFaq = [
+  param('id').isUUID().withMessage('A valid FAQ ID is required in the URL path.'),
+  body('question').optional().trim().notEmpty().withMessage('Question cannot be empty.'),
+  body('answer').optional().trim().notEmpty().withMessage('Answer cannot be empty.'),
+  body('isActive').optional().isBoolean().withMessage('isActive must be a boolean.'),
+  body('sortOrder').optional().isInt().withMessage('sortOrder must be an integer.'),
+];
+
+export const validateFaqId = [param('id').isUUID().withMessage('A valid FAQ ID is required in the URL path.')];

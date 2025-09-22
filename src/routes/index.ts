@@ -20,11 +20,15 @@ import walletRoutes from './wallet.routes';
 import supportRoutes from './support.routes';
 import paymentRoutes from './payment.routes';
 import bugReportRoutes from './bugReport.routes';
+import healthRouter from './health.routes';
+import faqRouter from './faq.routes';
 
 // Create a new Router instance
 const router = Router();
 
 // Mount the routers
+router.use('/health', healthRouter); // For server wake-up calls
+
 router.use('/api/v1/auth', authRouter);
 router.use('/api/v1/users', usersRouter);
 router.use('/api/v1/vendors', vendorRouter);
@@ -46,5 +50,6 @@ router.use('/api/v1/wallet', walletRoutes);
 router.use('/api/v1/support', supportRoutes);
 router.use('/api/v1/payments', paymentRoutes);
 router.use('/api/v1/bug-reports', bugReportRoutes);
+router.use('/api/v1/faqs', faqRouter);
 
 export default router;
