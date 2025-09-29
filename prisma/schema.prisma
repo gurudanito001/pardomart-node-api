@@ -156,7 +156,6 @@ model OrderItem {
   chosenReplacementId   String?
   chosenReplacement     VendorProduct?  @relation("chosenReplacement", fields: [chosenReplacementId], references: [id], onDelete: SetNull)
   isReplacementApproved Boolean?
-
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }

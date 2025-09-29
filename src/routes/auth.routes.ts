@@ -12,9 +12,9 @@ import { smsLimiter } from '../middlewares/rateLimiter.middleware';
 const router = Router();
 
 // Authentication Routes
-router.post('/register', smsLimiter, validate(validateRegisterUser), authController.registerUser);
+router.post('/register', /* smsLimiter */ validate(validateRegisterUser), authController.registerUser);
 router.get('/time-zones', authController.getTimeZones);
-router.post('/initiate-login', smsLimiter, validate(validateLogin), authController.initiateLogin);
+router.post('/initiate-login', /* smsLimiter */ validate(validateLogin), authController.initiateLogin);
 router.post('/verify-login', validate(validateVerifyAndLogin), authController.verifyCodeAndLogin);
 
 export default router;
