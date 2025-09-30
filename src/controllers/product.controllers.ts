@@ -4,6 +4,7 @@ import { Request, Response } from 'express';
 import * as productService from '../services/product.service';
 import { Prisma } from '@prisma/client';
 import { getVendorProductsFilters } from '../models/product.model';
+import { AuthenticatedRequest } from './vendor.controller';
 
 /**
  * @swagger
@@ -706,6 +707,50 @@ export const getVendorProductsByCategory = async (req: Request, res: Response) =
     res.json(vendorProducts);
   } catch (error) {
     console.error('Error getting vendor products by category:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
+ * /product/user/{userId}:
+ *   get:
+ *     summary: Get all products from all vendors belonging to a user
+ *     tags: [Product, User]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Retrieves a list of all vendor-specific products from all stores owned by a particular user. This can be used by an admin or the user themselves.
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: The ID of the user whose vendor products are to be fetched.
+ *     responses:
+ *       200:
+ *         description: A list of vendor products.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/VendorProduct'
+ */
+export const getVendorProductsByUserController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const authenticatedUserId = req.userId;
+    const authenticatedUserRole = req.userRole;
+
+    // Authorization: Allow access only to the user themselves or an admin.
+    if (authenticatedUserRole !== 'admin' && authenticatedUserId !== userId) {
+      return res.status(403).json({ error: 'Forbidden: You are not authorized to access this resource.' });
+    }
+
+    const products = await productService.getVendorProductsByUserService(userId);
+    res.status(200).json(products);
+  } catch (error) {
+    console.error('Error getting vendor products by user:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

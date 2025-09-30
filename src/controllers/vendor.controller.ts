@@ -281,6 +281,11 @@ export const getVendorById = async (req: Request, res: Response) => {
  *           format: float
  *         description: User's current longitude to sort vendors by distance.
  *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         description: Filter vendors by the user who owns them.
+ *       - in: query
  *         name: page
  *         schema:
  *           type: integer
@@ -303,12 +308,12 @@ export const getVendorById = async (req: Request, res: Response) => {
  *         description: Internal server error.
  */
 export const getAllVendors = async (req: AuthenticatedRequest, res: Response) => {
-  const {name, latitude, longitude}: getVendorsFilters = req.query;
-  const userId = req.userId;
+  const {name, latitude, longitude, userId: queryUserId}: getVendorsFilters = req.query;
+  const authUserId = req.userId;
   const page = req?.query?.page?.toString() || "1";
   const take = req?.query?.size?.toString() || "20"; 
   try {
-    const vendors = await vendorService.getAllVendors({name, latitude, longitude, userId}, {page, take});
+    const vendors = await vendorService.getAllVendors({name, latitude, longitude, userId: queryUserId || authUserId}, {page, take});
     res.status(200).json(vendors);
   } catch (error) {
     console.error('Error getting all vendors:', error);

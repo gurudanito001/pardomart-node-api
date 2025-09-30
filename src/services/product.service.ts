@@ -115,6 +115,9 @@ export const deleteVendorProduct = async (id: string): Promise<VendorProduct> =>
   return productModel.deleteVendorProduct(id);
 };
 
+export const getVendorProductsByUserService = async (userId: string): Promise<VendorProduct[]> => {
+  return productModel.getVendorProductsByUserId(userId);
+};
 
 export const getTrendingVendorProductsService = async (
   filters: { vendorId?: string },

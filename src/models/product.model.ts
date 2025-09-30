@@ -326,6 +326,17 @@ export const getVendorProductById = async (vendorProductId: string): Promise<Ven
   });
 };
 
+export const getVendorProductsByUserId = async (userId: string): Promise<VendorProduct[]> => {
+  return prisma.vendorProduct.findMany({
+    where: {
+      vendor: {
+        userId: userId,
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+};
+
 
 /**
  * Retrieves a paginated list of trending vendor products.

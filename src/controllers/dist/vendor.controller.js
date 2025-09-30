@@ -341,6 +341,11 @@ exports.getVendorById = function (req, res) { return __awaiter(void 0, void 0, v
  *           format: float
  *         description: User's current longitude to sort vendors by distance.
  *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         description: Filter vendors by the user who owns them.
+ *       - in: query
  *         name: page
  *         schema:
  *           type: integer
@@ -363,19 +368,19 @@ exports.getVendorById = function (req, res) { return __awaiter(void 0, void 0, v
  *         description: Internal server error.
  */
 exports.getAllVendors = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, name, latitude, longitude, userId, page, take, vendors, error_3;
+    var _a, name, latitude, longitude, queryUserId, authUserId, page, take, vendors, error_3;
     var _b, _c, _d, _e;
     return __generator(this, function (_f) {
         switch (_f.label) {
             case 0:
-                _a = req.query, name = _a.name, latitude = _a.latitude, longitude = _a.longitude;
-                userId = req.userId;
+                _a = req.query, name = _a.name, latitude = _a.latitude, longitude = _a.longitude, queryUserId = _a.userId;
+                authUserId = req.userId;
                 page = ((_c = (_b = req === null || req === void 0 ? void 0 : req.query) === null || _b === void 0 ? void 0 : _b.page) === null || _c === void 0 ? void 0 : _c.toString()) || "1";
                 take = ((_e = (_d = req === null || req === void 0 ? void 0 : req.query) === null || _d === void 0 ? void 0 : _d.size) === null || _e === void 0 ? void 0 : _e.toString()) || "20";
                 _f.label = 1;
             case 1:
                 _f.trys.push([1, 3, , 4]);
-                return [4 /*yield*/, vendorService.getAllVendors({ name: name, latitude: latitude, longitude: longitude, userId: userId }, { page: page, take: take })];
+                return [4 /*yield*/, vendorService.getAllVendors({ name: name, latitude: latitude, longitude: longitude, userId: queryUserId || authUserId }, { page: page, take: take })];
             case 2:
                 vendors = _f.sent();
                 res.status(200).json(vendors);

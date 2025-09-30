@@ -22,6 +22,7 @@ import paymentRoutes from './payment.routes';
 import bugReportRoutes from './bugReport.routes';
 import healthRouter from './health.routes';
 import faqRouter from './faq.routes';
+import mediaRouter from './media.routes';
 
 // Create a new Router instance
 const router = Router();
@@ -51,5 +52,7 @@ router.use('/api/v1/support', supportRoutes);
 router.use('/api/v1/payments', paymentRoutes);
 router.use('/api/v1/bug-reports', bugReportRoutes);
 router.use('/api/v1/faqs', faqRouter);
+router.use('/api/v1/media', mediaRouter);
+
 
 export default router;

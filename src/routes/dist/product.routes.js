@@ -16,6 +16,7 @@ router.get('/vendor/category', validation_middleware_1.validate(validation_middl
 router.get('/vendor/:id', validation_middleware_1.validate(validation_middleware_1.validateGetOrDeleteProduct), product_controllers_1.getVendorProductById);
 router.get('/tags/ids', validation_middleware_1.validate(validation_middleware_1.validateGetProductsByTagIds), product_controllers_1.getProductsByTagIds);
 router.get('/vendor/tags/ids', validation_middleware_1.validate(validation_middleware_1.validateGetVendorProductsByTagIds), product_controllers_1.getVendorProductsByTagIds);
+router.get('/user/:userId', auth_middleware_1.authenticate, /* authorize(['admin', 'customer']), */ product_controllers_1.getVendorProductsByUserController);
 // Protected routes (assuming admin/vendor roles)
 router.post('/', auth_middleware_1.authenticate, /* authorize(['admin']), */ validation_middleware_1.validate(validation_middleware_1.validateCreateProduct), product_controllers_1.createProduct);
 router.post('/vendor', auth_middleware_1.authenticate, auth_middleware_1.authorizeVendorAccess, validation_middleware_1.validate(validation_middleware_1.validateCreateVendorProduct), product_controllers_1.createVendorProduct);

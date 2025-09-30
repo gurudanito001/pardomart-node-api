@@ -35,6 +35,7 @@ import {
   getVendorProductsByCategory,
   getTrendingVendorProducts,
   getVendorProductsByTagIds,
+  getVendorProductsByUserController,
   updateProductBase,
   updateVendorProduct,
 } from '../controllers/product.controllers';
@@ -54,6 +55,7 @@ router.get('/vendor/category', validate(validateGetVendorProductsByCategory), ge
 router.get('/vendor/:id', validate(validateGetOrDeleteProduct), getVendorProductById);
 router.get('/tags/ids', validate(validateGetProductsByTagIds), getProductsByTagIds);
 router.get('/vendor/tags/ids', validate(validateGetVendorProductsByTagIds), getVendorProductsByTagIds);
+router.get('/user/:userId', authenticate, /* authorize(['admin', 'customer']), */ getVendorProductsByUserController);
 
 // Protected routes (assuming admin/vendor roles)
 router.post('/', authenticate, /* authorize(['admin']), */ validate(validateCreateProduct), createProduct);

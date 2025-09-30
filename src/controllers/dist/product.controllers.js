@@ -47,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.getTrendingVendorProducts = exports.deleteVendorProduct = exports.deleteProduct = exports.getVendorProductsByCategory = exports.getAllVendorProducts = exports.getAllProducts = exports.updateVendorProduct = exports.updateProductBase = exports.getVendorProductsByTagIds = exports.getProductsByTagIds = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.createVendorProductWithBarcode = exports.getVendorProductById = exports.createVendorProduct = exports.createProduct = void 0;
+exports.getTrendingVendorProducts = exports.deleteVendorProduct = exports.deleteProduct = exports.getVendorProductsByUserController = exports.getVendorProductsByCategory = exports.getAllVendorProducts = exports.getAllProducts = exports.updateVendorProduct = exports.updateProductBase = exports.getVendorProductsByTagIds = exports.getProductsByTagIds = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.createVendorProductWithBarcode = exports.getVendorProductById = exports.createVendorProduct = exports.createProduct = void 0;
 var productService = require("../services/product.service");
 var client_1 = require("@prisma/client");
 /**
@@ -885,6 +885,58 @@ exports.getVendorProductsByCategory = function (req, res) { return __awaiter(voi
 }); };
 /**
  * @swagger
+ * /product/user/{userId}:
+ *   get:
+ *     summary: Get all products from all vendors belonging to a user
+ *     tags: [Product, User]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Retrieves a list of all vendor-specific products from all stores owned by a particular user. This can be used by an admin or the user themselves.
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: The ID of the user whose vendor products are to be fetched.
+ *     responses:
+ *       200:
+ *         description: A list of vendor products.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/VendorProduct'
+ */
+exports.getVendorProductsByUserController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var userId, authenticatedUserId, authenticatedUserRole, products, error_14;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                userId = req.params.userId;
+                authenticatedUserId = req.userId;
+                authenticatedUserRole = req.userRole;
+                // Authorization: Allow access only to the user themselves or an admin.
+                if (authenticatedUserRole !== 'admin' && authenticatedUserId !== userId) {
+                    return [2 /*return*/, res.status(403).json({ error: 'Forbidden: You are not authorized to access this resource.' })];
+                }
+                return [4 /*yield*/, productService.getVendorProductsByUserService(userId)];
+            case 1:
+                products = _a.sent();
+                res.status(200).json(products);
+                return [3 /*break*/, 3];
+            case 2:
+                error_14 = _a.sent();
+                console.error('Error getting vendor products by user:', error_14);
+                res.status(500).json({ error: 'Internal server error' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
  * /product/{id}:
  *   delete:
  *     summary: Delete a base product
@@ -908,7 +960,7 @@ exports.getVendorProductsByCategory = function (req, res) { return __awaiter(voi
  *         description: Product not found.
  */
 exports.deleteProduct = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var product, error_14;
+    var product, error_15;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -919,11 +971,11 @@ exports.deleteProduct = function (req, res) { return __awaiter(void 0, void 0, v
                 res.json(product);
                 return [3 /*break*/, 3];
             case 2:
-                error_14 = _a.sent();
-                if (error_14 instanceof client_1.Prisma.PrismaClientKnownRequestError && error_14.code === 'P2025') {
+                error_15 = _a.sent();
+                if (error_15 instanceof client_1.Prisma.PrismaClientKnownRequestError && error_15.code === 'P2025') {
                     return [2 /*return*/, res.status(404).json({ error: 'Product not found.' })];
                 }
-                console.error('Error deleting product:', error_14);
+                console.error('Error deleting product:', error_15);
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -955,7 +1007,7 @@ exports.deleteProduct = function (req, res) { return __awaiter(void 0, void 0, v
  *         description: Vendor product not found.
  */
 exports.deleteVendorProduct = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var vendorProduct, error_15;
+    var vendorProduct, error_16;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -966,11 +1018,11 @@ exports.deleteVendorProduct = function (req, res) { return __awaiter(void 0, voi
                 res.json(vendorProduct);
                 return [3 /*break*/, 3];
             case 2:
-                error_15 = _a.sent();
-                if (error_15 instanceof client_1.Prisma.PrismaClientKnownRequestError && error_15.code === 'P2025') {
+                error_16 = _a.sent();
+                if (error_16 instanceof client_1.Prisma.PrismaClientKnownRequestError && error_16.code === 'P2025') {
                     return [2 /*return*/, res.status(404).json({ error: 'Vendor product not found.' })];
                 }
-                console.error('Error deleting vendor product:', error_15);
+                console.error('Error deleting vendor product:', error_16);
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -1006,7 +1058,7 @@ exports.deleteVendorProduct = function (req, res) { return __awaiter(void 0, voi
  *               $ref: '#/components/schemas/PaginatedTrendingVendorProducts'
  */
 exports.getTrendingVendorProducts = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var vendorId, page, take, result, error_16;
+    var vendorId, page, take, result, error_17;
     var _a, _b;
     return __generator(this, function (_c) {
         switch (_c.label) {
@@ -1023,8 +1075,8 @@ exports.getTrendingVendorProducts = function (req, res) { return __awaiter(void 
                 res.json(result);
                 return [3 /*break*/, 4];
             case 3:
-                error_16 = _c.sent();
-                console.error('Error getting trending vendor products:', error_16);
+                error_17 = _c.sent();
+                console.error('Error getting trending vendor products:', error_17);
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 4];
             case 4: return [2 /*return*/];

@@ -99,19 +99,22 @@ export const getAllVendors = async (filters: getVendorsFilters, pagination: {pag
       mode: 'insensitive',
     };
   }
+  if (filters?.userId) {
+    where.userId = filters.userId;
+  }
 
-  const include = filters.userId ? {
+  /* const include = filters.userId ? {
     carts: {
       where: { userId: filters.userId },
       select: {
         _count: { select: { items: true } }
       }
     }
-  } : undefined;
+  } : undefined; */
 
   const vendors = await prisma.vendor.findMany({
     where,
-    include,
+    //include,
     skip: skip,
     take: takeVal,
     orderBy: {

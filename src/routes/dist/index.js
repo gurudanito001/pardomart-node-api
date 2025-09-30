@@ -24,6 +24,7 @@ var payment_routes_1 = require("./payment.routes");
 var bugReport_routes_1 = require("./bugReport.routes");
 var health_routes_1 = require("./health.routes");
 var faq_routes_1 = require("./faq.routes");
+var media_routes_1 = require("./media.routes");
 // Create a new Router instance
 var router = express_1.Router();
 // Mount the routers
@@ -50,4 +51,5 @@ router.use('/api/v1/support', support_routes_1["default"]);
 router.use('/api/v1/payments', payment_routes_1["default"]);
 router.use('/api/v1/bug-reports', bugReport_routes_1["default"]);
 router.use('/api/v1/faqs', faq_routes_1["default"]);
+router.use('/api/v1/media', media_routes_1["default"]);
 exports["default"] = router;

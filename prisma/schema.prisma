@@ -490,6 +490,21 @@ model Faq {
   updatedAt DateTime @updatedAt
 }
 
+model Media {
+  id            String    @id @default(uuid())
+  url           String
+  type          MediaType
+  mimeType      String
+  size          Int? // File size in bytes
+  name          String? // Original file name
+  referenceId   String // ID of the related resource (e.g., user id, product id)
+  referenceType String // Name of the related model (e.g., "User", "Product")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([referenceId, referenceType])
+}
+
 enum TransactionType {
   CREDIT
   DEBIT
@@ -640,4 +655,12 @@ enum NotificationType {
   BUG_REPORT_RECEIVED
   BUG_REPORT_RESOLVED
   
+}
+
+enum MediaType {
+  IMAGE
+  DOCUMENT
+  VIDEO
+  AUDIO
+  OTHER
 }

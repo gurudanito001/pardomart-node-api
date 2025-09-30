@@ -69,7 +69,7 @@ export const getVendorById = async (id: string, latitude?: string, longitude?: s
 
 
 export const getAllVendors = async (filters: vendorModel.getVendorsFilters, pagination: {page: string, take: string}) => {
-  const vendorsResult = await vendorModel.getAllVendors(filters, pagination);
+  const vendorsResult = await vendorModel.getAllVendors(filters, pagination); // This already handles filtering by userId if present in filters
 
   if (vendorsResult.data.length === 0) {
     return vendorsResult;
