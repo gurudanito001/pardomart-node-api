@@ -309,6 +309,7 @@ model Vendor {
   latitude       Float?
   timezone       String?              @default("America/New_York")
   isVerified     Boolean              @default(false)
+  isPublished    Boolean              @default(false)
   meta           Json?
   openingHours   VendorOpeningHours[]
   carts          Cart[]
