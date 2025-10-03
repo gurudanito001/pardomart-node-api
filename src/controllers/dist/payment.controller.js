@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.stripeWebhookController = exports.listMyPaymentsController = exports.detachPaymentMethodController = exports.listMySavedPaymentMethodsController = exports.createSetupIntentController = exports.createPaymentIntentController = void 0;
+exports.stripeWebhookController = exports.listVendorPaymentsController = exports.listMyPaymentsController = exports.detachPaymentMethodController = exports.listMySavedPaymentMethodsController = exports.createSetupIntentController = exports.createPaymentIntentController = void 0;
 var payment_service_1 = require("../services/payment.service");
 var order_service_1 = require("../services/order.service");
 var stripe_1 = require("stripe");
@@ -313,8 +313,58 @@ exports.listMyPaymentsController = function (req, res) { return __awaiter(void 0
         }
     });
 }); };
+/**
+ * @swagger
+ * /api/v1/payments/vendor:
+ *   get:
+ *     summary: Get payment transactions for a vendor user
+ *     tags: [Payment]
+ *     description: Retrieves a list of all payments made to stores owned by the authenticated vendor user. Can be filtered by a specific store.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: vendorId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Optional. The ID of a specific store (vendor) to filter payments for.
+ *     responses:
+ *       200:
+ *         description: A list of payment transactions.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Payment'
+ *       403:
+ *         description: Forbidden. User is not a vendor.
+ */
+exports.listVendorPaymentsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var userId, vendorId, payments, error_6;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                userId = req.userId;
+                vendorId = req.query.vendorId;
+                return [4 /*yield*/, payment_service_1.listPaymentsForVendorService(userId, vendorId)];
+            case 1:
+                payments = _a.sent();
+                res.status(200).json(payments);
+                return [3 /*break*/, 3];
+            case 2:
+                error_6 = _a.sent();
+                console.error('Error listing vendor payments:', error_6);
+                res.status(500).json({ error: 'Failed to list vendor payments.' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
 exports.stripeWebhookController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var sig, event, error_6;
+    var sig, event, error_7;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -334,8 +384,8 @@ exports.stripeWebhookController = function (req, res) { return __awaiter(void 0,
                 _a.sent();
                 return [3 /*break*/, 4];
             case 3:
-                error_6 = _a.sent();
-                console.error('Error handling webhook event:', error_6);
+                error_7 = _a.sent();
+                console.error('Error handling webhook event:', error_7);
                 return [3 /*break*/, 4];
             case 4:
                 res.status(200).json({ received: true });

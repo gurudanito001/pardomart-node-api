@@ -1,6 +1,7 @@
-import { PrismaClient, User, Order, PaymentStatus, SavedPaymentMethod } from '@prisma/client';
+import { PrismaClient, User, PaymentStatus, SavedPaymentMethod, Payment } from '@prisma/client';
 import Stripe from 'stripe';
 import { OrderCreationError } from './order.service';
+import * as paymentModel from '../models/payment.model';
 
 const prisma = new PrismaClient();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -225,6 +226,16 @@ export const listPaymentsForUserService = async (userId: string) => {
       },
     },
   });
+};
+
+/**
+ * Retrieves a list of payments for a vendor user's stores.
+ * @param vendorOwnerId The ID of the user who owns the vendors.
+ * @param vendorId Optional ID of a specific vendor to filter by.
+ * @returns A list of payments.
+ */
+export const listPaymentsForVendorService = async (vendorOwnerId: string, vendorId?: string): Promise<Payment[]> => {
+  return paymentModel.listPaymentsForVendor({ vendorOwnerId, vendorId });
 };
 
 /**

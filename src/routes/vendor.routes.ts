@@ -1,6 +1,7 @@
 // routes/vendor.routes.ts
 import express from 'express';
 import * as vendorController from '../controllers/vendor.controller';
+import multer from 'multer';
 import { authenticate } from '../middlewares/auth.middleware';
 import {
   validate,
@@ -13,7 +14,9 @@ import {
 
 const router = express.Router();
 
-router.post('/', authenticate, validate(validateCreateVendor), vendorController.createVendor);
+// Use multer().none() to handle multipart/form-data text fields.
+// This will populate req.body with the text fields from the formData.
+router.post('/', authenticate, multer().none(), validate(validateCreateVendor), vendorController.createVendor);
 router.get('/:id', validate(validateGetVendorById), vendorController.getVendorById);
 router.get('/', validate(validateGetAllVendors), vendorController.getAllVendors);
 //router.get('/findVendors/nearby', vendorController.getVendorsByProximity);

@@ -50,13 +50,14 @@ exports.__esModule = true;
 exports.deleteVendor = exports.updateVendor = exports.getVendorsByUserId = exports.getFullListOfVendors = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
 // models/vendor.model.ts
 var client_1 = require("@prisma/client");
+var media_service_1 = require("../services/media.service");
 var prisma = new client_1.PrismaClient();
 exports.createVendor = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
-    var vendor, openingHoursData, data;
+    var vendor, openingHoursData, imageBuffer, mockFile, uploadResult, error_1, data;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4 /*yield*/, prisma.vendor.create({
-                    data: __assign({}, payload)
+                    data: __assign(__assign({}, payload), { image: payload.image ? 'placeholder' : undefined })
                 })];
             case 1:
                 vendor = _a.sent();
@@ -71,15 +72,45 @@ exports.createVendor = function (payload) { return __awaiter(void 0, void 0, Pro
                     })];
             case 2:
                 _a.sent();
-                return [4 /*yield*/, prisma.vendor.findUnique({
-                        where: {
-                            id: vendor.id
-                        },
-                        include: {
-                            openingHours: true
-                        }
-                    })];
+                if (!payload.image) return [3 /*break*/, 7];
+                _a.label = 3;
             case 3:
+                _a.trys.push([3, 6, , 7]);
+                imageBuffer = Buffer.from(payload.image, 'base64');
+                mockFile = {
+                    fieldname: 'image',
+                    originalname: vendor.id + "-store-image.jpg",
+                    encoding: '7bit',
+                    mimetype: 'image/jpeg',
+                    buffer: imageBuffer,
+                    size: imageBuffer.length,
+                    stream: new (require('stream').Readable)(),
+                    destination: '',
+                    filename: '',
+                    path: ''
+                };
+                return [4 /*yield*/, media_service_1.uploadMedia(mockFile, vendor.id, 'store_image')];
+            case 4:
+                uploadResult = _a.sent();
+                // Update the vendor with the final image URL
+                return [4 /*yield*/, exports.updateVendor(vendor.id, { image: uploadResult.secure_url })];
+            case 5:
+                // Update the vendor with the final image URL
+                _a.sent();
+                return [3 /*break*/, 7];
+            case 6:
+                error_1 = _a.sent();
+                console.error('Error uploading vendor image:', error_1);
+                return [3 /*break*/, 7];
+            case 7: return [4 /*yield*/, prisma.vendor.findUnique({
+                    where: {
+                        id: vendor.id
+                    },
+                    include: {
+                        openingHours: true
+                    }
+                })];
+            case 8:
                 data = _a.sent();
                 return [2 /*return*/, data];
         }

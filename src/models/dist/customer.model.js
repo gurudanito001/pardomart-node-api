@@ -36,32 +36,36 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.upload = void 0;
-var multer_1 = require("multer");
-var cloudinary_1 = require("cloudinary");
-var multer_storage_cloudinary_1 = require("multer-storage-cloudinary");
-cloudinary_1.v2.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
-});
-var storage = new multer_storage_cloudinary_1.CloudinaryStorage({
-    cloudinary: cloudinary_1.v2,
-    params: function (req, file) { return __awaiter(void 0, void 0, void 0, function () {
-        var uuidv4;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0: return [4 /*yield*/, Promise.resolve().then(function () { return require('uuid'); })];
-                case 1:
-                    uuidv4 = (_a.sent()).v4;
-                    return [2 /*return*/, {
-                            folder: 'bug-reports',
-                            public_id: "" + uuidv4()
-                        }];
+exports.listCustomersForVendor = void 0;
+// models/customer.model.ts
+var client_1 = require("@prisma/client");
+var prisma = new client_1.PrismaClient();
+/**
+ * Retrieves a list of unique customers who have made a paid purchase from a vendor's stores.
+ * @param filters - The filters to apply, including the vendor owner's user ID and an optional vendor ID.
+ * @returns A list of unique customer users.
+ */
+exports.listCustomersForVendor = function (filters) { return __awaiter(void 0, void 0, Promise, function () {
+    var where;
+    var _a;
+    return __generator(this, function (_b) {
+        where = {
+            role: client_1.Role.customer,
+            orders: {
+                some: {
+                    paymentStatus: client_1.PaymentStatus.paid,
+                    vendor: {
+                        userId: filters.ownerId
+                    }
+                }
             }
-        });
-    }); }
-});
-exports.upload = multer_1["default"]({
-    storage: storage
-});
+        };
+        // If a specific vendorId is provided, add it to the filter
+        if (filters.vendorId && ((_a = where.orders) === null || _a === void 0 ? void 0 : _a.some)) {
+            where.orders.some.vendorId = filters.vendorId;
+        }
+        return [2 /*return*/, prisma.user.findMany({
+                where: where
+            })];
+    });
+}); };

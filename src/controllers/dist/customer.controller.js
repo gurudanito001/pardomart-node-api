@@ -36,32 +36,56 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.upload = void 0;
-var multer_1 = require("multer");
-var cloudinary_1 = require("cloudinary");
-var multer_storage_cloudinary_1 = require("multer-storage-cloudinary");
-cloudinary_1.v2.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
-});
-var storage = new multer_storage_cloudinary_1.CloudinaryStorage({
-    cloudinary: cloudinary_1.v2,
-    params: function (req, file) { return __awaiter(void 0, void 0, void 0, function () {
-        var uuidv4;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0: return [4 /*yield*/, Promise.resolve().then(function () { return require('uuid'); })];
-                case 1:
-                    uuidv4 = (_a.sent()).v4;
-                    return [2 /*return*/, {
-                            folder: 'bug-reports',
-                            public_id: "" + uuidv4()
-                        }];
-            }
-        });
-    }); }
-});
-exports.upload = multer_1["default"]({
-    storage: storage
-});
+exports.listCustomersController = void 0;
+var customerService = require("../services/customer.service");
+/**
+ * @swagger
+ * tags:
+ *   name: Customers
+ *   description: Customer management for vendors
+ */
+/**
+ * @swagger
+ * /api/v1/customers:
+ *   get:
+ *     summary: List customers for a vendor account or a specific store
+ *     tags: [Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: vendorId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Optional. The ID of a specific store to filter customers for. If omitted, returns customers from all stores.
+ *     responses:
+ *       200:
+ *         description: A list of customers who have made a purchase.
+ *       403:
+ *         description: Forbidden. The authenticated user does not own the specified vendor.
+ *       500:
+ *         description: Internal server error.
+ */
+exports.listCustomersController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var ownerId, vendorId, customers, error_1;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                ownerId = req.userId;
+                vendorId = req.query.vendorId;
+                return [4 /*yield*/, customerService.listCustomersForVendorService(ownerId, vendorId)];
+            case 1:
+                customers = _a.sent();
+                res.status(200).json(customers);
+                return [3 /*break*/, 3];
+            case 2:
+                error_1 = _a.sent();
+                console.error('Error listing customers:', error_1);
+                res.status(500).json({ error: error_1.message || 'Internal server error' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };

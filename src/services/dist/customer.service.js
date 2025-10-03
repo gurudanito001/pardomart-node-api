@@ -35,33 +35,56 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 exports.__esModule = true;
-exports.upload = void 0;
-var multer_1 = require("multer");
-var cloudinary_1 = require("cloudinary");
-var multer_storage_cloudinary_1 = require("multer-storage-cloudinary");
-cloudinary_1.v2.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
-});
-var storage = new multer_storage_cloudinary_1.CloudinaryStorage({
-    cloudinary: cloudinary_1.v2,
-    params: function (req, file) { return __awaiter(void 0, void 0, void 0, function () {
-        var uuidv4;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0: return [4 /*yield*/, Promise.resolve().then(function () { return require('uuid'); })];
-                case 1:
-                    uuidv4 = (_a.sent()).v4;
-                    return [2 /*return*/, {
-                            folder: 'bug-reports',
-                            public_id: "" + uuidv4()
-                        }];
-            }
-        });
-    }); }
-});
-exports.upload = multer_1["default"]({
-    storage: storage
-});
+exports.listCustomersForVendorService = void 0;
+// services/customer.service.ts
+var customerModel = require("../models/customer.model");
+var client_1 = require("@prisma/client");
+var prisma = new client_1.PrismaClient();
+var sanitizeUser = function (user) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    var rememberToken = user.rememberToken, sanitized = __rest(user, ["rememberToken"]);
+    return sanitized;
+};
+/**
+ * Retrieves a list of customers for a vendor account, optionally filtered by a specific store.
+ * @param ownerId The ID of the user who owns the vendor account.
+ * @param vendorId Optional ID of a specific store to filter by.
+ * @returns A list of unique, sanitized customer user objects.
+ */
+exports.listCustomersForVendorService = function (ownerId, vendorId) { return __awaiter(void 0, void 0, Promise, function () {
+    var vendor, customers;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                if (!vendorId) return [3 /*break*/, 2];
+                return [4 /*yield*/, prisma.vendor.findFirst({
+                        where: { id: vendorId, userId: ownerId }
+                    })];
+            case 1:
+                vendor = _a.sent();
+                if (!vendor) {
+                    throw new Error('Unauthorized: You do not own this vendor.');
+                }
+                _a.label = 2;
+            case 2: return [4 /*yield*/, customerModel.listCustomersForVendor({
+                    ownerId: ownerId,
+                    vendorId: vendorId
+                })];
+            case 3:
+                customers = _a.sent();
+                return [2 /*return*/, customers.map(sanitizeUser)];
+        }
+    });
+}); };

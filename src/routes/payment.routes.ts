@@ -16,6 +16,7 @@ router.use(authenticate);
 
 router.post('/create-payment-intent', paymentController.createPaymentIntentController);
 router.get('/me', paymentController.listMyPaymentsController);
+router.get('/vendor', paymentController.listVendorPaymentsController);
 router.post('/setup-intent', paymentController.createSetupIntentController);
 router.get('/me/payment-methods', paymentController.listMySavedPaymentMethodsController);
 router.delete(

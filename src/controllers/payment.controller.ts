@@ -1,12 +1,13 @@
 import { Request, Response } from 'express';
 import { AuthenticatedRequest } from './vendor.controller';
 import {
-  createPaymentIntentService,
-  handleStripeWebhook,
-  listPaymentsForUserService,
-  createSetupIntentService,
-  listSavedPaymentMethodsService,
-  detachPaymentMethodService,
+    createPaymentIntentService,
+    handleStripeWebhook,
+    listPaymentsForUserService,
+    createSetupIntentService,
+    listSavedPaymentMethodsService,
+    detachPaymentMethodService,
+    listPaymentsForVendorService,
 } from '../services/payment.service';
 import { OrderCreationError } from '../services/order.service';
 import Stripe from 'stripe';
@@ -235,6 +236,47 @@ export const listMyPaymentsController = async (req: AuthenticatedRequest, res: R
     console.error('Error listing payments:', error);
     res.status(500).json({ error: 'Failed to list payments.' });
   }
+};
+
+/**
+ * @swagger
+ * /api/v1/payments/vendor:
+ *   get:
+ *     summary: Get payment transactions for a vendor user
+ *     tags: [Payment]
+ *     description: Retrieves a list of all payments made to stores owned by the authenticated vendor user. Can be filtered by a specific store.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: vendorId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Optional. The ID of a specific store (vendor) to filter payments for.
+ *     responses:
+ *       200:
+ *         description: A list of payment transactions.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Payment'
+ *       403:
+ *         description: Forbidden. User is not a vendor.
+ */
+export const listVendorPaymentsController = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.userId as string;
+        const { vendorId } = req.query;
+
+        const payments = await listPaymentsForVendorService(userId, vendorId as string | undefined);
+        res.status(200).json(payments);
+    } catch (error: any) {
+        console.error('Error listing vendor payments:', error);
+        res.status(500).json({ error: 'Failed to list vendor payments.' });
+    }
 };
 
 export const stripeWebhookController = async (req: Request, res: Response) => {

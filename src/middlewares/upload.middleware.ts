@@ -1,8 +1,6 @@
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
-import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -12,10 +10,13 @@ cloudinary.config({
 
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  params: (req, file) => ({
-    folder: 'bug-reports',
-    public_id: `${uuidv4()}${path.extname(file.originalname)}`,
-  }),
+  params: async (req, file) => {
+    const { v4: uuidv4 } = await import('uuid');
+    return {
+      folder: 'bug-reports',
+      public_id: `${uuidv4()}`,
+    };
+  },
 });
 
 export const upload = multer({

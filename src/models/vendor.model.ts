@@ -1,5 +1,6 @@
 // models/vendor.model.ts
 import { PrismaClient, Vendor, Days, User, VendorOpeningHours, Prisma } from '@prisma/client';
+import { uploadMedia } from '../services/media.service';
 
 
 const prisma = new PrismaClient();
@@ -33,7 +34,8 @@ export interface UpdateVendorPayload {
 export const createVendor = async (payload: CreateVendorPayload): Promise<Vendor> => {
   const vendor = await prisma.vendor.create({
     data: {
-      ...payload
+      ...payload,
+      image: payload.image ? 'placeholder' : undefined, // Use a placeholder, will be updated later
     }
   });
 
@@ -48,6 +50,35 @@ export const createVendor = async (payload: CreateVendorPayload): Promise<Vendor
   await prisma.vendorOpeningHours.createMany({
     data: openingHoursData,
   });
+
+  // If an image is provided, upload it via media.service and update the vendor
+  if (payload.image) {
+    try {
+      // Create a mock Multer file from the base64 string
+      const imageBuffer = Buffer.from(payload.image, 'base64');
+      const mockFile: Express.Multer.File = {
+        fieldname: 'image',
+        originalname: `${vendor.id}-store-image.jpg`,
+        encoding: '7bit',
+        mimetype: 'image/jpeg', // Assuming jpeg, adjust if you handle other types
+        buffer: imageBuffer,
+        size: imageBuffer.length,
+        stream: new (require('stream').Readable)(), // Dummy stream
+        destination: '',
+        filename: '',
+        path: '',
+      };
+
+      const uploadResult = await uploadMedia(mockFile, vendor.id, 'store_image');
+
+      // Update the vendor with the final image URL
+      await updateVendor(vendor.id, { image: uploadResult.secure_url });
+    } catch (error) {
+      console.error('Error uploading vendor image:', error);
+      // Decide on error handling: should the vendor creation be rolled back?
+      // For now, we'll let the vendor exist without an image.
+    }
+  }
 
   // Fetch the created vendor with opening hours included
   const data = await prisma.vendor.findUnique({

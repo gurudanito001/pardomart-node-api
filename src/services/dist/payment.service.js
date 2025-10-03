@@ -36,10 +36,11 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.detachPaymentMethodService = exports.listSavedPaymentMethodsService = exports.listPaymentsForUserService = exports.handleStripeWebhook = exports.createSetupIntentService = exports.createPaymentIntentService = void 0;
+exports.detachPaymentMethodService = exports.listSavedPaymentMethodsService = exports.listPaymentsForVendorService = exports.listPaymentsForUserService = exports.handleStripeWebhook = exports.createSetupIntentService = exports.createPaymentIntentService = void 0;
 var client_1 = require("@prisma/client");
 var stripe_1 = require("stripe");
 var order_service_1 = require("./order.service");
+var paymentModel = require("../models/payment.model");
 var prisma = new client_1.PrismaClient();
 var stripe = new stripe_1["default"](process.env.STRIPE_SECRET_KEY, {
     apiVersion: '2025-08-27.basil'
@@ -306,6 +307,17 @@ exports.listPaymentsForUserService = function (userId) { return __awaiter(void 0
                     }
                 }
             })];
+    });
+}); };
+/**
+ * Retrieves a list of payments for a vendor user's stores.
+ * @param vendorOwnerId The ID of the user who owns the vendors.
+ * @param vendorId Optional ID of a specific vendor to filter by.
+ * @returns A list of payments.
+ */
+exports.listPaymentsForVendorService = function (vendorOwnerId, vendorId) { return __awaiter(void 0, void 0, Promise, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, paymentModel.listPaymentsForVendor({ vendorOwnerId: vendorOwnerId, vendorId: vendorId })];
     });
 }); };
 /**

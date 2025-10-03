@@ -24,6 +24,7 @@ model User {
   email            String
   mobileNumber     String
   mobileVerified   Boolean @default(false)
+  image            String?
   dynamicMediaUrls Json?
   active           Boolean @default(true)
   language         String?
@@ -499,11 +500,21 @@ model Media {
   size          Int? // File size in bytes
   name          String? // Original file name
   referenceId   String // ID of the related resource (e.g., user id, product id)
-  referenceType String // Name of the related model (e.g., "User", "Product")
+  referenceType ReferenceType? 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   @@index([referenceId, referenceType])
+}
+
+enum ReferenceType {
+  bug_report_image
+  user_image
+  store_image
+  product_image
+  category_image
+  document
+  other
 }
 
 enum TransactionType {
