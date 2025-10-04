@@ -371,8 +371,21 @@ export const getAllVendors = async (req: AuthenticatedRequest, res: Response) =>
  */
 export const updateVendor = async (req: Request, res: Response) => {
   try {
-    const id = req.params.id
-    const vendor = await vendorService.updateVendor(id, req.body);
+    const id = req.params.id;
+    const payload = { ...req.body };
+
+    // When using formData, nested objects, booleans, and numbers might be sent as strings.
+    // We need to parse them back before sending to the service layer.
+    if (payload.meta && typeof payload.meta === 'string') {
+      payload.meta = JSON.parse(payload.meta);
+    }
+    if (payload.longitude && typeof payload.longitude === 'string') {
+      payload.longitude = parseFloat(payload.longitude);
+    }
+    if (payload.latitude && typeof payload.latitude === 'string') {
+      payload.latitude = parseFloat(payload.latitude);
+    }
+    const vendor = await vendorService.updateVendor(id, payload);
     res.status(200).json(vendor);
   } catch (error: any) {
     console.error('Error updating vendor:', error);

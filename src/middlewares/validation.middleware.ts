@@ -71,11 +71,11 @@ export const validateCreateVendor = [
   body('email').optional({ checkFalsy: true }).isEmail().normalizeEmail().withMessage('Invalid email format'),
   body('tagline').optional({ checkFalsy: true }).isString().withMessage('Tagline must be a string'),
   body('details').optional({ checkFalsy: true }).isString().withMessage('Details must be a string'),
-  body('image').optional({ checkFalsy: true }).isURL().withMessage('Image must be a valid URL'),
+  body('image').optional({ checkFalsy: true }).isBase64().withMessage('Image must be a valid base64 string.'),
   body('address').optional({ checkFalsy: true }).isString().withMessage('Address must be a string'),
   body('longitude').optional({ checkFalsy: true }).isFloat().withMessage('Longitude must be a number'),
   body('latitude').optional({ checkFalsy: true }).isFloat().withMessage('Latitude must be a number'),
-  body('meta').optional({ checkFalsy: true }).isObject().withMessage('Meta must be an object'),
+  body('meta').optional({ checkFalsy: true }).isJSON().withMessage('Meta must be a valid JSON string.'),
 ];
 
 export const validateVendorId = [param('id').isUUID(4).withMessage('A valid vendor ID is required in the URL.')];
@@ -100,12 +100,12 @@ export const validateUpdateVendor = [
   body('email').optional({ checkFalsy: true }).isEmail().normalizeEmail().withMessage('Invalid email format'),
   body('tagline').optional({ checkFalsy: true }).isString().withMessage('Tagline must be a string'),
   body('details').optional({ checkFalsy: true }).isString().withMessage('Details must be a string'),
-  body('image').optional({ checkFalsy: true }).isURL().withMessage('Image must be a valid URL'),
+  body('image').optional({ checkFalsy: true }).isBase64().withMessage('Image must be a valid base64 string.'),
   body('address').optional({ checkFalsy: true }).isString().withMessage('Address must be a string'),
   body('longitude').optional({ checkFalsy: true }).isFloat().withMessage('Longitude must be a number'),
   body('latitude').optional({ checkFalsy: true }).isFloat().withMessage('Latitude must be a number'),
-  body('isVerified').optional().isBoolean().withMessage('isVerified must be a boolean.'),
-  body('meta').optional({ checkFalsy: true }).isObject().withMessage('Meta must be an object'),
+  body('isVerified').optional().isBoolean().toBoolean().withMessage('isVerified must be a boolean.'),
+  body('meta').optional({ checkFalsy: true }).isJSON().withMessage('Meta must be a valid JSON string.'),
 ];
 
 export const validateCreateOrUpdateVendorOpeningHours = [

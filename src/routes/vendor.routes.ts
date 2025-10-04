@@ -21,7 +21,7 @@ router.get('/:id', validate(validateGetVendorById), vendorController.getVendorBy
 router.get('/', validate(validateGetAllVendors), vendorController.getAllVendors);
 //router.get('/findVendors/nearby', vendorController.getVendorsByProximity);
 router.get('/getvendorsby/userId', authenticate, vendorController.getVendorsByUserId);
-router.patch('/:id', authenticate, validate(validateUpdateVendor), vendorController.updateVendor);
+router.patch('/:id', authenticate, multer().none(), validate(validateUpdateVendor), vendorController.updateVendor);
 router.delete('/:id', authenticate, validate(validateVendorId), vendorController.deleteVendor);
 
 export default router;

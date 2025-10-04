@@ -441,13 +441,25 @@ exports.getAllVendors = function (req, res) { return __awaiter(void 0, void 0, v
  *         description: Internal server error.
  */
 exports.updateVendor = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var id, vendor, error_4;
+    var id, payload, vendor, error_4;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
                 id = req.params.id;
-                return [4 /*yield*/, vendorService.updateVendor(id, req.body)];
+                payload = __assign({}, req.body);
+                // When using formData, nested objects, booleans, and numbers might be sent as strings.
+                // We need to parse them back before sending to the service layer.
+                if (payload.meta && typeof payload.meta === 'string') {
+                    payload.meta = JSON.parse(payload.meta);
+                }
+                if (payload.longitude && typeof payload.longitude === 'string') {
+                    payload.longitude = parseFloat(payload.longitude);
+                }
+                if (payload.latitude && typeof payload.latitude === 'string') {
+                    payload.latitude = parseFloat(payload.latitude);
+                }
+                return [4 /*yield*/, vendorService.updateVendor(id, payload)];
             case 1:
                 vendor = _a.sent();
                 res.status(200).json(vendor);
