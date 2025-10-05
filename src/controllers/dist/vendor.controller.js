@@ -214,6 +214,10 @@ exports.createVendor = function (req, res) { return __awaiter(void 0, void 0, vo
             case 0:
                 _a.trys.push([0, 2, , 3]);
                 payload = req.body;
+                // Sanitize image data: remove data URI prefix if it exists.
+                if (payload.image && payload.image.startsWith('data:')) {
+                    payload.image = payload.image.split(',')[1];
+                }
                 return [4 /*yield*/, vendorService.createVendor(__assign(__assign({}, payload), { userId: req.userId }))];
             case 1:
                 vendor = _a.sent();
@@ -441,6 +445,10 @@ exports.updateVendor = function (req, res) { return __awaiter(void 0, void 0, vo
                 // We need to parse them back before sending to the service layer.
                 if (payload.meta && typeof payload.meta === 'string') {
                     payload.meta = JSON.parse(payload.meta);
+                }
+                // Sanitize image data: remove data URI prefix if it exists.
+                if (payload.image && payload.image.startsWith('data:')) {
+                    payload.image = payload.image.split(',')[1];
                 }
                 if (payload.longitude && typeof payload.longitude === 'string') {
                     payload.longitude = parseFloat(payload.longitude);

@@ -71,7 +71,14 @@ export const validateCreateVendor = [
   body('email').optional({ checkFalsy: true }).isEmail().normalizeEmail().withMessage('Invalid email format'),
   body('tagline').optional({ checkFalsy: true }).isString().withMessage('Tagline must be a string'),
   body('details').optional({ checkFalsy: true }).isString().withMessage('Details must be a string'),
-  body('image').optional({ checkFalsy: true }).isBase64().withMessage('Image must be a valid base64 string.'),
+  body('image')
+    .optional({ checkFalsy: true })
+    .custom((value) => {
+      // This regex checks for an optional data URI prefix followed by a valid base64 string.
+      const base64Regex = /^(data:image\/[a-zA-Z]+;base64,)?([A-Za-z0-9+/]+={0,2})$/;
+      return base64Regex.test(value);
+    })
+    .withMessage('Image must be a valid base64 string, optionally with a data URI prefix.'),
   body('address').optional({ checkFalsy: true }).isString().withMessage('Address must be a string'),
   body('longitude').optional({ checkFalsy: true }).isFloat().withMessage('Longitude must be a number'),
   body('latitude').optional({ checkFalsy: true }).isFloat().withMessage('Latitude must be a number'),
@@ -100,7 +107,14 @@ export const validateUpdateVendor = [
   body('email').optional({ checkFalsy: true }).isEmail().normalizeEmail().withMessage('Invalid email format'),
   body('tagline').optional({ checkFalsy: true }).isString().withMessage('Tagline must be a string'),
   body('details').optional({ checkFalsy: true }).isString().withMessage('Details must be a string'),
-  body('image').optional({ checkFalsy: true }).isBase64().withMessage('Image must be a valid base64 string.'),
+  body('image')
+    .optional({ checkFalsy: true })
+    .custom((value) => {
+      // This regex checks for an optional data URI prefix followed by a valid base64 string.
+      const base64Regex = /^(data:image\/[a-zA-Z]+;base64,)?([A-Za-z0-9+/]+={0,2})$/;
+      return base64Regex.test(value);
+    })
+    .withMessage('Image must be a valid base64 string, optionally with a data URI prefix.'),
   body('address').optional({ checkFalsy: true }).isString().withMessage('Address must be a string'),
   body('longitude').optional({ checkFalsy: true }).isFloat().withMessage('Longitude must be a number'),
   body('latitude').optional({ checkFalsy: true }).isFloat().withMessage('Latitude must be a number'),

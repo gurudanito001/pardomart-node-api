@@ -169,7 +169,12 @@ export interface AuthenticatedRequest extends Request {
 export const createVendor = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const payload = req.body;
-    const vendor = await vendorService.createVendor({ ...payload, userId: req.userId });
+    // Sanitize image data: remove data URI prefix if it exists.
+    if (payload.image && payload.image.startsWith('data:')) {
+      payload.image = payload.image.split(',')[1];
+    }
+
+    const vendor = await vendorService.createVendor({ ...payload, userId: req.userId as string });
     res.status(201).json(vendor);
   } catch (error) {
     console.error('Error creating vendor:', error);
@@ -365,6 +370,10 @@ export const updateVendor = async (req: Request, res: Response) => {
     // We need to parse them back before sending to the service layer.
     if (payload.meta && typeof payload.meta === 'string') {
       payload.meta = JSON.parse(payload.meta);
+    }
+    // Sanitize image data: remove data URI prefix if it exists.
+    if (payload.image && payload.image.startsWith('data:')) {
+      payload.image = payload.image.split(',')[1];
     }
     if (payload.longitude && typeof payload.longitude === 'string') {
       payload.longitude = parseFloat(payload.longitude);

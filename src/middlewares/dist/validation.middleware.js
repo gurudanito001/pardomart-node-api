@@ -101,7 +101,14 @@ exports.validateCreateVendor = [
     express_validator_1.body('email').optional({ checkFalsy: true }).isEmail().normalizeEmail().withMessage('Invalid email format'),
     express_validator_1.body('tagline').optional({ checkFalsy: true }).isString().withMessage('Tagline must be a string'),
     express_validator_1.body('details').optional({ checkFalsy: true }).isString().withMessage('Details must be a string'),
-    express_validator_1.body('image').optional({ checkFalsy: true }).isBase64().withMessage('Image must be a valid base64 string.'),
+    express_validator_1.body('image')
+        .optional({ checkFalsy: true })
+        .custom(function (value) {
+        // This regex checks for an optional data URI prefix followed by a valid base64 string.
+        var base64Regex = /^(data:image\/[a-zA-Z]+;base64,)?([A-Za-z0-9+/]+={0,2})$/;
+        return base64Regex.test(value);
+    })
+        .withMessage('Image must be a valid base64 string, optionally with a data URI prefix.'),
     express_validator_1.body('address').optional({ checkFalsy: true }).isString().withMessage('Address must be a string'),
     express_validator_1.body('longitude').optional({ checkFalsy: true }).isFloat().withMessage('Longitude must be a number'),
     express_validator_1.body('latitude').optional({ checkFalsy: true }).isFloat().withMessage('Latitude must be a number'),
@@ -126,7 +133,14 @@ exports.validateUpdateVendor = [
     express_validator_1.body('email').optional({ checkFalsy: true }).isEmail().normalizeEmail().withMessage('Invalid email format'),
     express_validator_1.body('tagline').optional({ checkFalsy: true }).isString().withMessage('Tagline must be a string'),
     express_validator_1.body('details').optional({ checkFalsy: true }).isString().withMessage('Details must be a string'),
-    express_validator_1.body('image').optional({ checkFalsy: true }).isBase64().withMessage('Image must be a valid base64 string.'),
+    express_validator_1.body('image')
+        .optional({ checkFalsy: true })
+        .custom(function (value) {
+        // This regex checks for an optional data URI prefix followed by a valid base64 string.
+        var base64Regex = /^(data:image\/[a-zA-Z]+;base64,)?([A-Za-z0-9+/]+={0,2})$/;
+        return base64Regex.test(value);
+    })
+        .withMessage('Image must be a valid base64 string, optionally with a data URI prefix.'),
     express_validator_1.body('address').optional({ checkFalsy: true }).isString().withMessage('Address must be a string'),
     express_validator_1.body('longitude').optional({ checkFalsy: true }).isFloat().withMessage('Longitude must be a number'),
     express_validator_1.body('latitude').optional({ checkFalsy: true }).isFloat().withMessage('Latitude must be a number'),
