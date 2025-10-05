@@ -75,7 +75,7 @@ export const validateCreateVendor = [
   body('address').optional({ checkFalsy: true }).isString().withMessage('Address must be a string'),
   body('longitude').optional({ checkFalsy: true }).isFloat().withMessage('Longitude must be a number'),
   body('latitude').optional({ checkFalsy: true }).isFloat().withMessage('Latitude must be a number'),
-  body('meta').optional({ checkFalsy: true }).isJSON().withMessage('Meta must be a valid JSON string.'),
+  body('meta').optional({ checkFalsy: true }).isObject().withMessage('Meta must be an object'),
 ];
 
 export const validateVendorId = [param('id').isUUID(4).withMessage('A valid vendor ID is required in the URL.')];

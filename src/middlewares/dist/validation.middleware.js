@@ -105,7 +105,7 @@ exports.validateCreateVendor = [
     express_validator_1.body('address').optional({ checkFalsy: true }).isString().withMessage('Address must be a string'),
     express_validator_1.body('longitude').optional({ checkFalsy: true }).isFloat().withMessage('Longitude must be a number'),
     express_validator_1.body('latitude').optional({ checkFalsy: true }).isFloat().withMessage('Latitude must be a number'),
-    express_validator_1.body('meta').optional({ checkFalsy: true }).isJSON().withMessage('Meta must be a valid JSON string.'),
+    express_validator_1.body('meta').optional({ checkFalsy: true }).isObject().withMessage('Meta must be an object'),
 ];
 exports.validateVendorId = [express_validator_1.param('id').isUUID(4).withMessage('A valid vendor ID is required in the URL.')];
 exports.validateGetVendorById = [

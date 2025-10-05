@@ -213,19 +213,8 @@ exports.createVendor = function (req, res) { return __awaiter(void 0, void 0, vo
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                payload = __assign({}, req.body);
-                // When using formData, nested objects and numbers might be sent as strings.
-                // We need to parse them back.
-                if (payload.meta && typeof payload.meta === 'string') {
-                    payload.meta = JSON.parse(payload.meta);
-                }
-                if (payload.longitude && typeof payload.longitude === 'string') {
-                    payload.longitude = parseFloat(payload.longitude);
-                }
-                if (payload.latitude && typeof payload.latitude === 'string') {
-                    payload.latitude = parseFloat(payload.latitude);
-                }
-                return [4 /*yield*/, vendorService.createVendor(__assign(__assign({}, payload), { userId: req === null || req === void 0 ? void 0 : req.userId }))];
+                payload = req.body;
+                return [4 /*yield*/, vendorService.createVendor(__assign(__assign({}, payload), { userId: req.userId }))];
             case 1:
                 vendor = _a.sent();
                 res.status(201).json(vendor);

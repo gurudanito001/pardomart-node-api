@@ -168,21 +168,8 @@ export interface AuthenticatedRequest extends Request {
  */
 export const createVendor = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const payload = { ...req.body };
-
-    // When using formData, nested objects and numbers might be sent as strings.
-    // We need to parse them back.
-    if (payload.meta && typeof payload.meta === 'string') {
-      payload.meta = JSON.parse(payload.meta);
-    }
-    if (payload.longitude && typeof payload.longitude === 'string') {
-      payload.longitude = parseFloat(payload.longitude);
-    }
-    if (payload.latitude && typeof payload.latitude === 'string') {
-      payload.latitude = parseFloat(payload.latitude);
-    }
-
-    const vendor = await vendorService.createVendor({ ...payload, userId: req?.userId });
+    const payload = req.body;
+    const vendor = await vendorService.createVendor({ ...payload, userId: req.userId });
     res.status(201).json(vendor);
   } catch (error) {
     console.error('Error creating vendor:', error);
