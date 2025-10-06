@@ -184,11 +184,44 @@ exports.getVendorsByUserId = function (userId) { return __awaiter(void 0, void 0
     });
 }); };
 exports.updateVendor = function (id, payload) { return __awaiter(void 0, void 0, Promise, function () {
+    var imageBuffer, mockFile, uploadResult, error_2;
     return __generator(this, function (_a) {
-        return [2 /*return*/, prisma.vendor.update({
-                where: { id: id },
-                data: __assign({}, payload)
-            })];
+        switch (_a.label) {
+            case 0:
+                if (!(payload.image && !payload.image.startsWith('http'))) return [3 /*break*/, 4];
+                _a.label = 1;
+            case 1:
+                _a.trys.push([1, 3, , 4]);
+                imageBuffer = Buffer.from(payload.image, 'base64');
+                mockFile = {
+                    fieldname: 'image',
+                    originalname: id + "-store-image.jpg",
+                    encoding: '7bit',
+                    mimetype: 'image/jpeg',
+                    buffer: imageBuffer,
+                    size: imageBuffer.length,
+                    stream: new (require('stream').Readable)(),
+                    destination: '',
+                    filename: '',
+                    path: ''
+                };
+                return [4 /*yield*/, media_service_1.uploadMedia(mockFile, id, 'store_image')];
+            case 2:
+                uploadResult = _a.sent();
+                payload.image = uploadResult.secure_url; // Update payload with the new URL
+                return [3 /*break*/, 4];
+            case 3:
+                error_2 = _a.sent();
+                console.error('Error uploading new vendor image during update:', error_2);
+                // Decide on error handling. For now, we'll remove the image from the payload
+                // so it doesn't overwrite the existing URL with a base64 string.
+                delete payload.image;
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/, prisma.vendor.update({
+                    where: { id: id },
+                    data: payload
+                })];
+        }
     });
 }); };
 exports.deleteVendor = function (id) { return __awaiter(void 0, void 0, Promise, function () {

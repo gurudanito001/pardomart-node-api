@@ -178,12 +178,36 @@ export const getVendorsByUserId = async (userId: string): Promise<Vendor[]> => {
 };
 
 export const updateVendor = async (id: string, payload: UpdateVendorPayload): Promise<Vendor> => {
+  // If a new base64 image is provided, upload it and update the payload.
+  if (payload.image && !payload.image.startsWith('http')) {
+    try {
+      const imageBuffer = Buffer.from(payload.image, 'base64');
+      const mockFile: Express.Multer.File = {
+        fieldname: 'image',
+        originalname: `${id}-store-image.jpg`,
+        encoding: '7bit',
+        mimetype: 'image/jpeg',
+        buffer: imageBuffer,
+        size: imageBuffer.length,
+        stream: new (require('stream').Readable)(),
+        destination: '',
+        filename: '',
+        path: '',
+      };
+
+      const uploadResult = await uploadMedia(mockFile, id, 'store_image');
+      payload.image = uploadResult.secure_url; // Update payload with the new URL
+    } catch (error) {
+      console.error('Error uploading new vendor image during update:', error);
+      // Decide on error handling. For now, we'll remove the image from the payload
+      // so it doesn't overwrite the existing URL with a base64 string.
+      delete payload.image;
+    }
+  }
 
   return prisma.vendor.update({
     where: { id },
-    data: {
-      ...payload
-    },
+    data: payload,
   });
 };
 
