@@ -46,8 +46,19 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 exports.__esModule = true;
-exports.deleteVendorProduct = exports.deleteProduct = exports.updateVendorProduct = exports.updateProductBase = exports.getTrendingVendorProducts = exports.getVendorProductsByUserId = exports.getVendorProductById = exports.getVendorProductsByCategory = exports.getAllProducts = exports.getVendorProductsByTagIds = exports.getProductsByTagIds = exports.getAllVendorProducts = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.createVendorProductWithBarcode = exports.createVendorProduct = exports.createProduct = void 0;
+exports.deleteVendorProduct = exports.deleteProduct = exports.updateVendorProduct = exports.updateProductBase = exports.getTrendingVendorProducts = exports.getVendorProductsByUserId = exports.getVendorProductById = exports.getVendorProductsByCategory = exports.getAllProducts = exports.getVendorProductsByTagIds = exports.getProductsByTagIds = exports.getAllVendorProducts = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.createVendorProduct = exports.createProduct = void 0;
 // models/product.model.ts
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
@@ -68,13 +79,15 @@ exports.createProduct = function (payload) { return __awaiter(void 0, void 0, Pr
     });
 }); };
 exports.createVendorProduct = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
-    var _a, _b;
-    return __generator(this, function (_c) {
+    var id, categoryIds, tagIds, restOfPayload;
+    var _a;
+    return __generator(this, function (_b) {
+        id = payload.id, categoryIds = payload.categoryIds, tagIds = payload.tagIds, restOfPayload = __rest(payload, ["id", "categoryIds", "tagIds"]);
         return [2 /*return*/, prisma.vendorProduct.create({
-                data: __assign(__assign({}, payload), { categories: {
-                        connect: (_a = payload.categoryIds) === null || _a === void 0 ? void 0 : _a.map(function (id) { return ({ id: id }); })
+                data: __assign(__assign({}, restOfPayload), { id: id, categories: {
+                        connect: categoryIds === null || categoryIds === void 0 ? void 0 : categoryIds.map(function (id) { return ({ id: id }); })
                     }, tags: {
-                        connect: (_b = payload.tagIds) === null || _b === void 0 ? void 0 : _b.map(function (id) { return ({ id: id }); })
+                        connect: (_a = payload.tagIds) === null || _a === void 0 ? void 0 : _a.map(function (id) { return ({ id: id }); })
                     } }),
                 include: {
                     product: true,
@@ -82,73 +95,6 @@ exports.createVendorProduct = function (payload) { return __awaiter(void 0, void
                     tags: true
                 }
             })];
-    });
-}); };
-exports.createVendorProductWithBarcode = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
-    var product, productId, newProduct, vendorProductPayload;
-    var _a, _b, _c, _d;
-    return __generator(this, function (_e) {
-        switch (_e.label) {
-            case 0: return [4 /*yield*/, prisma.product.findUnique({
-                    where: { barcode: payload.barcode }
-                })];
-            case 1:
-                product = _e.sent();
-                if (!!product) return [3 /*break*/, 3];
-                return [4 /*yield*/, prisma.product.create({
-                        data: {
-                            barcode: payload.barcode,
-                            name: payload.name || 'Default Product Name',
-                            description: payload.description,
-                            images: payload.images || [],
-                            attributes: payload.attributes,
-                            categories: {
-                                connect: (_a = payload.categoryIds) === null || _a === void 0 ? void 0 : _a.map(function (id) { return ({ id: id }); })
-                            },
-                            tags: {
-                                connect: (_b = payload.tagIds) === null || _b === void 0 ? void 0 : _b.map(function (id) { return ({ id: id }); })
-                            }
-                        },
-                        include: {
-                            categories: true,
-                            tags: true
-                        }
-                    })];
-            case 2:
-                newProduct = _e.sent();
-                productId = newProduct.id;
-                return [3 /*break*/, 4];
-            case 3:
-                productId = product.id;
-                _e.label = 4;
-            case 4:
-                vendorProductPayload = {
-                    vendorId: payload.vendorId,
-                    productId: productId,
-                    price: payload.price,
-                    name: payload.name,
-                    description: payload.description,
-                    discountedPrice: payload.discountedPrice,
-                    sku: payload.sku,
-                    images: payload.images || [],
-                    isAvailable: payload.isAvailable,
-                    attributes: payload.attributes,
-                    categories: {
-                        connect: (_c = payload.categoryIds) === null || _c === void 0 ? void 0 : _c.map(function (id) { return ({ id: id }); })
-                    },
-                    tags: {
-                        connect: (_d = payload.tagIds) === null || _d === void 0 ? void 0 : _d.map(function (id) { return ({ id: id }); })
-                    }
-                };
-                return [2 /*return*/, prisma.vendorProduct.create({
-                        data: vendorProductPayload,
-                        include: {
-                            product: true,
-                            categories: true,
-                            tags: true
-                        }
-                    })];
-        }
     });
 }); };
 exports.getProductByBarcode = function (barcode) { return __awaiter(void 0, void 0, Promise, function () {

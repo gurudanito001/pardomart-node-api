@@ -129,6 +129,7 @@ import { AuthenticatedRequest } from './vendor.controller';
  *         name: { type: string, description: "The name for the vendor-specific product, which can override the base product name." }
  *         description: { type: string, nullable: true }
  *         discountedPrice: { type: number, format: float, nullable: true }
+ *         images: { type: array, items: { type: string, format: "byte" }, description: "Array of base64 encoded image strings." }
  *         isAvailable: { type: boolean, default: true }
  *         categoryIds: { type: array, items: { type: string, format: uuid } }
  *         tagIds: { type: array, items: { type: string, format: uuid } }
@@ -232,9 +233,10 @@ export const createProduct = async (req: Request, res: Response) => {
  *             schema:
  *               $ref: '#/components/schemas/VendorProductWithRelations'
  */
-export const createVendorProduct = async (req: Request, res: Response) => {
+export const createVendorProduct = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const vendorProduct = await productService.createVendorProduct(req.body);
+    const ownerId = req.userId as string;
+    const vendorProduct = await productService.createVendorProduct(req.body, ownerId);
     res.status(201).json(vendorProduct);
   } catch (error: any) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
@@ -308,19 +310,23 @@ export const getVendorProductById = async (req: Request, res: Response) => {
  *       409:
  *         description: Conflict - This product is already listed by this vendor.
  */
-export const createVendorProductWithBarcode = async (req: Request, res: Response) => {
+export const createVendorProductWithBarcode = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const vendorProduct = await productService.createVendorProductWithBarcode(req.body);
+    const ownerId = req.userId as string;
+    const vendorProduct = await productService.createVendorProductWithBarcode(req.body, ownerId);
     res.status(201).json(vendorProduct);
   } catch (error: any) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error?.code === 'P2002') {
       // Construct a user-friendly error message
       return res.status(409).json({
-        error: 'This product is already listed by this vendor.',
+        error: 'This product is already listed by this vendor for the given barcode.',
       });
     }
+    if (error.message.startsWith('Unauthorized')) {
+      return res.status(403).json({ error: error.message });
+    }
     console.error('Error creating vendor product with barcode:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 
 };
@@ -747,7 +753,7 @@ export const getVendorProductsByUserController = async (req: AuthenticatedReques
       return res.status(403).json({ error: 'Forbidden: You are not authorized to access this resource.' });
     }
 
-    const products = await productService.getVendorProductsByUserService(userId);
+    const products = await productService.getVendorProductsByUser(userId);
     res.status(200).json(products);
   } catch (error) {
     console.error('Error getting vendor products by user:', error);

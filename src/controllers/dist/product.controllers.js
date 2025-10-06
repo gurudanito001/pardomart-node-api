@@ -173,6 +173,7 @@ var client_1 = require("@prisma/client");
  *         name: { type: string, description: "The name for the vendor-specific product, which can override the base product name." }
  *         description: { type: string, nullable: true }
  *         discountedPrice: { type: number, format: float, nullable: true }
+ *         images: { type: array, items: { type: string, format: "byte" }, description: "Array of base64 encoded image strings." }
  *         isAvailable: { type: boolean, default: true }
  *         categoryIds: { type: array, items: { type: string, format: uuid } }
  *         tagIds: { type: array, items: { type: string, format: uuid } }
@@ -287,12 +288,13 @@ exports.createProduct = function (req, res) { return __awaiter(void 0, void 0, v
  *               $ref: '#/components/schemas/VendorProductWithRelations'
  */
 exports.createVendorProduct = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var vendorProduct, error_2;
+    var ownerId, vendorProduct, error_2;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, productService.createVendorProduct(req.body)];
+                ownerId = req.userId;
+                return [4 /*yield*/, productService.createVendorProduct(req.body, ownerId)];
             case 1:
                 vendorProduct = _a.sent();
                 res.status(201).json(vendorProduct);
@@ -383,12 +385,13 @@ exports.getVendorProductById = function (req, res) { return __awaiter(void 0, vo
  *         description: Conflict - This product is already listed by this vendor.
  */
 exports.createVendorProductWithBarcode = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var vendorProduct, error_4;
+    var ownerId, vendorProduct, error_4;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, productService.createVendorProductWithBarcode(req.body)];
+                ownerId = req.userId;
+                return [4 /*yield*/, productService.createVendorProductWithBarcode(req.body, ownerId)];
             case 1:
                 vendorProduct = _a.sent();
                 res.status(201).json(vendorProduct);
@@ -398,11 +401,14 @@ exports.createVendorProductWithBarcode = function (req, res) { return __awaiter(
                 if (error_4 instanceof client_1.Prisma.PrismaClientKnownRequestError && (error_4 === null || error_4 === void 0 ? void 0 : error_4.code) === 'P2002') {
                     // Construct a user-friendly error message
                     return [2 /*return*/, res.status(409).json({
-                            error: 'This product is already listed by this vendor.'
+                            error: 'This product is already listed by this vendor for the given barcode.'
                         })];
                 }
+                if (error_4.message.startsWith('Unauthorized')) {
+                    return [2 /*return*/, res.status(403).json({ error: error_4.message })];
+                }
                 console.error('Error creating vendor product with barcode:', error_4);
-                res.status(500).json({ error: 'Internal server error' });
+                res.status(500).json({ error: error_4.message || 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
@@ -921,7 +927,7 @@ exports.getVendorProductsByUserController = function (req, res) { return __await
                 if (authenticatedUserRole !== 'admin' && authenticatedUserId !== userId) {
                     return [2 /*return*/, res.status(403).json({ error: 'Forbidden: You are not authorized to access this resource.' })];
                 }
-                return [4 /*yield*/, productService.getVendorProductsByUserService(userId)];
+                return [4 /*yield*/, productService.getVendorProductsByUser(userId)];
             case 1:
                 products = _a.sent();
                 res.status(200).json(products);

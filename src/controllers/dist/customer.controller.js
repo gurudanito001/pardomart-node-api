@@ -83,6 +83,9 @@ exports.listCustomersController = function (req, res) { return __awaiter(void 0,
             case 2:
                 error_1 = _a.sent();
                 console.error('Error listing customers:', error_1);
+                if (error_1.message.startsWith('Unauthorized')) {
+                    return [2 /*return*/, res.status(403).json({ error: error_1.message })];
+                }
                 res.status(500).json({ error: error_1.message || 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];

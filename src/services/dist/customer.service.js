@@ -49,7 +49,6 @@ var __rest = (this && this.__rest) || function (s, e) {
 exports.__esModule = true;
 exports.listCustomersForVendorService = void 0;
 // services/customer.service.ts
-var customerModel = require("../models/customer.model");
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
 var sanitizeUser = function (user) {
@@ -58,13 +57,15 @@ var sanitizeUser = function (user) {
     return sanitized;
 };
 /**
- * Retrieves a list of customers for a vendor account, optionally filtered by a specific store.
- * @param ownerId The ID of the user who owns the vendor account.
- * @param vendorId Optional ID of a specific store to filter by.
- * @returns A list of unique, sanitized customer user objects.
+ * Lists all customers for a specific vendor or all vendors owned by a user.
+ * A customer is defined as a user who has placed at least one order with the vendor.
+ *
+ * @param ownerId - The ID of the vendor owner making the request.
+ * @param vendorId - Optional. The ID of a specific store to filter customers for.
+ * @returns A list of unique customer users.
  */
 exports.listCustomersForVendorService = function (ownerId, vendorId) { return __awaiter(void 0, void 0, Promise, function () {
-    var vendor, customers;
+    var vendor, whereClause, customerIds, customers;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -78,11 +79,28 @@ exports.listCustomersForVendorService = function (ownerId, vendorId) { return __
                     throw new Error('Unauthorized: You do not own this vendor.');
                 }
                 _a.label = 2;
-            case 2: return [4 /*yield*/, customerModel.listCustomersForVendor({
-                    ownerId: ownerId,
-                    vendorId: vendorId
-                })];
+            case 2:
+                whereClause = {};
+                if (vendorId) {
+                    whereClause.vendorId = vendorId;
+                }
+                else {
+                    // If no vendorId, get customers from all vendors owned by the ownerId
+                    whereClause.vendor = {
+                        userId: ownerId
+                    };
+                }
+                return [4 /*yield*/, prisma.order.findMany({
+                        where: whereClause,
+                        select: { userId: true },
+                        distinct: ['userId']
+                    })];
             case 3:
+                customerIds = (_a.sent()).map(function (order) { return order.userId; });
+                if (customerIds.length === 0)
+                    return [2 /*return*/, []];
+                return [4 /*yield*/, prisma.user.findMany({ where: { id: { "in": customerIds } } })];
+            case 4:
                 customers = _a.sent();
                 return [2 /*return*/, customers.map(sanitizeUser)];
         }

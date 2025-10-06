@@ -3,7 +3,7 @@ import { PrismaClient, Product, VendorProduct, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-interface CreateProductPayload {
+export interface CreateProductPayload {
   barcode: string;
   name: string;
   description?: string;
@@ -14,7 +14,7 @@ interface CreateProductPayload {
   tagIds?: string[];
 }
 
-interface CreateVendorProductPayload {
+export interface CreateVendorProductPayload {
   vendorId: string;
   productId: string;
   price: number;
@@ -30,7 +30,7 @@ interface CreateVendorProductPayload {
 }
 
 
-interface UpdateVendorProductPayload {
+export interface UpdateVendorProductPayload {
   id: string;
   price?: number;
   discountedPrice?: number;
@@ -44,7 +44,7 @@ interface UpdateVendorProductPayload {
   tagIds?: string[];
 }
 
-interface UpdateProductBasePayload {
+export interface UpdateProductBasePayload {
   id: string;
   barcode?: string;
   name?: string;
@@ -75,12 +75,14 @@ export const createProduct = async (payload: CreateProductPayload): Promise<Prod
   });
 };
 
-export const createVendorProduct = async (payload: CreateVendorProductPayload): Promise<VendorProduct> => {
+export const createVendorProduct = async (payload: CreateVendorProductPayload & { id?: string }): Promise<VendorProduct> => {
+  const { id, categoryIds, tagIds, ...restOfPayload } = payload;
   return prisma.vendorProduct.create({
     data: {
-      ...payload,
-      categories: {
-        connect: payload.categoryIds?.map((id) => ({ id })),
+      ...restOfPayload,
+      id: id, // Pass the pre-generated ID to Prisma
+      categories: { // Correctly handle relations from the rest of the payload
+        connect: categoryIds?.map((id) => ({ id })),
       },
       tags: {
         connect: payload.tagIds?.map((id) => ({ id })),
@@ -93,70 +95,6 @@ export const createVendorProduct = async (payload: CreateVendorProductPayload): 
     },
   });
 };
-
-export const createVendorProductWithBarcode = async (
-  payload: any
-): Promise<VendorProduct> => {
-  const product = await prisma.product.findUnique({
-    where: { barcode: payload.barcode },
-  });
-
-  let productId: string;
-
-  if (!product) {
-    const newProduct = await prisma.product.create({
-      data: {
-        barcode: payload.barcode,
-        name: payload.name || 'Default Product Name',
-        description: payload.description,
-        images: payload.images || [],
-        attributes: payload.attributes,
-        categories: {
-          connect: payload.categoryIds?.map((id: string) => ({ id })),
-        },
-        tags: {
-          connect: payload.tagIds?.map((id: string) => ({ id })),
-        },
-      },
-      include: {
-        categories: true,
-        tags: true
-      },
-    });
-    productId = newProduct.id;
-  } else {
-    productId = product.id;
-  }
-
-  const vendorProductPayload = {
-    vendorId: payload.vendorId,
-    productId: productId,
-    price: payload.price,
-    name: payload.name,
-    description: payload.description,
-    discountedPrice: payload.discountedPrice,
-    sku: payload.sku,
-    images: payload.images || [],
-    isAvailable: payload.isAvailable,
-    attributes: payload.attributes,
-    categories: {
-      connect: payload.categoryIds?.map((id: string) => ({ id })),
-    },
-    tags: {
-      connect: payload.tagIds?.map((id: string) => ({ id })),
-    },
-  };
-
-  return prisma.vendorProduct.create({
-    data: vendorProductPayload,
-    include: {
-      product: true,
-      categories: true,
-      tags: true
-    },
-  });
-};
-
 
 export const getProductByBarcode = async (barcode: string): Promise<Product | null> => {
   return prisma.product.findUnique({

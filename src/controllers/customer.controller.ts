@@ -42,6 +42,9 @@ export const listCustomersController = async (req: AuthenticatedRequest, res: Re
     res.status(200).json(customers);
   } catch (error: any) {
     console.error('Error listing customers:', error);
+    if (error.message.startsWith('Unauthorized')) {
+      return res.status(403).json({ error: error.message });
+    }
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
