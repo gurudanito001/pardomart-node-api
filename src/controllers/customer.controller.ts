@@ -12,7 +12,7 @@ import { AuthenticatedRequest } from './vendor.controller';
 
 /**
  * @swagger
- * /api/v1/customers:
+ * /customers:
  *   get:
  *     summary: List customers for a vendor account or a specific store
  *     tags: [Customers]

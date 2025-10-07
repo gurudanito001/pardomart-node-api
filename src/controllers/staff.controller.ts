@@ -12,7 +12,7 @@ import { AuthenticatedRequest } from './vendor.controller';
 
 /**
  * @swagger
- * /api/v1/staff:
+ * /staff:
  *   post:
  *     summary: Create a new staff member (shopper) for a vendor
  *     tags: [Staff]
@@ -49,7 +49,7 @@ export const createStaffController = async (req: AuthenticatedRequest, res: Resp
 
 /**
  * @swagger
- * /api/v1/staff:
+ * /staff:
  *   get:
  *     summary: List all staff members for the authenticated vendor owner
  *     tags: [Staff]
@@ -74,7 +74,7 @@ export const listStaffByOwnerController = async (req: AuthenticatedRequest, res:
 
 /**
  * @swagger
- * /api/v1/staff/store/{vendorId}:
+ * /staff/store/{vendorId}:
  *   get:
  *     summary: List all staff members for a specific store
  *     tags: [Staff]
@@ -105,7 +105,7 @@ export const listStaffByVendorController = async (req: AuthenticatedRequest, res
 
 /**
  * @swagger
- * /api/v1/staff/{staffId}:
+ * /staff/{staffId}:
  *   get:
  *     summary: Get a single staff member by ID
  *     tags: [Staff]
@@ -141,7 +141,7 @@ export const getStaffByIdController = async (req: AuthenticatedRequest, res: Res
 
 /**
  * @swagger
- * /api/v1/staff/{staffId}:
+ * /staff/{staffId}:
  *   patch:
  *     summary: Update a staff member's details
  *     tags: [Staff]
@@ -181,7 +181,7 @@ export const updateStaffController = async (req: AuthenticatedRequest, res: Resp
 
 /**
  * @swagger
- * /api/v1/staff/{staffId}:
+ * /staff/{staffId}:
  *   delete:
  *     summary: Delete a staff member's account
  *     tags: [Staff]
