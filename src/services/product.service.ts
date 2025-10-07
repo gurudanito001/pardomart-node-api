@@ -109,7 +109,7 @@ export const createVendorProductWithBarcode = async (payload: any, ownerId: stri
     throw new Error('Unauthorized: You do not own this vendor.');
   }
 
-  const { images, ...productData } = payload;
+  const { images, barcode, ...productData } = payload;
   let productId: string;
 
   // 2. Find or create the base product

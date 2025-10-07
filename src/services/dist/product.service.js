@@ -168,7 +168,7 @@ exports.getVendorProductById = function (id) { return productModel.getVendorProd
  * @returns The created vendor product with its relations.
  */
 exports.createVendorProductWithBarcode = function (payload, ownerId) { return __awaiter(void 0, void 0, Promise, function () {
-    var vendor, images, productData, productId, existingProduct, newProduct, vendorProductId, processedImageUrls, vendorProductPayload;
+    var vendor, images, barcode, productData, productId, existingProduct, newProduct, vendorProductId, processedImageUrls, vendorProductPayload;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4 /*yield*/, vendorModel.getVendorById(payload.vendorId)];
@@ -177,7 +177,7 @@ exports.createVendorProductWithBarcode = function (payload, ownerId) { return __
                 if (!vendor || vendor.userId !== ownerId) {
                     throw new Error('Unauthorized: You do not own this vendor.');
                 }
-                images = payload.images, productData = __rest(payload, ["images"]);
+                images = payload.images, barcode = payload.barcode, productData = __rest(payload, ["images", "barcode"]);
                 return [4 /*yield*/, productModel.getProductByBarcode(payload.barcode)];
             case 2:
                 existingProduct = _a.sent();
