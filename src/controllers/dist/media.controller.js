@@ -38,6 +38,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 exports.__esModule = true;
 exports.uploadFile = void 0;
 var mediaService = require("../services/media.service");
+var client_1 = require("@prisma/client");
 /**
  * @swagger
  * /media/upload:
@@ -91,6 +92,12 @@ exports.uploadFile = function (req, res) { return __awaiter(void 0, void 0, void
                     return [2 /*return*/, res
                             .status(400)
                             .json({ message: 'referenceId and referenceType are required.' })];
+                }
+                // Validate that referenceType is a valid enum value
+                if (!Object.values(client_1.ReferenceType).includes(referenceType)) {
+                    return [2 /*return*/, res.status(400).json({
+                            message: "Invalid referenceType. Must be one of: " + Object.values(client_1.ReferenceType).join(', ')
+                        })];
                 }
                 return [4 /*yield*/, mediaService.uploadMedia(req.file, referenceId, referenceType)];
             case 1:

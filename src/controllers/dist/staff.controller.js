@@ -57,7 +57,7 @@ var staffService = require("../services/staff.service");
  */
 /**
  * @swagger
- * /api/v1/staff:
+ * /staff:
  *   post:
  *     summary: Create a new staff member (shopper) for a vendor
  *     tags: [Staff]
@@ -104,7 +104,7 @@ exports.createStaffController = function (req, res) { return __awaiter(void 0, v
 }); };
 /**
  * @swagger
- * /api/v1/staff:
+ * /staff:
  *   get:
  *     summary: List all staff members for the authenticated vendor owner
  *     tags: [Staff]
@@ -139,7 +139,7 @@ exports.listStaffByOwnerController = function (req, res) { return __awaiter(void
 }); };
 /**
  * @swagger
- * /api/v1/staff/store/{vendorId}:
+ * /staff/store/{vendorId}:
  *   get:
  *     summary: List all staff members for a specific store
  *     tags: [Staff]
@@ -180,7 +180,7 @@ exports.listStaffByVendorController = function (req, res) { return __awaiter(voi
 }); };
 /**
  * @swagger
- * /api/v1/staff/{staffId}:
+ * /staff/{staffId}:
  *   get:
  *     summary: Get a single staff member by ID
  *     tags: [Staff]
@@ -226,7 +226,7 @@ exports.getStaffByIdController = function (req, res) { return __awaiter(void 0, 
 }); };
 /**
  * @swagger
- * /api/v1/staff/{staffId}:
+ * /staff/{staffId}:
  *   patch:
  *     summary: Update a staff member's details
  *     tags: [Staff]
@@ -276,7 +276,7 @@ exports.updateStaffController = function (req, res) { return __awaiter(void 0, v
 }); };
 /**
  * @swagger
- * /api/v1/staff/{staffId}:
+ * /staff/{staffId}:
  *   delete:
  *     summary: Delete a staff member's account
  *     tags: [Staff]

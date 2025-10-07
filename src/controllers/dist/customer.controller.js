@@ -46,7 +46,7 @@ var customerService = require("../services/customer.service");
  */
 /**
  * @swagger
- * /api/v1/customers:
+ * /customers:
  *   get:
  *     summary: List customers for a vendor account or a specific store
  *     tags: [Customers]

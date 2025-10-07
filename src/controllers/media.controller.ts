@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as mediaService from '../services/media.service';
+import { ReferenceType } from '@prisma/client';
 
 /**
  * @swagger
@@ -52,6 +53,13 @@ export const uploadFile = async (req: Request, res: Response) => {
       return res
         .status(400)
         .json({ message: 'referenceId and referenceType are required.' });
+    }
+
+    // Validate that referenceType is a valid enum value
+    if (!Object.values(ReferenceType).includes(referenceType as ReferenceType)) {
+      return res.status(400).json({
+        message: `Invalid referenceType. Must be one of: ${Object.values(ReferenceType).join(', ')}`,
+      });
     }
 
     const result = await mediaService.uploadMedia(
