@@ -58,14 +58,15 @@ export interface UpdateProductBasePayload {
 
 
 export const createProduct = async (payload: CreateProductPayload): Promise<Product> => {
+  const { categoryIds, tagIds, ...restOfPayload } = payload;
   return prisma.product.create({
     data: {
-      ...payload,
+      ...restOfPayload,
       categories: {
-        connect: payload.categoryIds?.map((id) => ({ id })),
+        connect: categoryIds?.map((id) => ({ id })),
       },
       tags: {
-        connect: payload.tagIds?.map((id) => ({ id })),
+        connect: tagIds?.map((id) => ({ id })),
       },
     },
     include: {
@@ -76,16 +77,18 @@ export const createProduct = async (payload: CreateProductPayload): Promise<Prod
 };
 
 export const createVendorProduct = async (payload: CreateVendorProductPayload & { id?: string }): Promise<VendorProduct> => {
-  const { id, categoryIds, tagIds, ...restOfPayload } = payload;
+  const { id, categoryIds, tagIds, productId, vendorId, ...restOfPayload } = payload;
   return prisma.vendorProduct.create({
     data: {
       ...restOfPayload,
       id: id, // Pass the pre-generated ID to Prisma
-      categories: { // Correctly handle relations from the rest of the payload
+      vendorId: vendorId,
+      productId: productId,
+      categories: {
         connect: categoryIds?.map((id) => ({ id })),
       },
       tags: {
-        connect: payload.tagIds?.map((id) => ({ id })),
+        connect: tagIds?.map((id) => ({ id })),
       },
     },
     include: {

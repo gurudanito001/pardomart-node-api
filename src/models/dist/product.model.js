@@ -63,13 +63,14 @@ exports.deleteVendorProduct = exports.deleteProduct = exports.updateVendorProduc
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
 exports.createProduct = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
-    var _a, _b;
-    return __generator(this, function (_c) {
+    var categoryIds, tagIds, restOfPayload;
+    return __generator(this, function (_a) {
+        categoryIds = payload.categoryIds, tagIds = payload.tagIds, restOfPayload = __rest(payload, ["categoryIds", "tagIds"]);
         return [2 /*return*/, prisma.product.create({
-                data: __assign(__assign({}, payload), { categories: {
-                        connect: (_a = payload.categoryIds) === null || _a === void 0 ? void 0 : _a.map(function (id) { return ({ id: id }); })
+                data: __assign(__assign({}, restOfPayload), { categories: {
+                        connect: categoryIds === null || categoryIds === void 0 ? void 0 : categoryIds.map(function (id) { return ({ id: id }); })
                     }, tags: {
-                        connect: (_b = payload.tagIds) === null || _b === void 0 ? void 0 : _b.map(function (id) { return ({ id: id }); })
+                        connect: tagIds === null || tagIds === void 0 ? void 0 : tagIds.map(function (id) { return ({ id: id }); })
                     } }),
                 include: {
                     categories: true,
@@ -79,15 +80,14 @@ exports.createProduct = function (payload) { return __awaiter(void 0, void 0, Pr
     });
 }); };
 exports.createVendorProduct = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
-    var id, categoryIds, tagIds, restOfPayload;
-    var _a;
-    return __generator(this, function (_b) {
-        id = payload.id, categoryIds = payload.categoryIds, tagIds = payload.tagIds, restOfPayload = __rest(payload, ["id", "categoryIds", "tagIds"]);
+    var id, categoryIds, tagIds, productId, vendorId, restOfPayload;
+    return __generator(this, function (_a) {
+        id = payload.id, categoryIds = payload.categoryIds, tagIds = payload.tagIds, productId = payload.productId, vendorId = payload.vendorId, restOfPayload = __rest(payload, ["id", "categoryIds", "tagIds", "productId", "vendorId"]);
         return [2 /*return*/, prisma.vendorProduct.create({
-                data: __assign(__assign({}, restOfPayload), { id: id, categories: {
+                data: __assign(__assign({}, restOfPayload), { id: id, vendorId: vendorId, productId: productId, categories: {
                         connect: categoryIds === null || categoryIds === void 0 ? void 0 : categoryIds.map(function (id) { return ({ id: id }); })
                     }, tags: {
-                        connect: (_a = payload.tagIds) === null || _a === void 0 ? void 0 : _a.map(function (id) { return ({ id: id }); })
+                        connect: tagIds === null || tagIds === void 0 ? void 0 : tagIds.map(function (id) { return ({ id: id }); })
                     } }),
                 include: {
                     product: true,
