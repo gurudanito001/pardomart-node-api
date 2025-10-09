@@ -35,20 +35,34 @@ export const createVendor = async (payload: vendorModel.CreateVendorPayload): Pr
   return vendorModel.createVendor(payload);
 };
 
-export const getVendorById = async (id: string, latitude?: string, longitude?: string): Promise<(vendorModel.VendorWithRelations & { distance?: number }) | null> => {
+export const getVendorById = async (id: string, latitude?: string, longitude?: string): Promise<(vendorModel.VendorWithRelations & { distance?: number; productCount?: number; documentCount?: number }) | null> => {
   const vendor = await vendorModel.getVendorById(id);
 
   if (!vendor) {
     return null;
   }
 
-  const rating = await getAggregateRatingService({ ratedVendorId: vendor.id });
-  
-  // Attach rating to the vendor object
-  (vendor as any).rating = rating || { average: 0, count: 0 };
+  // Use Promise.all to fetch rating and document count concurrently
+  const [rating, documentCount] = await Promise.all([
+    getAggregateRatingService({ ratedVendorId: vendor.id }),
+    vendorModel.getVendorDocumentCount(vendor.id),
+  ]);
 
+  // Extract product count from the vendor object
+  const productCount = (vendor as any)._count?.vendorProducts ?? 0;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { _count, ...vendorData } = vendor;
 
-  if (latitude && longitude && vendor.latitude && vendor.longitude) {
+  // Start with the vendor data (which includes relations like user, openingHours)
+  const result: any = {
+    ...vendorData,
+    rating: rating || { average: 0, count: 0 },
+    productCount,
+    documentCount,
+  };
+
+  // Now, calculate distance if coordinates are provided
+  if (latitude && longitude && result.latitude && result.longitude) {
     const customerLatitude = parseFloat(latitude);
     const customerLongitude = parseFloat(longitude);
 
@@ -56,15 +70,14 @@ export const getVendorById = async (id: string, latitude?: string, longitude?: s
       const distance = calculateDistance(
         customerLatitude,
         customerLongitude,
-        vendor.latitude,
-        vendor.longitude
+        result.latitude,
+        result.longitude
       );
-      // Return vendor with distance, rounded to 2 decimal places
-      return { ...vendor, distance: parseFloat(distance.toFixed(2)) };
+      result.distance = parseFloat(distance.toFixed(2));
     }
   }
 
-  return vendor;
+  return result;
 };
 
 
@@ -133,4 +146,22 @@ export const getVendorsByUserId = async (userId: string): Promise<Vendor[]> => {
   }));
 
   return vendorsWithRatings;
+};
+
+/**
+ * Retrieves all vendors for a user and includes the count of associated products.
+ * @param userId - The ID of the user.
+ * @returns A promise that resolves to an array of vendors with their product counts.
+ */
+export const getVendorsByUserIdWithProductCount = (userId: string) => {
+  return vendorModel.getVendorsByUserIdWithProductCount(userId);
+};
+
+/**
+ * Retrieves the count of documents for a given list of vendor IDs.
+ * @param vendorIds - An array of vendor IDs.
+ * @returns A promise that resolves to an array of objects containing vendor ID and document count.
+ */
+export const getVendorDocumentCounts = (vendorIds: string[]) => {
+  return vendorModel.getVendorDocumentCounts(vendorIds);
 };

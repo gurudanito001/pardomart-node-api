@@ -47,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
+exports.getIncompleteSetups = exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
 var vendorService = require("../services/vendor.service");
 /**
  * @swagger
@@ -151,6 +151,12 @@ var vendorService = require("../services/vendor.service");
  *               properties:
  *                 average: { type: number, format: float }
  *                 count: { type: integer }
+ *             productCount:
+ *               type: integer
+ *               description: "The total number of products this vendor has."
+ *             documentCount:
+ *               type: integer
+ *               description: "The total number of documents this vendor has uploaded."
  *     VendorListItem:
  *       allOf:
  *         - $ref: '#/components/schemas/Vendor'
@@ -260,7 +266,7 @@ exports.createVendor = function (req, res) { return __awaiter(void 0, void 0, vo
  *         description: User's current longitude to calculate distance to the vendor.
  *     responses:
  *       200:
- *         description: The requested vendor with its associated user and opening hours.
+ *         description: The requested vendor with detailed information including user, opening hours, rating, product/document counts, and distance.
  *         content:
  *           application/json:
  *             schema:
@@ -530,8 +536,6 @@ exports.deleteVendor = function (req, res) { return __awaiter(void 0, void 0, vo
  *   get:
  *     summary: Get all vendors for the authenticated user
  *     tags: [Vendor]
- *     security:
- *       - bearerAuth: []
  *     description: Retrieves a list of all vendors associated with the currently authenticated user.
  *     responses:
  *       200:
@@ -541,7 +545,7 @@ exports.deleteVendor = function (req, res) { return __awaiter(void 0, void 0, vo
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/VendorWithRelations'
+ *                 $ref: '#/components/schemas/VendorListItem'
  *       500:
  *         description: Internal server error.
  */
@@ -565,6 +569,65 @@ exports.getVendorsByUserId = function (req, res) { return __awaiter(void 0, void
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /vendors/incomplete-setups:
+ *   get:
+ *     summary: Find vendors with incomplete setup
+ *     tags: [Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     description: >
+ *       Retrieves a list of vendors for the authenticated user that have not completed their setup.
+ *       A setup is considered incomplete if the vendor has either not added any products OR has uploaded fewer than two documents.
+ *     responses:
+ *       200:
+ *         description: A list of vendors with incomplete setups.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 incompleteVendors:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Vendor'
+ *       500:
+ *         description: Internal server error.
+ */
+exports.getIncompleteSetups = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var userId, vendors, documentCounts, documentCountMap_1, incompleteVendors, error_7;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 3, , 4]);
+                userId = req.userId;
+                return [4 /*yield*/, vendorService.getVendorsByUserIdWithProductCount(userId)];
+            case 1:
+                vendors = _a.sent();
+                if (vendors.length === 0) {
+                    return [2 /*return*/, res.status(200).json({ incompleteVendors: [] })];
+                }
+                return [4 /*yield*/, vendorService.getVendorDocumentCounts(vendors.map(function (v) { return v.id; }))];
+            case 2:
+                documentCounts = _a.sent();
+                documentCountMap_1 = new Map(documentCounts.map(function (item) { return [item.referenceId, item._count._all]; }));
+                incompleteVendors = vendors.filter(function (vendor) {
+                    var productCount = vendor._count.vendorProducts;
+                    var docCount = documentCountMap_1.get(vendor.id) || 0;
+                    return productCount === 0 || docCount < 2;
+                });
+                res.status(200).json({ incompleteVendors: incompleteVendors });
+                return [3 /*break*/, 4];
+            case 3:
+                error_7 = _a.sent();
+                console.error('Failed to get incomplete vendor setups:', error_7);
+                res.status(500).json({ message: 'Internal server error' });
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
         }
     });
 }); };

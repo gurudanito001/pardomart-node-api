@@ -110,6 +110,12 @@ export interface AuthenticatedRequest extends Request {
  *               properties:
  *                 average: { type: number, format: float }
  *                 count: { type: integer }
+ *             productCount:
+ *               type: integer
+ *               description: "The total number of products this vendor has."
+ *             documentCount:
+ *               type: integer
+ *               description: "The total number of documents this vendor has uploaded."
  *     VendorListItem:
  *       allOf:
  *         - $ref: '#/components/schemas/Vendor'
@@ -210,7 +216,7 @@ export const createVendor = async (req: AuthenticatedRequest, res: Response) => 
  *         description: User's current longitude to calculate distance to the vendor.
  *     responses:
  *       200:
- *         description: The requested vendor with its associated user and opening hours.
+ *         description: The requested vendor with detailed information including user, opening hours, rating, product/document counts, and distance.
  *         content:
  *           application/json:
  *             schema:
@@ -439,8 +445,6 @@ export const deleteVendor = async (req: Request, res: Response) => {
  *   get:
  *     summary: Get all vendors for the authenticated user
  *     tags: [Vendor]
- *     security:
- *       - bearerAuth: []
  *     description: Retrieves a list of all vendors associated with the currently authenticated user.
  *     responses:
  *       200:
@@ -450,7 +454,7 @@ export const deleteVendor = async (req: Request, res: Response) => {
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/VendorWithRelations'
+ *                 $ref: '#/components/schemas/VendorListItem'
  *       500:
  *         description: Internal server error.
  */
@@ -464,5 +468,60 @@ export const getVendorsByUserId = async (req: AuthenticatedRequest, res: Respons
   } catch (error) {
     console.error('Error getting vendors by userId:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
+ * /vendors/incomplete-setups:
+ *   get:
+ *     summary: Find vendors with incomplete setup
+ *     tags: [Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     description: >
+ *       Retrieves a list of vendors for the authenticated user that have not completed their setup.
+ *       A setup is considered incomplete if the vendor has either not added any products OR has uploaded fewer than two documents.
+ *     responses:
+ *       200:
+ *         description: A list of vendors with incomplete setups.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 incompleteVendors:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Vendor'
+ *       500:
+ *         description: Internal server error.
+ */
+export const getIncompleteSetups = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.userId as string;
+
+    // 1. Get all vendors for the user, including a count of their products.
+    const vendors = await vendorService.getVendorsByUserIdWithProductCount(userId);
+
+    if (vendors.length === 0) {
+      return res.status(200).json({ incompleteVendors: [] });
+    }
+
+    // 2. Get document counts for all vendors of this user.
+    const documentCounts = await vendorService.getVendorDocumentCounts(vendors.map((v) => v.id));
+    const documentCountMap = new Map(documentCounts.map(item => [item.referenceId, item._count._all]));
+
+    // 3. Filter for vendors that meet the incomplete criteria.
+    const incompleteVendors = vendors.filter(vendor => {
+      const productCount = (vendor as any)._count.vendorProducts;
+      const docCount = documentCountMap.get(vendor.id) || 0;
+      return productCount === 0 || docCount < 2;
+    });
+
+    res.status(200).json({ incompleteVendors });
+  } catch (error) {
+    console.error('Failed to get incomplete vendor setups:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 };

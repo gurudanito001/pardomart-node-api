@@ -20,6 +20,7 @@ router.post('/', authenticate, validate(validateCreateVendor), vendorController.
 router.get('/:id', validate(validateGetVendorById), vendorController.getVendorById);
 router.get('/', validate(validateGetAllVendors), vendorController.getAllVendors);
 //router.get('/findVendors/nearby', vendorController.getVendorsByProximity);
+router.get('/incomplete-setups', authenticate, vendorController.getIncompleteSetups);
 router.get('/getvendorsby/userId', authenticate, vendorController.getVendorsByUserId);
 router.patch('/:id', authenticate, multer().none(), validate(validateUpdateVendor), vendorController.updateVendor);
 router.delete('/:id', authenticate, validate(validateVendorId), vendorController.deleteVendor);

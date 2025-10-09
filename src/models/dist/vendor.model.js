@@ -47,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteVendor = exports.updateVendor = exports.getVendorsByUserId = exports.getFullListOfVendors = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
+exports.getVendorDocumentCounts = exports.getVendorDocumentCount = exports.getVendorsByUserIdWithProductCount = exports.deleteVendor = exports.updateVendor = exports.getVendorsByUserId = exports.getFullListOfVendors = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
 // models/vendor.model.ts
 var client_1 = require("@prisma/client");
 var media_service_1 = require("../services/media.service");
@@ -122,7 +122,12 @@ exports.getVendorById = function (id) { return __awaiter(void 0, void 0, Promise
                 where: { id: id },
                 include: {
                     user: true,
-                    openingHours: true
+                    openingHours: true,
+                    _count: {
+                        select: {
+                            vendorProducts: true
+                        }
+                    }
                 }
             })];
     });
@@ -231,3 +236,50 @@ exports.deleteVendor = function (id) { return __awaiter(void 0, void 0, Promise,
             })];
     });
 }); };
+/**
+ * Retrieves all vendors for a user and includes a count of their associated products.
+ * @param userId - The ID of the user.
+ * @returns A promise that resolves to an array of vendors with their product counts.
+ */
+exports.getVendorsByUserIdWithProductCount = function (userId) {
+    return prisma.vendor.findMany({
+        where: {
+            userId: userId
+        },
+        include: {
+            _count: {
+                select: { vendorProducts: true }
+            }
+        }
+    });
+};
+/**
+ * Retrieves the count of documents for a given vendor ID.
+ * @param vendorId - The ID of the vendor.
+ * @returns A promise that resolves to the number of documents.
+ */
+exports.getVendorDocumentCount = function (vendorId) {
+    return prisma.media.count({
+        where: {
+            referenceId: vendorId,
+            referenceType: 'document'
+        }
+    });
+};
+/**
+ * Retrieves the count of documents for a given list of vendor IDs.
+ * @param vendorIds - An array of vendor IDs.
+ * @returns A promise that resolves to an array of objects containing the vendor ID (`referenceId`) and its document count (`_count._all`).
+ */
+exports.getVendorDocumentCounts = function (vendorIds) {
+    return prisma.media.groupBy({
+        by: ['referenceId'],
+        where: {
+            referenceId: { "in": vendorIds },
+            referenceType: 'document'
+        },
+        _count: {
+            _all: true
+        }
+    });
+};

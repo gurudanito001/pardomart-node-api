@@ -32,10 +32,21 @@ import { ReferenceType } from '@prisma/client';
  *                 description: The ID of the resource this media is associated with (e.g., a user ID, product ID).
  *               referenceType:
  *                 type: string
- *                 description: The name of the model this media is associated with (e.g., "User", "Product", "Vendor").
+ *                 description: The type of resource the media is associated with.
+ *                 enum: [bug_report_image, user_image, store_image, product_image, category_image, document, other]
  *     responses:
  *       201:
- *         description: File uploaded successfully. Returns Cloudinary response.
+ *         description: File uploaded successfully. Returns the created media record.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: File uploaded successfully
+ *                 data:
+ *                   $ref: '#/components/schemas/Media'
  *       400:
  *         description: Bad request (e.g., no file uploaded, missing referenceId or referenceType).
  *       500:
@@ -68,7 +79,7 @@ export const uploadFile = async (req: Request, res: Response) => {
       referenceType
     );
 
-    res.status(201).json({ message: 'File uploaded successfully', data: result });
+    res.status(201).json({ message: 'File uploaded successfully', data: result.dbRecord });
   } catch (error: any) {
     res.status(500).json({ message: 'Error uploading file', error: error.message });
   }

@@ -97,6 +97,7 @@ export const createVendor = async (payload: CreateVendorPayload): Promise<Vendor
 export type VendorWithRelations = Vendor & {
   user: User;
   openingHours: VendorOpeningHours[];
+  _count: { vendorProducts: number; };
 };
 export const getVendorById = async (id: string): Promise<VendorWithRelations | null> => {
   return prisma.vendor.findUnique({
@@ -104,6 +105,11 @@ export const getVendorById = async (id: string): Promise<VendorWithRelations | n
     include: {
       user: true,
       openingHours: true,
+      _count: {
+        select: {
+          vendorProducts: true,
+        },
+      },
     },
   });
 };
@@ -214,5 +220,55 @@ export const updateVendor = async (id: string, payload: UpdateVendorPayload): Pr
 export const deleteVendor = async (id: string): Promise<Vendor> => {
   return prisma.vendor.delete({
     where: { id }
+  });
+};
+
+/**
+ * Retrieves all vendors for a user and includes a count of their associated products.
+ * @param userId - The ID of the user.
+ * @returns A promise that resolves to an array of vendors with their product counts.
+ */
+export const getVendorsByUserIdWithProductCount = (userId: string) => {
+  return prisma.vendor.findMany({
+    where: {
+      userId: userId,
+    },
+    include: {
+      _count: {
+        select: { vendorProducts: true },
+      },
+    },
+  });
+};
+
+/**
+ * Retrieves the count of documents for a given vendor ID.
+ * @param vendorId - The ID of the vendor.
+ * @returns A promise that resolves to the number of documents.
+ */
+export const getVendorDocumentCount = (vendorId: string): Promise<number> => {
+  return prisma.media.count({
+    where: {
+      referenceId: vendorId,
+      referenceType: 'document',
+    },
+  });
+};
+
+/**
+ * Retrieves the count of documents for a given list of vendor IDs.
+ * @param vendorIds - An array of vendor IDs.
+ * @returns A promise that resolves to an array of objects containing the vendor ID (`referenceId`) and its document count (`_count._all`).
+ */
+export const getVendorDocumentCounts = (vendorIds: string[]) => {
+  return prisma.media.groupBy({
+    by: ['referenceId'],
+    where: {
+      referenceId: { in: vendorIds },
+      referenceType: 'document',
+    },
+    _count: {
+      _all: true,
+    },
   });
 };

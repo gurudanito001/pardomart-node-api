@@ -58,7 +58,7 @@ var __rest = (this && this.__rest) || function (s, e) {
     return t;
 };
 exports.__esModule = true;
-exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
+exports.getVendorDocumentCounts = exports.getVendorsByUserIdWithProductCount = exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
 // services/vendor.service.ts
 var vendorModel = require("../models/vendor.model");
 var rating_service_1 = require("./rating.service");
@@ -83,30 +83,36 @@ exports.createVendor = function (payload) { return __awaiter(void 0, void 0, Pro
     });
 }); };
 exports.getVendorById = function (id, latitude, longitude) { return __awaiter(void 0, void 0, Promise, function () {
-    var vendor, rating, customerLatitude, customerLongitude, distance;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
+    var vendor, _a, rating, documentCount, productCount, _count, vendorData, result, customerLatitude, customerLongitude, distance;
+    var _b, _c;
+    return __generator(this, function (_d) {
+        switch (_d.label) {
             case 0: return [4 /*yield*/, vendorModel.getVendorById(id)];
             case 1:
-                vendor = _a.sent();
+                vendor = _d.sent();
                 if (!vendor) {
                     return [2 /*return*/, null];
                 }
-                return [4 /*yield*/, rating_service_1.getAggregateRatingService({ ratedVendorId: vendor.id })];
+                return [4 /*yield*/, Promise.all([
+                        rating_service_1.getAggregateRatingService({ ratedVendorId: vendor.id }),
+                        vendorModel.getVendorDocumentCount(vendor.id),
+                    ])];
             case 2:
-                rating = _a.sent();
-                // Attach rating to the vendor object
-                vendor.rating = rating || { average: 0, count: 0 };
-                if (latitude && longitude && vendor.latitude && vendor.longitude) {
+                _a = _d.sent(), rating = _a[0], documentCount = _a[1];
+                productCount = (_c = (_b = vendor._count) === null || _b === void 0 ? void 0 : _b.vendorProducts) !== null && _c !== void 0 ? _c : 0;
+                _count = vendor._count, vendorData = __rest(vendor, ["_count"]);
+                result = __assign(__assign({}, vendorData), { rating: rating || { average: 0, count: 0 }, productCount: productCount,
+                    documentCount: documentCount });
+                // Now, calculate distance if coordinates are provided
+                if (latitude && longitude && result.latitude && result.longitude) {
                     customerLatitude = parseFloat(latitude);
                     customerLongitude = parseFloat(longitude);
                     if (!isNaN(customerLatitude) && !isNaN(customerLongitude)) {
-                        distance = calculateDistance(customerLatitude, customerLongitude, vendor.latitude, vendor.longitude);
-                        // Return vendor with distance, rounded to 2 decimal places
-                        return [2 /*return*/, __assign(__assign({}, vendor), { distance: parseFloat(distance.toFixed(2)) })];
+                        distance = calculateDistance(customerLatitude, customerLongitude, result.latitude, result.longitude);
+                        result.distance = parseFloat(distance.toFixed(2));
                     }
                 }
-                return [2 /*return*/, vendor];
+                return [2 /*return*/, result];
         }
     });
 }); };
@@ -177,3 +183,19 @@ exports.getVendorsByUserId = function (userId) { return __awaiter(void 0, void 0
         }
     });
 }); };
+/**
+ * Retrieves all vendors for a user and includes the count of associated products.
+ * @param userId - The ID of the user.
+ * @returns A promise that resolves to an array of vendors with their product counts.
+ */
+exports.getVendorsByUserIdWithProductCount = function (userId) {
+    return vendorModel.getVendorsByUserIdWithProductCount(userId);
+};
+/**
+ * Retrieves the count of documents for a given list of vendor IDs.
+ * @param vendorIds - An array of vendor IDs.
+ * @returns A promise that resolves to an array of objects containing vendor ID and document count.
+ */
+exports.getVendorDocumentCounts = function (vendorIds) {
+    return vendorModel.getVendorDocumentCounts(vendorIds);
+};
