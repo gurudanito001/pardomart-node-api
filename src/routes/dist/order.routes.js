@@ -16,6 +16,8 @@ router.get('/vendorOrders', auth_middleware_1.authorizeVendorAccess, validation_
 router.patch('/:orderId/accept', auth_middleware_1.authorizeVendorAccess, validation_middleware_1.validate(validation_middleware_1.validateVendorOrderAction), orderController.acceptOrderController);
 router.patch('/:orderId/decline', auth_middleware_1.authorizeVendorAccess, validation_middleware_1.validate(validation_middleware_1.validateDeclineOrder), orderController.declineOrderController);
 router.patch('/:orderId/start-shopping', auth_middleware_1.authorizeVendorAccess, validation_middleware_1.validate(validation_middleware_1.validateVendorOrderAction), orderController.startShoppingController);
+// GET /api/v1/orders/vendor - Get all orders for the authenticated vendor's stores
+router.get('/vendor', auth_middleware_1.authenticate, auth_middleware_1.authorize(['vendor']), orderController.getOrdersForVendor);
 // --- Customer-facing routes ---
 router.post('/', validation_middleware_1.validate(validation_middleware_1.validateCreateOrder), orderController.createOrderController);
 router.get('/user/me', orderController.getOrdersByUserController);

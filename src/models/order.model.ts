@@ -151,3 +151,32 @@ export const deleteOrder = async (id: string): Promise<Order> => {
     where: { id },
   });
 };
+
+
+export interface GetOrdersForVendorFilters {
+  vendorIds: string[];
+  status?: OrderStatus;
+}
+
+/**
+ * Finds all orders for a given set of vendor IDs, with optional status filtering.
+ * @param filters - The filters to apply, including vendorIds and optional status.
+ * @returns A promise that resolves to an array of orders with their relations.
+ */
+export const findOrdersForVendors = async (filters: GetOrdersForVendorFilters): Promise<OrderWithRelations[]> => {
+  const where: Prisma.OrderWhereInput = {
+    vendorId: {
+      in: filters.vendorIds,
+    },
+  };
+
+  if (filters.status) {
+    where.orderStatus = filters.status;
+  }
+
+  return prisma.order.findMany({
+    where,
+    ...orderWithRelations,
+    orderBy: { createdAt: 'desc' },
+  });
+};

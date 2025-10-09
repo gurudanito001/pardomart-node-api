@@ -2,6 +2,7 @@
 
 import { Request, Response, Router } from 'express';
 import * as orderModel from '../models/order.model'; // Adjust the path if needed
+import * as vendorModel from '../models/vendor.model'; // Add this import for vendorModel
 import { PrismaClient, Order, OrderItem, Role, ShoppingMethod, OrderStatus, DeliveryMethod, VendorProduct, Product, DeliveryAddress, Prisma, PaymentMethods, OrderItemStatus, PaymentStatus } from '@prisma/client';
 import dayjs from 'dayjs';
 import { calculateOrderFeesService } from './fee.service';
@@ -1025,4 +1026,50 @@ export const respondToReplacementService = async (
   }
 
   return updatedItem;
+};
+
+
+
+
+export interface GetOrdersForVendorOptions {
+  vendorId?: string;
+  status?: OrderStatus;
+}
+
+/**
+ * Retrieves all orders for a vendor user across all their stores.
+ * It can be filtered by a specific vendorId (store) or order status.
+ *
+ * @param userId The ID of the authenticated vendor user.
+ * @param options Filtering options including vendorId and status.
+ * @returns A promise that resolves to an array of orders.
+ * @throws OrderCreationError if the user has no vendors or if the specified vendorId does not belong to the user.
+ */
+export const getOrdersForVendorUserService = async (
+  userId: string,
+  options: GetOrdersForVendorOptions
+): Promise<orderModel.OrderWithRelations[]> => {
+  const { vendorId, status } = options;
+
+  // 1. Get all vendors owned by the user.
+  const userVendors = await vendorModel.getVendorsByUserId(userId);
+  if (userVendors.length === 0) {
+    // If the user has no stores, they have no orders.
+    return [];
+  }
+
+  const userVendorIds = userVendors.map((v) => v.id);
+  let vendorIdsToQuery = userVendorIds;
+
+  // 2. If a specific vendorId is provided, validate it and narrow the query.
+  if (vendorId) {
+    if (!userVendorIds.includes(vendorId)) {
+      // The user is trying to access orders for a store they don't own.
+      throw new OrderCreationError('You are not authorized to access orders for this vendor.', 403);
+    }
+    vendorIdsToQuery = [vendorId];
+  }
+
+  // 3. Fetch the orders using the determined vendor IDs and optional status.
+  return orderModel.findOrdersForVendors({ vendorIds: vendorIdsToQuery, status });
 };

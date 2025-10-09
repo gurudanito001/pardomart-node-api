@@ -1,4 +1,15 @@
 "use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -36,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteOrder = exports.updateOrder = exports.getOrdersByUserId = exports.getOrderById = exports.createOrder = void 0;
+exports.findOrdersForVendors = exports.deleteOrder = exports.updateOrder = exports.getOrdersByUserId = exports.getOrderById = exports.createOrder = void 0;
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
 exports.createOrder = function (payload, tx) { return __awaiter(void 0, void 0, Promise, function () {
@@ -143,5 +154,24 @@ exports.deleteOrder = function (id) { return __awaiter(void 0, void 0, Promise, 
         return [2 /*return*/, prisma.order["delete"]({
                 where: { id: id }
             })];
+    });
+}); };
+/**
+ * Finds all orders for a given set of vendor IDs, with optional status filtering.
+ * @param filters - The filters to apply, including vendorIds and optional status.
+ * @returns A promise that resolves to an array of orders with their relations.
+ */
+exports.findOrdersForVendors = function (filters) { return __awaiter(void 0, void 0, Promise, function () {
+    var where;
+    return __generator(this, function (_a) {
+        where = {
+            vendorId: {
+                "in": filters.vendorIds
+            }
+        };
+        if (filters.status) {
+            where.orderStatus = filters.status;
+        }
+        return [2 /*return*/, prisma.order.findMany(__assign(__assign({ where: where }, orderWithRelations), { orderBy: { createdAt: 'desc' } }))];
     });
 }); };

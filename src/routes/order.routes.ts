@@ -33,6 +33,9 @@ router.get('/vendorOrders', authorizeVendorAccess, validate(validateGetVendorOrd
 router.patch('/:orderId/accept', authorizeVendorAccess, validate(validateVendorOrderAction), orderController.acceptOrderController);
 router.patch('/:orderId/decline', authorizeVendorAccess, validate(validateDeclineOrder), orderController.declineOrderController);
 router.patch('/:orderId/start-shopping', authorizeVendorAccess, validate(validateVendorOrderAction), orderController.startShoppingController);
+// GET /api/v1/orders/vendor - Get all orders for the authenticated vendor's stores
+router.get('/vendor', authenticate, authorize(['vendor']), orderController.getOrdersForVendor);
+
 
 
 // --- Customer-facing routes ---

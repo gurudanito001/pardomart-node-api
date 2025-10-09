@@ -17,6 +17,7 @@ import {
   respondToReplacementService,
   UpdateOrderItemShoppingStatusPayload,
   RespondToReplacementPayload,
+  getOrdersForVendorUserService
 } from '../services/order.service'; // Adjust the path if needed
 import { Order, PaymentMethods, PaymentStatus, OrderStatus, DeliveryMethod, OrderItemStatus } from '@prisma/client';
 import { AuthenticatedRequest } from './vendor.controller';
@@ -818,5 +819,56 @@ export const updateOrderTipController = async (req: AuthenticatedRequest, res: R
     if (error instanceof OrderCreationError) { return res.status(error.statusCode).json({ error: error.message }); }
     console.error('Error in updateOrderTipController:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+
+/**
+ * @swagger
+ * /orders/vendor:
+ *   get:
+ *     summary: Get all orders for a vendor user's stores
+ *     tags: [Order, Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     description: >
+ *       Retrieves a list of all orders for the stores owned by the authenticated vendor user.
+ *       Can be filtered by a specific `vendorId` (store ID) and/or `orderStatus`.
+ *       If no `vendorId` is provided, it fetches orders from all stores owned by the user.
+ *     parameters:
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string, format: uuid }
+ *         description: Optional. Filter orders by a specific store ID owned by the user.
+ *       - in: query
+ *         name: status
+ *         schema: { $ref: '#/components/schemas/OrderStatus' }
+ *         description: Optional. Filter orders by a specific status.
+ *     responses:
+ *       200:
+ *         description: A list of orders matching the criteria.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Order'
+ *       403:
+ *         description: Forbidden if the user tries to access a vendor they do not own.
+ *       500:
+ *         description: Internal server error.
+ */
+export const getOrdersForVendor = async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.userId as string;
+  try {
+    const { vendorId, status } = req.query as { vendorId?: string; status?: OrderStatus };
+
+    const orders = await getOrdersForVendorUserService(userId, { vendorId, status });
+    res.status(200).json(orders);
+  } catch (error: any) {
+    if (error instanceof OrderCreationError) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Internal server error' });
   }
 };

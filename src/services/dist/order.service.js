@@ -60,8 +60,9 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.respondToReplacementService = exports.updateOrderItemShoppingStatusService = exports.startShoppingService = exports.declineOrderService = exports.acceptOrderService = exports.getOrdersForVendorDashboard = exports.getAvailableDeliverySlots = exports.updateOrderStatusService = exports.updateOrderService = exports.updateOrderTipService = exports.createOrderFromClient = exports.getOrdersByUserIdService = exports.OrderCreationError = exports.getOrderByIdService = exports.createOrderService = void 0;
+exports.getOrdersForVendorUserService = exports.respondToReplacementService = exports.updateOrderItemShoppingStatusService = exports.startShoppingService = exports.declineOrderService = exports.acceptOrderService = exports.getOrdersForVendorDashboard = exports.getAvailableDeliverySlots = exports.updateOrderStatusService = exports.updateOrderService = exports.updateOrderTipService = exports.createOrderFromClient = exports.getOrdersByUserIdService = exports.OrderCreationError = exports.getOrderByIdService = exports.createOrderService = void 0;
 var orderModel = require("../models/order.model"); // Adjust the path if needed
+var vendorModel = require("../models/vendor.model"); // Add this import for vendorModel
 var client_1 = require("@prisma/client");
 var dayjs_1 = require("dayjs");
 var fee_service_1 = require("./fee.service");
@@ -983,6 +984,43 @@ exports.respondToReplacementService = function (orderId, itemId, customerId, pay
                     console.error('Socket.IO error in respondToReplacementService:', error);
                 }
                 return [2 /*return*/, updatedItem];
+        }
+    });
+}); };
+/**
+ * Retrieves all orders for a vendor user across all their stores.
+ * It can be filtered by a specific vendorId (store) or order status.
+ *
+ * @param userId The ID of the authenticated vendor user.
+ * @param options Filtering options including vendorId and status.
+ * @returns A promise that resolves to an array of orders.
+ * @throws OrderCreationError if the user has no vendors or if the specified vendorId does not belong to the user.
+ */
+exports.getOrdersForVendorUserService = function (userId, options) { return __awaiter(void 0, void 0, Promise, function () {
+    var vendorId, status, userVendors, userVendorIds, vendorIdsToQuery;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                vendorId = options.vendorId, status = options.status;
+                return [4 /*yield*/, vendorModel.getVendorsByUserId(userId)];
+            case 1:
+                userVendors = _a.sent();
+                if (userVendors.length === 0) {
+                    // If the user has no stores, they have no orders.
+                    return [2 /*return*/, []];
+                }
+                userVendorIds = userVendors.map(function (v) { return v.id; });
+                vendorIdsToQuery = userVendorIds;
+                // 2. If a specific vendorId is provided, validate it and narrow the query.
+                if (vendorId) {
+                    if (!userVendorIds.includes(vendorId)) {
+                        // The user is trying to access orders for a store they don't own.
+                        throw new OrderCreationError('You are not authorized to access orders for this vendor.', 403);
+                    }
+                    vendorIdsToQuery = [vendorId];
+                }
+                // 3. Fetch the orders using the determined vendor IDs and optional status.
+                return [2 /*return*/, orderModel.findOrdersForVendors({ vendorIds: vendorIdsToQuery, status: status })];
         }
     });
 }); };

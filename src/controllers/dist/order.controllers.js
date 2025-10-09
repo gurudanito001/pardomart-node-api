@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.updateOrderTipController = exports.startShoppingController = exports.declineOrderController = exports.getAvailableDeliverySlotsController = exports.acceptOrderController = exports.respondToReplacementController = exports.updateOrderItemShoppingStatusController = exports.getVendorOrdersController = exports.updateOrderController = exports.updateOrderStatusController = exports.getOrdersByUserController = exports.getOrderByIdController = exports.createOrderController = void 0;
+exports.getOrdersForVendor = exports.updateOrderTipController = exports.startShoppingController = exports.declineOrderController = exports.getAvailableDeliverySlotsController = exports.acceptOrderController = exports.respondToReplacementController = exports.updateOrderItemShoppingStatusController = exports.getVendorOrdersController = exports.updateOrderController = exports.updateOrderStatusController = exports.getOrdersByUserController = exports.getOrderByIdController = exports.createOrderController = void 0;
 var order_service_1 = require("../services/order.service"); // Adjust the path if needed
 // --- Order Controllers ---
 /**
@@ -940,6 +940,67 @@ exports.updateOrderTipController = function (req, res) { return __awaiter(void 0
                 res.status(500).json({ error: error_13.message || 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /orders/vendor:
+ *   get:
+ *     summary: Get all orders for a vendor user's stores
+ *     tags: [Order, Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     description: >
+ *       Retrieves a list of all orders for the stores owned by the authenticated vendor user.
+ *       Can be filtered by a specific `vendorId` (store ID) and/or `orderStatus`.
+ *       If no `vendorId` is provided, it fetches orders from all stores owned by the user.
+ *     parameters:
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string, format: uuid }
+ *         description: Optional. Filter orders by a specific store ID owned by the user.
+ *       - in: query
+ *         name: status
+ *         schema: { $ref: '#/components/schemas/OrderStatus' }
+ *         description: Optional. Filter orders by a specific status.
+ *     responses:
+ *       200:
+ *         description: A list of orders matching the criteria.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Order'
+ *       403:
+ *         description: Forbidden if the user tries to access a vendor they do not own.
+ *       500:
+ *         description: Internal server error.
+ */
+exports.getOrdersForVendor = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var userId, _a, vendorId, status, orders, error_14;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                userId = req.userId;
+                _b.label = 1;
+            case 1:
+                _b.trys.push([1, 3, , 4]);
+                _a = req.query, vendorId = _a.vendorId, status = _a.status;
+                return [4 /*yield*/, order_service_1.getOrdersForVendorUserService(userId, { vendorId: vendorId, status: status })];
+            case 2:
+                orders = _b.sent();
+                res.status(200).json(orders);
+                return [3 /*break*/, 4];
+            case 3:
+                error_14 = _b.sent();
+                if (error_14 instanceof order_service_1.OrderCreationError) {
+                    return [2 /*return*/, res.status(error_14.statusCode).json({ error: error_14.message })];
+                }
+                res.status(500).json({ error: 'Internal server error' });
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
         }
     });
 }); };
