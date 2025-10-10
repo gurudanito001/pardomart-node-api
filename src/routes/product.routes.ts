@@ -1,70 +1,87 @@
-// routes/product.routes.ts
-import express from 'express';
-
+import { Router } from 'express';
+import * as productController from '../controllers/product.controllers';
+import { authenticate, authorize } from '../middlewares/auth.middleware';
+import { validate } from '../middlewares/validation.middleware'; // Assuming you have validation middleware
 import {
-  validate,
-  validateCreateProduct,
-  validateUpdateProduct,
-  validateCreateVendorProduct,
-  validateUpdateVendorProduct,
-  validateGetOrDeleteProduct,
-  validateGetAllProducts,
-  validateGetProductByBarcode,
-  validateGetProductsByTagIds,
-  validateGetAllVendorProducts,
-  validateGetTrendingVendorProducts,
-  validateCreateVendorProductWithBarcode,
-  validateGetVendorProductByBarcode,
-  validateGetVendorProductsByCategory,
-  validateGetVendorProductsByTagIds,
-} from '../middlewares/validation.middleware';
-import { authenticate, authorizeVendorAccess } from '../middlewares/auth.middleware';
+    validateCreateProduct,
+    validateUpdateProductBase,
+    validateGetVendorProductById,
+    validateCreateVendorProduct,
+    validateCreateVendorProductWithBarcode,
+    validateUpdateVendorProduct,
+    validateGetAllVendorProducts,
+    validateGetTrendingVendorProducts,
+    validateGetProductByBarcode,
+    validateGetVendorProductByBarcode,
+    validateGetProductsByTagIds,
+    validateGetVendorProductsByTagIds,
+    validateGetVendorProductsByCategory,
+    validateGetVendorProductsByUser,
+} from '../middlewares/product.validation';
 
-import {
-  createProduct,
-  createVendorProduct,
-  createVendorProductWithBarcode,
-  deleteProduct,
-  deleteVendorProduct,
-  getAllProducts,
-  getAllVendorProducts,
-  getProductByBarcode,
-  getProductsByTagIds,
-  getVendorProductByBarcode,
-  getVendorProductById,
-  getVendorProductsByCategory,
-  getTrendingVendorProducts,
-  getVendorProductsByTagIds,
-  getVendorProductsByUserController,
-  updateProductBase,
-  updateVendorProduct,
-} from '../controllers/product.controllers';
+const router = Router();
 
-const router = express.Router();
+// --- Base Product Routes (Admin Only) ---
+router.post(
+    '/',
+    authenticate,
+    authorize(['admin']),
+    validate(validateCreateProduct),
+    productController.createProduct
+);
+router.patch(
+    '/:id',
+    authenticate,
+    authorize(['admin']),
+    validate(validateUpdateProductBase),
+    productController.updateProductBase
+);
+router.delete(
+    '/:id',
+    authenticate,
+    authorize(['admin']),
+    productController.deleteProduct
+);
 
+// --- Vendor Product Routes (Vendor Owner & Store Admin) ---
+router.post(
+    '/vendor',
+    authenticate,
+    authorize(['vendor', 'store_admin']),
+    validate(validateCreateVendorProduct),
+    productController.createVendorProduct
+);
+router.post(
+    '/vendor/barcode',
+    authenticate,
+    authorize(['vendor', 'store_admin']),
+    validate(validateCreateVendorProductWithBarcode),
+    productController.createVendorProductWithBarcode
+);
+router.patch(
+    '/vendor/:id',
+    authenticate,
+    authorize(['vendor', 'store_admin']),
+    validate(validateUpdateVendorProduct),
+    productController.updateVendorProduct
+);
+router.delete(
+    '/vendor/:id',
+    authenticate,
+    authorize(['vendor', 'store_admin']),
+    productController.deleteVendorProduct
+);
 
-
-
-// Public routes
-router.get('/', validate(validateGetAllProducts), getAllProducts);
-router.get('/vendor', validate(validateGetAllVendorProducts), getAllVendorProducts);
-router.get('/vendor/trending', validate(validateGetTrendingVendorProducts), getTrendingVendorProducts);
-router.get('/barcode', validate(validateGetProductByBarcode), getProductByBarcode);
-router.get('/vendor/barcode', validate(validateGetVendorProductByBarcode), getVendorProductByBarcode);
-router.get('/vendor/category', validate(validateGetVendorProductsByCategory), getVendorProductsByCategory);
-router.get('/vendor/:id', validate(validateGetOrDeleteProduct), getVendorProductById);
-router.get('/tags/ids', validate(validateGetProductsByTagIds), getProductsByTagIds);
-router.get('/vendor/tags/ids', validate(validateGetVendorProductsByTagIds), getVendorProductsByTagIds);
-router.get('/user/:userId', authenticate, /* authorize(['admin', 'customer']), */ getVendorProductsByUserController);
-
-// Protected routes (assuming admin/vendor roles)
-router.post('/', authenticate, /* authorize(['admin']), */ validate(validateCreateProduct), createProduct);
-router.post('/vendor', authenticate, authorizeVendorAccess, validate(validateCreateVendorProduct), createVendorProduct);
-router.post('/vendor/barcode', authenticate, authorizeVendorAccess, validate(validateCreateVendorProductWithBarcode), createVendorProductWithBarcode);
-router.patch('/:id', authenticate, /* authorize(['admin']), */ validate(validateUpdateProduct), updateProductBase);
-router.patch('/vendor/:id', authenticate, authorizeVendorAccess, validate(validateUpdateVendorProduct), updateVendorProduct);
-router.delete('/:id', authenticate, /* authorize(['admin']), */ validate(validateGetOrDeleteProduct), deleteProduct);
-router.delete('/vendor/:id', authenticate, authorizeVendorAccess, validate(validateGetOrDeleteProduct), deleteVendorProduct);
-
+// --- Public/General Product Routes ---
+router.get('/', productController.getAllProducts);
+router.get('/vendor', validate(validateGetAllVendorProducts), productController.getAllVendorProducts);
+router.get('/vendor/trending', validate(validateGetTrendingVendorProducts), productController.getTrendingVendorProducts);
+router.get('/vendor/:id', validate(validateGetVendorProductById), productController.getVendorProductById);
+router.get('/barcode', validate(validateGetProductByBarcode), productController.getProductByBarcode);
+router.get('/vendor/barcode', validate(validateGetVendorProductByBarcode), productController.getVendorProductByBarcode);
+router.get('/tags/ids', validate(validateGetProductsByTagIds), productController.getProductsByTagIds);
+router.get('/vendor/tags/ids', validate(validateGetVendorProductsByTagIds), productController.getVendorProductsByTagIds);
+router.get('/vendor/category', validate(validateGetVendorProductsByCategory), productController.getVendorProductsByCategory);
+router.get('/user/:userId', authenticate, validate(validateGetVendorProductsByUser), productController.getVendorProductsByUserController);
 
 export default router;

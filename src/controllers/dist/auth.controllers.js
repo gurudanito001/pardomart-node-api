@@ -207,17 +207,17 @@ exports.getTimeZones = function (req, res) { return __awaiter(void 0, void 0, vo
  *         description: Internal server error.
  */
 exports.initiateLogin = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, mobileNumber, role, userExists, verificationCode, error_2;
+    var _a, mobileNumber, role, user, verificationCode, error_2;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
                 _b.trys.push([0, 4, , 5]);
                 _a = req.body, mobileNumber = _a.mobileNumber, role = _a.role;
-                return [4 /*yield*/, authService.checkUserExistence({ mobileNumber: mobileNumber, role: role })];
+                return [4 /*yield*/, authService.findUserForLogin(mobileNumber, role)];
             case 1:
-                userExists = _b.sent();
-                if (!userExists) {
-                    return [2 /*return*/, res.status(404).json({ exists: false, message: 'User not found.' })];
+                user = _b.sent();
+                if (!user) {
+                    return [2 /*return*/, res.status(404).json({ success: false, message: 'User not found.' })];
                 }
                 verificationCode = verification_1.generateVerificationCode();
                 return [4 /*yield*/, authService.storeVerificationCode(mobileNumber, verificationCode)];
@@ -226,7 +226,8 @@ exports.initiateLogin = function (req, res) { return __awaiter(void 0, void 0, v
                 return [4 /*yield*/, verification_1.sendVerificationCode(mobileNumber, verificationCode)];
             case 3:
                 _b.sent();
-                res.status(200).json({ exists: true });
+                // Return the actual role found for the user
+                res.status(200).json({ success: true, role: user.role });
                 return [3 /*break*/, 5];
             case 4:
                 error_2 = _b.sent();

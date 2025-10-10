@@ -43,7 +43,7 @@ var __spreadArrays = (this && this.__spreadArrays) || function () {
     return r;
 };
 exports.__esModule = true;
-exports.validateFaqId = exports.validateUpdateFaq = exports.validateCreateFaq = exports.validateUpdateBugReportStatus = exports.validateNotificationId = exports.validateGetNotifications = exports.validateUnregisterDevice = exports.validateRegisterDevice = exports.validateDetachPaymentMethod = exports.validateUpdateSupportTicketStatus = exports.validateCreateSupportTicket = exports.validateRespondToReplacement = exports.validateUpdateOrderItemShoppingStatus = exports.validateMarkMessagesAsRead = exports.validateSendMessage = exports.validateGetPath = exports.validateAddLocation = exports.validateUpdateUser = exports.validateUserId = exports.validateGetAllUsers = exports.validateSearchByCategoryId = exports.validateSearchStoreProducts = exports.validateGeneralSearch = exports.validateCalculateFees = exports.validateFeeType = exports.validateFeeId = exports.validateUpdateFee = exports.validateCreateFee = exports.validateRemoveFromWishlist = exports.validateAddToWishlist = exports.validateGetVendorProductsByTagIds = exports.validateGetVendorProductsByCategory = exports.validateGetVendorProductByBarcode = exports.validateCreateVendorProductWithBarcode = exports.validateGetTrendingVendorProducts = exports.validateGetAllVendorProducts = exports.validateGetProductsByTagIds = exports.validateGetProductByBarcode = exports.validateGetAllProducts = exports.validateGetOrDeleteProduct = exports.validateUpdateVendorProduct = exports.validateCreateVendorProduct = exports.validateUpdateProduct = exports.validateCreateProduct = exports.validateUpdateTip = exports.validateGetDeliverySlots = exports.validateDeclineOrder = exports.validateVendorOrderAction = exports.validateGetVendorOrders = exports.validateUpdateOrder = exports.validateUpdateOrderStatus = exports.validateGetOrDeleteOrder = exports.validateCreateOrder = exports.validateGetOrDeleteDeliveryAddress = exports.validateUpdateDeliveryAddress = exports.validateCreateDeliveryAddress = exports.validateGetAllCategories = exports.validateGetOrDeleteCategory = exports.validateUpdateCategory = exports.validateCreateCategoriesBulk = exports.validateCreateCategory = exports.validateCreateOrUpdateVendorOpeningHours = exports.validateUpdateVendor = exports.validateGetAllVendors = exports.validateGetVendorById = exports.validateVendorId = exports.validateCreateVendor = exports.validateVerifyAndLogin = exports.validateLogin = exports.validateRegisterUser = exports.validate = void 0;
+exports.validateFaqId = exports.validateUpdateFaq = exports.validateCreateFaq = exports.validateUpdateBugReportStatus = exports.validateNotificationId = exports.validateGetNotifications = exports.validateUnregisterDevice = exports.validateRegisterDevice = exports.validateDetachPaymentMethod = exports.validateUpdateSupportTicketStatus = exports.validateCreateSupportTicket = exports.validateRespondToReplacement = exports.validateUpdateOrderItemShoppingStatus = exports.validateMarkMessagesAsRead = exports.validateSendMessage = exports.validateGetPath = exports.validateAddLocation = exports.validateUpdateUser = exports.validateUserId = exports.validateGetAllUsers = exports.validateSearchByCategoryId = exports.validateSearchStoreProducts = exports.validateGeneralSearch = exports.validateCalculateFees = exports.validateFeeType = exports.validateFeeId = exports.validateUpdateFee = exports.validateCreateFee = exports.validateRemoveFromWishlist = exports.validateAddToWishlist = exports.validateUpdateTip = exports.validateGetDeliverySlots = exports.validateDeclineOrder = exports.validateVendorOrderAction = exports.validateGetVendorOrders = exports.validateUpdateOrder = exports.validateUpdateOrderStatus = exports.validateGetOrDeleteOrder = exports.validateCreateOrder = exports.validateGetOrDeleteDeliveryAddress = exports.validateUpdateDeliveryAddress = exports.validateCreateDeliveryAddress = exports.validateGetAllCategories = exports.validateGetOrDeleteCategory = exports.validateUpdateCategory = exports.validateCreateCategoriesBulk = exports.validateCreateCategory = exports.validateCreateOrUpdateVendorOpeningHours = exports.validateUpdateVendor = exports.validateGetAllVendors = exports.validateGetVendorById = exports.validateVendorId = exports.validateCreateVendor = exports.validateVerifyAndLogin = exports.validateLogin = exports.validateRegisterUser = exports.validate = void 0;
 var express_validator_1 = require("express-validator");
 var client_1 = require("@prisma/client");
 // Generic validation middleware
@@ -285,98 +285,6 @@ exports.validateUpdateTip = [
         }
         return true;
     }),
-];
-exports.validateCreateProduct = [
-    express_validator_1.body('barcode').trim().notEmpty().withMessage('Barcode is required.'),
-    express_validator_1.body('name').trim().notEmpty().withMessage('Product name is required.'),
-    express_validator_1.body('description').optional().isString(),
-    express_validator_1.body('images').optional().isArray().withMessage('Images must be an array of strings.'),
-    express_validator_1.body('images.*').optional().isURL().withMessage('Each image must be a valid URL.'),
-    express_validator_1.body('categoryIds').isArray({ min: 1 }).withMessage('At least one categoryId is required.'),
-    express_validator_1.body('categoryIds.*').isUUID(4).withMessage('Each categoryId must be a valid UUID.'),
-    express_validator_1.body('tags').optional().isArray(),
-    express_validator_1.body('tags.*').optional().isString(),
-    express_validator_1.body('isAlcohol').optional().isBoolean(),
-    express_validator_1.body('isAgeRestricted').optional().isBoolean(),
-];
-exports.validateUpdateProduct = [
-    express_validator_1.param('id').isUUID(4).withMessage('A valid product ID is required in the URL.'),
-    express_validator_1.body('name').optional().trim().notEmpty().withMessage('Product name cannot be empty.'),
-    express_validator_1.body('description').optional().isString(),
-    express_validator_1.body('images').optional().isArray().withMessage('Images must be an array of strings.'),
-    express_validator_1.body('images.*').optional().isURL().withMessage('Each image must be a valid URL.'),
-    express_validator_1.body('categoryIds').optional().isArray({ min: 1 }).withMessage('categoryIds must be a non-empty array if provided.'),
-    express_validator_1.body('categoryIds.*').isUUID(4).withMessage('Each categoryId must be a valid UUID.'),
-];
-exports.validateCreateVendorProduct = [
-    express_validator_1.body('vendorId').isUUID(4).withMessage('A valid vendorId is required.'),
-    express_validator_1.body('productId').isUUID(4).withMessage('A valid productId is required.'),
-    express_validator_1.body('price').isFloat({ gt: 0 }).withMessage('Price must be a positive number.'),
-    express_validator_1.body('name').trim().notEmpty().withMessage('Product name is required.'),
-    express_validator_1.body('description').optional().isString(),
-    express_validator_1.body('discountedPrice').optional({ nullable: true }).isFloat({ min: 0 }).withMessage('Discounted price must be a non-negative number.'),
-    express_validator_1.body('stock').optional({ nullable: true }).isInt({ min: 0 }).withMessage('Stock must be a non-negative integer.'),
-    express_validator_1.body('isAvailable').optional().isBoolean(),
-    express_validator_1.body('categoryIds').isArray({ min: 1 }).withMessage('At least one categoryId is required.'),
-    express_validator_1.body('categoryIds.*').isUUID(4).withMessage('Each categoryId must be a valid UUID.'),
-];
-exports.validateUpdateVendorProduct = [
-    express_validator_1.param('id').isUUID(4).withMessage('A valid vendor product ID is required in the URL.'),
-    express_validator_1.body('price').optional().isFloat({ gt: 0 }).withMessage('Price must be a positive number.'),
-    express_validator_1.body('name').optional().trim().notEmpty().withMessage('Product name cannot be empty.'),
-    express_validator_1.body('stock').optional({ nullable: true }).isInt({ min: 0 }).withMessage('Stock must be a non-negative integer.'),
-    express_validator_1.body('isAvailable').optional().isBoolean(),
-];
-exports.validateGetOrDeleteProduct = [
-    express_validator_1.param('id').isUUID(4).withMessage('A valid product ID is required in the URL.'),
-];
-exports.validateGetAllProducts = [
-    express_validator_1.query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer.'),
-    express_validator_1.query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100.'),
-    express_validator_1.query('search').optional().isString(),
-];
-exports.validateGetProductByBarcode = [
-    express_validator_1.query('barcode').trim().notEmpty().withMessage('Barcode is required.'),
-];
-exports.validateGetProductsByTagIds = [
-    express_validator_1.query('tagIds').notEmpty().withMessage('tagIds query parameter is required.').isArray().withMessage('tagIds must be an array.'),
-    express_validator_1.query('tagIds.*').isUUID(4).withMessage('Each tagId must be a valid UUID.'),
-];
-exports.validateGetAllVendorProducts = [
-    express_validator_1.query('vendorId').optional().isUUID(4).withMessage('Vendor id must be a valid UUID.'),
-    express_validator_1.query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer.'),
-    express_validator_1.query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100.'),
-    express_validator_1.query('search').optional().isString(),
-];
-exports.validateGetTrendingVendorProducts = [
-    express_validator_1.query('vendorId').isUUID(4).withMessage('A valid vendorId is required.'),
-    express_validator_1.query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer.'),
-    express_validator_1.query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100.'),
-];
-exports.validateCreateVendorProductWithBarcode = [
-    express_validator_1.body('vendorId').isUUID(4).withMessage('A valid vendorId is required.'),
-    express_validator_1.body('barcode').trim().notEmpty().withMessage('Barcode is required.'),
-    express_validator_1.body('price').isFloat({ gt: 0 }).withMessage('Price must be a positive number.'),
-    express_validator_1.body('name').trim().notEmpty().withMessage('Product name is required.'),
-    express_validator_1.body('categoryIds').isArray({ min: 1 }).withMessage('At least one categoryId is required.'),
-    express_validator_1.body('categoryIds.*').isUUID(4).withMessage('Each categoryId must be a valid UUID.'),
-    express_validator_1.body('description').optional().isString(),
-    express_validator_1.body('discountedPrice').optional({ nullable: true }).isFloat({ min: 0 }).withMessage('Discounted price must be a non-negative number.'),
-    express_validator_1.body('stock').optional({ nullable: true }).isInt({ min: 0 }).withMessage('Stock must be a non-negative integer.'),
-    express_validator_1.body('isAvailable').optional().isBoolean(),
-];
-exports.validateGetVendorProductByBarcode = [
-    express_validator_1.query('vendorId').isUUID(4).withMessage('A valid vendorId is required.'),
-    express_validator_1.query('barcode').trim().notEmpty().withMessage('Barcode is required.'),
-];
-exports.validateGetVendorProductsByCategory = [
-    express_validator_1.query('vendorId').isUUID(4).withMessage('A valid vendorId is required.'),
-    express_validator_1.query('categoryId').isUUID(4).withMessage('A valid categoryId is required.'),
-];
-exports.validateGetVendorProductsByTagIds = [
-    express_validator_1.query('vendorId').isUUID(4).withMessage('A valid vendorId is required.'),
-    express_validator_1.query('tagIds').notEmpty().withMessage('tagIds query parameter is required.').isArray().withMessage('tagIds must be an array.'),
-    express_validator_1.query('tagIds.*').isUUID(4).withMessage('Each tagId must be a valid UUID.'),
 ];
 exports.validateAddToWishlist = [
     express_validator_1.body('vendorProductId').isUUID(4).withMessage('A valid vendorProductId is required in the request body.'),

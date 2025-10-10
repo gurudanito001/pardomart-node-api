@@ -1,10 +1,8 @@
 import { PrismaClient, Role, User } from '@prisma/client';
-import { generateToken } from '../utils/auth';
-import * as userModel from '../models/user.model';
+import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
 
-// Custom Error for auth flow to allow for specific error handling
 export class AuthError extends Error {
   constructor(message: string) {
     super(message);
@@ -12,67 +10,100 @@ export class AuthError extends Error {
   }
 }
 
-export const checkUserExistence = async (filters: userModel.CheckUserFilters): Promise<User | null> => {
-  return userModel.checkUserExistence(filters);
+/**
+ * Finds a user for login initiation. If the role is 'vendor', it searches across
+ * 'vendor', 'store_admin', and 'store_shopper' roles.
+ * @param mobileNumber The user's mobile number.
+ * @param role The role provided at login.
+ * @returns The user object if found, otherwise null.
+ */
+export const findUserForLogin = async (mobileNumber: string, role: Role): Promise<User | null> => {
+  let rolesToSearch: Role[] = [role];
+
+  // If the user is trying to log in through the generic "vendor" flow,
+  // check all possible vendor-related roles.
+  if (role === Role.vendor) {
+    rolesToSearch = [Role.vendor, Role.store_admin, Role.store_shopper];
+  }
+
+  return prisma.user.findFirst({
+    where: {
+      mobileNumber,
+      role: {
+        in: rolesToSearch,
+      },
+    },
+  });
 };
 
 /**
- * Stores or updates a verification code for a given mobile number.
- * @param mobileNumber The user's mobile number.
- * @param verificationCode The code to store.
+ * Stores a verification code for a mobile number.
+ * @param mobileNumber The mobile number.
+ * @param code The verification code.
  */
-export const storeVerificationCode = async (mobileNumber: string, verificationCode: string): Promise<void> => {
-  const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
+export const storeVerificationCode = async (mobileNumber: string, code: string): Promise<void> => {
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
   await prisma.verification.upsert({
     where: { mobileNumber },
-    update: { code: verificationCode, expiresAt, attempts: 0 }, // Reset attempts on new code
-    create: { mobileNumber, code: verificationCode, expiresAt },
+    create: { mobileNumber, code, expiresAt, attempts: 0 },
+    update: { code, expiresAt, attempts: 0 },
   });
 };
 
 /**
- * Verifies a mobile number with a code and returns a JWT if successful.
+ * Verifies the login code and returns the user with a JWT.
  * @param mobileNumber The user's mobile number.
- * @param verificationCode The code provided by the user.
- * @param role The user's role.
- * @returns An object with the token and user, or throws an AuthError.
+ * @param verificationCode The code to verify.
+ * @param role The user's specific role.
+ * @returns The user object and a JWT token.
  */
 export const verifyCodeAndLogin = async (mobileNumber: string, verificationCode: string, role: Role) => {
-  const storedVerification = await prisma.verification.findUnique({
+  const verification = await prisma.verification.findUnique({
     where: { mobileNumber },
   });
 
-  if (!storedVerification) {
-    throw new AuthError('No verification code found for this number. Please request a new one.');
-  }
-
-  if (storedVerification.expiresAt < new Date()) {
-    await prisma.verification.delete({ where: { mobileNumber } });
-    throw new AuthError('Verification code has expired.');
-  }
-
-  if (storedVerification?.attempts && storedVerification.attempts >= 5) {
-    throw new AuthError('Too many incorrect attempts. Please request a new code.');
-  }
-
-  if (storedVerification.code !== verificationCode) {
-    await prisma.verification.update({
-      where: { mobileNumber },
-      data: { attempts: { increment: 1 } },
-    });
+  if (!verification || verification.code !== verificationCode) {
     throw new AuthError('Invalid verification code.');
   }
 
-  // Use a transaction to ensure logging in and cleaning up the code are atomic
-  return prisma.$transaction(async (tx) => {
-    const user = await tx.user.findFirst({ where: { mobileNumber, role } });
+  if (new Date() > verification.expiresAt) {
+    throw new AuthError('Verification code has expired.');
+  }
 
-    if (!user) throw new AuthError('User not found.');
-
-    const updatedUser = await tx.user.update({ where: { id: user.id }, data: { mobileVerified: true } });
-    const token = generateToken(user.id, user.role);
-    await tx.verification.delete({ where: { mobileNumber } });
-
-    return { token, user: updatedUser };
+  const user = await prisma.user.findUnique({
+    where: { mobileNumber_role: { mobileNumber, role } },
+    include: {
+      vendor: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
   });
+
+  if (!user) {
+    throw new AuthError('User not found for the specified role.');
+  }
+
+  // Invalidate the code after successful verification
+  await prisma.verification.delete({ where: { mobileNumber } });
+
+  const token = jwt.sign(
+    {
+      userId: user.id,
+      role: user.role,
+      vendorId: user.vendorId, // Include vendorId in the token for staff roles
+    },
+    process.env.JWT_SECRET!,
+    { expiresIn: '30d' }
+  );
+
+  return { user, token };
+};
+
+// This function is now replaced by findUserForLogin
+export const checkUserExistence = async (params: { mobileNumber: string, role: Role }): Promise<boolean> => {
+    const user = await findUserForLogin(params.mobileNumber, params.role);
+    return !!user;
 };

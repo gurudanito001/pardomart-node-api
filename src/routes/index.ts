@@ -37,7 +37,6 @@ router.use('/api/v1/users', usersRouter);
 router.use('/api/v1/vendors', vendorRouter);
 router.use('/api/v1/openingHours', vendorOpeningHoursRouter);
 router.use('/api/v1/product', productRouter);
-router.use('/api/v1/category', categoryRouter);
 router.use('/api/v1/tags', tagRouter);
 router.use('/api/v1/generalSearch', generalSearchRouter);
 router.use('/api/v1/cart-items', cartItemRouter); 

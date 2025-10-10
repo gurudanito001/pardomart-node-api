@@ -151,18 +151,19 @@ export const getTimeZones = async (req: Request, res: Response) => {
  */
 export const initiateLogin = async (req: Request, res: Response) => {
   try {
-    const { mobileNumber, role } = req.body;
-    const userExists = await authService.checkUserExistence({ mobileNumber, role });
+    const { mobileNumber, role } = req.body; // role can be 'vendor' generically
+    const user = await authService.findUserForLogin(mobileNumber, role);
 
-    if (!userExists) {
-      return res.status(404).json({ exists: false, message: 'User not found.' });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
     }
 
     const verificationCode = generateVerificationCode();
     await authService.storeVerificationCode(mobileNumber, verificationCode);
     await sendVerificationCode(mobileNumber, verificationCode);
 
-    res.status(200).json({ exists: true });
+    // Return the actual role found for the user
+    res.status(200).json({ success: true, role: user.role });
   } catch (error) {
     console.error('Error initiating login:', error);
     res.status(500).json({ error: 'Internal server error' });
