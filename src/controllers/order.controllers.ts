@@ -156,12 +156,6 @@ import { AuthenticatedRequest } from './vendor.controller';
  *         meta: { type: object, nullable: true }
  *     VendorWithRatingAndDistance:
  *       type: object
- *       required: [status]
- *       properties:
- *         status:
- *           $ref: '#/components/schemas/OrderStatus'
- *     UpdateOrderPayload:
- *       type: object
  *       properties:
  *         subtotal: { type: number, format: float }
  *         totalAmount: { type: number, format: float }

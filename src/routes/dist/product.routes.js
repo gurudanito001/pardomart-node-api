@@ -9,12 +9,12 @@ var router = express_1.Router();
 // --- Base Product Routes (Admin Only) ---
 router.post('/', auth_middleware_1.authenticate, auth_middleware_1.authorize(['admin']), validation_middleware_1.validate(product_validation_1.validateCreateProduct), productController.createProduct);
 router.patch('/:id', auth_middleware_1.authenticate, auth_middleware_1.authorize(['admin']), validation_middleware_1.validate(product_validation_1.validateUpdateProductBase), productController.updateProductBase);
-router["delete"]('/:id', auth_middleware_1.authenticate, auth_middleware_1.authorize(['admin']), productController.deleteProduct);
+router["delete"]('/:id', auth_middleware_1.authenticate, auth_middleware_1.authorize(['admin']), validation_middleware_1.validate(product_validation_1.validateId), productController.deleteProduct);
 // --- Vendor Product Routes (Vendor Owner & Store Admin) ---
 router.post('/vendor', auth_middleware_1.authenticate, auth_middleware_1.authorize(['vendor', 'store_admin']), validation_middleware_1.validate(product_validation_1.validateCreateVendorProduct), productController.createVendorProduct);
 router.post('/vendor/barcode', auth_middleware_1.authenticate, auth_middleware_1.authorize(['vendor', 'store_admin']), validation_middleware_1.validate(product_validation_1.validateCreateVendorProductWithBarcode), productController.createVendorProductWithBarcode);
 router.patch('/vendor/:id', auth_middleware_1.authenticate, auth_middleware_1.authorize(['vendor', 'store_admin']), validation_middleware_1.validate(product_validation_1.validateUpdateVendorProduct), productController.updateVendorProduct);
-router["delete"]('/vendor/:id', auth_middleware_1.authenticate, auth_middleware_1.authorize(['vendor', 'store_admin']), productController.deleteVendorProduct);
+router["delete"]('/vendor/:id', auth_middleware_1.authenticate, auth_middleware_1.authorize(['vendor', 'store_admin']), validation_middleware_1.validate(product_validation_1.validateId), productController.deleteVendorProduct);
 // --- Public/General Product Routes ---
 router.get('/', productController.getAllProducts);
 router.get('/vendor', validation_middleware_1.validate(product_validation_1.validateGetAllVendorProducts), productController.getAllVendorProducts);

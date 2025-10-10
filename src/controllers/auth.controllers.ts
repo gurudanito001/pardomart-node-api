@@ -143,7 +143,17 @@ export const getTimeZones = async (req: Request, res: Response) => {
  *                 example: "customer"
  *     responses:
  *       200:
- *         description: Verification code sent successfully.
+ *         description: Verification code sent successfully. The actual role of the user is returned.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 role:
+ *                   $ref: '#/components/schemas/Role'
  *       404:
  *         description: User not found.
  *       500:

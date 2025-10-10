@@ -5,6 +5,7 @@ import { validate } from '../middlewares/validation.middleware'; // Assuming you
 import {
     validateCreateProduct,
     validateUpdateProductBase,
+    validateId,
     validateGetVendorProductById,
     validateCreateVendorProduct,
     validateCreateVendorProductWithBarcode,
@@ -40,6 +41,7 @@ router.delete(
     '/:id',
     authenticate,
     authorize(['admin']),
+    validate(validateId),
     productController.deleteProduct
 );
 
@@ -69,6 +71,7 @@ router.delete(
     '/vendor/:id',
     authenticate,
     authorize(['vendor', 'store_admin']),
+    validate(validateId),
     productController.deleteVendorProduct
 );
 

@@ -171,12 +171,6 @@ var order_service_1 = require("../services/order.service"); // Adjust the path i
  *         meta: { type: object, nullable: true }
  *     VendorWithRatingAndDistance:
  *       type: object
- *       required: [status]
- *       properties:
- *         status:
- *           $ref: '#/components/schemas/OrderStatus'
- *     UpdateOrderPayload:
- *       type: object
  *       properties:
  *         subtotal: { type: number, format: float }
  *         totalAmount: { type: number, format: float }

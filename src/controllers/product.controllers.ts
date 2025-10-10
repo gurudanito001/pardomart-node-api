@@ -129,7 +129,6 @@ import { AuthenticatedRequest } from './vendor.controller';
  *         name: { type: string, description: "The name for the vendor-specific product, which can override the base product name." }
  *         description: { type: string, nullable: true }
  *         images: { type: array, items: { type: string }, description: "Array of image URLs or base64 encoded strings." }
- *         isAvailable: { type: boolean, default: true }
  *         categoryIds: { type: array, items: { type: string, format: uuid } }
  *         tagIds: { type: array, items: { type: string, format: uuid } }
  *     CreateVendorProductWithBarcodePayload:
