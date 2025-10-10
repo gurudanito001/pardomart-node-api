@@ -14,6 +14,8 @@ router.get('/:id', validation_middleware_1.validate(validation_middleware_1.vali
 router.get('/', validation_middleware_1.validate(validation_middleware_1.validateGetAllVendors), vendorController.getAllVendors);
 //router.get('/findVendors/nearby', vendorController.getVendorsByProximity);
 router.get('/incomplete-setups', auth_middleware_1.authenticate, vendorController.getIncompleteSetups);
+router.patch('/:id/approve', auth_middleware_1.authenticate, auth_middleware_1.authorize(['admin']), validation_middleware_1.validate(validation_middleware_1.validateVendorId), vendorController.approveVendor);
+router.patch('/:id/publish', auth_middleware_1.authenticate, validation_middleware_1.validate(validation_middleware_1.validateVendorId), vendorController.publishVendor);
 router.get('/getvendorsby/userId', auth_middleware_1.authenticate, vendorController.getVendorsByUserId);
 router.patch('/:id', auth_middleware_1.authenticate, multer_1["default"]().none(), validation_middleware_1.validate(validation_middleware_1.validateUpdateVendor), vendorController.updateVendor);
 router["delete"]('/:id', auth_middleware_1.authenticate, validation_middleware_1.validate(validation_middleware_1.validateVendorId), vendorController.deleteVendor);

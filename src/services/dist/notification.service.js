@@ -106,7 +106,7 @@ exports.notifyVendorOfNewOrder = function (vendorId, orderId) { return __awaiter
         switch (_a.label) {
             case 0: return [4 /*yield*/, userModel.findMany({
                     where: {
-                        OR: [{ vendor: { id: vendorId }, role: client_1.Role.vendor }, { vendorId: vendorId, role: client_1.Role.vendor_staff }]
+                        OR: [{ vendor: { id: vendorId }, role: client_1.Role.vendor }, { vendorId: vendorId, role: client_1.Role.store_shopper }]
                     },
                     select: { id: true }
                 })];

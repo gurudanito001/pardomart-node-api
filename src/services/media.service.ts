@@ -1,4 +1,4 @@
-import { PrismaClient, MediaType, ReferenceType } from '@prisma/client';
+import { PrismaClient, MediaType, ReferenceType, Media } from '@prisma/client';
 import cloudinary from '../config/cloudinary';
 import { UploadApiResponse } from 'cloudinary';
 import streamifier from 'streamifier';
@@ -30,7 +30,7 @@ export const uploadMedia = (
   file: Express.Multer.File,
   referenceId: string,
   referenceType: ReferenceType
-): Promise<UploadApiResponse> => {
+): Promise<{ cloudinaryResult: UploadApiResponse; dbRecord: Media }> => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
@@ -45,7 +45,7 @@ export const uploadMedia = (
           return reject(new Error('Cloudinary upload failed'));
         }
 
-        await prisma.media.create({
+        const dbRecord = await prisma.media.create({
           data: {
             url: result.secure_url,
             type: getMediaType(file.mimetype),
@@ -56,7 +56,7 @@ export const uploadMedia = (
             referenceType,
           },
         });
-        resolve(result);
+        resolve({ cloudinaryResult: result, dbRecord });
       }
     );
     streamifier.createReadStream(file.buffer).pipe(uploadStream);

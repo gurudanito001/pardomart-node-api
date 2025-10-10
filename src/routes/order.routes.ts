@@ -55,7 +55,7 @@ router.patch('/:orderId/messages/read', validate(validateMarkMessagesAsRead), me
 // --- Live Shopping Actions ---
 router.patch(
   '/:orderId/items/:itemId/update-shopping-status',
-  authorize([Role.vendor, Role.vendor_staff, Role.shopper, Role.delivery]),
+  authorize([Role.store_admin, Role.store_shopper, Role.delivery_person]),
   validate(validateUpdateOrderItemShoppingStatus),
   orderController.updateOrderItemShoppingStatusController
 );
@@ -72,7 +72,7 @@ router.patch(
 router.post(
   '/:orderId/delivery-location',
   authenticate,
-  authorize([Role.delivery]), // Ensure this role exists
+  authorize([Role.delivery_person]),
   validate(validateAddLocation),
   addLocationController
 );
@@ -81,7 +81,7 @@ router.post(
 router.get(
   '/:orderId/delivery-path',
   authenticate,
-  authorize([Role.customer, Role.admin, Role.delivery]),
+  authorize([Role.customer, Role.admin, Role.delivery_person]),
   validate(validateGetPath),
   getPathController // You would add this controller to order.controller.ts
 );

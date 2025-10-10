@@ -61,7 +61,7 @@ exports.createStaff = function (payload) { return __awaiter(void 0, void 0, Prom
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4 /*yield*/, prisma.user.create({
-                    data: __assign(__assign({}, payload), { role: client_1.Role.vendor_staff })
+                    data: __assign(__assign({}, payload), { role: client_1.Role.store_shopper })
                 })];
             case 1:
                 staffUser = _a.sent();
@@ -81,7 +81,7 @@ exports.listStaffByVendorId = function (vendorId) { return __awaiter(void 0, voi
         return [2 /*return*/, prisma.user.findMany({
                 where: {
                     vendorId: vendorId,
-                    role: client_1.Role.vendor_staff
+                    role: client_1.Role.store_shopper
                 }
             })];
     });
@@ -95,7 +95,7 @@ exports.listStaffByOwnerId = function (ownerId) { return __awaiter(void 0, void 
     return __generator(this, function (_a) {
         return [2 /*return*/, prisma.user.findMany({
                 where: {
-                    role: client_1.Role.vendor_staff,
+                    role: client_1.Role.store_shopper,
                     vendor: {
                         userId: ownerId
                     }
@@ -120,7 +120,7 @@ exports.getStaffById = function (staffId) { return __awaiter(void 0, void 0, Pro
         return [2 /*return*/, prisma.user.findFirst({
                 where: {
                     id: staffId,
-                    role: client_1.Role.vendor_staff
+                    role: client_1.Role.store_shopper
                 }
             })];
     });

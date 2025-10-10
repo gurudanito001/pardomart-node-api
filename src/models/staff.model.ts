@@ -28,7 +28,7 @@ export const createStaff = async (payload: CreateStaffPayload): Promise<User> =>
   const staffUser = await prisma.user.create({
     data: {
       ...payload,
-      role: Role.vendor_staff,
+      role: Role.store_shopper,
       // The password should be hashed before being passed in the payload
     },
   });
@@ -48,7 +48,7 @@ export const listStaffByVendorId = async (vendorId: string): Promise<User[]> => 
   return prisma.user.findMany({
     where: {
       vendorId: vendorId,
-      role: Role.vendor_staff,
+      role: Role.store_shopper,
     },
   });
 };
@@ -61,7 +61,7 @@ export const listStaffByVendorId = async (vendorId: string): Promise<User[]> => 
 export const listStaffByOwnerId = async (ownerId: string): Promise<User[]> => {
   return prisma.user.findMany({
     where: {
-      role: Role.vendor_staff,
+      role: Role.store_shopper,
       vendor: {
         userId: ownerId,
       },
@@ -85,7 +85,7 @@ export const getStaffById = async (staffId: string): Promise<User | null> => {
   return prisma.user.findFirst({
     where: {
       id: staffId,
-      role: Role.vendor_staff,
+      role: Role.store_shopper,
     },
   });
 };

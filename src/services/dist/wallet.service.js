@@ -51,6 +51,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 exports.__esModule = true;
 exports.debitWallet = exports.creditWallet = exports.getWalletTransactionsService = exports.getWalletByUserIdService = exports.findOrCreateWalletByUserId = exports.WalletError = void 0;
 var client_1 = require("@prisma/client");
+var transactionModel = require("../models/transaction.model");
 var prisma = new client_1.PrismaClient();
 var WalletError = /** @class */ (function (_super) {
     __extends(WalletError, _super);
@@ -117,17 +118,10 @@ exports.getWalletByUserIdService = function (userId) { return __awaiter(void 0, 
  * @returns A list of wallet transactions.
  */
 exports.getWalletTransactionsService = function (userId) { return __awaiter(void 0, void 0, Promise, function () {
-    var wallet;
     return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0: return [4 /*yield*/, exports.findOrCreateWalletByUserId(userId)];
-            case 1:
-                wallet = _a.sent();
-                return [2 /*return*/, prisma.walletTransaction.findMany({
-                        where: { walletId: wallet.id },
-                        orderBy: { createdAt: 'desc' }
-                    })];
-        }
+        // This now uses the unified transaction model to get all transactions for a user.
+        // You could add further filtering here if needed, e.g., by source.
+        return [2 /*return*/, transactionModel.listTransactionsForUser(userId)];
     });
 }); };
 /**
@@ -156,15 +150,15 @@ exports.creditWallet = function (_a, tx) {
                         })];
                 case 2:
                     _b.sent();
-                    return [2 /*return*/, tx.walletTransaction.create({
-                            data: {
-                                walletId: wallet.id,
-                                amount: amount,
-                                type: client_1.TransactionType.CREDIT,
-                                status: client_1.TransactionStatus.COMPLETED,
-                                description: description,
-                                meta: meta || {}
-                            }
+                    return [2 /*return*/, transactionModel.createTransaction({
+                            userId: userId,
+                            walletId: wallet.id,
+                            amount: amount,
+                            type: client_1.TransactionType.WALLET_TOP_UP,
+                            source: client_1.TransactionSource.SYSTEM,
+                            status: client_1.TransactionStatus.COMPLETED,
+                            description: description,
+                            meta: meta || {}
                         })];
             }
         });
@@ -199,15 +193,15 @@ exports.debitWallet = function (_a, tx) {
                         })];
                 case 2:
                     _b.sent();
-                    return [2 /*return*/, tx.walletTransaction.create({
-                            data: {
-                                walletId: wallet.id,
-                                amount: -amount,
-                                type: client_1.TransactionType.DEBIT,
-                                status: client_1.TransactionStatus.COMPLETED,
-                                description: description,
-                                meta: meta || {}
-                            }
+                    return [2 /*return*/, transactionModel.createTransaction({
+                            userId: userId,
+                            walletId: wallet.id,
+                            amount: -amount,
+                            type: client_1.TransactionType.ORDER_PAYMENT,
+                            source: client_1.TransactionSource.WALLET,
+                            status: client_1.TransactionStatus.COMPLETED,
+                            description: description,
+                            meta: meta || {}
                         })];
             }
         });

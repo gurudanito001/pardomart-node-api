@@ -58,7 +58,7 @@ var __rest = (this && this.__rest) || function (s, e) {
     return t;
 };
 exports.__esModule = true;
-exports.getVendorDocumentCounts = exports.getVendorsByUserIdWithProductCount = exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
+exports.approveVendor = exports.publishVendor = exports.getVendorDocumentCounts = exports.getVendorsByUserIdWithProductCount = exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
 // services/vendor.service.ts
 var vendorModel = require("../models/vendor.model");
 var rating_service_1 = require("./rating.service");
@@ -199,3 +199,56 @@ exports.getVendorsByUserIdWithProductCount = function (userId) {
 exports.getVendorDocumentCounts = function (vendorIds) {
     return vendorModel.getVendorDocumentCounts(vendorIds);
 };
+/**
+ * Publishes a vendor's store, making it visible to the public.
+ *
+ * @param vendorId The ID of the vendor to publish.
+ * @param userId The ID of the user attempting to publish the store.
+ * @returns The updated vendor object.
+ * @throws Error if the vendor is not found or if the user is not authorized.
+ */
+exports.publishVendor = function (vendorId, userId) { return __awaiter(void 0, void 0, Promise, function () {
+    var vendor;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, vendorModel.getVendorById(vendorId)];
+            case 1:
+                vendor = _a.sent();
+                if (!vendor) {
+                    throw new Error('Vendor not found');
+                }
+                if (vendor.userId !== userId) {
+                    throw new Error('Forbidden: You do not have permission to publish this store.');
+                }
+                // 2. Perform the update.
+                return [2 /*return*/, vendorModel.updateVendor(vendorId, {
+                        isPublished: true
+                    })];
+        }
+    });
+}); };
+/**
+ * Approves a vendor's store, marking it as verified.
+ * This is typically an admin-only action.
+ *
+ * @param vendorId The ID of the vendor to approve.
+ * @returns The updated vendor object.
+ * @throws Error if the vendor is not found.
+ */
+exports.approveVendor = function (vendorId) { return __awaiter(void 0, void 0, Promise, function () {
+    var vendor;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, vendorModel.getVendorById(vendorId)];
+            case 1:
+                vendor = _a.sent();
+                if (!vendor) {
+                    throw new Error('Vendor not found');
+                }
+                // 2. Perform the update.
+                return [2 /*return*/, vendorModel.updateVendor(vendorId, {
+                        isVerified: true
+                    })];
+        }
+    });
+}); };

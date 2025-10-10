@@ -56,7 +56,7 @@ import { GetUserFilters } from '../models/user.model';
  *   schemas:
  *     Role:
  *       type: string
- *       enum: [admin, vendor, vendor_staff, delivery, customer, shopper]
+ *       enum: [admin, vendor, store_shopper, delivery, customer, shopper]
  *     Verification:
  *       type: object
  *       properties:

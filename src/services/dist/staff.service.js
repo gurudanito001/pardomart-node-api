@@ -215,7 +215,7 @@ exports.deleteStaffService = function (staffId, ownerId) { return __awaiter(void
                     throw new Error('Unauthorized: You do not own the vendor this staff member belongs to.');
                 }
                 // Ensure one cannot delete a user who is not a staff member
-                if (staffUser.role !== client_1.Role.vendor_staff) {
+                if (staffUser.role !== client_1.Role.store_shopper) {
                     throw new Error('This user is not a staff member and cannot be deleted through this endpoint.');
                 }
                 return [4 /*yield*/, staffModel.deleteStaff(staffId)];

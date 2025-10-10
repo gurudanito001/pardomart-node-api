@@ -93,7 +93,7 @@ exports.createVendor = function (payload) { return __awaiter(void 0, void 0, Pro
             case 4:
                 uploadResult = _a.sent();
                 // Update the vendor with the final image URL
-                return [4 /*yield*/, exports.updateVendor(vendor.id, { image: uploadResult.secure_url })];
+                return [4 /*yield*/, exports.updateVendor(vendor.id, { image: uploadResult.cloudinaryResult.secure_url })];
             case 5:
                 // Update the vendor with the final image URL
                 _a.sent();
@@ -213,7 +213,7 @@ exports.updateVendor = function (id, payload) { return __awaiter(void 0, void 0,
                 return [4 /*yield*/, media_service_1.uploadMedia(mockFile, id, 'store_image')];
             case 2:
                 uploadResult = _a.sent();
-                payload.image = uploadResult.secure_url; // Update payload with the new URL
+                payload.image = uploadResult.cloudinaryResult.secure_url; // Update payload with the new URL
                 return [3 /*break*/, 4];
             case 3:
                 error_2 = _a.sent();

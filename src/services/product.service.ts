@@ -3,7 +3,6 @@ import { Prisma, VendorProduct } from '@prisma/client';
 import * as productModel from '../models/product.model';
 import * as vendorModel from '../models/vendor.model';
 import { uploadMedia } from './media.service';
-import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Uploads an array of base64 encoded images to Cloudinary.
@@ -40,7 +39,7 @@ const uploadImages = async (images: string[], referenceId: string): Promise<stri
       };
 
       const uploadResult = await uploadMedia(mockFile, referenceId, 'product_image');
-      return uploadResult.secure_url;
+      return uploadResult.cloudinaryResult.secure_url;
     } catch (error) {
       console.error(`Error uploading product image at index ${index}:`, error);
       // Return null or an empty string to signify failure for this image
@@ -70,7 +69,8 @@ export const createVendorProduct = async (payload: productModel.CreateVendorProd
   const { images, ...productData } = payload;
   let processedImageUrls: string[] = [];
 
-  // 2. Generate a new UUID for the vendor product.
+  // 2. Generate a new UUID for the vendor product using dynamic import.
+  const { v4: uuidv4 } = await import('uuid');
   const vendorProductId = uuidv4();
 
   // 3. Upload images to Cloudinary using the new ID.
@@ -130,7 +130,8 @@ export const createVendorProductWithBarcode = async (payload: any, ownerId: stri
     productId = existingProduct.id;
   }
 
-  // 3. Generate a new UUID for the vendor product.
+  // 3. Generate a new UUID for the vendor product using dynamic import.
+  const { v4: uuidv4 } = await import('uuid');
   const vendorProductId = uuidv4();
 
   // 4. Upload images to Cloudinary

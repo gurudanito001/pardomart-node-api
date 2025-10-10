@@ -3,7 +3,7 @@
 import { Request, Response, Router } from 'express';
 import * as orderModel from '../models/order.model'; // Adjust the path if needed
 import * as vendorModel from '../models/vendor.model'; // Add this import for vendorModel
-import { PrismaClient, Order, OrderItem, Role, ShoppingMethod, OrderStatus, DeliveryMethod, VendorProduct, Product, DeliveryAddress, Prisma, PaymentMethods, OrderItemStatus, PaymentStatus } from '@prisma/client';
+import { PrismaClient, Order, OrderItem, Role, ShoppingMethod, OrderStatus, DeliveryMethod, VendorProduct, Product, DeliveryAddress, Prisma, PaymentMethods, OrderItemStatus, PaymentStatus, TransactionType, TransactionSource } from '@prisma/client';
 import dayjs from 'dayjs';
 import { calculateOrderFeesService } from './fee.service';
 import { getVendorById } from './vendor.service';
@@ -11,9 +11,9 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { getIO } from '../socket';
-import { creditWallet } from './wallet.service';
 import { getAggregateRatingService } from './rating.service';
 import * as notificationService from './notification.service';
+import * as transactionModel from '../models/transaction.model';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -460,32 +460,59 @@ export const updateOrderStatusService = async (
       // The vendor gets paid the subtotal of the items. Platform fees are handled separately.
       const vendorAmount = order.subtotal;
       if (vendorAmount > 0 && order.vendor.userId) {
-        await creditWallet({
+        await tx.wallet.update({
+          where: { userId: order.vendor.userId },
+          data: { balance: { increment: vendorAmount } },
+        });
+        await tx.transaction.create({
+          data: {
           userId: order.vendor.userId,
           amount: vendorAmount,
+          type: TransactionType.VENDOR_PAYOUT,
+          source: TransactionSource.SYSTEM,
+          status: 'COMPLETED',
           description: `Payment for order #${order.id.substring(0, 8)}`,
-          meta: { orderId: order.id },
-        }, tx);
+            orderId: order.id,
+          },
+        });
       }
 
       // 2. Pay Shopper Tip
       if (order.shopperId && order.shopperTip && order.shopperTip > 0) {
-        await creditWallet({
+        await tx.wallet.update({
+          where: { userId: order.shopperId },
+          data: { balance: { increment: order.shopperTip } },
+        });
+        await tx.transaction.create({
+          data: {
           userId: order.shopperId,
           amount: order.shopperTip,
+          type: TransactionType.TIP_PAYOUT,
+          source: TransactionSource.SYSTEM,
+          status: 'COMPLETED',
           description: `Tip for order #${order.id.substring(0, 8)}`,
-          meta: { orderId: order.id },
-        }, tx);
+            orderId: order.id,
+          },
+        });
       }
 
       // 3. Pay Delivery Person Tip
       if (order.deliveryPersonId && order.deliveryPersonTip && order.deliveryPersonTip > 0) {
-        await creditWallet({
+        await tx.wallet.update({
+          where: { userId: order.deliveryPersonId },
+          data: { balance: { increment: order.deliveryPersonTip } },
+        });
+        await tx.transaction.create({
+          data: {
           userId: order.deliveryPersonId,
           amount: order.deliveryPersonTip,
+          type: TransactionType.TIP_PAYOUT,
+          source: TransactionSource.SYSTEM,
+          status: 'COMPLETED',
           description: `Tip for order #${order.id.substring(0, 8)}`,
-          meta: { orderId: order.id },
-        }, tx);
+            orderId: order.id,
+          },
+        });
       }
 
       // 4. Update the order status
@@ -723,7 +750,7 @@ export const getOrdersForVendorDashboard = async (
  * Accepts a pending order, setting its status to 'accepted' and assigning a shopping handler.
  *
  * @param orderId The ID of the order to accept.
- * @param shoppingHandlerUserId The ID of the user (vendor_staff/admin) accepting the order.
+ * @param shoppingHandlerUserId The ID of the user (store_shopper/admin) accepting the order.
  * @param vendorId The ID of the vendor to verify ownership.
  * @returns The updated Order object.
  * @throws Error if order not found, not pending, or does not belong to the vendor.
@@ -805,13 +832,24 @@ export const declineOrderService = async (
       throw new OrderCreationError('Order not found or cannot be declined in its current state/by this vendor.', 404);
     }
 
-    // 2. Refund the customer's payment to their wallet
-    await creditWallet({
-      userId: orderToDecline.userId,
-      amount: orderToDecline.totalAmount,
-      description: `Refund for declined order #${orderId.substring(0, 8)}`,
-      meta: { orderId },
-    }, tx);
+    // 2. Refund the customer by crediting their wallet and creating a REFUND transaction.
+    if (orderToDecline.totalAmount > 0) {
+      await tx.wallet.update({
+        where: { userId: orderToDecline.userId },
+        data: { balance: { increment: orderToDecline.totalAmount } },
+      });
+
+      await tx.transaction.create({
+        data: {
+          userId: orderToDecline.userId,
+          amount: orderToDecline.totalAmount, // Positive amount for a credit
+          type: TransactionType.REFUND,
+          source: TransactionSource.SYSTEM,
+          description: `Refund for declined order #${orderId.substring(0, 8)}`,
+          orderId: orderId,
+        },
+      });
+    }
 
     // 4. Update the order status to declined
     const declinedOrder = await tx.order.update({
@@ -862,7 +900,7 @@ export const startShoppingService = async (
       select: { role: true, vendorId: true }
     });
 
-    if (!user || user.vendorId !== vendorId || (user.role !== "vendor"  && user.role !== "vendor_staff")) {
+    if (!user || user.vendorId !== vendorId || (user.role !== "store_admin"  && user.role !== "store_shopper")) {
       throw new Error('Unauthorized to start shopping for this vendor/order.');
     }
 

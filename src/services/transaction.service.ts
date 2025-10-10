@@ -1,7 +1,7 @@
-import { PrismaClient, User, PaymentStatus, SavedPaymentMethod, Payment } from '@prisma/client';
+import { PrismaClient, User, SavedPaymentMethod, Transaction, TransactionStatus, TransactionType, TransactionSource, PaymentStatus, Prisma } from '@prisma/client';
 import Stripe from 'stripe';
 import { OrderCreationError } from './order.service';
-import * as paymentModel from '../models/payment.model';
+import * as transactionModel from '../models/transaction.model';
 
 const prisma = new PrismaClient();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -73,20 +73,20 @@ export const createPaymentIntentService = async (userId: string, orderId: string
     },
   });
 
-  // Create or update a payment record in our database
-  await prisma.payment.upsert({
-    where: { orderId: order.id },
-    create: {
-      orderId: order.id,
-      userId: user.id,
-      amount: order.totalAmount,
-      status: PaymentStatus.pending,
-      stripePaymentIntentId: paymentIntent.id,
-    },
-    update: {
-      amount: order.totalAmount,
-      status: PaymentStatus.pending,
-      stripePaymentIntentId: paymentIntent.id,
+  // Create a transaction record to track the payment intent
+  // We use upsert to handle cases where a user might try to pay for the same order again
+  // before the first payment is complete. This updates the existing transaction record.
+  await transactionModel.createTransaction({
+    userId: user.id,
+    amount: -order.totalAmount, // Debiting the customer
+    type: TransactionType.ORDER_PAYMENT,
+    source: TransactionSource.STRIPE,
+    status: TransactionStatus.PENDING,
+    description: `Payment for order #${order.orderCode}`,
+    orderId: order.id,
+    externalId: paymentIntent.id,
+    meta: {
+      client_secret: paymentIntent.client_secret,
     },
   });
 
@@ -127,22 +127,23 @@ export const handleStripeWebhook = async (event: Stripe.Event) => {
     case 'payment_intent.succeeded':
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
       const orderId = paymentIntent.metadata.orderId;
-
       if (orderId) {
-        // Update our internal payment record
-        await prisma.payment.updateMany({
-          where: { stripePaymentIntentId: paymentIntent.id },
-          data: { status: PaymentStatus.paid },
+        // Update our internal transaction record
+        await prisma.transaction.updateMany({
+          where: { externalId: paymentIntent.id },
+          data: { 
+            status: TransactionStatus.COMPLETED,
+            meta: paymentIntent.payment_method_options ? { payment_method_details: JSON.stringify(paymentIntent.payment_method_options) } : undefined,
+          },
         });
 
         // Update the order itself
         await prisma.order.update({
           where: { id: orderId },
-          data: { paymentStatus: PaymentStatus.paid },
+          data: { paymentStatus: 'paid' },
         });
 
         console.log(`✅ Payment for order ${orderId} succeeded.`);
-        // TODO: Trigger fulfillment logic (e.g., notify vendor)
       }
       break;
 
@@ -151,9 +152,9 @@ export const handleStripeWebhook = async (event: Stripe.Event) => {
       const failedOrderId = failedPaymentIntent.metadata.orderId;
 
       if (failedOrderId) {
-        await prisma.payment.updateMany({
-          where: { stripePaymentIntentId: failedPaymentIntent.id },
-          data: { status: PaymentStatus.failed },
+        await prisma.transaction.updateMany({
+          where: { externalId: failedPaymentIntent.id },
+          data: { status: TransactionStatus.FAILED },
         });
         console.log(`❌ Payment for order ${failedOrderId} failed.`);
       }
@@ -216,26 +217,21 @@ export const handleStripeWebhook = async (event: Stripe.Event) => {
  * @param userId The ID of the user.
  * @returns A list of the user's payments.
  */
-export const listPaymentsForUserService = async (userId: string) => {
-  return prisma.payment.findMany({
-    where: { userId },
-    orderBy: { createdAt: 'desc' },
-    include: {
-      order: {
-        select: { id: true, totalAmount: true, createdAt: true },
-      },
-    },
-  });
+export const listTransactionsForUserService = async (userId: string) => {
+  return transactionModel.listTransactionsForUser(userId);
 };
 
 /**
  * Retrieves a list of payments for a vendor user's stores.
  * @param vendorOwnerId The ID of the user who owns the vendors.
  * @param vendorId Optional ID of a specific vendor to filter by.
- * @returns A list of payments.
+ * @returns A list of transactions.
  */
-export const listPaymentsForVendorService = async (vendorOwnerId: string, vendorId?: string): Promise<Payment[]> => {
-  return paymentModel.listPaymentsForVendor({ vendorOwnerId, vendorId });
+export const listTransactionsForVendorService = async (
+  vendorOwnerId: string,
+  vendorId?: string
+): Promise<transactionModel.TransactionWithRelations[]> => {
+  return transactionModel.listTransactionsForVendor({ vendorOwnerId, vendorId });
 };
 
 /**

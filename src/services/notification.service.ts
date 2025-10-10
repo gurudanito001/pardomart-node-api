@@ -60,7 +60,7 @@ export const notifyVendorOfNewOrder = async (vendorId: string, orderId: string) 
   // Find all vendor admins and staff for this vendor
   const vendorUsers = await userModel.findMany({
     where: {
-      OR: [{ vendor: { id: vendorId }, role: Role.vendor }, { vendorId: vendorId, role: Role.vendor_staff }],
+      OR: [{ vendor: { id: vendorId }, role: Role.vendor }, { vendorId: vendorId, role: Role.store_shopper }],
     },
     select: { id: true },
   });

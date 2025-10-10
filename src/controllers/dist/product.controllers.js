@@ -172,8 +172,7 @@ var client_1 = require("@prisma/client");
  *         price: { type: number, format: float }
  *         name: { type: string, description: "The name for the vendor-specific product, which can override the base product name." }
  *         description: { type: string, nullable: true }
- *         discountedPrice: { type: number, format: float, nullable: true }
- *         images: { type: array, items: { type: string, format: "byte" }, description: "Array of base64 encoded image strings." }
+ *         images: { type: array, items: { type: string }, description: "Array of image URLs or base64 encoded strings." }
  *         isAvailable: { type: boolean, default: true }
  *         categoryIds: { type: array, items: { type: string, format: uuid } }
  *         tagIds: { type: array, items: { type: string, format: uuid } }
@@ -186,43 +185,12 @@ var client_1 = require("@prisma/client");
  *         price: { type: number, format: float }
  *         name: { type: string }
  *         description: { type: string, nullable: true }
+ *         images: { type: array, items: { type: string }, description: "Array of image URLs or base64 encoded strings." }
  *         categoryIds: { type: array, items: { type: string, format: uuid } }
  *         tagIds: { type: array, items: { type: string, format: uuid } }
  *         discountedPrice: { type: number, format: float, nullable: true }
  *         isAvailable: { type: boolean, default: true }
  *     UpdateProductBasePayload:
- *       type: object
- *       properties:
- *         barcode: { type: string }
- *         name: { type: string }
- *         description: { type: string, nullable: true }
- *         images: { type: array, items: { type: string, format: uri } }
- *         attributes: { type: object, nullable: true }
- *         meta: { type: object, nullable: true }
- *         categoryIds: { type: array, items: { type: string, format: uuid } }
- *         tagIds: { type: array, items: { type: string, format: uuid } }
- *     UpdateVendorProductPayload:
- *       type: object
- *       properties:
- *         price: { type: number, format: float }
- *         name: { type: string }
- *         description: { type: string, nullable: true }
- *         discountedPrice: { type: number, format: float, nullable: true }
- *         isAvailable: { type: boolean }
- *         categoryIds: { type: array, items: { type: string, format: uuid } }
- *         tagIds: { type: array, items: { type: string, format: uuid } }
- *     PaginatedVendorProducts:
- *       type: object
- *       properties:
- *         page: { type: integer }
- *         totalPages: { type: integer }
- *         pageSize: { type: integer }
- *         totalCount: { type: integer }
- *         data:
- *           type: array
- *           items:
- *             $ref: '#/components/schemas/VendorProduct'
- *     TrendingVendorProduct:
  *       allOf:
  *         - $ref: '#/components/schemas/VendorProduct'
  *         - type: object
@@ -230,16 +198,6 @@ var client_1 = require("@prisma/client");
  *             orderCount:
  *               type: integer
  *               description: "The number of times this product has been ordered."
- *     PaginatedTrendingVendorProducts:
- *       type: object
- *       properties:
- *         page: { type: integer }
- *         total: { type: integer, description: "Total number of unique trending products." }
- *         size: { type: integer }
- *         data:
- *           type: array
- *           items:
- *             $ref: '#/components/schemas/TrendingVendorProduct'
  */
 exports.createProduct = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var product, error_1;

@@ -165,3 +165,49 @@ export const getVendorsByUserIdWithProductCount = (userId: string) => {
 export const getVendorDocumentCounts = (vendorIds: string[]) => {
   return vendorModel.getVendorDocumentCounts(vendorIds);
 };
+
+/**
+ * Publishes a vendor's store, making it visible to the public.
+ *
+ * @param vendorId The ID of the vendor to publish.
+ * @param userId The ID of the user attempting to publish the store.
+ * @returns The updated vendor object.
+ * @throws Error if the vendor is not found or if the user is not authorized.
+ */
+export const publishVendor = async (vendorId: string, userId: string): Promise<Vendor> => {
+  // 1. Authorization: Verify the user owns the vendor.
+  const vendor = await vendorModel.getVendorById(vendorId);
+  if (!vendor) {
+    throw new Error('Vendor not found');
+  }
+
+  if (vendor.userId !== userId) {
+    throw new Error('Forbidden: You do not have permission to publish this store.');
+  }
+
+  // 2. Perform the update.
+  return vendorModel.updateVendor(vendorId, {
+    isPublished: true,
+  });
+};
+
+/**
+ * Approves a vendor's store, marking it as verified.
+ * This is typically an admin-only action.
+ *
+ * @param vendorId The ID of the vendor to approve.
+ * @returns The updated vendor object.
+ * @throws Error if the vendor is not found.
+ */
+export const approveVendor = async (vendorId: string): Promise<Vendor> => {
+  // 1. Verify the vendor exists before attempting to update.
+  const vendor = await vendorModel.getVendorById(vendorId);
+  if (!vendor) {
+    throw new Error('Vendor not found');
+  }
+
+  // 2. Perform the update.
+  return vendorModel.updateVendor(vendorId, {
+    isVerified: true,
+  });
+};

@@ -50,13 +50,13 @@ model User {
   ratingsGiven    Rating[] @relation("RatingsGiven")
   ratingsReceived Rating[] @relation("RatingsReceived")
   wishlistItems   WishlistItem[] 
-  sentMessages     Message[] @relation("SentMessages")
-  receivedMessages Message[] @relation("ReceivedMessages")
+  sentMessages    Message[]         @relation("SentMessages")
+  receivedMessages  Message[]         @relation("ReceivedMessages")
   notifications   Notification[]
   supportTickets  SupportTicket[]
-  payments        Payment[]
   savedPaymentMethods SavedPaymentMethod[]
   devices         Device[]
+  transactions      Transaction[]
   bugReports      BugReport[]
   wallet          Wallet?
 
@@ -236,7 +236,7 @@ model Order {
   ratings Rating[]
   deliveryPersonLocations DeliveryPersonLocation[]
   messages                   Message[]
-  payment                   Payment?
+  transactions            Transaction[]
 }
 
 model DeliveryAddress {
@@ -411,60 +411,14 @@ model Message {
   @@index([orderId, createdAt])
 }
 
-model Payment {
-  id                    String   @id @default(uuid())
-  amount                Float
-  currency              String   @default("usd")
-  status                PaymentStatus
-  userId                String
-  user                  User     @relation(fields: [userId], references: [id], onDelete:Cascade)
-  orderId               String   @unique // Each order has one payment
-  order                 Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  stripePaymentIntentId String   @unique
-  paymentMethodDetails  Json?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-
-  @@index([userId, orderId])
-}
-
-model SavedPaymentMethod {
-  id                 String   @id @default(uuid())
-  userId             String
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  stripePaymentMethodId String   @unique
-  cardBrand          String   // e.g., "visa", "mastercard"
-  cardLast4          String
-  isDefault          Boolean  @default(false)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-
-  @@index([userId])
-}
-
 model Wallet {
   id           String              @id @default(uuid())
   userId       String              @unique
   user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   balance      Float               @default(0.0)
-  transactions WalletTransaction[]
+  transactions Transaction[]       // Transactions related to wallet top-ups and deductions
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
-}
-
-model WalletTransaction {
-  id          String            @id @default(uuid())
-  walletId    String
-  wallet      Wallet            @relation(fields: [walletId], references: [id], onDelete: Cascade)
-  amount      Float // Positive for credit, negative for debit
-  type        TransactionType
-  status      TransactionStatus @default(COMPLETED)
-  description String?
-  meta        Json? // To store related IDs like orderId, etc.
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-
-  @@index([walletId, createdAt])
 }
 
 model BugReport {
@@ -507,6 +461,44 @@ model Media {
   @@index([referenceId, referenceType])
 }
 
+model Transaction {
+  id          String            @id @default(uuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  walletId    String?
+  wallet      Wallet?           @relation(fields: [walletId], references: [id], onDelete: SetNull)
+  amount      Float // Can be positive (credit) or negative (debit)
+  type        TransactionType
+  source      TransactionSource
+  status      TransactionStatus @default(COMPLETED)
+  description String?
+
+  // Optional fields for linking and external references
+  orderId     String?
+  order       Order?            @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  externalId  String? // For stripePaymentIntentId, etc.
+  meta        Json? // For paymentMethodDetails, etc.
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, orderId, type])
+}
+
+model SavedPaymentMethod {
+  id                    String   @id @default(uuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripePaymentMethodId String   @unique
+  cardBrand             String // e.g., "visa", "mastercard"
+  cardLast4             String
+  isDefault             Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([userId])
+}
+
 enum ReferenceType {
   bug_report_image
   user_image
@@ -517,19 +509,30 @@ enum ReferenceType {
   other
 }
 
+enum TransactionSource {
+  STRIPE
+  WALLET
+  CASH
+  BANK_TRANSFER
+  SYSTEM // For adjustments, etc.
+}
+
 enum TransactionType {
-  CREDIT
-  DEBIT
+  ORDER_PAYMENT
+  WALLET_TOP_UP
+  REFUND
+  VENDOR_PAYOUT
+  TIP_PAYOUT
 }
 
 
 enum Role {
-  admin
-  vendor
-  vendor_staff
-  delivery
   customer
-  shopper
+  vendor
+  store_admin
+  store_shopper
+  delivery_person
+  admin
 }
 
 enum Days {

@@ -75,8 +75,8 @@ exports.validateRegisterUser = [
         .withMessage('Role is required')
         .isIn(Object.values(client_1.Role))
         .withMessage("Role must be one of: " + Object.values(client_1.Role).join(', ')),
-    express_validator_1.body('vendorId')["if"](express_validator_1.body('role').equals(client_1.Role.vendor_staff))
-        .isUUID(4).withMessage('A valid vendorId is required for vendor_staff role.'),
+    express_validator_1.body('vendorId')["if"](express_validator_1.body('role').equals(client_1.Role.store_shopper))
+        .isUUID(4).withMessage('A valid vendorId is required for store_shopper role.'),
 ];
 exports.validateLogin = [
     express_validator_1.body('mobileNumber').isMobilePhone('any', { strictMode: true }).withMessage('A valid E.164 mobile number is required (e.g., +1234567890).'),

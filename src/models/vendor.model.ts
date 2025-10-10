@@ -28,6 +28,7 @@ export interface UpdateVendorPayload {
   longitude?: number;
   latitude?: number;
   isVerified?: boolean;
+  isPublished?: boolean;
   meta?: any;
 }
 
@@ -72,7 +73,7 @@ export const createVendor = async (payload: CreateVendorPayload): Promise<Vendor
       const uploadResult = await uploadMedia(mockFile, vendor.id, 'store_image');
 
       // Update the vendor with the final image URL
-      await updateVendor(vendor.id, { image: uploadResult.secure_url });
+      await updateVendor(vendor.id, { image: uploadResult.cloudinaryResult.secure_url });
     } catch (error) {
       console.error('Error uploading vendor image:', error);
       // Decide on error handling: should the vendor creation be rolled back?
@@ -202,7 +203,7 @@ export const updateVendor = async (id: string, payload: UpdateVendorPayload): Pr
       };
 
       const uploadResult = await uploadMedia(mockFile, id, 'store_image');
-      payload.image = uploadResult.secure_url; // Update payload with the new URL
+      payload.image = uploadResult.cloudinaryResult.secure_url; // Update payload with the new URL
     } catch (error) {
       console.error('Error uploading new vendor image during update:', error);
       // Decide on error handling. For now, we'll remove the image from the payload

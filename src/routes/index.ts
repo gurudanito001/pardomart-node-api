@@ -18,7 +18,7 @@ import deviceRouter from './device.routes';
 import notificationRouter from './notification.routes';
 import walletRoutes from './wallet.routes';
 import supportRoutes from './support.routes';
-import paymentRoutes from './payment.routes';
+import transactionRoutes from './transaction.routes';
 import bugReportRoutes from './bugReport.routes';
 import healthRouter from './health.routes';
 import faqRouter from './faq.routes';
@@ -51,7 +51,7 @@ router.use('/api/v1/devices', deviceRouter);
 router.use('/api/v1/notifications', notificationRouter);
 router.use('/api/v1/wallet', walletRoutes);
 router.use('/api/v1/support', supportRoutes);
-router.use('/api/v1/payments', paymentRoutes);
+router.use('/api/v1/transactions', transactionRoutes); // This path is correct, no change needed here.
 router.use('/api/v1/bug-reports', bugReportRoutes);
 router.use('/api/v1/faqs', faqRouter);
 router.use('/api/v1/media', mediaRouter);

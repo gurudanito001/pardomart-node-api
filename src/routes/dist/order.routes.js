@@ -31,12 +31,11 @@ router.post('/:orderId/messages', validation_middleware_1.validate(validation_mi
 router.get('/:orderId/messages', messageController.getMessagesForOrderController);
 router.patch('/:orderId/messages/read', validation_middleware_1.validate(validation_middleware_1.validateMarkMessagesAsRead), messageController.markMessagesAsReadController);
 // --- Live Shopping Actions ---
-router.patch('/:orderId/items/:itemId/update-shopping-status', auth_middleware_1.authorize([client_1.Role.vendor, client_1.Role.vendor_staff, client_1.Role.shopper, client_1.Role.delivery]), validation_middleware_1.validate(validation_middleware_1.validateUpdateOrderItemShoppingStatus), orderController.updateOrderItemShoppingStatusController);
+router.patch('/:orderId/items/:itemId/update-shopping-status', auth_middleware_1.authorize([client_1.Role.store_admin, client_1.Role.store_shopper, client_1.Role.delivery_person]), validation_middleware_1.validate(validation_middleware_1.validateUpdateOrderItemShoppingStatus), orderController.updateOrderItemShoppingStatusController);
 router.patch('/:orderId/items/:itemId/respond-to-replacement', auth_middleware_1.authorize([client_1.Role.customer]), validation_middleware_1.validate(validation_middleware_1.validateRespondToReplacement), orderController.respondToReplacementController);
 // Add a location point for a delivery person
-router.post('/:orderId/delivery-location', auth_middleware_1.authenticate, auth_middleware_1.authorize([client_1.Role.delivery]), // Ensure this role exists
-validation_middleware_1.validate(validation_middleware_2.validateAddLocation), deliveryPersonLocation_controller_1.addLocationController);
+router.post('/:orderId/delivery-location', auth_middleware_1.authenticate, auth_middleware_1.authorize([client_1.Role.delivery_person]), validation_middleware_1.validate(validation_middleware_2.validateAddLocation), deliveryPersonLocation_controller_1.addLocationController);
 // Get the delivery path for an order
-router.get('/:orderId/delivery-path', auth_middleware_1.authenticate, auth_middleware_1.authorize([client_1.Role.customer, client_1.Role.admin, client_1.Role.delivery]), validation_middleware_1.validate(validation_middleware_2.validateGetPath), deliveryPersonLocation_controller_1.getPathController // You would add this controller to order.controller.ts
+router.get('/:orderId/delivery-path', auth_middleware_1.authenticate, auth_middleware_1.authorize([client_1.Role.customer, client_1.Role.admin, client_1.Role.delivery_person]), validation_middleware_1.validate(validation_middleware_2.validateGetPath), deliveryPersonLocation_controller_1.getPathController // You would add this controller to order.controller.ts
 );
 exports["default"] = router;

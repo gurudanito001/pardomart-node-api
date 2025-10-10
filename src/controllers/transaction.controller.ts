@@ -3,12 +3,12 @@ import { AuthenticatedRequest } from './vendor.controller';
 import {
     createPaymentIntentService,
     handleStripeWebhook,
-    listPaymentsForUserService,
+    listTransactionsForUserService,
     createSetupIntentService,
     listSavedPaymentMethodsService,
     detachPaymentMethodService,
-    listPaymentsForVendorService,
-} from '../services/payment.service';
+    listTransactionsForVendorService,
+} from '../services/transaction.service';
 import { OrderCreationError } from '../services/order.service';
 import Stripe from 'stripe';
 
@@ -19,16 +19,16 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 /**
  * @swagger
  * tags:
- *   name: Payment
- *   description: Payment processing and management
+ *   name: Transaction
+ *   description: Payment, refund, and payout transaction management
  */
 
 /**
  * @swagger
- * /api/v1/payments/create-payment-intent:
+ * /transactions/create-payment-intent:
  *   post:
  *     summary: Create a Payment Intent for an order
- *     tags: [Payment]
+ *     tags: [Transaction]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -60,22 +60,32 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
  *         description: Order or User not found.
  * components:
  *   schemas:
- *     PaymentStatus:
- *       type: string
- *       enum: [pending, paid, failed, refunded]
- *     Payment:
+ *     Transaction:
  *       type: object
  *       properties:
  *         id: { type: string, format: uuid }
- *         amount: { type: number, format: float }
- *         currency: { type: string, example: "usd" }
- *         status: { $ref: '#/components/schemas/PaymentStatus' }
  *         userId: { type: string, format: uuid }
+ *         amount: { type: number, format: float }
+ *         type: { $ref: '#/components/schemas/TransactionType' }
+ *         source: { $ref: '#/components/schemas/TransactionSource' }
+ *         status: { $ref: '#/components/schemas/TransactionStatus' }
+ *         description: { type: string, nullable: true }
  *         orderId: { type: string, format: uuid }
- *         stripePaymentIntentId: { type: string }
- *         paymentMethodDetails: { type: object, nullable: true, description: "Details about the payment method used, from Stripe." }
+ *         externalId: { type: string, nullable: true, description: "ID from the external payment provider (e.g., Stripe Payment Intent ID)." }
+ *         meta: { type: object, nullable: true, description: "Additional metadata, such as payment details from Stripe." }
  *         createdAt: { type: string, format: date-time }
  *         updatedAt: { type: string, format: date-time }
+ *     TransactionWithRelations:
+ *       allOf:
+ *         - $ref: '#/components/schemas/Transaction'
+ *         - type: object
+ *           properties:
+ *             order:
+ *               type: object
+ *               properties:
+ *                 id: { type: string, format: uuid }
+ *                 orderCode: { type: string }
+ *                 totalAmount: { type: number, format: float }
  *     SavedPaymentMethod:
  *       type: object
  *       properties:
@@ -106,10 +116,10 @@ export const createPaymentIntentController = async (req: AuthenticatedRequest, r
 
 /**
  * @swagger
- * /api/v1/payments/setup-intent:
+ * /transactions/setup-intent:
  *   post:
  *     summary: Create a Setup Intent to save a new payment method
- *     tags: [Payment]
+ *     tags: [Transaction]
  *     description: Creates a Setup Intent to be used on the client-side for saving a new card for future use.
  *     security:
  *       - bearerAuth: []
@@ -144,10 +154,10 @@ export const createSetupIntentController = async (req: AuthenticatedRequest, res
 
 /**
  * @swagger
- * /api/v1/payments/me/payment-methods:
+ * /transactions/me/payment-methods:
  *   get:
  *     summary: Get my saved payment methods
- *     tags: [Payment]
+ *     tags: [Transaction]
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -173,10 +183,10 @@ export const listMySavedPaymentMethodsController = async (req: AuthenticatedRequ
 
 /**
  * @swagger
- * /api/v1/payments/me/payment-methods/{paymentMethodId}:
+ * /transactions/me/payment-methods/{paymentMethodId}:
  *   delete:
  *     summary: Delete a saved payment method
- *     tags: [Payment]
+ *     tags: [Transaction]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -211,40 +221,40 @@ export const detachPaymentMethodController = async (req: AuthenticatedRequest, r
 
 /**
  * @swagger
- * /api/v1/payments/me:
+ * /transactions/me:
  *   get:
- *     summary: Get my payment history
- *     tags: [Payment]
+ *     summary: Get my transaction history
+ *     tags: [Transaction]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: A list of the user's payments.
+ *         description: A list of the user's transactions.
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/Payment'
+ *                 $ref: '#/components/schemas/TransactionWithRelations'
  */
-export const listMyPaymentsController = async (req: AuthenticatedRequest, res: Response) => {
+export const listMyTransactionsController = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.userId as string;
-    const payments = await listPaymentsForUserService(userId);
-    res.status(200).json(payments);
+    const transactions = await listTransactionsForUserService(userId);
+    res.status(200).json(transactions);
   } catch (error: any) {
-    console.error('Error listing payments:', error);
-    res.status(500).json({ error: 'Failed to list payments.' });
+    console.error('Error listing transactions:', error);
+    res.status(500).json({ error: 'Failed to list transactions.' });
   }
 };
 
 /**
  * @swagger
- * /api/v1/payments/vendor:
+ * /transactions/vendor:
  *   get:
  *     summary: Get payment transactions for a vendor user
- *     tags: [Payment]
- *     description: Retrieves a list of all payments made to stores owned by the authenticated vendor user. Can be filtered by a specific store.
+ *     tags: [Transaction, Vendor]
+ *     description: Retrieves a list of all payment-related transactions for stores owned by the authenticated vendor user. Can be filtered by a specific store.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -252,7 +262,7 @@ export const listMyPaymentsController = async (req: AuthenticatedRequest, res: R
  *         name: vendorId
  *         schema:
  *           type: string
- *           format: uuid
+ *           format: uuid 
  *         description: Optional. The ID of a specific store (vendor) to filter payments for.
  *     responses:
  *       200:
@@ -262,20 +272,20 @@ export const listMyPaymentsController = async (req: AuthenticatedRequest, res: R
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/Payment'
+ *                 $ref: '#/components/schemas/TransactionWithRelations'
  *       403:
  *         description: Forbidden. User is not a vendor.
  */
-export const listVendorPaymentsController = async (req: AuthenticatedRequest, res: Response) => {
+export const listVendorTransactionsController = async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.userId as string;
         const { vendorId } = req.query;
 
-        const payments = await listPaymentsForVendorService(userId, vendorId as string | undefined);
-        res.status(200).json(payments);
+        const transactions = await listTransactionsForVendorService(userId, vendorId as string | undefined);
+        res.status(200).json(transactions);
     } catch (error: any) {
-        console.error('Error listing vendor payments:', error);
-        res.status(500).json({ error: 'Failed to list vendor payments.' });
+        console.error('Error listing vendor transactions:', error);
+        res.status(500).json({ error: 'Failed to list vendor transactions.' });
     }
 };
 

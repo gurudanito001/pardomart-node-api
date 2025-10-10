@@ -67,6 +67,7 @@ exports.uploadMedia = function (file, referenceId, referenceType) {
             resource_type: 'auto',
             folder: "pardomart/" + referenceType.toLowerCase()
         }, function (error, result) { return __awaiter(void 0, void 0, void 0, function () {
+            var dbRecord;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -88,8 +89,8 @@ exports.uploadMedia = function (file, referenceId, referenceType) {
                                 }
                             })];
                     case 1:
-                        _a.sent();
-                        resolve(result);
+                        dbRecord = _a.sent();
+                        resolve({ cloudinaryResult: result, dbRecord: dbRecord });
                         return [2 /*return*/];
                 }
             });

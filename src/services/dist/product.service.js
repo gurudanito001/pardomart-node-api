@@ -62,7 +62,6 @@ exports.getTrendingVendorProductsService = exports.deleteVendorProduct = exports
 var productModel = require("../models/product.model");
 var vendorModel = require("../models/vendor.model");
 var media_service_1 = require("./media.service");
-var uuid_1 = require("uuid");
 /**
  * Uploads an array of base64 encoded images to Cloudinary.
  *
@@ -107,7 +106,7 @@ var uploadImages = function (images, referenceId) { return __awaiter(void 0, voi
                                 return [4 /*yield*/, media_service_1.uploadMedia(mockFile, referenceId, 'product_image')];
                             case 2:
                                 uploadResult = _a.sent();
-                                return [2 /*return*/, uploadResult.secure_url];
+                                return [2 /*return*/, uploadResult.cloudinaryResult.secure_url];
                             case 3:
                                 error_1 = _a.sent();
                                 console.error("Error uploading product image at index " + index + ":", error_1);
@@ -132,7 +131,7 @@ var uploadImages = function (images, referenceId) { return __awaiter(void 0, voi
  * @returns The created vendor product with its relations.
  */
 exports.createVendorProduct = function (payload, ownerId) { return __awaiter(void 0, void 0, Promise, function () {
-    var vendor, images, productData, processedImageUrls, vendorProductId, finalPayload;
+    var vendor, images, productData, processedImageUrls, uuidv4, vendorProductId, finalPayload;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4 /*yield*/, vendorModel.getVendorById(payload.vendorId)];
@@ -143,13 +142,16 @@ exports.createVendorProduct = function (payload, ownerId) { return __awaiter(voi
                 }
                 images = payload.images, productData = __rest(payload, ["images"]);
                 processedImageUrls = [];
-                vendorProductId = uuid_1.v4();
-                if (!(images && images.length > 0)) return [3 /*break*/, 3];
-                return [4 /*yield*/, uploadImages(images, vendorProductId)];
+                return [4 /*yield*/, Promise.resolve().then(function () { return require('uuid'); })];
             case 2:
-                processedImageUrls = _a.sent();
-                _a.label = 3;
+                uuidv4 = (_a.sent()).v4;
+                vendorProductId = uuidv4();
+                if (!(images && images.length > 0)) return [3 /*break*/, 4];
+                return [4 /*yield*/, uploadImages(images, vendorProductId)];
             case 3:
+                processedImageUrls = _a.sent();
+                _a.label = 4;
+            case 4:
                 finalPayload = __assign(__assign({}, productData), { id: vendorProductId, images: processedImageUrls });
                 return [2 /*return*/, productModel.createVendorProduct(finalPayload)];
         }
@@ -168,7 +170,7 @@ exports.getVendorProductById = function (id) { return productModel.getVendorProd
  * @returns The created vendor product with its relations.
  */
 exports.createVendorProductWithBarcode = function (payload, ownerId) { return __awaiter(void 0, void 0, Promise, function () {
-    var vendor, images, barcode, productData, productId, existingProduct, newProduct, vendorProductId, processedImageUrls, vendorProductPayload;
+    var vendor, images, barcode, productData, productId, existingProduct, newProduct, uuidv4, vendorProductId, processedImageUrls, vendorProductPayload;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4 /*yield*/, vendorModel.getVendorById(payload.vendorId)];
@@ -198,15 +200,17 @@ exports.createVendorProductWithBarcode = function (payload, ownerId) { return __
             case 4:
                 productId = existingProduct.id;
                 _a.label = 5;
-            case 5:
-                vendorProductId = uuid_1.v4();
-                processedImageUrls = [];
-                if (!(images && images.length > 0)) return [3 /*break*/, 7];
-                return [4 /*yield*/, uploadImages(images, vendorProductId)];
+            case 5: return [4 /*yield*/, Promise.resolve().then(function () { return require('uuid'); })];
             case 6:
-                processedImageUrls = _a.sent();
-                _a.label = 7;
+                uuidv4 = (_a.sent()).v4;
+                vendorProductId = uuidv4();
+                processedImageUrls = [];
+                if (!(images && images.length > 0)) return [3 /*break*/, 8];
+                return [4 /*yield*/, uploadImages(images, vendorProductId)];
             case 7:
+                processedImageUrls = _a.sent();
+                _a.label = 8;
+            case 8:
                 vendorProductPayload = __assign(__assign({}, productData), { id: vendorProductId, productId: productId, images: processedImageUrls });
                 return [2 /*return*/, productModel.createVendorProduct(vendorProductPayload)];
         }

@@ -151,7 +151,7 @@ var order_service_1 = require("../services/order.service"); // Adjust the path i
  *             orderItems:
  *               type: array
  *               items: { $ref: '#/components/schemas/OrderItemWithRelations' }
- *             vendor: { $ref: '#/components/schemas/VendorWithRatingAndDistance' }
+ *             vendor: { $ref: '#/components/schemas/VendorWithDetails' }
  *             deliveryAddress: { $ref: '#/components/schemas/DeliveryAddress', nullable: true }
  *     Vendor:
  *       type: object
@@ -170,35 +170,6 @@ var order_service_1 = require("../services/order.service"); // Adjust the path i
  *         isVerified: { type: boolean }
  *         meta: { type: object, nullable: true }
  *     VendorWithRatingAndDistance:
- *       allOf:
- *         - $ref: '#/components/schemas/Vendor'
- *         - type: object
- *           properties:
- *             rating:
- *               type: object
- *               properties:
- *                 average: { type: number, format: float }
- *                 count: { type: integer }
- *             distance:
- *               type: number
- *               format: float
- *               description: "Distance to the vendor from the order's delivery address in kilometers."
- *               nullable: true
- *     DeliveryAddress:
- *       type: object
- *       properties:
- *         id: { type: string, format: uuid }
- *         label: { type: string, nullable: true }
- *         addressLine1: { type: string }
- *         addressLine2: { type: string, nullable: true }
- *         city: { type: string }
- *         state: { type: string, nullable: true }
- *         postalCode: { type: string, nullable: true }
- *         country: { type: string }
- *         latitude: { type: number, format: float, nullable: true }
- *         longitude: { type: number, format: float, nullable: true }
- *         isDefault: { type: boolean }
- *     UpdateOrderStatusPayload:
  *       type: object
  *       required: [status]
  *       properties:

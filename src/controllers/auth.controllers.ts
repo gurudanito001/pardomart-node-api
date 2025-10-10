@@ -44,11 +44,11 @@ const prisma = new PrismaClient();
  *               role:
  *                 type: string
  *                 description: The role for the new user.
- *                 enum: [admin, vendor, vendor_staff, delivery, customer, shopper]
+ *                 enum: [customer, vendor, store_admin, store_shopper, delivery_person, admin]
  *                 example: "customer"
  *               vendorId:
  *                 type: string
- *                 description: "Required if role is 'vendor_staff'. The ID of the vendor this staff member belongs to."
+ *                 description: "Required if role is 'store_shopper'. The ID of the vendor this staff member belongs to."
  *                 example: "clq1z2x3y4a5b6c7d8e9f0g1h"
  *     responses:
  *       201:
@@ -105,7 +105,6 @@ export const registerUser = async (req: Request, res: Response) => {
  */
 export const getTimeZones = async (req: Request, res: Response) => {
   try {
-    await prisma.media.deleteMany();
     const timezones = Timezones;
     let utcs: string[] = [];
     timezones.forEach( zone =>{
@@ -140,7 +139,7 @@ export const getTimeZones = async (req: Request, res: Response) => {
  *                 example: "+2348140715723"
  *               role:
  *                 type: string
- *                 enum: [admin, vendor, vendor_staff, delivery, customer, shopper]
+ *                 enum: [customer, vendor, store_admin, store_shopper, delivery_person, admin]
  *                 example: "customer"
  *     responses:
  *       200:
@@ -196,7 +195,7 @@ export const initiateLogin = async (req: Request, res: Response) => {
  *                 example: "123456"
  *               role:
  *                 type: string
- *                 enum: [admin, vendor, vendor_staff, delivery, customer, shopper]
+ *                 enum: [customer, vendor, store_admin, store_shopper, delivery_person, admin]
  *                 example: "customer"
  *     responses:
  *       200:

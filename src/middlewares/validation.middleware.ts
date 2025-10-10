@@ -42,8 +42,8 @@ export const validateRegisterUser = [
     .isIn(Object.values(Role))
     .withMessage(`Role must be one of: ${Object.values(Role).join(', ')}`),
   body('vendorId')
-    .if(body('role').equals(Role.vendor_staff))
-    .isUUID(4).withMessage('A valid vendorId is required for vendor_staff role.'),
+    .if(body('role').equals(Role.store_shopper))
+    .isUUID(4).withMessage('A valid vendorId is required for store_shopper role.'),
 ];
 
 export const validateLogin = [

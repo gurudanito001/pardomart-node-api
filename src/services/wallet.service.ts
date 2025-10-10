@@ -1,4 +1,5 @@
-import { PrismaClient, Wallet, WalletTransaction, TransactionType, TransactionStatus, Prisma } from '@prisma/client';
+import { PrismaClient, Wallet, Transaction, TransactionType, TransactionStatus, Prisma, TransactionSource } from '@prisma/client';
+import * as transactionModel from '../models/transaction.model';
 
 const prisma = new PrismaClient();
 
@@ -50,13 +51,10 @@ export const getWalletByUserIdService = async (userId: string): Promise<Wallet> 
  * @param userId The ID of the user.
  * @returns A list of wallet transactions.
  */
-export const getWalletTransactionsService = async (userId: string): Promise<WalletTransaction[]> => {
-  const wallet = await findOrCreateWalletByUserId(userId);
-
-  return prisma.walletTransaction.findMany({
-    where: { walletId: wallet.id },
-    orderBy: { createdAt: 'desc' },
-  });
+export const getWalletTransactionsService = async (userId: string): Promise<Transaction[]> => {
+  // This now uses the unified transaction model to get all transactions for a user.
+  // You could add further filtering here if needed, e.g., by source.
+  return transactionModel.listTransactionsForUser(userId);
 };
 
 interface CreditWalletPayload {
@@ -73,7 +71,7 @@ interface CreditWalletPayload {
  * @param tx The Prisma transaction client.
  * @returns The created wallet transaction.
  */
-export const creditWallet = async ({ userId, amount, description, meta }: CreditWalletPayload, tx: Prisma.TransactionClient): Promise<WalletTransaction> => {
+export const creditWallet = async ({ userId, amount, description, meta }: CreditWalletPayload, tx: Prisma.TransactionClient): Promise<Transaction> => {
   if (amount <= 0) {
     throw new WalletError('Credit amount must be positive.');
   }
@@ -85,15 +83,15 @@ export const creditWallet = async ({ userId, amount, description, meta }: Credit
     data: { balance: { increment: amount } },
   });
 
-  return tx.walletTransaction.create({
-    data: {
-      walletId: wallet.id,
-      amount,
-      type: TransactionType.CREDIT,
-      status: TransactionStatus.COMPLETED,
-      description,
-      meta: meta || {},
-    },
+  return transactionModel.createTransaction({
+    userId,
+    walletId: wallet.id,
+    amount, // Positive for a credit
+    type: TransactionType.WALLET_TOP_UP, // Or a more specific type
+    source: TransactionSource.SYSTEM, // Or 'STRIPE' if it's a top-up
+    status: TransactionStatus.COMPLETED,
+    description,
+    meta: meta || {},
   });
 };
 
@@ -111,7 +109,7 @@ interface DebitWalletPayload {
  * @param tx The Prisma transaction client.
  * @returns The created wallet transaction.
  */
-export const debitWallet = async ({ userId, amount, description, meta }: DebitWalletPayload, tx: Prisma.TransactionClient): Promise<WalletTransaction> => {
+export const debitWallet = async ({ userId, amount, description, meta }: DebitWalletPayload, tx: Prisma.TransactionClient): Promise<Transaction> => {
   if (amount <= 0) {
     throw new WalletError('Debit amount must be positive.');
   }
@@ -127,14 +125,14 @@ export const debitWallet = async ({ userId, amount, description, meta }: DebitWa
     data: { balance: { decrement: amount } },
   });
 
-  return tx.walletTransaction.create({
-    data: {
-      walletId: wallet.id,
-      amount: -amount,
-      type: TransactionType.DEBIT,
-      status: TransactionStatus.COMPLETED,
-      description,
-      meta: meta || {},
-    },
+  return transactionModel.createTransaction({
+    userId,
+    walletId: wallet.id,
+    amount: -amount, // Negative for a debit
+    type: TransactionType.ORDER_PAYMENT, // Or a more specific type like 'WALLET_WITHDRAWAL'
+    source: TransactionSource.WALLET,
+    status: TransactionStatus.COMPLETED,
+    description,
+    meta: meta || {},
   });
 };

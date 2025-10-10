@@ -71,7 +71,6 @@ var utc_1 = require("dayjs/plugin/utc");
 var timezone_1 = require("dayjs/plugin/timezone");
 var customParseFormat_1 = require("dayjs/plugin/customParseFormat");
 var socket_1 = require("../socket");
-var wallet_service_1 = require("./wallet.service");
 var rating_service_1 = require("./rating.service");
 var notificationService = require("./notification.service");
 dayjs_1["default"].extend(utc_1["default"]);
@@ -459,39 +458,72 @@ exports.updateOrderStatusService = function (id, status) { return __awaiter(void
                                             throw new OrderCreationError('Order not found', 404);
                                         }
                                         vendorAmount = order.subtotal;
-                                        if (!(vendorAmount > 0 && order.vendor.userId)) return [3 /*break*/, 3];
-                                        return [4 /*yield*/, wallet_service_1.creditWallet({
-                                                userId: order.vendor.userId,
-                                                amount: vendorAmount,
-                                                description: "Payment for order #" + order.id.substring(0, 8),
-                                                meta: { orderId: order.id }
-                                            }, tx)];
+                                        if (!(vendorAmount > 0 && order.vendor.userId)) return [3 /*break*/, 4];
+                                        return [4 /*yield*/, tx.wallet.update({
+                                                where: { userId: order.vendor.userId },
+                                                data: { balance: { increment: vendorAmount } }
+                                            })];
                                     case 2:
                                         _a.sent();
-                                        _a.label = 3;
+                                        return [4 /*yield*/, tx.transaction.create({
+                                                data: {
+                                                    userId: order.vendor.userId,
+                                                    amount: vendorAmount,
+                                                    type: client_1.TransactionType.VENDOR_PAYOUT,
+                                                    source: client_1.TransactionSource.SYSTEM,
+                                                    status: 'COMPLETED',
+                                                    description: "Payment for order #" + order.id.substring(0, 8),
+                                                    orderId: order.id
+                                                }
+                                            })];
                                     case 3:
-                                        if (!(order.shopperId && order.shopperTip && order.shopperTip > 0)) return [3 /*break*/, 5];
-                                        return [4 /*yield*/, wallet_service_1.creditWallet({
-                                                userId: order.shopperId,
-                                                amount: order.shopperTip,
-                                                description: "Tip for order #" + order.id.substring(0, 8),
-                                                meta: { orderId: order.id }
-                                            }, tx)];
-                                    case 4:
                                         _a.sent();
-                                        _a.label = 5;
+                                        _a.label = 4;
+                                    case 4:
+                                        if (!(order.shopperId && order.shopperTip && order.shopperTip > 0)) return [3 /*break*/, 7];
+                                        return [4 /*yield*/, tx.wallet.update({
+                                                where: { userId: order.shopperId },
+                                                data: { balance: { increment: order.shopperTip } }
+                                            })];
                                     case 5:
-                                        if (!(order.deliveryPersonId && order.deliveryPersonTip && order.deliveryPersonTip > 0)) return [3 /*break*/, 7];
-                                        return [4 /*yield*/, wallet_service_1.creditWallet({
-                                                userId: order.deliveryPersonId,
-                                                amount: order.deliveryPersonTip,
-                                                description: "Tip for order #" + order.id.substring(0, 8),
-                                                meta: { orderId: order.id }
-                                            }, tx)];
+                                        _a.sent();
+                                        return [4 /*yield*/, tx.transaction.create({
+                                                data: {
+                                                    userId: order.shopperId,
+                                                    amount: order.shopperTip,
+                                                    type: client_1.TransactionType.TIP_PAYOUT,
+                                                    source: client_1.TransactionSource.SYSTEM,
+                                                    status: 'COMPLETED',
+                                                    description: "Tip for order #" + order.id.substring(0, 8),
+                                                    orderId: order.id
+                                                }
+                                            })];
                                     case 6:
                                         _a.sent();
                                         _a.label = 7;
-                                    case 7: 
+                                    case 7:
+                                        if (!(order.deliveryPersonId && order.deliveryPersonTip && order.deliveryPersonTip > 0)) return [3 /*break*/, 10];
+                                        return [4 /*yield*/, tx.wallet.update({
+                                                where: { userId: order.deliveryPersonId },
+                                                data: { balance: { increment: order.deliveryPersonTip } }
+                                            })];
+                                    case 8:
+                                        _a.sent();
+                                        return [4 /*yield*/, tx.transaction.create({
+                                                data: {
+                                                    userId: order.deliveryPersonId,
+                                                    amount: order.deliveryPersonTip,
+                                                    type: client_1.TransactionType.TIP_PAYOUT,
+                                                    source: client_1.TransactionSource.SYSTEM,
+                                                    status: 'COMPLETED',
+                                                    description: "Tip for order #" + order.id.substring(0, 8),
+                                                    orderId: order.id
+                                                }
+                                            })];
+                                    case 9:
+                                        _a.sent();
+                                        _a.label = 10;
+                                    case 10: 
                                     // 4. Update the order status
                                     return [2 /*return*/, orderModel.updateOrder(id, updates, tx)];
                                 }
@@ -690,7 +722,7 @@ exports.getOrdersForVendorDashboard = function (vendorId, options) { return __aw
  * Accepts a pending order, setting its status to 'accepted' and assigning a shopping handler.
  *
  * @param orderId The ID of the order to accept.
- * @param shoppingHandlerUserId The ID of the user (vendor_staff/admin) accepting the order.
+ * @param shoppingHandlerUserId The ID of the user (store_shopper/admin) accepting the order.
  * @param vendorId The ID of the vendor to verify ownership.
  * @returns The updated Order object.
  * @throws Error if order not found, not pending, or does not belong to the vendor.
@@ -774,25 +806,35 @@ reason) { return __awaiter(void 0, void 0, Promise, function () {
                             if (!orderToDecline) {
                                 throw new OrderCreationError('Order not found or cannot be declined in its current state/by this vendor.', 404);
                             }
-                            // 2. Refund the customer's payment to their wallet
-                            return [4 /*yield*/, wallet_service_1.creditWallet({
-                                    userId: orderToDecline.userId,
-                                    amount: orderToDecline.totalAmount,
-                                    description: "Refund for declined order #" + orderId.substring(0, 8),
-                                    meta: { orderId: orderId }
-                                }, tx)];
+                            if (!(orderToDecline.totalAmount > 0)) return [3 /*break*/, 4];
+                            return [4 /*yield*/, tx.wallet.update({
+                                    where: { userId: orderToDecline.userId },
+                                    data: { balance: { increment: orderToDecline.totalAmount } }
+                                })];
                         case 2:
-                            // 2. Refund the customer's payment to their wallet
                             _a.sent();
-                            return [4 /*yield*/, tx.order.update({
-                                    where: { id: orderId },
+                            return [4 /*yield*/, tx.transaction.create({
                                     data: {
-                                        orderStatus: client_1.OrderStatus.declined_by_vendor,
-                                        paymentStatus: client_1.PaymentStatus.refunded,
-                                        reasonForDecline: reason
+                                        userId: orderToDecline.userId,
+                                        amount: orderToDecline.totalAmount,
+                                        type: client_1.TransactionType.REFUND,
+                                        source: client_1.TransactionSource.SYSTEM,
+                                        description: "Refund for declined order #" + orderId.substring(0, 8),
+                                        orderId: orderId
                                     }
                                 })];
                         case 3:
+                            _a.sent();
+                            _a.label = 4;
+                        case 4: return [4 /*yield*/, tx.order.update({
+                                where: { id: orderId },
+                                data: {
+                                    orderStatus: client_1.OrderStatus.declined_by_vendor,
+                                    paymentStatus: client_1.PaymentStatus.refunded,
+                                    reasonForDecline: reason
+                                }
+                            })];
+                        case 5:
                             declinedOrder = _a.sent();
                             // --- Replace TODO with Notification Logic Here ---
                             return [4 /*yield*/, notificationService.createNotification({
@@ -802,7 +844,7 @@ reason) { return __awaiter(void 0, void 0, Promise, function () {
                                     body: "Unfortunately, your order #" + orderToDecline.orderCode + " was declined. You have been refunded " + orderToDecline.totalAmount + " in your wallet.",
                                     meta: { orderId: orderToDecline.id }
                                 })];
-                        case 4:
+                        case 6:
                             // --- Replace TODO with Notification Logic Here ---
                             _a.sent();
                             // --- End Notification Logic ---
@@ -835,7 +877,7 @@ exports.startShoppingService = function (orderId, shoppingHandlerUserId, vendorI
                     })];
             case 1:
                 user = _a.sent();
-                if (!user || user.vendorId !== vendorId || (user.role !== "vendor" && user.role !== "vendor_staff")) {
+                if (!user || user.vendorId !== vendorId || (user.role !== "store_admin" && user.role !== "store_shopper")) {
                     throw new Error('Unauthorized to start shopping for this vendor/order.');
                 }
                 return [4 /*yield*/, prisma.order.update({

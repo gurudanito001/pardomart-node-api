@@ -36,7 +36,7 @@ export interface AuthenticatedRequest extends Request {
  *   schemas:
  *     Role:
  *       type: string
- *       enum: [admin, vendor, vendor_staff, delivery, customer, shopper]
+ *       enum: [customer, vendor, store_admin, store_shopper, delivery_person, admin]
  *     Days:
  *       type: string
  *       enum: [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
@@ -100,11 +100,6 @@ export interface AuthenticatedRequest extends Request {
  *         - $ref: '#/components/schemas/VendorWithRelations'
  *         - type: object
  *           properties:
- *             distance:
- *               type: number
- *               format: float
- *               description: "Distance to the vendor from the user's location in kilometers."
- *               nullable: true
  *             rating:
  *               type: object
  *               properties:
@@ -113,6 +108,11 @@ export interface AuthenticatedRequest extends Request {
  *             productCount:
  *               type: integer
  *               description: "The total number of products this vendor has."
+ *             distance:
+ *               type: number
+ *               format: float
+ *               description: "Distance to the vendor from the user's location in kilometers."
+ *               nullable: true
  *             documentCount:
  *               type: integer
  *               description: "The total number of documents this vendor has uploaded."
@@ -523,5 +523,97 @@ export const getIncompleteSetups = async (req: AuthenticatedRequest, res: Respon
   } catch (error) {
     console.error('Failed to get incomplete vendor setups:', error);
     res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
+ * /vendors/{id}/publish:
+ *   patch:
+ *     summary: Publish a vendor's store
+ *     tags: [Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     description: >
+ *       Marks a vendor's store as published by setting `isPublished` to true, making it visible to customers.
+ *       Only the user who owns the vendor can perform this action.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the vendor to publish.
+ *     responses:
+ *       200:
+ *         description: The successfully published vendor.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Vendor'
+ *       403:
+ *         description: Forbidden. User does not own this vendor.
+ *       404:
+ *         description: Vendor not found.
+ *       500:
+ *         description: Internal server error.
+ */
+export const publishVendor = async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const userId = req.userId as string;
+  try {
+    const vendor = await vendorService.publishVendor(id, userId);
+    res.status(200).json(vendor);
+  } catch (error: any) {
+    console.error('Error publishing vendor:', error);
+    if (error.message.includes('not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    if (error.message.includes('Forbidden')) {
+      return res.status(403).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
+ * /vendors/{id}/approve:
+ *   patch:
+ *     summary: Approve a vendor's store (Admin)
+ *     tags: [Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     description: >
+ *       Marks a vendor's store as verified by setting `isVerified` to true.
+ *       This is intended to be an admin-only action.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the vendor to approve.
+ *     responses:
+ *       200:
+ *         description: The successfully approved vendor.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Vendor'
+ *       404:
+ *         description: Vendor not found.
+ *       500:
+ *         description: Internal server error.
+ */
+export const approveVendor = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const vendor = await vendorService.approveVendor(id);
+    res.status(200).json(vendor);
+  } catch (error: any) {
+    res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message });
   }
 };

@@ -47,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.getIncompleteSetups = exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
+exports.approveVendor = exports.publishVendor = exports.getIncompleteSetups = exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
 var vendorService = require("../services/vendor.service");
 /**
  * @swagger
@@ -77,7 +77,7 @@ var vendorService = require("../services/vendor.service");
  *   schemas:
  *     Role:
  *       type: string
- *       enum: [admin, vendor, vendor_staff, delivery, customer, shopper]
+ *       enum: [customer, vendor, store_admin, store_shopper, delivery_person, admin]
  *     Days:
  *       type: string
  *       enum: [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
@@ -141,11 +141,6 @@ var vendorService = require("../services/vendor.service");
  *         - $ref: '#/components/schemas/VendorWithRelations'
  *         - type: object
  *           properties:
- *             distance:
- *               type: number
- *               format: float
- *               description: "Distance to the vendor from the user's location in kilometers."
- *               nullable: true
  *             rating:
  *               type: object
  *               properties:
@@ -154,6 +149,11 @@ var vendorService = require("../services/vendor.service");
  *             productCount:
  *               type: integer
  *               description: "The total number of products this vendor has."
+ *             distance:
+ *               type: number
+ *               format: float
+ *               description: "Distance to the vendor from the user's location in kilometers."
+ *               nullable: true
  *             documentCount:
  *               type: integer
  *               description: "The total number of documents this vendor has uploaded."
@@ -628,6 +628,120 @@ exports.getIncompleteSetups = function (req, res) { return __awaiter(void 0, voi
                 res.status(500).json({ message: 'Internal server error' });
                 return [3 /*break*/, 4];
             case 4: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /vendors/{id}/publish:
+ *   patch:
+ *     summary: Publish a vendor's store
+ *     tags: [Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     description: >
+ *       Marks a vendor's store as published by setting `isPublished` to true, making it visible to customers.
+ *       Only the user who owns the vendor can perform this action.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the vendor to publish.
+ *     responses:
+ *       200:
+ *         description: The successfully published vendor.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Vendor'
+ *       403:
+ *         description: Forbidden. User does not own this vendor.
+ *       404:
+ *         description: Vendor not found.
+ *       500:
+ *         description: Internal server error.
+ */
+exports.publishVendor = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var id, userId, vendor, error_8;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                id = req.params.id;
+                userId = req.userId;
+                _a.label = 1;
+            case 1:
+                _a.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, vendorService.publishVendor(id, userId)];
+            case 2:
+                vendor = _a.sent();
+                res.status(200).json(vendor);
+                return [3 /*break*/, 4];
+            case 3:
+                error_8 = _a.sent();
+                console.error('Error publishing vendor:', error_8);
+                if (error_8.message.includes('not found')) {
+                    return [2 /*return*/, res.status(404).json({ error: error_8.message })];
+                }
+                if (error_8.message.includes('Forbidden')) {
+                    return [2 /*return*/, res.status(403).json({ error: error_8.message })];
+                }
+                res.status(500).json({ error: 'Internal server error' });
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /vendors/{id}/approve:
+ *   patch:
+ *     summary: Approve a vendor's store (Admin)
+ *     tags: [Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     description: >
+ *       Marks a vendor's store as verified by setting `isVerified` to true.
+ *       This is intended to be an admin-only action.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the vendor to approve.
+ *     responses:
+ *       200:
+ *         description: The successfully approved vendor.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Vendor'
+ *       404:
+ *         description: Vendor not found.
+ *       500:
+ *         description: Internal server error.
+ */
+exports.approveVendor = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var id, vendor, error_9;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                id = req.params.id;
+                return [4 /*yield*/, vendorService.approveVendor(id)];
+            case 1:
+                vendor = _a.sent();
+                res.status(200).json(vendor);
+                return [3 /*break*/, 3];
+            case 2:
+                error_9 = _a.sent();
+                res.status(error_9.message.includes('not found') ? 404 : 500).json({ error: error_9.message });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
         }
     });
 }); };

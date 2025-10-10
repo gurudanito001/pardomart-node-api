@@ -158,7 +158,7 @@ export const deleteStaffService = async (staffId: string, ownerId: string): Prom
   }
 
   // Ensure one cannot delete a user who is not a staff member
-  if (staffUser.role !== Role.vendor_staff) {
+  if (staffUser.role !== Role.store_shopper) {
     throw new Error('This user is not a staff member and cannot be deleted through this endpoint.');
   }
 

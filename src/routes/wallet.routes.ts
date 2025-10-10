@@ -4,10 +4,10 @@ import { authenticate } from '../middlewares/auth.middleware';
 
 const router = Router();
 
-// All wallet routes require an authenticated user
-router.use(authenticate);
+// GET /api/v1/wallet/me - Get the current user's wallet
+router.get('/me', authenticate, walletController.getWalletController);
 
-router.get('/me', walletController.getMyWalletController);
-router.get('/me/transactions', walletController.getMyWalletTransactionsController);
+// GET /api/v1/wallet/me/transactions - Get the current user's transaction history
+router.get('/me/transactions', authenticate, walletController.getWalletTransactionsController);
 
 export default router;

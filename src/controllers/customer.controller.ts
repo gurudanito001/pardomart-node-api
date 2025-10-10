@@ -27,7 +27,13 @@ import { AuthenticatedRequest } from './vendor.controller';
  *         description: Optional. The ID of a specific store to filter customers for. If omitted, returns customers from all stores.
  *     responses:
  *       200:
- *         description: A list of customers who have made a purchase.
+ *         description: A list of customers who have made a purchase from the vendor's store(s).
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/UserSummary'
  *       403:
  *         description: Forbidden. The authenticated user does not own the specified vendor.
  *       500:

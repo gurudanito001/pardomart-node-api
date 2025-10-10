@@ -36,17 +36,23 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.getMyWalletTransactionsController = exports.getMyWalletController = void 0;
-var wallet_service_1 = require("../services/wallet.service");
+exports.getWalletTransactionsController = exports.getWalletController = void 0;
+var walletService = require("../services/wallet.service");
+/**
+ * @swagger
+ * tags:
+ *   name: Wallet
+ *   description: User wallet and transaction management
+ */
 /**
  * @swagger
  * /wallet/me:
  *   get:
- *     summary: Get my wallet
+ *     summary: Get the authenticated user's wallet
  *     tags: [Wallet]
- *     description: Retrieves the wallet details and balance for the authenticated user. A wallet is created automatically on first access.
  *     security:
  *       - bearerAuth: []
+ *     description: Retrieves the wallet details and balance for the currently authenticated user. If a wallet does not exist, it will be created automatically.
  *     responses:
  *       200:
  *         description: The user's wallet.
@@ -54,18 +60,10 @@ var wallet_service_1 = require("../services/wallet.service");
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Wallet'
- *       401:
- *         description: Unauthorized.
  *       500:
  *         description: Internal server error.
  * components:
  *   schemas:
- *     TransactionType:
- *       type: string
- *       enum: [CREDIT, DEBIT]
- *     TransactionStatus:
- *       type: string
- *       enum: [PENDING, COMPLETED, FAILED, CANCELLED]
  *     Wallet:
  *       type: object
  *       properties:
@@ -74,62 +72,15 @@ var wallet_service_1 = require("../services/wallet.service");
  *         balance: { type: number, format: float }
  *         createdAt: { type: string, format: date-time }
  *         updatedAt: { type: string, format: date-time }
- *     WalletTransaction:
- *       type: object
- *       properties:
- *         id: { type: string, format: uuid }
- *         walletId: { type: string, format: uuid }
- *         amount:
- *           type: number
- *           format: float
- *           description: "Positive for credit, negative for debit."
- *         type:
- *           $ref: '#/components/schemas/TransactionType'
- *         status:
- *           $ref: '#/components/schemas/TransactionStatus'
- *         description:
- *           type: string
- *           nullable: true
- *         meta:
- *           type: object
- *           nullable: true
- *           description: "Extra metadata, like an order ID."
- *         createdAt:
- *           type: string
- *           format: date-time
- *         updatedAt:
- *           type: string
- *           format: date-time
  */
-/**
- * @swagger
- * /wallet/me:
- *   get:
- *     summary: Get my wallet
- *     tags: [Wallet]
- *     description: Retrieves the wallet details and balance for the authenticated user. A wallet is created automatically on first access.
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: The user's wallet.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Wallet'
- *       401:
- *         description: Unauthorized.
- *       500:
- *         description: Internal server error.
- */
-exports.getMyWalletController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+exports.getWalletController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var userId, wallet, error_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
                 userId = req.userId;
-                return [4 /*yield*/, wallet_service_1.getWalletByUserIdService(userId)];
+                return [4 /*yield*/, walletService.getWalletByUserIdService(userId)];
             case 1:
                 wallet = _a.sent();
                 res.status(200).json(wallet);
@@ -147,33 +98,31 @@ exports.getMyWalletController = function (req, res) { return __awaiter(void 0, v
  * @swagger
  * /wallet/me/transactions:
  *   get:
- *     summary: Get my wallet transactions
+ *     summary: Get the authenticated user's transaction history
  *     tags: [Wallet]
- *     description: Retrieves the transaction history for the authenticated user's wallet.
  *     security:
  *       - bearerAuth: []
+ *     description: Retrieves a list of all financial transactions for the authenticated user.
  *     responses:
  *       200:
- *         description: A list of wallet transactions.
+ *         description: A list of the user's transactions.
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/WalletTransaction'
- *       401:
- *         description: Unauthorized.
+ *                 $ref: '#/components/schemas/TransactionWithRelations'
  *       500:
  *         description: Internal server error.
  */
-exports.getMyWalletTransactionsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+exports.getWalletTransactionsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var userId, transactions, error_2;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
                 userId = req.userId;
-                return [4 /*yield*/, wallet_service_1.getWalletTransactionsService(userId)];
+                return [4 /*yield*/, walletService.getWalletTransactionsService(userId)];
             case 1:
                 transactions = _a.sent();
                 res.status(200).json(transactions);
