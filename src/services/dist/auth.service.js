@@ -158,7 +158,7 @@ exports.verifyCodeAndLogin = function (mobileNumber, verificationCode, role) { r
                     userId: user.id,
                     role: user.role,
                     vendorId: user.vendorId
-                }, process.env.JWT_SECRET, { expiresIn: '30d' });
+                }, process.env.SECRET, { expiresIn: '30d' });
                 return [2 /*return*/, { user: user, token: token }];
         }
     });

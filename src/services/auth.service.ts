@@ -95,7 +95,7 @@ export const verifyCodeAndLogin = async (mobileNumber: string, verificationCode:
       role: user.role,
       vendorId: user.vendorId, // Include vendorId in the token for staff roles
     },
-    process.env.JWT_SECRET!,
+    process.env.SECRET!,
     { expiresIn: '30d' }
   );
 
