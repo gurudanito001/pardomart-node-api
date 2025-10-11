@@ -790,7 +790,7 @@ export const updateOrderTipController = async (req: AuthenticatedRequest, res: R
 
 /**
  * @swagger
- * /orders/vendor:
+ * /order/vendor:
  *   get:
  *     summary: Get all orders for a vendor user's stores
  *     tags: [Order, Vendor]

@@ -42,11 +42,11 @@ export const authenticate = (req: AuthenticatedRequest, res: Response, next: Nex
 // Middleware to authorize access for vendor staff or admin roles
 export const authorizeVendorAccess = (req: Request, res: Response, next: NextFunction) => {
   const authReq = req as AuthenticatedRequest;
-  if (!authReq.userRole || (authReq.userRole !== "store_shopper" && authReq.userRole !== "vendor")) {
+  if (!authReq.userRole || (authReq.userRole !== Role.vendor && authReq.userRole !== Role.store_admin && authReq.userRole !== Role.store_shopper)) {
     return res.status(403).json({ message: 'Forbidden: Requires vendor staff or admin role.' });
   }
   // Ensure the user is actually associated with a vendor (critical check)
-  if (authReq.userRole === "store_shopper" && !authReq.vendorId) {
+  if ((authReq.userRole === Role.store_shopper || authReq.userRole === Role.store_admin) && !authReq.vendorId) {
     return res.status(403).json({ message: 'Forbidden: User is not associated with a vendor.' });
   }
   next();

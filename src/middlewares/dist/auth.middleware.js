@@ -1,6 +1,8 @@
 "use strict";
 exports.__esModule = true;
 exports.authorize = exports.authorizeVendorAccess = exports.authenticate = void 0;
+// middlewares/auth.middleware.ts
+var client_1 = require("@prisma/client");
 var jsonwebtoken_1 = require("jsonwebtoken");
 var JWT_SECRET = process.env.SECRET;
 exports.authenticate = function (req, res, next) {
@@ -28,11 +30,11 @@ exports.authenticate = function (req, res, next) {
 // Middleware to authorize access for vendor staff or admin roles
 exports.authorizeVendorAccess = function (req, res, next) {
     var authReq = req;
-    if (!authReq.userRole || (authReq.userRole !== "store_shopper" && authReq.userRole !== "vendor")) {
+    if (!authReq.userRole || (authReq.userRole !== client_1.Role.vendor && authReq.userRole !== client_1.Role.store_admin && authReq.userRole !== client_1.Role.store_shopper)) {
         return res.status(403).json({ message: 'Forbidden: Requires vendor staff or admin role.' });
     }
     // Ensure the user is actually associated with a vendor (critical check)
-    if (authReq.userRole === "store_shopper" && !authReq.vendorId) {
+    if ((authReq.userRole === client_1.Role.store_shopper || authReq.userRole === client_1.Role.store_admin) && !authReq.vendorId) {
         return res.status(403).json({ message: 'Forbidden: User is not associated with a vendor.' });
     }
     next();
