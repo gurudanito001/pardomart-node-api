@@ -910,7 +910,7 @@ exports.updateOrderTipController = function (req, res) { return __awaiter(void 0
 }); };
 /**
  * @swagger
- * /orders/vendor:
+ * /order/vendor:
  *   get:
  *     summary: Get all orders for a vendor user's stores
  *     tags: [Order, Vendor]

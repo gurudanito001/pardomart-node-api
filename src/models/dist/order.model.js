@@ -96,6 +96,7 @@ exports.getOrderById = function (id, tx) { return __awaiter(void 0, void 0, Prom
                         include: {
                             vendorProduct: {
                                 include: {
+                                    categories: true,
                                     product: true
                                 }
                             },
