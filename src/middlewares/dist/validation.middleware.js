@@ -181,6 +181,7 @@ exports.validateCreateCategoriesBulk = [
     express_validator_1.body('categories').isArray({ min: 1 }).withMessage('Categories must be a non-empty array.'),
     express_validator_1.body('categories.*.name').trim().notEmpty().withMessage('Each category must have a name.'),
     express_validator_1.body('categories.*.description').optional().isString(),
+    express_validator_1.body('categories.*.imageUrl').optional().isString(),
     express_validator_1.body('categories.*.parentId').optional({ nullable: true }).isUUID(4).withMessage('Each parent ID must be a valid UUID.'),
 ];
 exports.validateUpdateCategory = [

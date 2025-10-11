@@ -3,7 +3,7 @@ import * as categoryModel from '../models/category.model';
 import { Category } from '@prisma/client';
 
 
-export const createCategoriesBulk = async (categories: { name: string; description: string, parentId?: string }[]): Promise<Category[]> => {
+export const createCategoriesBulk = async (categories: { name: string; description: string, parentId?: string, imageUrl: string }[]): Promise<Category[]> => {
   return categoryModel.createCategoriesBulk(categories);
 };
 

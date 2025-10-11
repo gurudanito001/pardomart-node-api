@@ -158,6 +158,7 @@ export const validateCreateCategoriesBulk = [
   body('categories').isArray({ min: 1 }).withMessage('Categories must be a non-empty array.'),
   body('categories.*.name').trim().notEmpty().withMessage('Each category must have a name.'),
   body('categories.*.description').optional().isString(),
+  body('categories.*.imageUrl').optional().isString(),
   body('categories.*.parentId').optional({ nullable: true }).isUUID(4).withMessage('Each parent ID must be a valid UUID.'),
 ];
 

@@ -12,11 +12,12 @@ interface UpdateCategoryPayload {
   name?: string;
 }
 
-export const createCategoriesBulk = async (categories: { name: string; description?: string, parentId?: string  }[]): Promise<Category[]> => {
+export const createCategoriesBulk = async (categories: { name: string; description?: string, parentId?: string, imageUrl: string  }[]): Promise<Category[]> => {
   const categoryData = categories.map((cat) => ({
     name: cat.name, // Use 'category' from the input
     description: cat.description,
-    parentId: cat.parentId
+    parentId: cat.parentId,
+    imageUrl: cat.imageUrl,
   }));
 
   await prisma.category.createMany({
