@@ -47,7 +47,7 @@ var __rest = (this && this.__rest) || function (s, e) {
     return t;
 };
 exports.__esModule = true;
-exports.deleteStaffService = exports.updateStaffService = exports.getStaffByIdService = exports.listStaffByOwnerIdService = exports.listStaffByVendorIdService = exports.createStaffService = void 0;
+exports.listStaffTransactionsService = exports.deleteStaffService = exports.updateStaffService = exports.getStaffByIdService = exports.listStaffService = exports.listStaffByVendorIdService = exports.createStaffService = void 0;
 // services/staff.service.ts
 var staffModel = require("../models/staff.model");
 var client_1 = require("@prisma/client");
@@ -119,14 +119,39 @@ exports.listStaffByVendorIdService = function (vendorId, ownerId) { return __awa
  * @param ownerId - The user ID of the vendor owner.
  * @returns A list of all staff users.
  */
-exports.listStaffByOwnerIdService = function (ownerId) { return __awaiter(void 0, void 0, Promise, function () {
-    var staffList;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0: return [4 /*yield*/, staffModel.listStaffByOwnerId(ownerId)];
-            case 1:
-                staffList = _a.sent();
-                return [2 /*return*/, staffList.map(sanitizeUser)];
+exports.listStaffService = function (options) { return __awaiter(void 0, void 0, Promise, function () {
+    var userId, userRole, staffVendorId, staffList, _a;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                userId = options.userId, userRole = options.userRole, staffVendorId = options.staffVendorId;
+                staffList = [];
+                _a = userRole;
+                switch (_a) {
+                    case client_1.Role.vendor: return [3 /*break*/, 1];
+                    case client_1.Role.store_admin: return [3 /*break*/, 3];
+                    case client_1.Role.store_shopper: return [3 /*break*/, 5];
+                }
+                return [3 /*break*/, 6];
+            case 1: return [4 /*yield*/, staffModel.listStaffByOwnerId(userId)];
+            case 2:
+                // A vendor owner gets all staff from all their stores.
+                staffList = _b.sent();
+                return [3 /*break*/, 7];
+            case 3:
+                // A store admin gets all staff from their assigned store.
+                if (!staffVendorId) {
+                    throw new Error('Store admin is not associated with a vendor.');
+                }
+                return [4 /*yield*/, staffModel.listStaffByVendorId(staffVendorId)];
+            case 4:
+                staffList = _b.sent();
+                return [3 /*break*/, 7];
+            case 5: 
+            // A store shopper is not permitted to list other staff members.
+            throw new Error('Unauthorized role.');
+            case 6: throw new Error('Unauthorized role.');
+            case 7: return [2 /*return*/, staffList.map(sanitizeUser)];
         }
     });
 }); };
@@ -222,6 +247,47 @@ exports.deleteStaffService = function (staffId, ownerId) { return __awaiter(void
             case 3:
                 deletedUser = _a.sent();
                 return [2 /*return*/, sanitizeUser(deletedUser)];
+        }
+    });
+}); };
+/**
+ * Retrieves transactions for staff members owned by a vendor.
+ * @param ownerId - The ID of the vendor owner.
+ * @param options - Filtering options for staffUserId and vendorId.
+ * @returns A list of transactions.
+ */
+exports.listStaffTransactionsService = function (ownerId, options) { return __awaiter(void 0, void 0, Promise, function () {
+    var staffUserId, vendorId, staffUser, vendor;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                staffUserId = options.staffUserId, vendorId = options.vendorId;
+                if (!staffUserId) return [3 /*break*/, 2];
+                return [4 /*yield*/, exports.getStaffByIdService(staffUserId, ownerId)];
+            case 1:
+                staffUser = _a.sent();
+                if (!staffUser) {
+                    // Throws an error if owner doesn't own the staff, or if staff not found.
+                    // This implicitly handles authorization.
+                    throw new Error('Staff member not found or you are not authorized to view their transactions.');
+                }
+                _a.label = 2;
+            case 2:
+                if (!vendorId) return [3 /*break*/, 4];
+                return [4 /*yield*/, prisma.vendor.findFirst({
+                        where: { id: vendorId, userId: ownerId }
+                    })];
+            case 3:
+                vendor = _a.sent();
+                if (!vendor) {
+                    throw new Error('Vendor not found or you are not authorized to view its transactions.');
+                }
+                _a.label = 4;
+            case 4: return [2 /*return*/, staffModel.listStaffTransactions({
+                    ownerId: ownerId,
+                    staffUserId: staffUserId,
+                    vendorId: vendorId
+                })];
         }
     });
 }); };

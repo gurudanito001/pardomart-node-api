@@ -1127,42 +1127,67 @@ export const respondToReplacementService = async (
 export interface GetOrdersForVendorOptions {
   vendorId?: string;
   status?: OrderStatus;
+  staffVendorId?: string; // The vendorId from the staff member's token
 }
 
 /**
  * Retrieves all orders for a vendor user across all their stores.
  * It can be filtered by a specific vendorId (store) or order status.
  *
- * @param userId The ID of the authenticated vendor user.
+ * @param requestingUserId The ID of the authenticated user.
+ * @param requestingUserRole The role of the authenticated user.
  * @param options Filtering options including vendorId and status.
  * @returns A promise that resolves to an array of orders.
  * @throws OrderCreationError if the user has no vendors or if the specified vendorId does not belong to the user.
  */
 export const getOrdersForVendorUserService = async (
-  userId: string,
+  requestingUserId: string,
+  requestingUserRole: Role,
   options: GetOrdersForVendorOptions
 ): Promise<orderModel.OrderWithRelations[]> => {
-  const { vendorId, status } = options;
+  const { vendorId, status, staffVendorId } = options;
+  const modelFilters: orderModel.GetOrdersForVendorFilters = {};
 
-  // 1. Get all vendors owned by the user.
-  const userVendors = await vendorModel.getVendorsByUserId(userId);
-  if (userVendors.length === 0) {
-    // If the user has no stores, they have no orders.
-    return [];
-  }
+  switch (requestingUserRole) {
+    case Role.vendor:
+      // 1. Get all vendors owned by the user.
+      const userVendors = await vendorModel.getVendorsByUserId(requestingUserId);
+      if (userVendors.length === 0) return [];
 
-  const userVendorIds = userVendors.map((v) => v.id);
-  let vendorIdsToQuery = userVendorIds;
+      const userVendorIds = userVendors.map((v) => v.id);
+      modelFilters.vendorIds = userVendorIds;
 
-  // 2. If a specific vendorId is provided, validate it and narrow the query.
-  if (vendorId) {
-    if (!userVendorIds.includes(vendorId)) {
-      // The user is trying to access orders for a store they don't own.
-      throw new OrderCreationError('You are not authorized to access orders for this vendor.', 403);
-    }
-    vendorIdsToQuery = [vendorId];
+      // 2. If a specific vendorId is provided, validate it and narrow the query.
+      if (vendorId) {
+        if (!userVendorIds.includes(vendorId)) {
+          throw new OrderCreationError('You are not authorized to access orders for this vendor.', 403);
+        }
+        modelFilters.vendorIds = [vendorId];
+      }
+      break;
+
+    case Role.store_admin:
+      if (!staffVendorId) throw new OrderCreationError('You are not assigned to a store.', 403);
+      if (vendorId && vendorId !== staffVendorId) {
+        throw new OrderCreationError('You are not authorized to access orders for this vendor.', 403);
+      }
+      modelFilters.vendorIds = [staffVendorId];
+      break;
+
+    case Role.store_shopper:
+      if (!staffVendorId) throw new OrderCreationError('You are not assigned to a store.', 403);
+      if (vendorId && vendorId !== staffVendorId) {
+        throw new OrderCreationError('You are not authorized to access orders for this vendor.', 403);
+      }
+      modelFilters.vendorIds = [staffVendorId];
+      modelFilters.shopperId = requestingUserId;
+      break;
+
+    default:
+      throw new OrderCreationError('You are not authorized to perform this action.', 403);
   }
 
   // 3. Fetch the orders using the determined vendor IDs and optional status.
-  return orderModel.findOrdersForVendors({ vendorIds: vendorIdsToQuery, status });
+  modelFilters.status = status;
+  return orderModel.findOrdersForVendors(modelFilters);
 };

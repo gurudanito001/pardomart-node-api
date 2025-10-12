@@ -47,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteStaff = exports.updateStaff = exports.getStaffById = exports.listStaffByOwnerId = exports.listStaffByVendorId = exports.createStaff = void 0;
+exports.listStaffTransactions = exports.deleteStaff = exports.updateStaff = exports.getStaffById = exports.listStaffByOwnerId = exports.listStaffByVendorId = exports.createStaff = void 0;
 // models/staff.model.ts
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
@@ -150,6 +150,38 @@ exports.deleteStaff = function (staffId) { return __awaiter(void 0, void 0, Prom
         // before calling this function.
         return [2 /*return*/, prisma.user["delete"]({
                 where: { id: staffId }
+            })];
+    });
+}); };
+/**
+ * Retrieves transactions for staff members under a vendor owner's account.
+ * @param filters - The filters to apply, including ownerId and optional staffUserId/vendorId.
+ * @returns A list of transactions.
+ */
+exports.listStaffTransactions = function (filters) { return __awaiter(void 0, void 0, Promise, function () {
+    var ownerId, staffUserId, vendorId, where;
+    return __generator(this, function (_a) {
+        ownerId = filters.ownerId, staffUserId = filters.staffUserId, vendorId = filters.vendorId;
+        where = {
+            user: {
+                role: client_1.Role.store_shopper,
+                vendor: {
+                    userId: ownerId
+                }
+            }
+        };
+        if (staffUserId) {
+            where.userId = staffUserId;
+        }
+        if (vendorId) {
+            // This is the correct way to filter by the staff member's store
+            if (where.user) {
+                where.user.vendorId = vendorId;
+            }
+        }
+        return [2 /*return*/, prisma.transaction.findMany({
+                where: where,
+                orderBy: { createdAt: 'desc' }
             })];
     });
 }); };

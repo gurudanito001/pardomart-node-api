@@ -78,3 +78,68 @@ export const listTransactionsForVendor = async (filters: ListVendorTransactionsF
     orderBy: { createdAt: 'desc' },
   });
 };
+
+
+
+
+export interface ListTransactionsModelFilters {
+  ownerId?: string; // The vendor owner's ID
+  vendorId?: string; // A specific store ID
+  userId?: string; // A specific user's ID (customer or staff)
+}
+
+/**
+ * Retrieves a list of transactions based on various filters for vendors and their staff.
+ * @param filters - The filters to apply to the query.
+ * @returns A list of transactions.
+ */
+export const listTransactions = async (filters: ListTransactionsModelFilters): Promise<Transaction[]> => {
+  const { ownerId, vendorId, userId } = filters;
+
+  const where: Prisma.TransactionWhereInput = {};
+
+  // If a specific user (customer or staff) is being filtered, this is the primary condition.
+  if (userId) {
+    where.userId = userId;
+  }
+
+  // The main filtering logic for vendors/stores.
+  // This should capture transactions related to orders in a store,
+  // AND transactions made directly by staff of that store.
+  const vendorFilter: Prisma.TransactionWhereInput = {
+    OR: [
+      // Condition 1: Transaction is linked to an order from the specified vendor/owner.
+      {
+        order: {
+          vendor: {
+            ...(vendorId ? { id: vendorId } : {}),
+            ...(ownerId ? { userId: ownerId } : {}),
+          },
+        },
+      },
+      // Condition 2: Transaction was performed by a user (staff) who belongs to the specified vendor/owner.
+      {
+        user: {
+          vendor: {
+            ...(vendorId ? { id: vendorId } : {}),
+            ...(ownerId ? { userId: ownerId } : {}),
+          },
+        },
+      },
+    ],
+  };
+
+  // If there's a vendor or owner filter, combine it with the main `where` clause.
+  if (vendorId || ownerId) {
+    where.AND = [where.AND || {}, vendorFilter].flat();
+  }
+
+  return prisma.transaction.findMany({
+    where,
+    include: {
+      user: { select: { id: true, name: true, email: true, role: true } },
+      order: { select: { id: true, orderCode: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+};

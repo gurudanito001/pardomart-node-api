@@ -47,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.listTransactionsForVendor = exports.listTransactionsForUser = exports.createTransaction = void 0;
+exports.listTransactions = exports.listTransactionsForVendor = exports.listTransactionsForUser = exports.createTransaction = void 0;
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
 exports.createTransaction = function (payload, tx) {
@@ -96,5 +96,49 @@ exports.listTransactionsForVendor = function (filters) { return __awaiter(void 0
             }
         };
         return [2 /*return*/, prisma.transaction.findMany(__assign(__assign({ where: where }, transactionWithRelations), { orderBy: { createdAt: 'desc' } }))];
+    });
+}); };
+/**
+ * Retrieves a list of transactions based on various filters for vendors and their staff.
+ * @param filters - The filters to apply to the query.
+ * @returns A list of transactions.
+ */
+exports.listTransactions = function (filters) { return __awaiter(void 0, void 0, Promise, function () {
+    var ownerId, vendorId, userId, where, vendorFilter;
+    return __generator(this, function (_a) {
+        ownerId = filters.ownerId, vendorId = filters.vendorId, userId = filters.userId;
+        where = {};
+        // If a specific user (customer or staff) is being filtered, this is the primary condition.
+        if (userId) {
+            where.userId = userId;
+        }
+        vendorFilter = {
+            OR: [
+                // Condition 1: Transaction is linked to an order from the specified vendor/owner.
+                {
+                    order: {
+                        vendor: __assign(__assign({}, (vendorId ? { id: vendorId } : {})), (ownerId ? { userId: ownerId } : {}))
+                    }
+                },
+                // Condition 2: Transaction was performed by a user (staff) who belongs to the specified vendor/owner.
+                {
+                    user: {
+                        vendor: __assign(__assign({}, (vendorId ? { id: vendorId } : {})), (ownerId ? { userId: ownerId } : {}))
+                    }
+                },
+            ]
+        };
+        // If there's a vendor or owner filter, combine it with the main `where` clause.
+        if (vendorId || ownerId) {
+            where.AND = [where.AND || {}, vendorFilter].flat();
+        }
+        return [2 /*return*/, prisma.transaction.findMany({
+                where: where,
+                include: {
+                    user: { select: { id: true, name: true, email: true, role: true } },
+                    order: { select: { id: true, orderCode: true } }
+                },
+                orderBy: { createdAt: 'desc' }
+            })];
     });
 }); };

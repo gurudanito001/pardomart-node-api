@@ -38,6 +38,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 exports.__esModule = true;
 exports.listCustomersController = void 0;
 var customerService = require("../services/customer.service");
+var client_1 = require("@prisma/client");
 /**
  * @swagger
  * tags:
@@ -48,17 +49,19 @@ var customerService = require("../services/customer.service");
  * @swagger
  * /customers:
  *   get:
- *     summary: List customers for a vendor account or a specific store
+ *     summary: List customers for a vendor, admin, or shopper
  *     tags: [Customers]
+ *     description: >
+ *       Retrieves a list of unique customers who have patronized a store.
+ *       - **Vendor**: Can see customers from all their stores. Can filter by a specific `vendorId`.
+ *       - **Store Admin/Shopper**: Can only see customers from their assigned store. The `vendorId` filter is ignored.
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: vendorId
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Optional. The ID of a specific store to filter customers for. If omitted, returns customers from all stores.
+ *         schema: { type: string, format: uuid }
+ *         description: Optional. For vendors, filters customers by a specific store ID. For staff, this parameter is ignored.
  *     responses:
  *       200:
  *         description: A list of customers who have made a purchase from the vendor's store(s).
@@ -69,19 +72,35 @@ var customerService = require("../services/customer.service");
  *               items:
  *                 $ref: '#/components/schemas/UserSummary'
  *       403:
- *         description: Forbidden. The authenticated user does not own the specified vendor.
+ *         description: Forbidden. The authenticated user does not have permission.
  *       500:
  *         description: Internal server error.
  */
 exports.listCustomersController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var ownerId, vendorId, customers, error_1;
+    var userId, userRole, staffVendorId, queryVendorId, vendorIdToQuery, ownerId, customers, error_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                ownerId = req.userId;
-                vendorId = req.query.vendorId;
-                return [4 /*yield*/, customerService.listCustomersForVendorService(ownerId, vendorId)];
+                userId = req.userId;
+                userRole = req.userRole;
+                staffVendorId = req.vendorId;
+                queryVendorId = req.query.vendorId;
+                vendorIdToQuery = void 0;
+                ownerId = void 0;
+                if (userRole === client_1.Role.vendor) {
+                    ownerId = userId;
+                    vendorIdToQuery = queryVendorId; // A vendor can filter by any of their stores
+                }
+                else {
+                    // For staff, they can only see customers of their assigned store.
+                    // Any query for a different store is an error.
+                    if (queryVendorId && queryVendorId !== staffVendorId) {
+                        return [2 /*return*/, res.status(403).json({ error: 'Forbidden: You can only access customers for your assigned store.' })];
+                    }
+                    vendorIdToQuery = staffVendorId;
+                }
+                return [4 /*yield*/, customerService.listCustomersService({ ownerId: ownerId, vendorId: vendorIdToQuery })];
             case 1:
                 customers = _a.sent();
                 res.status(200).json(customers);
@@ -89,10 +108,10 @@ exports.listCustomersController = function (req, res) { return __awaiter(void 0,
             case 2:
                 error_1 = _a.sent();
                 console.error('Error listing customers:', error_1);
-                if (error_1.message.startsWith('Unauthorized')) {
+                if (error_1.message.includes('Unauthorized')) {
                     return [2 /*return*/, res.status(403).json({ error: error_1.message })];
                 }
-                res.status(500).json({ error: error_1.message || 'Internal server error' });
+                res.status(500).json({ error: 'An unexpected error occurred while listing customers.' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }

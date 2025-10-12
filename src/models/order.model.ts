@@ -155,8 +155,9 @@ export const deleteOrder = async (id: string): Promise<Order> => {
 
 
 export interface GetOrdersForVendorFilters {
-  vendorIds: string[];
+  vendorIds?: string[];
   status?: OrderStatus;
+  shopperId?: string;
 }
 
 /**
@@ -166,13 +167,17 @@ export interface GetOrdersForVendorFilters {
  */
 export const findOrdersForVendors = async (filters: GetOrdersForVendorFilters): Promise<OrderWithRelations[]> => {
   const where: Prisma.OrderWhereInput = {
-    vendorId: {
-      in: filters.vendorIds,
-    },
   };
+
+  if (filters.vendorIds && filters.vendorIds.length > 0) {
+    where.vendorId = { in: filters.vendorIds };
+  }
 
   if (filters.status) {
     where.orderStatus = filters.status;
+  }
+  if (filters.shopperId) {
+    where.shopperId = filters.shopperId;
   }
 
   return prisma.order.findMany({

@@ -1,4 +1,4 @@
-import { PrismaClient, User, SavedPaymentMethod, Transaction, TransactionStatus, TransactionType, TransactionSource, PaymentStatus, Prisma } from '@prisma/client';
+import { PrismaClient, User, SavedPaymentMethod, Transaction, TransactionStatus, TransactionType, TransactionSource, PaymentStatus, Prisma, Role } from '@prisma/client';
 import Stripe from 'stripe';
 import { OrderCreationError } from './order.service';
 import * as transactionModel from '../models/transaction.model';
@@ -296,4 +296,61 @@ export const detachPaymentMethodService = async (userId: string, stripePaymentMe
       });
     }
   }
+};
+
+
+
+export interface ListTransactionsFilters {
+  requestingUserId: string;
+  requestingUserRole: Role;
+  staffVendorId?: string; // The store ID from the staff member's token
+  filterByVendorId?: string; // The store ID from the query param
+  filterByUserId?: string; // The customer ID from the query param
+}
+
+export const listTransactionsService = async (filters: ListTransactionsFilters): Promise<Transaction[]> => {
+  const {
+    requestingUserId,
+    requestingUserRole,
+    staffVendorId,
+    filterByVendorId,
+    filterByUserId,
+  } = filters;
+
+  const modelFilters: transactionModel.ListTransactionsModelFilters = {};
+
+  switch (requestingUserRole) {
+    case Role.vendor:
+      // Vendor can see all transactions from stores they own.
+      modelFilters.ownerId = requestingUserId;
+      // They can optionally filter by a specific store they own.
+      if (filterByVendorId) {
+        const vendor = await prisma.vendor.findFirst({ where: { id: filterByVendorId, userId: requestingUserId } });
+        if (!vendor) {
+          throw new Error('Forbidden: You do not own this store.');
+        }
+        modelFilters.vendorId = filterByVendorId;
+      }
+      // They can optionally filter by customer ID.
+      modelFilters.userId = filterByUserId;
+      break;
+
+    case Role.store_admin:
+      // Store admin can only see transactions from their assigned store.
+      if (!staffVendorId) throw new Error('Forbidden: You are not assigned to a store.');
+      modelFilters.vendorId = staffVendorId;
+      // They can optionally filter by customer ID.
+      modelFilters.userId = filterByUserId;
+      break;
+
+    case Role.store_shopper:
+      // Store shopper can only see their own transactions (e.g., payouts, tips).
+      modelFilters.userId = requestingUserId;
+      break;
+
+    default:
+      throw new Error('Forbidden: You do not have permission to view transactions.');
+  }
+
+  return transactionModel.listTransactions(modelFilters);
 };

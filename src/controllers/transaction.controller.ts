@@ -11,6 +11,9 @@ import {
 } from '../services/transaction.service';
 import { OrderCreationError } from '../services/order.service';
 import Stripe from 'stripe';
+import { Role } from '@prisma/client';
+import * as transactionService from '../services/transaction.service';
+
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-08-27.basil',
@@ -309,4 +312,70 @@ export const stripeWebhookController = async (req: Request, res: Response) => {
   }
 
   res.status(200).json({ received: true });
+};
+
+
+
+
+
+
+/**
+ * @swagger
+ * tags:
+ *   name: Transactions
+ *   description: Transaction management
+ */
+
+/**
+ * @swagger
+ * /transactions:
+ *   get:
+ *     summary: List transactions based on user role
+ *     tags: [Transactions]
+ *     description: >
+ *       Retrieves a list of transactions with role-based access control:
+ *       - **Vendor**: Can see all transactions from all their stores. Can filter by `vendorId` (store ID) and `userId` (customer ID).
+ *       - **Store Admin**: Can only see transactions from their assigned store. Can filter by `userId` (customer ID).
+ *       - **Store Shopper**: Can only see transactions they have performed (e.g., payouts, tips).
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string, format: uuid }
+ *         description: Optional. (Vendor only) Filter transactions for a specific store.
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string, format: uuid }
+ *         description: Optional. (Vendor/Store Admin) Filter transactions for a specific customer or staff member.
+ *     responses:
+ *       200:
+ *         description: A list of transactions.
+ *       403:
+ *         description: Forbidden. User does not have permission to access the requested resources.
+ *       500:
+ *         description: Internal server error.
+ */
+export const listTransactionsController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { userId, userRole, vendorId: staffVendorId } = req;
+    const { vendorId: queryVendorId, userId: queryUserId } = req.query as { vendorId?: string; userId?: string };
+
+    const filters: transactionService.ListTransactionsFilters = {
+      requestingUserId: userId as string,
+      requestingUserRole: userRole as Role,
+      staffVendorId: staffVendorId,
+      filterByVendorId: queryVendorId,
+      filterByUserId: queryUserId,
+    };
+
+    const transactions = await transactionService.listTransactionsService(filters);
+    res.status(200).json(transactions);
+  } catch (error: any) {
+    console.error('Error listing transactions:', error);
+    if (error.message.includes('Forbidden') || error.message.includes('Unauthorized')) {
+      return res.status(403).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'An unexpected error occurred while listing transactions.' });
+  }
 };

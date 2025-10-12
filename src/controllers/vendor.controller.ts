@@ -6,6 +6,7 @@ import { getVendorsFilters } from '../models/vendor.model';
 export interface AuthenticatedRequest extends Request {
   userId?: string;
   userRole?: string;
+  vendorId?: string
 }
 
 /**

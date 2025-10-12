@@ -165,13 +165,15 @@ exports.deleteOrder = function (id) { return __awaiter(void 0, void 0, Promise, 
 exports.findOrdersForVendors = function (filters) { return __awaiter(void 0, void 0, Promise, function () {
     var where;
     return __generator(this, function (_a) {
-        where = {
-            vendorId: {
-                "in": filters.vendorIds
-            }
-        };
+        where = {};
+        if (filters.vendorIds && filters.vendorIds.length > 0) {
+            where.vendorId = { "in": filters.vendorIds };
+        }
         if (filters.status) {
             where.orderStatus = filters.status;
+        }
+        if (filters.shopperId) {
+            where.shopperId = filters.shopperId;
         }
         return [2 /*return*/, prisma.order.findMany(__assign(__assign({ where: where }, orderWithRelations), { orderBy: { createdAt: 'desc' } }))];
     });

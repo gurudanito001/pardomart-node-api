@@ -24,7 +24,7 @@ import healthRouter from './health.routes';
 import faqRouter from './faq.routes';
 import mediaRouter from './media.routes';
 import staffRoutes from './staff.routes';
-import customerRoutes from './customer.routes';
+import customerRoutes from './customer.routes'; // This line was already present
 
 // Create a new Router instance
 const router = Router();
@@ -51,7 +51,7 @@ router.use('/api/v1/devices', deviceRouter);
 router.use('/api/v1/notifications', notificationRouter);
 router.use('/api/v1/wallet', walletRoutes);
 router.use('/api/v1/support', supportRoutes);
-router.use('/api/v1/transactions', transactionRoutes); // This path is correct, no change needed here.
+router.use('/api/v1/transactions', transactionRoutes); // This path is correct, now pointing to the new routes file
 router.use('/api/v1/bug-reports', bugReportRoutes);
 router.use('/api/v1/faqs', faqRouter);
 router.use('/api/v1/media', mediaRouter);

@@ -47,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteStaffController = exports.updateStaffController = exports.getStaffByIdController = exports.listStaffByVendorController = exports.listStaffByOwnerController = exports.createStaffController = void 0;
+exports.deleteStaffController = exports.updateStaffController = exports.getStaffByIdController = exports.listStaffByVendorController = exports.listStaffForVendorOrAdminController = exports.listStaffTransactionsController = exports.createStaffController = void 0;
 var staffService = require("../services/staff.service");
 /**
  * @swagger
@@ -104,34 +104,102 @@ exports.createStaffController = function (req, res) { return __awaiter(void 0, v
 }); };
 /**
  * @swagger
+ * /staff/transactions:
+ *   get:
+ *     summary: List all transactions for a vendor's staff
+ *     tags: [Staff, Transactions]
+ *     description: >
+ *       Retrieves a list of all transactions for staff members belonging to the authenticated vendor.
+ *       Can be filtered by a specific `staffUserId` and/or `vendorId` (store ID).
+ *       If no filters are provided, it fetches transactions for all staff across all stores owned by the vendor.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: staffUserId
+ *         schema: { type: string, format: uuid }
+ *         description: Optional. Filter transactions for a specific staff member.
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string, format: uuid }
+ *         description: Optional. Filter transactions for staff at a specific store.
+ *     responses:
+ *       200:
+ *         description: A list of staff transactions.
+ *       403:
+ *         description: Forbidden if the user tries to access a vendor or staff they do not own.
+ *       404:
+ *         description: Not Found if the specified `staffUserId` or `vendorId` does not exist.
+ *       500:
+ *         description: Internal server error.
+ */
+exports.listStaffTransactionsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var ownerId, _a, staffUserId, vendorId, transactions, error_2;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _b.trys.push([0, 2, , 3]);
+                ownerId = req.userId;
+                _a = req.query, staffUserId = _a.staffUserId, vendorId = _a.vendorId;
+                return [4 /*yield*/, staffService.listStaffTransactionsService(ownerId, { staffUserId: staffUserId, vendorId: vendorId })];
+            case 1:
+                transactions = _b.sent();
+                res.status(200).json(transactions);
+                return [3 /*break*/, 3];
+            case 2:
+                error_2 = _b.sent();
+                console.error('Error listing staff transactions:', error_2);
+                if (error_2.message.includes('not found')) {
+                    return [2 /*return*/, res.status(404).json({ error: error_2.message })];
+                }
+                if (error_2.message.includes('not authorized')) {
+                    return [2 /*return*/, res.status(403).json({ error: error_2.message })];
+                }
+                res.status(500).json({ error: 'An unexpected error occurred while fetching staff transactions.' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
  * /staff:
  *   get:
- *     summary: List all staff members for the authenticated vendor owner
+ *     summary: List staff members based on user role
  *     tags: [Staff]
+ *     description: >
+ *       Retrieves a list of staff members with role-based access:
+ *       - **Vendor**: Can see all staff members across all of their stores.
+ *       - **Store Admin**: Can only see staff members from their assigned store.
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: A list of all staff members across all stores.
+ *         description: A list of staff members.
  *       500:
  *         description: Internal server error.
  */
-exports.listStaffByOwnerController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var ownerId, staffList, error_2;
+exports.listStaffForVendorOrAdminController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var userId, userRole, staffVendorId, staffList, error_3;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                ownerId = req.userId;
-                return [4 /*yield*/, staffService.listStaffByOwnerIdService(ownerId)];
+                userId = req.userId;
+                userRole = req.userRole;
+                staffVendorId = req.vendorId;
+                return [4 /*yield*/, staffService.listStaffService({ userId: userId, userRole: userRole, staffVendorId: staffVendorId })];
             case 1:
                 staffList = _a.sent();
                 res.status(200).json(staffList);
                 return [3 /*break*/, 3];
             case 2:
-                error_2 = _a.sent();
-                console.error('Error listing staff by owner:', error_2);
-                res.status(500).json({ error: error_2.message || 'Internal server error' });
+                error_3 = _a.sent();
+                console.error('Error listing staff:', error_3);
+                if (error_3.message.includes('Unauthorized') || error_3.message.includes('not associated')) {
+                    return [2 /*return*/, res.status(403).json({ error: error_3.message })];
+                }
+                res.status(500).json({ error: 'An unexpected error occurred while listing staff.' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
@@ -157,7 +225,7 @@ exports.listStaffByOwnerController = function (req, res) { return __awaiter(void
  *         description: Forbidden. The authenticated user does not own the vendor.
  */
 exports.listStaffByVendorController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var ownerId, vendorId, staffList, error_3;
+    var ownerId, vendorId, staffList, error_4;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -170,9 +238,9 @@ exports.listStaffByVendorController = function (req, res) { return __awaiter(voi
                 res.status(200).json(staffList);
                 return [3 /*break*/, 3];
             case 2:
-                error_3 = _a.sent();
-                console.error('Error listing staff by vendor:', error_3);
-                res.status(500).json({ error: error_3.message || 'Internal server error' });
+                error_4 = _a.sent();
+                console.error('Error listing staff by vendor:', error_4);
+                res.status(500).json({ error: error_4.message || 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
@@ -200,7 +268,7 @@ exports.listStaffByVendorController = function (req, res) { return __awaiter(voi
  *         description: Forbidden.
  */
 exports.getStaffByIdController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var ownerId, staffId, staff, error_4;
+    var ownerId, staffId, staff, error_5;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -216,9 +284,9 @@ exports.getStaffByIdController = function (req, res) { return __awaiter(void 0, 
                 res.status(200).json(staff);
                 return [3 /*break*/, 3];
             case 2:
-                error_4 = _a.sent();
-                console.error('Error getting staff by ID:', error_4);
-                res.status(500).json({ error: error_4.message || 'Internal server error' });
+                error_5 = _a.sent();
+                console.error('Error getting staff by ID:', error_5);
+                res.status(500).json({ error: error_5.message || 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
@@ -253,7 +321,7 @@ exports.getStaffByIdController = function (req, res) { return __awaiter(void 0, 
  *         description: The updated staff member.
  */
 exports.updateStaffController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var ownerId, staffId, updatedStaff, error_5;
+    var ownerId, staffId, updatedStaff, error_6;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -266,9 +334,9 @@ exports.updateStaffController = function (req, res) { return __awaiter(void 0, v
                 res.status(200).json(updatedStaff);
                 return [3 /*break*/, 3];
             case 2:
-                error_5 = _a.sent();
-                console.error('Error updating staff:', error_5);
-                res.status(500).json({ error: error_5.message || 'Internal server error' });
+                error_6 = _a.sent();
+                console.error('Error updating staff:', error_6);
+                res.status(500).json({ error: error_6.message || 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
@@ -292,7 +360,7 @@ exports.updateStaffController = function (req, res) { return __awaiter(void 0, v
  *         description: Staff member deleted successfully.
  */
 exports.deleteStaffController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var ownerId, staffId, error_6;
+    var ownerId, staffId, error_7;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -305,9 +373,9 @@ exports.deleteStaffController = function (req, res) { return __awaiter(void 0, v
                 res.status(204).send();
                 return [3 /*break*/, 3];
             case 2:
-                error_6 = _a.sent();
-                console.error('Error deleting staff:', error_6);
-                res.status(500).json({ error: error_6.message || 'Internal server error' });
+                error_7 = _a.sent();
+                console.error('Error deleting staff:', error_7);
+                res.status(500).json({ error: error_7.message || 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }

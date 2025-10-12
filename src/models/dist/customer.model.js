@@ -36,36 +36,53 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.listCustomersForVendor = void 0;
+exports.listCustomers = void 0;
 // models/customer.model.ts
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
 /**
- * Retrieves a list of unique customers who have made a paid purchase from a vendor's stores.
- * @param filters - The filters to apply, including the vendor owner's user ID and an optional vendor ID.
+ * Retrieves a list of unique customers who have placed orders
+ * with a vendor's store(s).
+ * @param filters - The filters to apply, including ownerId or vendorId.
  * @returns A list of unique customer users.
  */
-exports.listCustomersForVendor = function (filters) { return __awaiter(void 0, void 0, Promise, function () {
-    var where;
-    var _a;
-    return __generator(this, function (_b) {
-        where = {
-            role: client_1.Role.customer,
-            orders: {
-                some: {
-                    paymentStatus: client_1.PaymentStatus.paid,
-                    vendor: {
-                        userId: filters.ownerId
-                    }
+exports.listCustomers = function (filters) { return __awaiter(void 0, void 0, Promise, function () {
+    var ownerId, vendorId, where, orders;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                ownerId = filters.ownerId, vendorId = filters.vendorId;
+                where = {};
+                if (vendorId) {
+                    // Filter by a specific store ID
+                    where.vendorId = vendorId;
                 }
-            }
-        };
-        // If a specific vendorId is provided, add it to the filter
-        if (filters.vendorId && ((_a = where.orders) === null || _a === void 0 ? void 0 : _a.some)) {
-            where.orders.some.vendorId = filters.vendorId;
+                else if (ownerId) {
+                    // Filter by all stores belonging to a vendor owner
+                    where.vendor = {
+                        userId: ownerId
+                    };
+                }
+                else {
+                    return [2 /*return*/, []]; // Should not happen if service validation is correct
+                }
+                return [4 /*yield*/, prisma.order.findMany({
+                        where: where,
+                        select: {
+                            user: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    email: true,
+                                    mobileNumber: true
+                                }
+                            }
+                        },
+                        distinct: ['userId']
+                    })];
+            case 1:
+                orders = _a.sent();
+                return [2 /*return*/, orders.map(function (order) { return order.user; })];
         }
-        return [2 /*return*/, prisma.user.findMany({
-                where: where
-            })];
     });
 }); };

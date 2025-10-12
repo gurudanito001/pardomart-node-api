@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.detachPaymentMethodService = exports.listSavedPaymentMethodsService = exports.listTransactionsForVendorService = exports.listTransactionsForUserService = exports.handleStripeWebhook = exports.createSetupIntentService = exports.createPaymentIntentService = void 0;
+exports.listTransactionsService = exports.detachPaymentMethodService = exports.listSavedPaymentMethodsService = exports.listTransactionsForVendorService = exports.listTransactionsForUserService = exports.handleStripeWebhook = exports.createSetupIntentService = exports.createPaymentIntentService = void 0;
 var client_1 = require("@prisma/client");
 var stripe_1 = require("stripe");
 var order_service_1 = require("./order.service");
@@ -391,6 +391,53 @@ exports.detachPaymentMethodService = function (userId, stripePaymentMethodId) { 
                 _a.sent();
                 _a.label = 7;
             case 7: return [2 /*return*/];
+        }
+    });
+}); };
+exports.listTransactionsService = function (filters) { return __awaiter(void 0, void 0, Promise, function () {
+    var requestingUserId, requestingUserRole, staffVendorId, filterByVendorId, filterByUserId, modelFilters, _a, vendor;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                requestingUserId = filters.requestingUserId, requestingUserRole = filters.requestingUserRole, staffVendorId = filters.staffVendorId, filterByVendorId = filters.filterByVendorId, filterByUserId = filters.filterByUserId;
+                modelFilters = {};
+                _a = requestingUserRole;
+                switch (_a) {
+                    case client_1.Role.vendor: return [3 /*break*/, 1];
+                    case client_1.Role.store_admin: return [3 /*break*/, 4];
+                    case client_1.Role.store_shopper: return [3 /*break*/, 5];
+                }
+                return [3 /*break*/, 6];
+            case 1:
+                // Vendor can see all transactions from stores they own.
+                modelFilters.ownerId = requestingUserId;
+                if (!filterByVendorId) return [3 /*break*/, 3];
+                return [4 /*yield*/, prisma.vendor.findFirst({ where: { id: filterByVendorId, userId: requestingUserId } })];
+            case 2:
+                vendor = _b.sent();
+                if (!vendor) {
+                    throw new Error('Forbidden: You do not own this store.');
+                }
+                modelFilters.vendorId = filterByVendorId;
+                _b.label = 3;
+            case 3:
+                // They can optionally filter by customer ID.
+                modelFilters.userId = filterByUserId;
+                return [3 /*break*/, 7];
+            case 4:
+                // Store admin can only see transactions from their assigned store.
+                if (!staffVendorId)
+                    throw new Error('Forbidden: You are not assigned to a store.');
+                modelFilters.vendorId = staffVendorId;
+                // They can optionally filter by customer ID.
+                modelFilters.userId = filterByUserId;
+                return [3 /*break*/, 7];
+            case 5:
+                // Store shopper can only see their own transactions (e.g., payouts, tips).
+                modelFilters.userId = requestingUserId;
+                return [3 /*break*/, 7];
+            case 6: throw new Error('Forbidden: You do not have permission to view transactions.');
+            case 7: return [2 /*return*/, transactionModel.listTransactions(modelFilters)];
         }
     });
 }); };

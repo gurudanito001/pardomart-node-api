@@ -922,19 +922,20 @@ exports.updateOrderTipController = function (req, res) { return __awaiter(void 0
  * @swagger
  * /order/vendor:
  *   get:
- *     summary: Get all orders for a vendor user's stores
+ *     summary: Get orders based on user role (Vendor, Store Admin, or Store Shopper)
  *     tags: [Order, Vendor]
  *     security:
  *       - bearerAuth: []
  *     description: >
- *       Retrieves a list of all orders for the stores owned by the authenticated vendor user.
- *       Can be filtered by a specific `vendorId` (store ID) and/or `orderStatus`.
- *       If no `vendorId` is provided, it fetches orders from all stores owned by the user.
+ *       Retrieves a list of orders with role-based access:
+ *       - **Vendor**: Can see all orders from all their stores. Can filter by `vendorId` and/or `status`.
+ *       - **Store Admin**: Can only see orders from their assigned store.
+ *       - **Store Shopper**: Can only see orders assigned to them (`shopperId` matches their user ID) within their store.
  *     parameters:
  *       - in: query
  *         name: vendorId
  *         schema: { type: string, format: uuid }
- *         description: Optional. Filter orders by a specific store ID owned by the user.
+ *         description: Optional. For Vendors, filters orders by a specific store ID. Ignored for staff roles.
  *       - in: query
  *         name: status
  *         schema: { $ref: '#/components/schemas/OrderStatus' }
@@ -954,28 +955,26 @@ exports.updateOrderTipController = function (req, res) { return __awaiter(void 0
  *         description: Internal server error.
  */
 exports.getOrdersForVendor = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var userId, _a, vendorId, status, orders, error_14;
+    var userId, userRole, staffVendorId, _a, vendorId, status, orders, error_14;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
-                userId = req.userId;
-                _b.label = 1;
-            case 1:
-                _b.trys.push([1, 3, , 4]);
+                _b.trys.push([0, 2, , 3]);
+                userId = req.userId, userRole = req.userRole, staffVendorId = req.vendorId;
                 _a = req.query, vendorId = _a.vendorId, status = _a.status;
-                return [4 /*yield*/, order_service_1.getOrdersForVendorUserService(userId, { vendorId: vendorId, status: status })];
-            case 2:
+                return [4 /*yield*/, order_service_1.getOrdersForVendorUserService(userId, userRole, { vendorId: vendorId, status: status, staffVendorId: staffVendorId })];
+            case 1:
                 orders = _b.sent();
                 res.status(200).json(orders);
-                return [3 /*break*/, 4];
-            case 3:
+                return [3 /*break*/, 3];
+            case 2:
                 error_14 = _b.sent();
                 if (error_14 instanceof order_service_1.OrderCreationError) {
                     return [2 /*return*/, res.status(error_14.statusCode).json({ error: error_14.message })];
                 }
                 res.status(500).json({ error: 'Internal server error' });
-                return [3 /*break*/, 4];
-            case 4: return [2 /*return*/];
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
         }
     });
 }); };

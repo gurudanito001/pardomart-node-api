@@ -1,5 +1,5 @@
 // models/staff.model.ts
-import { PrismaClient, User, Role, Prisma } from '@prisma/client';
+import { PrismaClient, User, Role, Prisma, Transaction } from '@prisma/client';
 
 
 const prisma = new PrismaClient();
@@ -17,6 +17,12 @@ export interface UpdateStaffPayload {
   email?: string;
   mobileNumber?: string;
   active?: boolean;
+}
+
+export interface ListStaffTransactionsFilters {
+  ownerId: string;
+  staffUserId?: string;
+  vendorId?: string;
 }
 
 /**
@@ -113,5 +119,39 @@ export const deleteStaff = async (staffId: string): Promise<User> => {
   // before calling this function.
   return prisma.user.delete({
     where: { id: staffId },
+  });
+};
+
+/**
+ * Retrieves transactions for staff members under a vendor owner's account.
+ * @param filters - The filters to apply, including ownerId and optional staffUserId/vendorId.
+ * @returns A list of transactions.
+ */
+export const listStaffTransactions = async (filters: ListStaffTransactionsFilters): Promise<Transaction[]> => {
+  const { ownerId, staffUserId, vendorId } = filters;
+
+  const where: Prisma.TransactionWhereInput = {
+    user: {
+      role: Role.store_shopper,
+      vendor: {
+        userId: ownerId,
+      },
+    },
+  };
+
+  if (staffUserId) {
+    where.userId = staffUserId;
+  }
+
+  if (vendorId) {
+    // This is the correct way to filter by the staff member's store
+    if (where.user) {
+      where.user.vendorId = vendorId;
+    }
+  }
+
+  return prisma.transaction.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
   });
 };

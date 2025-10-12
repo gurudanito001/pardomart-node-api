@@ -1,6 +1,6 @@
 // services/staff.service.ts
 import * as staffModel from '../models/staff.model';
-import { User, Role } from '@prisma/client';
+import { User, Role, Transaction } from '@prisma/client';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -17,6 +17,17 @@ export interface CreateStaffServicePayload {
 export interface UpdateStaffServicePayload extends staffModel.UpdateStaffPayload {
   staffId: string;
   ownerId: string;
+}
+
+export interface ListStaffTransactionsOptions {
+  staffUserId?: string;
+  vendorId?: string;
+}
+
+export interface ListStaffOptions {
+  userId: string;
+  userRole: Role;
+  staffVendorId?: string;
 }
 
 const sanitizeUser = (user: User): Omit<User, 'rememberToken'> => {
@@ -80,10 +91,34 @@ export const listStaffByVendorIdService = async (vendorId: string, ownerId: stri
  * @param ownerId - The user ID of the vendor owner.
  * @returns A list of all staff users.
  */
-export const listStaffByOwnerIdService = async (ownerId: string): Promise<Omit<User, 'rememberToken'>[]> => {
-  const staffList = await staffModel.listStaffByOwnerId(ownerId);
+export const listStaffService = async (options: ListStaffOptions): Promise<Omit<User, 'rememberToken'>[]> => {
+  const { userId, userRole, staffVendorId } = options;
+  let staffList: User[] = [];
+
+  switch (userRole) {
+    case Role.vendor:
+      // A vendor owner gets all staff from all their stores.
+      staffList = await staffModel.listStaffByOwnerId(userId);
+      break;
+
+    case Role.store_admin:
+      // A store admin gets all staff from their assigned store.
+      if (!staffVendorId) {
+        throw new Error('Store admin is not associated with a vendor.');
+      }
+      staffList = await staffModel.listStaffByVendorId(staffVendorId);
+      break;
+
+    case Role.store_shopper:
+      // A store shopper is not permitted to list other staff members.
+      throw new Error('Unauthorized role.');
+
+    default:
+      throw new Error('Unauthorized role.');
+  }
+
   return staffList.map(sanitizeUser);
-};
+}
 
 /**
  * Retrieves a single staff member, ensuring the requester is the owner.
@@ -164,4 +199,43 @@ export const deleteStaffService = async (staffId: string, ownerId: string): Prom
 
   const deletedUser = await staffModel.deleteStaff(staffId);
   return sanitizeUser(deletedUser);
+};
+
+/**
+ * Retrieves transactions for staff members owned by a vendor.
+ * @param ownerId - The ID of the vendor owner.
+ * @param options - Filtering options for staffUserId and vendorId.
+ * @returns A list of transactions.
+ */
+export const listStaffTransactionsService = async (
+  ownerId: string,
+  options: ListStaffTransactionsOptions
+): Promise<Transaction[]> => {
+  const { staffUserId, vendorId } = options;
+
+  // Authorization: If a specific staff member is requested, ensure they belong to the owner.
+  if (staffUserId) {
+    const staffUser = await getStaffByIdService(staffUserId, ownerId);
+    if (!staffUser) {
+      // Throws an error if owner doesn't own the staff, or if staff not found.
+      // This implicitly handles authorization.
+      throw new Error('Staff member not found or you are not authorized to view their transactions.');
+    }
+  }
+
+  // Authorization: If a specific vendor (store) is requested, ensure the owner owns it.
+  if (vendorId) {
+    const vendor = await prisma.vendor.findFirst({
+      where: { id: vendorId, userId: ownerId },
+    });
+    if (!vendor) {
+      throw new Error('Vendor not found or you are not authorized to view its transactions.');
+    }
+  }
+
+  return staffModel.listStaffTransactions({
+    ownerId,
+    staffUserId,
+    vendorId,
+  });
 };

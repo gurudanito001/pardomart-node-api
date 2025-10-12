@@ -1,37 +1,51 @@
 // models/customer.model.ts
-import { PrismaClient, User, Prisma, PaymentStatus, Role } from '@prisma/client';
+import { PrismaClient, User, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export interface ListVendorCustomersFilters {
-  ownerId: string;
+export interface ListCustomersFilters {
+  ownerId?: string;
   vendorId?: string;
 }
 
 /**
- * Retrieves a list of unique customers who have made a paid purchase from a vendor's stores.
- * @param filters - The filters to apply, including the vendor owner's user ID and an optional vendor ID.
+ * Retrieves a list of unique customers who have placed orders
+ * with a vendor's store(s).
+ * @param filters - The filters to apply, including ownerId or vendorId.
  * @returns A list of unique customer users.
  */
-export const listCustomersForVendor = async (filters: ListVendorCustomersFilters): Promise<User[]> => {
-  const where: Prisma.UserWhereInput = {
-    role: Role.customer, // Ensure we are only fetching customers
-    orders: {
-      some: {
-        paymentStatus: PaymentStatus.paid,
-        vendor: {
-          userId: filters.ownerId,
+export const listCustomers = async (filters: ListCustomersFilters): Promise<Partial<User>[]> => {
+  const { ownerId, vendorId } = filters;
+
+  const where: Prisma.OrderWhereInput = {};
+
+  if (vendorId) {
+    // Filter by a specific store ID
+    where.vendorId = vendorId;
+  } else if (ownerId) {
+    // Filter by all stores belonging to a vendor owner
+    where.vendor = {
+      userId: ownerId,
+    };
+  } else {
+    return []; // Should not happen if service validation is correct
+  }
+
+  // Find all orders matching the filter
+  const orders = await prisma.order.findMany({
+    where,
+    select: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          mobileNumber: true,
         },
       },
     },
-  };
-
-  // If a specific vendorId is provided, add it to the filter
-  if (filters.vendorId && where.orders?.some) {
-    where.orders.some.vendorId = filters.vendorId;
-  }
-
-  return prisma.user.findMany({
-    where,
+    distinct: ['userId'], // Get each customer only once
   });
+
+  return orders.map((order) => order.user);
 };

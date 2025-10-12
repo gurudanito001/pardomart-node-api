@@ -1,7 +1,8 @@
 import { Router, raw } from 'express';
 import * as transactionController from '../controllers/transaction.controller';
-import { authenticate } from '../middlewares/auth.middleware';
+import { authenticate, authorize } from '../middlewares/auth.middleware';
 import { validate, validateDetachPaymentMethod } from '../middlewares/validation.middleware';
+import { Role } from '@prisma/client';
 
 const router = Router();
 
@@ -13,6 +14,7 @@ router.post(
 );
 
 router.use(authenticate);
+router.get('/', authorize([Role.vendor, Role.store_admin, Role.store_shopper]), transactionController.listTransactionsController);
 
 router.post('/create-payment-intent', transactionController.createPaymentIntentController);
 router.get('/me', transactionController.listMyTransactionsController);

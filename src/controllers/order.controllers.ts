@@ -802,19 +802,20 @@ export const updateOrderTipController = async (req: AuthenticatedRequest, res: R
  * @swagger
  * /order/vendor:
  *   get:
- *     summary: Get all orders for a vendor user's stores
+ *     summary: Get orders based on user role (Vendor, Store Admin, or Store Shopper)
  *     tags: [Order, Vendor]
  *     security:
  *       - bearerAuth: []
  *     description: >
- *       Retrieves a list of all orders for the stores owned by the authenticated vendor user.
- *       Can be filtered by a specific `vendorId` (store ID) and/or `orderStatus`.
- *       If no `vendorId` is provided, it fetches orders from all stores owned by the user.
+ *       Retrieves a list of orders with role-based access:
+ *       - **Vendor**: Can see all orders from all their stores. Can filter by `vendorId` and/or `status`.
+ *       - **Store Admin**: Can only see orders from their assigned store.
+ *       - **Store Shopper**: Can only see orders assigned to them (`shopperId` matches their user ID) within their store.
  *     parameters:
  *       - in: query
  *         name: vendorId
  *         schema: { type: string, format: uuid }
- *         description: Optional. Filter orders by a specific store ID owned by the user.
+ *         description: Optional. For Vendors, filters orders by a specific store ID. Ignored for staff roles.
  *       - in: query
  *         name: status
  *         schema: { $ref: '#/components/schemas/OrderStatus' }
@@ -834,11 +835,11 @@ export const updateOrderTipController = async (req: AuthenticatedRequest, res: R
  *         description: Internal server error.
  */
 export const getOrdersForVendor = async (req: AuthenticatedRequest, res: Response) => {
-  const userId = req.userId as string;
   try {
+    const { userId, userRole, vendorId: staffVendorId } = req;
     const { vendorId, status } = req.query as { vendorId?: string; status?: OrderStatus };
 
-    const orders = await getOrdersForVendorUserService(userId, { vendorId, status });
+    const orders = await getOrdersForVendorUserService(userId as string, userRole as any, { vendorId, status, staffVendorId });
     res.status(200).json(orders);
   } catch (error: any) {
     if (error instanceof OrderCreationError) {

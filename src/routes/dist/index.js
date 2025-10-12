@@ -26,7 +26,7 @@ var health_routes_1 = require("./health.routes");
 var faq_routes_1 = require("./faq.routes");
 var media_routes_1 = require("./media.routes");
 var staff_routes_1 = require("./staff.routes");
-var customer_routes_1 = require("./customer.routes");
+var customer_routes_1 = require("./customer.routes"); // This line was already present
 // Create a new Router instance
 var router = express_1.Router();
 // Mount the routers
@@ -50,7 +50,7 @@ router.use('/api/v1/devices', device_routes_1["default"]);
 router.use('/api/v1/notifications', notification_routes_1["default"]);
 router.use('/api/v1/wallet', wallet_routes_1["default"]);
 router.use('/api/v1/support', support_routes_1["default"]);
-router.use('/api/v1/transactions', transaction_routes_1["default"]); // This path is correct, no change needed here.
+router.use('/api/v1/transactions', transaction_routes_1["default"]); // This path is correct, now pointing to the new routes file
 router.use('/api/v1/bug-reports', bugReport_routes_1["default"]);
 router.use('/api/v1/faqs', faq_routes_1["default"]);
 router.use('/api/v1/media', media_routes_1["default"]);

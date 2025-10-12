@@ -36,10 +36,11 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.stripeWebhookController = exports.listVendorTransactionsController = exports.listMyTransactionsController = exports.detachPaymentMethodController = exports.listMySavedPaymentMethodsController = exports.createSetupIntentController = exports.createPaymentIntentController = void 0;
+exports.listTransactionsController = exports.stripeWebhookController = exports.listVendorTransactionsController = exports.listMyTransactionsController = exports.detachPaymentMethodController = exports.listMySavedPaymentMethodsController = exports.createSetupIntentController = exports.createPaymentIntentController = void 0;
 var transaction_service_1 = require("../services/transaction.service");
 var order_service_1 = require("../services/order.service");
 var stripe_1 = require("stripe");
+var transactionService = require("../services/transaction.service");
 var stripe = new stripe_1["default"](process.env.STRIPE_SECRET_KEY, {
     apiVersion: '2025-08-27.basil'
 });
@@ -400,6 +401,74 @@ exports.stripeWebhookController = function (req, res) { return __awaiter(void 0,
             case 4:
                 res.status(200).json({ received: true });
                 return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * tags:
+ *   name: Transactions
+ *   description: Transaction management
+ */
+/**
+ * @swagger
+ * /transactions:
+ *   get:
+ *     summary: List transactions based on user role
+ *     tags: [Transactions]
+ *     description: >
+ *       Retrieves a list of transactions with role-based access control:
+ *       - **Vendor**: Can see all transactions from all their stores. Can filter by `vendorId` (store ID) and `userId` (customer ID).
+ *       - **Store Admin**: Can only see transactions from their assigned store. Can filter by `userId` (customer ID).
+ *       - **Store Shopper**: Can only see transactions they have performed (e.g., payouts, tips).
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string, format: uuid }
+ *         description: Optional. (Vendor only) Filter transactions for a specific store.
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string, format: uuid }
+ *         description: Optional. (Vendor/Store Admin) Filter transactions for a specific customer or staff member.
+ *     responses:
+ *       200:
+ *         description: A list of transactions.
+ *       403:
+ *         description: Forbidden. User does not have permission to access the requested resources.
+ *       500:
+ *         description: Internal server error.
+ */
+exports.listTransactionsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var userId, userRole, staffVendorId, _a, queryVendorId, queryUserId, filters, transactions, error_8;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _b.trys.push([0, 2, , 3]);
+                userId = req.userId, userRole = req.userRole, staffVendorId = req.vendorId;
+                _a = req.query, queryVendorId = _a.vendorId, queryUserId = _a.userId;
+                filters = {
+                    requestingUserId: userId,
+                    requestingUserRole: userRole,
+                    staffVendorId: staffVendorId,
+                    filterByVendorId: queryVendorId,
+                    filterByUserId: queryUserId
+                };
+                return [4 /*yield*/, transactionService.listTransactionsService(filters)];
+            case 1:
+                transactions = _b.sent();
+                res.status(200).json(transactions);
+                return [3 /*break*/, 3];
+            case 2:
+                error_8 = _b.sent();
+                console.error('Error listing transactions:', error_8);
+                if (error_8.message.includes('Forbidden') || error_8.message.includes('Unauthorized')) {
+                    return [2 /*return*/, res.status(403).json({ error: error_8.message })];
+                }
+                res.status(500).json({ error: 'An unexpected error occurred while listing transactions.' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
         }
     });
 }); };

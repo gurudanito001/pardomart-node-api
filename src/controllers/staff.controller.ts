@@ -1,6 +1,7 @@
 // controllers/staff.controller.ts
 import { Response } from 'express';
 import * as staffService from '../services/staff.service';
+import { Role, Transaction } from '@prisma/client';
 import { AuthenticatedRequest } from './vendor.controller';
 
 /**
@@ -49,26 +50,84 @@ export const createStaffController = async (req: AuthenticatedRequest, res: Resp
 
 /**
  * @swagger
+ * /staff/transactions:
+ *   get:
+ *     summary: List all transactions for a vendor's staff
+ *     tags: [Staff, Transactions]
+ *     description: >
+ *       Retrieves a list of all transactions for staff members belonging to the authenticated vendor.
+ *       Can be filtered by a specific `staffUserId` and/or `vendorId` (store ID).
+ *       If no filters are provided, it fetches transactions for all staff across all stores owned by the vendor.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: staffUserId
+ *         schema: { type: string, format: uuid }
+ *         description: Optional. Filter transactions for a specific staff member.
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string, format: uuid }
+ *         description: Optional. Filter transactions for staff at a specific store.
+ *     responses:
+ *       200:
+ *         description: A list of staff transactions.
+ *       403:
+ *         description: Forbidden if the user tries to access a vendor or staff they do not own.
+ *       404:
+ *         description: Not Found if the specified `staffUserId` or `vendorId` does not exist.
+ *       500:
+ *         description: Internal server error.
+ */
+export const listStaffTransactionsController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const ownerId = req.userId as string;
+    const { staffUserId, vendorId } = req.query as { staffUserId?: string; vendorId?: string };
+    const transactions = await staffService.listStaffTransactionsService(ownerId, { staffUserId, vendorId });
+    res.status(200).json(transactions);
+  } catch (error: any) {
+    console.error('Error listing staff transactions:', error);
+    if (error.message.includes('not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    if (error.message.includes('not authorized')) {
+      return res.status(403).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'An unexpected error occurred while fetching staff transactions.' });
+  }
+};
+
+/**
+ * @swagger
  * /staff:
  *   get:
- *     summary: List all staff members for the authenticated vendor owner
+ *     summary: List staff members based on user role
  *     tags: [Staff]
+ *     description: >
+ *       Retrieves a list of staff members with role-based access:
+ *       - **Vendor**: Can see all staff members across all of their stores.
+ *       - **Store Admin**: Can only see staff members from their assigned store.
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: A list of all staff members across all stores.
+ *         description: A list of staff members.
  *       500:
  *         description: Internal server error.
  */
-export const listStaffByOwnerController = async (req: AuthenticatedRequest, res: Response) => {
+export const listStaffForVendorOrAdminController = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const ownerId = req.userId as string;
-    const staffList = await staffService.listStaffByOwnerIdService(ownerId);
+    const userId = req.userId as string;
+    const userRole = req.userRole as Role;
+    const staffVendorId = req.vendorId; // The vendorId from the staff's token
+    const staffList = await staffService.listStaffService({ userId, userRole, staffVendorId });
     res.status(200).json(staffList);
   } catch (error: any) {
-    console.error('Error listing staff by owner:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
+    console.error('Error listing staff:', error);
+    if (error.message.includes('Unauthorized') || error.message.includes('not associated')) {
+      return res.status(403).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'An unexpected error occurred while listing staff.' });
   }
 };
 
