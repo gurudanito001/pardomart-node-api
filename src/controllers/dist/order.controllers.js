@@ -145,6 +145,10 @@ var order_service_1 = require("../services/order.service"); // Adjust the path i
  *         - $ref: '#/components/schemas/Order'
  *         - type: object
  *           properties:
+ *             orderCode:
+ *               type: string
+ *               description: A unique, human-readable code for the order.
+ *               example: "AB12CD"
  *             user: { $ref: '#/components/schemas/UserSummary' }
  *             shopper: { $ref: '#/components/schemas/UserSummary' }
  *             deliveryPerson: { $ref: '#/components/schemas/UserSummary' }
@@ -153,6 +157,12 @@ var order_service_1 = require("../services/order.service"); // Adjust the path i
  *               items: { $ref: '#/components/schemas/OrderItemWithRelations' }
  *             vendor: { $ref: '#/components/schemas/VendorWithDetails' }
  *             deliveryAddress: { $ref: '#/components/schemas/DeliveryAddress', nullable: true }
+ *     VendorWithDetails:
+ *       allOf:
+ *         - $ref: '#/components/schemas/Vendor'
+ *         - type: object
+ *           properties:
+ *             user: { $ref: '#/components/schemas/User' }
  *     Vendor:
  *       type: object
  *       properties:

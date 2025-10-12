@@ -930,7 +930,7 @@ export const startShoppingService = async (
 
 
 export interface UpdateOrderItemShoppingStatusPayload {
-  status: OrderItemStatus;
+  status?: OrderItemStatus;
   quantityFound?: number;
   chosenReplacementId?: string;
 }
