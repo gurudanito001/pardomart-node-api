@@ -948,7 +948,7 @@ export const startShoppingService = async (
     const order = await prisma.order.update({
       where: {
         id: orderId,
-        orderStatus: OrderStatus.pending,
+        orderStatus: OrderStatus.accepted_for_shopping, // Corrected: Can only start shopping for an accepted order.
         shoppingMethod: ShoppingMethod.vendor, // Only if vendor is responsible
         // Optional stricter check: only assigned shopper can start shopping (if roles allow VENDOR_ADMIN too, this needs adjustment)
         // OR: shoppingHandlerId: shoppingHandlerUserId,

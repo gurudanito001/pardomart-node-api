@@ -919,7 +919,7 @@ exports.startShoppingService = function (orderId, shoppingHandlerUserId, vendorI
                 return [4 /*yield*/, prisma.order.update({
                         where: {
                             id: orderId,
-                            orderStatus: client_1.OrderStatus.pending,
+                            orderStatus: client_1.OrderStatus.accepted_for_shopping,
                             shoppingMethod: client_1.ShoppingMethod.vendor
                         },
                         data: {
