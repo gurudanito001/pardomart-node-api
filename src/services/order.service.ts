@@ -760,12 +760,35 @@ export const acceptOrderService = async (
   shoppingHandlerUserId: string,
   vendorId: string // Pass vendorId for stricter security check at service layer
 ): Promise<Order> => {
+  // 1. Fetch the order first to get its vendorId for authorization
+  const orderToUpdate = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: { vendorId: true },
+  });
+
+  if (!orderToUpdate) {
+    throw new OrderCreationError('Order not found.', 404);
+  }
+
+  // 2. Authorize the user
+  const user = await prisma.user.findUnique({
+    where: { id: shoppingHandlerUserId },
+    include: { vendors: { select: { id: true } } },
+  });
+
+  const isVendorOwner = user?.role === Role.vendor && user.vendors.some(v => v.id === orderToUpdate.vendorId);
+  const isAssignedStaff = (user?.role === Role.store_admin || user?.role === Role.store_shopper) && user.vendorId === orderToUpdate.vendorId;
+
+  if (!isVendorOwner && !isAssignedStaff) {
+    throw new OrderCreationError('You are not authorized to accept this order.', 403);
+  }
+
   try {
     // Perform an atomic update with a where clause to enforce state and ownership
     const acceptedOrder = await prisma.order.update({
       where: {
         id: orderId,
-        vendorId: vendorId, // Crucial: ensure order belongs to this vendor
+        vendorId: orderToUpdate.vendorId, // Use the vendorId from the fetched order
         orderStatus: OrderStatus.pending, // Only accept orders that are currently pending
         shoppingMethod: ShoppingMethod.vendor, // Only accept if vendor is responsible for shopping
         shopperId: null, // Ensure it's not already assigned
@@ -790,11 +813,11 @@ export const acceptOrderService = async (
     return acceptedOrder;
   } catch (error: any) {
     if (error.code === 'P2025') { // Prisma error for record not found
-      // This means the order was not found OR it didn't match the where conditions (e.g., not pending, wrong vendor)
-      throw new Error('Order not found or cannot be accepted in its current state/by this vendor.');
+      // This means the order was not found OR it didn't match the where conditions (e.g., already accepted)
+      throw new OrderCreationError('Order not found or cannot be accepted in its current state.', 400);
     }
     console.error(`Error accepting order ${orderId}:`, error);
-    throw new Error('Failed to accept order: ' + error.message);
+    throw new OrderCreationError('Failed to accept order: ' + error.message, 500);
   }
 };
 
@@ -925,7 +948,7 @@ export const startShoppingService = async (
     const order = await prisma.order.update({
       where: {
         id: orderId,
-        orderStatus: OrderStatus.accepted_for_shopping, // Must be accepted to start shopping
+        orderStatus: OrderStatus.pending,
         shoppingMethod: ShoppingMethod.vendor, // Only if vendor is responsible
         // Optional stricter check: only assigned shopper can start shopping (if roles allow VENDOR_ADMIN too, this needs adjustment)
         // OR: shoppingHandlerId: shoppingHandlerUserId,

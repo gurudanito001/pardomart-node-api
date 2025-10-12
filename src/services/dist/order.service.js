@@ -729,15 +729,36 @@ exports.getOrdersForVendorDashboard = function (vendorId, options) { return __aw
  */
 exports.acceptOrderService = function (orderId, shoppingHandlerUserId, vendorId // Pass vendorId for stricter security check at service layer
 ) { return __awaiter(void 0, void 0, Promise, function () {
-    var acceptedOrder, error_3;
+    var orderToUpdate, user, isVendorOwner, isAssignedStaff, acceptedOrder, error_3;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0:
-                _a.trys.push([0, 3, , 4]);
+            case 0: return [4 /*yield*/, prisma.order.findUnique({
+                    where: { id: orderId },
+                    select: { vendorId: true }
+                })];
+            case 1:
+                orderToUpdate = _a.sent();
+                if (!orderToUpdate) {
+                    throw new OrderCreationError('Order not found.', 404);
+                }
+                return [4 /*yield*/, prisma.user.findUnique({
+                        where: { id: shoppingHandlerUserId },
+                        include: { vendors: { select: { id: true } } }
+                    })];
+            case 2:
+                user = _a.sent();
+                isVendorOwner = (user === null || user === void 0 ? void 0 : user.role) === client_1.Role.vendor && user.vendors.some(function (v) { return v.id === orderToUpdate.vendorId; });
+                isAssignedStaff = ((user === null || user === void 0 ? void 0 : user.role) === client_1.Role.store_admin || (user === null || user === void 0 ? void 0 : user.role) === client_1.Role.store_shopper) && user.vendorId === orderToUpdate.vendorId;
+                if (!isVendorOwner && !isAssignedStaff) {
+                    throw new OrderCreationError('You are not authorized to accept this order.', 403);
+                }
+                _a.label = 3;
+            case 3:
+                _a.trys.push([3, 6, , 7]);
                 return [4 /*yield*/, prisma.order.update({
                         where: {
                             id: orderId,
-                            vendorId: vendorId,
+                            vendorId: orderToUpdate.vendorId,
                             orderStatus: client_1.OrderStatus.pending,
                             shoppingMethod: client_1.ShoppingMethod.vendor,
                             shopperId: null
@@ -747,7 +768,7 @@ exports.acceptOrderService = function (orderId, shoppingHandlerUserId, vendorId 
                             shopperId: shoppingHandlerUserId
                         }
                     })];
-            case 1:
+            case 4:
                 acceptedOrder = _a.sent();
                 // --- Add Notification Logic Here ---
                 return [4 /*yield*/, notificationService.createNotification({
@@ -757,20 +778,20 @@ exports.acceptOrderService = function (orderId, shoppingHandlerUserId, vendorId 
                         body: "Your order with code #" + acceptedOrder.orderCode + " has been accepted  and will begin preparing it shortly.",
                         meta: { orderId: acceptedOrder.id }
                     })];
-            case 2:
+            case 5:
                 // --- Add Notification Logic Here ---
                 _a.sent();
                 // --- End Notification Logic ---
                 return [2 /*return*/, acceptedOrder];
-            case 3:
+            case 6:
                 error_3 = _a.sent();
                 if (error_3.code === 'P2025') { // Prisma error for record not found
-                    // This means the order was not found OR it didn't match the where conditions (e.g., not pending, wrong vendor)
-                    throw new Error('Order not found or cannot be accepted in its current state/by this vendor.');
+                    // This means the order was not found OR it didn't match the where conditions (e.g., already accepted)
+                    throw new OrderCreationError('Order not found or cannot be accepted in its current state.', 400);
                 }
                 console.error("Error accepting order " + orderId + ":", error_3);
-                throw new Error('Failed to accept order: ' + error_3.message);
-            case 4: return [2 /*return*/];
+                throw new OrderCreationError('Failed to accept order: ' + error_3.message, 500);
+            case 7: return [2 /*return*/];
         }
     });
 }); };
@@ -898,7 +919,7 @@ exports.startShoppingService = function (orderId, shoppingHandlerUserId, vendorI
                 return [4 /*yield*/, prisma.order.update({
                         where: {
                             id: orderId,
-                            orderStatus: client_1.OrderStatus.accepted_for_shopping,
+                            orderStatus: client_1.OrderStatus.pending,
                             shoppingMethod: client_1.ShoppingMethod.vendor
                         },
                         data: {
