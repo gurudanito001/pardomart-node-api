@@ -893,21 +893,38 @@ export const startShoppingService = async (
   shoppingHandlerUserId: string,
   vendorId: string // Pass vendorId for stricter security check at service layer
 ): Promise<Order> => {
+  // 1. Fetch the order first to get its details for authorization
+  const orderToUpdate = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: { vendorId: true, orderStatus: true, shoppingMethod: true, shopperId: true },
+  });
+
+  if (!orderToUpdate) {
+    throw new OrderCreationError('Order not found.', 404);
+  }
+
   try {
-    // Check if the user is a VENDOR_ADMIN for this vendor, or the assigned SHOPPER_STAFF
+    // 2. Authorize the user
     const user = await prisma.user.findUnique({
       where: { id: shoppingHandlerUserId },
-      select: { role: true, vendorId: true }
+      include: { vendors: { select: { id: true } } }, // Include vendors owned by the user
     });
 
-    if (!user || user.vendorId !== vendorId || (user.role !== "store_admin"  && user.role !== "store_shopper")) {
-      throw new Error('Unauthorized to start shopping for this vendor/order.');
+    if (!user) {
+      throw new OrderCreationError('Requesting user not found.', 404);
     }
 
+    const isVendorOwner = user.role === Role.vendor && user.vendors.some(v => v.id === orderToUpdate.vendorId);
+    const isAssignedStaff = (user.role === Role.store_admin || user.role === Role.store_shopper) && user.vendorId === orderToUpdate.vendorId;
+
+    if (!isVendorOwner && !isAssignedStaff) {
+      throw new OrderCreationError('Unauthorized to start shopping for this vendor/order.', 403);
+    }
+
+    // 3. Perform the update with state checks
     const order = await prisma.order.update({
       where: {
         id: orderId,
-        vendorId: vendorId, // Ensure order belongs to this vendor
         orderStatus: OrderStatus.accepted_for_shopping, // Must be accepted to start shopping
         shoppingMethod: ShoppingMethod.vendor, // Only if vendor is responsible
         // Optional stricter check: only assigned shopper can start shopping (if roles allow VENDOR_ADMIN too, this needs adjustment)
@@ -921,10 +938,10 @@ export const startShoppingService = async (
     return order;
   } catch (error: any) {
     if (error.code === 'P2025') {
-      throw new Error('Order not found or cannot start shopping in its current state/by this vendor.');
+      throw new OrderCreationError('Order cannot start shopping in its current state.', 400);
     }
     console.error(`Error starting shopping for order ${orderId}:`, error);
-    throw new Error('Failed to start shopping: ' + error.message);
+    throw new OrderCreationError('Failed to start shopping: ' + error.message, 500);
   }
 };
 

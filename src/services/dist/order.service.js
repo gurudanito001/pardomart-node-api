@@ -866,24 +866,38 @@ reason) { return __awaiter(void 0, void 0, Promise, function () {
  */
 exports.startShoppingService = function (orderId, shoppingHandlerUserId, vendorId // Pass vendorId for stricter security check at service layer
 ) { return __awaiter(void 0, void 0, Promise, function () {
-    var user, order, error_4;
+    var orderToUpdate, user, isVendorOwner, isAssignedStaff, order, error_4;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0:
-                _a.trys.push([0, 3, , 4]);
+            case 0: return [4 /*yield*/, prisma.order.findUnique({
+                    where: { id: orderId },
+                    select: { vendorId: true, orderStatus: true, shoppingMethod: true, shopperId: true }
+                })];
+            case 1:
+                orderToUpdate = _a.sent();
+                if (!orderToUpdate) {
+                    throw new OrderCreationError('Order not found.', 404);
+                }
+                _a.label = 2;
+            case 2:
+                _a.trys.push([2, 5, , 6]);
                 return [4 /*yield*/, prisma.user.findUnique({
                         where: { id: shoppingHandlerUserId },
-                        select: { role: true, vendorId: true }
+                        include: { vendors: { select: { id: true } } }
                     })];
-            case 1:
+            case 3:
                 user = _a.sent();
-                if (!user || user.vendorId !== vendorId || (user.role !== "store_admin" && user.role !== "store_shopper")) {
-                    throw new Error('Unauthorized to start shopping for this vendor/order.');
+                if (!user) {
+                    throw new OrderCreationError('Requesting user not found.', 404);
+                }
+                isVendorOwner = user.role === client_1.Role.vendor && user.vendors.some(function (v) { return v.id === orderToUpdate.vendorId; });
+                isAssignedStaff = (user.role === client_1.Role.store_admin || user.role === client_1.Role.store_shopper) && user.vendorId === orderToUpdate.vendorId;
+                if (!isVendorOwner && !isAssignedStaff) {
+                    throw new OrderCreationError('Unauthorized to start shopping for this vendor/order.', 403);
                 }
                 return [4 /*yield*/, prisma.order.update({
                         where: {
                             id: orderId,
-                            vendorId: vendorId,
                             orderStatus: client_1.OrderStatus.accepted_for_shopping,
                             shoppingMethod: client_1.ShoppingMethod.vendor
                         },
@@ -892,17 +906,17 @@ exports.startShoppingService = function (orderId, shoppingHandlerUserId, vendorI
                             shopperId: shoppingHandlerUserId
                         }
                     })];
-            case 2:
+            case 4:
                 order = _a.sent();
                 return [2 /*return*/, order];
-            case 3:
+            case 5:
                 error_4 = _a.sent();
                 if (error_4.code === 'P2025') {
-                    throw new Error('Order not found or cannot start shopping in its current state/by this vendor.');
+                    throw new OrderCreationError('Order cannot start shopping in its current state.', 400);
                 }
                 console.error("Error starting shopping for order " + orderId + ":", error_4);
-                throw new Error('Failed to start shopping: ' + error_4.message);
-            case 4: return [2 /*return*/];
+                throw new OrderCreationError('Failed to start shopping: ' + error_4.message, 500);
+            case 6: return [2 /*return*/];
         }
     });
 }); };
