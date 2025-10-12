@@ -55,7 +55,7 @@ router.patch('/:orderId/messages/read', validate(validateMarkMessagesAsRead), me
 // --- Live Shopping Actions ---
 router.patch(
   '/:orderId/items/:itemId/update-shopping-status',
-  authorize([Role.store_admin, Role.store_shopper, Role.delivery_person]),
+  authorize([Role.vendor, Role.store_admin, Role.store_shopper, Role.delivery_person]),
   validate(validateUpdateOrderItemShoppingStatus),
   orderController.updateOrderItemShoppingStatusController
 );

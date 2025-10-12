@@ -31,7 +31,7 @@ router.post('/:orderId/messages', validation_middleware_1.validate(validation_mi
 router.get('/:orderId/messages', messageController.getMessagesForOrderController);
 router.patch('/:orderId/messages/read', validation_middleware_1.validate(validation_middleware_1.validateMarkMessagesAsRead), messageController.markMessagesAsReadController);
 // --- Live Shopping Actions ---
-router.patch('/:orderId/items/:itemId/update-shopping-status', auth_middleware_1.authorize([client_1.Role.store_admin, client_1.Role.store_shopper, client_1.Role.delivery_person]), validation_middleware_1.validate(validation_middleware_1.validateUpdateOrderItemShoppingStatus), orderController.updateOrderItemShoppingStatusController);
+router.patch('/:orderId/items/:itemId/update-shopping-status', auth_middleware_1.authorize([client_1.Role.vendor, client_1.Role.store_admin, client_1.Role.store_shopper, client_1.Role.delivery_person]), validation_middleware_1.validate(validation_middleware_1.validateUpdateOrderItemShoppingStatus), orderController.updateOrderItemShoppingStatusController);
 router.patch('/:orderId/items/:itemId/respond-to-replacement', auth_middleware_1.authorize([client_1.Role.customer]), validation_middleware_1.validate(validation_middleware_1.validateRespondToReplacement), orderController.respondToReplacementController);
 // Add a location point for a delivery person
 router.post('/:orderId/delivery-location', auth_middleware_1.authenticate, auth_middleware_1.authorize([client_1.Role.delivery_person]), validation_middleware_1.validate(validation_middleware_2.validateAddLocation), deliveryPersonLocation_controller_1.addLocationController);

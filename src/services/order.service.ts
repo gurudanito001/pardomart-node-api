@@ -990,20 +990,35 @@ export const updateOrderItemShoppingStatusService = async (
   shopperId: string,
   payload: UpdateOrderItemShoppingStatusPayload
 ): Promise<OrderItem> => {
-  const { status, quantityFound, chosenReplacementId } = payload;
+  const { status, quantityFound, chosenReplacementId } = payload;  
+  // 1. Fetch order and user details for authorization
+  const [order, requestingUser] = await Promise.all([
+    prisma.order.findUnique({
+      where: { id: orderId },
+      select: { shopperId: true, deliveryPersonId: true, userId: true, vendorId: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: shopperId },
+      select: { role: true, vendorId: true },
+    }),
+  ]);
 
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
-    select: { shopperId: true, deliveryPersonId: true, userId: true },
-  });
+  if (!order) { throw new OrderCreationError('Order not found.', 404); }
+  if (!requestingUser) { throw new OrderCreationError('Requesting user not found.', 404); }
 
-  if (!order) {
-    throw new OrderCreationError('Order not found.', 404);
+  // 2. Authorize the request
+  const isAssignedStaff = order.shopperId === shopperId || order.deliveryPersonId === shopperId;
+  const isStoreAdmin = requestingUser.role === Role.store_admin && requestingUser.vendorId === order.vendorId;
+  
+  // For a vendor, we need to check if they own the store associated with the order.
+  let isVendorOwner = false;
+  if (requestingUser.role === Role.vendor) {
+    const vendor = await prisma.vendor.findFirst({ where: { id: order.vendorId, userId: shopperId } });
+    isVendorOwner = !!vendor;
   }
 
-  // Authorize: only the assigned shopper or delivery person can update
-  if (order.shopperId !== shopperId && order.deliveryPersonId !== shopperId) {
-    throw new OrderCreationError('You are not authorized to update this order.', 403);
+  if (!isAssignedStaff && !isStoreAdmin && !isVendorOwner) {
+    throw new OrderCreationError('You are not authorized to update this order item.', 403);
   }
 
   // Validate payload logic

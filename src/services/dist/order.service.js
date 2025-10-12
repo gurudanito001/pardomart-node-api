@@ -951,23 +951,41 @@ exports.startShoppingService = function (orderId, shoppingHandlerUserId, vendorI
  * @returns The updated order item.
  */
 exports.updateOrderItemShoppingStatusService = function (orderId, itemId, shopperId, payload) { return __awaiter(void 0, void 0, Promise, function () {
-    var status, quantityFound, chosenReplacementId, order, updatedItem, io;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
+    var status, quantityFound, chosenReplacementId, _a, order, requestingUser, isAssignedStaff, isStoreAdmin, isVendorOwner, vendor, updatedItem, io;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
             case 0:
                 status = payload.status, quantityFound = payload.quantityFound, chosenReplacementId = payload.chosenReplacementId;
-                return [4 /*yield*/, prisma.order.findUnique({
-                        where: { id: orderId },
-                        select: { shopperId: true, deliveryPersonId: true, userId: true }
-                    })];
+                return [4 /*yield*/, Promise.all([
+                        prisma.order.findUnique({
+                            where: { id: orderId },
+                            select: { shopperId: true, deliveryPersonId: true, userId: true, vendorId: true }
+                        }),
+                        prisma.user.findUnique({
+                            where: { id: shopperId },
+                            select: { role: true, vendorId: true }
+                        }),
+                    ])];
             case 1:
-                order = _a.sent();
+                _a = _b.sent(), order = _a[0], requestingUser = _a[1];
                 if (!order) {
                     throw new OrderCreationError('Order not found.', 404);
                 }
-                // Authorize: only the assigned shopper or delivery person can update
-                if (order.shopperId !== shopperId && order.deliveryPersonId !== shopperId) {
-                    throw new OrderCreationError('You are not authorized to update this order.', 403);
+                if (!requestingUser) {
+                    throw new OrderCreationError('Requesting user not found.', 404);
+                }
+                isAssignedStaff = order.shopperId === shopperId || order.deliveryPersonId === shopperId;
+                isStoreAdmin = requestingUser.role === client_1.Role.store_admin && requestingUser.vendorId === order.vendorId;
+                isVendorOwner = false;
+                if (!(requestingUser.role === client_1.Role.vendor)) return [3 /*break*/, 3];
+                return [4 /*yield*/, prisma.vendor.findFirst({ where: { id: order.vendorId, userId: shopperId } })];
+            case 2:
+                vendor = _b.sent();
+                isVendorOwner = !!vendor;
+                _b.label = 3;
+            case 3:
+                if (!isAssignedStaff && !isStoreAdmin && !isVendorOwner) {
+                    throw new OrderCreationError('You are not authorized to update this order item.', 403);
                 }
                 // Validate payload logic
                 if (status === 'FOUND' && quantityFound === undefined) {
@@ -986,8 +1004,8 @@ exports.updateOrderItemShoppingStatusService = function (orderId, itemId, shoppe
                             chosenReplacement: { include: { product: true } }
                         }
                     })];
-            case 2:
-                updatedItem = _a.sent();
+            case 4:
+                updatedItem = _b.sent();
                 // Emit real-time update to the customer
                 try {
                     io = socket_1.getIO();
