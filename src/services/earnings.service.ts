@@ -37,3 +37,13 @@ export const listEarningsService = async (options: ListEarningsOptions) => {
     vendorId: filterByVendorId,
   });
 };
+
+/**
+ * Calculates the total earnings for a vendor owner over a specified period.
+ * @param ownerId The ID of the vendor owner.
+ * @param period An optional time period to filter by.
+ * @returns The total earnings amount.
+ */
+export const getTotalEarningsService = async (ownerId: string, period?: 'today' | '7days' | '1month' | '1year') => {
+  return earningsModel.getTotalEarnings(ownerId, period);
+};

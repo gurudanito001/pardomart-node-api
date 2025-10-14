@@ -87,7 +87,7 @@ exports.listEarnings = function (filters) { return __awaiter(void 0, void 0, Pro
  * @returns The total sum of earnings.
  */
 exports.getTotalEarnings = function (ownerId, period) { return __awaiter(void 0, void 0, Promise, function () {
-    var where, startDate, now, aggregate;
+    var where, startDate, aggregate;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -99,24 +99,22 @@ exports.getTotalEarnings = function (ownerId, period) { return __awaiter(void 0,
                 };
                 if (period) {
                     startDate = void 0;
-                    now = dayjs_1["default"]();
                     switch (period) {
                         case 'today':
-                            startDate = now.startOf('day').toDate();
+                            startDate = dayjs_1["default"]().startOf('day').toDate();
                             break;
                         case '7days':
-                            startDate = now.subtract(7, 'day').startOf('day').toDate();
+                            startDate = dayjs_1["default"]().subtract(7, 'day').toDate();
                             break;
                         case '1month':
-                            startDate = now.subtract(1, 'month').startOf('day').toDate();
+                            startDate = dayjs_1["default"]().subtract(1, 'month').toDate();
                             break;
                         case '1year':
-                            startDate = now.subtract(1, 'year').startOf('day').toDate();
+                            startDate = dayjs_1["default"]().subtract(1, 'year').toDate();
                             break;
                     }
                     where.createdAt = {
-                        gte: startDate,
-                        lte: now.toDate()
+                        gte: startDate
                     };
                 }
                 return [4 /*yield*/, prisma.transaction.aggregate({

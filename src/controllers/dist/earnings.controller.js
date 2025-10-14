@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.listEarningsController = void 0;
+exports.getTotalEarningsController = exports.listEarningsController = void 0;
 var earningsService = require("../services/earnings.service");
 /**
  * @swagger
@@ -97,6 +97,68 @@ exports.listEarningsController = function (req, res) { return __awaiter(void 0, 
                     return [2 /*return*/, res.status(403).json({ error: error_1.message })];
                 }
                 res.status(500).json({ error: 'An unexpected error occurred while listing earnings.' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /earnings/total:
+ *   get:
+ *     summary: Get total earnings for a vendor
+ *     tags: [Earnings, Vendor]
+ *     description: >
+ *       Calculates and returns the total earnings for the authenticated vendor owner.
+ *       The total can be filtered by a specific time period.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: period
+ *         schema:
+ *           type: string
+ *           enum: [today, 7days, 1month, 1year]
+ *         description: |
+ *           Optional. The time period to calculate earnings for.
+ *           - `today`: From the beginning of the current day.
+ *           - `7days`: For the last 7 days.
+ *           - `1month`: For the last 1 month.
+ *           - `1year`: For the last 1 year.
+ *           If omitted, total earnings of all time are returned.
+ *     responses:
+ *       200:
+ *         description: The total earnings amount.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalEarnings:
+ *                   type: number
+ *                   format: float
+ *       403:
+ *         description: Forbidden. The user is not a vendor.
+ *       500:
+ *         description: Internal server error.
+ */
+exports.getTotalEarningsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var requestingUserId, period, totalEarnings, error_2;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                requestingUserId = req.userId;
+                period = req.query.period;
+                return [4 /*yield*/, earningsService.getTotalEarningsService(requestingUserId, period)];
+            case 1:
+                totalEarnings = _a.sent();
+                res.status(200).json({ totalEarnings: totalEarnings });
+                return [3 /*break*/, 3];
+            case 2:
+                error_2 = _a.sent();
+                console.error('Error getting total earnings:', error_2);
+                res.status(500).json({ error: 'An unexpected error occurred while calculating earnings.' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
