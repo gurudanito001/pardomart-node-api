@@ -14,14 +14,14 @@ export interface CreateStaffServicePayload {
   ownerId: string; // The ID of the user creating the staff (the vendor owner)
 }
 
-export interface UpdateStaffServicePayload extends staffModel.UpdateStaffPayload {
+export interface UpdateStaffServicePayload extends Partial<staffModel.UpdateStaffPayload> {
   staffId: string;
   ownerId: string;
 }
 
-export interface ListStaffTransactionsOptions {
-  staffUserId?: string;
-  vendorId?: string;
+export interface ListStaffTransactionsFilter {
+  staffUserId?: string; // Filter by a specific staff member
+  vendorId?: string; // Filter by a specific store
 }
 
 export interface ListStaffOptions {
@@ -29,6 +29,14 @@ export interface ListStaffOptions {
   userRole: Role;
   staffVendorId?: string;
 }
+
+export interface ListStaffTransactionsOptions {
+  requestingUserId: string;
+  requestingUserRole: Role;
+  staffVendorId?: string; // The vendorId from the staff's token, for store_admin
+  filter: ListStaffTransactionsFilter;
+}
+
 
 const sanitizeUser = (user: User): Omit<User, 'rememberToken'> => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -201,41 +209,77 @@ export const deleteStaffService = async (staffId: string, ownerId: string): Prom
   return sanitizeUser(deletedUser);
 };
 
+type TransactionQueryScope = {
+  ownerId: string;
+  vendorId?: string;
+};
+
 /**
- * Retrieves transactions for staff members owned by a vendor.
- * @param ownerId - The ID of the vendor owner.
- * @param options - Filtering options for staffUserId and vendorId.
- * @returns A list of transactions.
+ * Handles authorization and determines query scope for a vendor.
+ * @private
  */
-export const listStaffTransactionsService = async (
-  ownerId: string,
-  options: ListStaffTransactionsOptions
-): Promise<Transaction[]> => {
-  const { staffUserId, vendorId } = options;
+const _getScopeForVendor = async (requestingUserId: string, filter: ListStaffTransactionsFilter): Promise<TransactionQueryScope> => {
+  const ownerId = requestingUserId;
 
-  // Authorization: If a specific staff member is requested, ensure they belong to the owner.
-  if (staffUserId) {
-    const staffUser = await getStaffByIdService(staffUserId, ownerId);
-    if (!staffUser) {
-      // Throws an error if owner doesn't own the staff, or if staff not found.
-      // This implicitly handles authorization.
-      throw new Error('Staff member not found or you are not authorized to view their transactions.');
-    }
-  }
-
-  // Authorization: If a specific vendor (store) is requested, ensure the owner owns it.
-  if (vendorId) {
-    const vendor = await prisma.vendor.findFirst({
-      where: { id: vendorId, userId: ownerId },
-    });
+  // If a vendor specifies a vendorId, we must verify they own it.
+  if (filter.vendorId) {
+    const vendor = await prisma.vendor.findFirst({ where: { id: filter.vendorId, userId: ownerId } });
     if (!vendor) {
       throw new Error('Vendor not found or you are not authorized to view its transactions.');
     }
   }
 
+  return { ownerId, vendorId: filter.vendorId };
+};
+
+/**
+ * Handles authorization and determines query scope for a store admin.
+ * @private
+ */
+const _getScopeForStoreAdmin = async (staffVendorId: string | undefined, filter: ListStaffTransactionsFilter): Promise<TransactionQueryScope> => {
+  if (!staffVendorId) {
+    throw new Error('Forbidden: You are not assigned to a store.');
+  }
+
+  // A store admin can only see transactions for their own store.
+  // They cannot query for other stores.
+  if (filter.vendorId && filter.vendorId !== staffVendorId) {
+    throw new Error('Forbidden: You can only view transactions for your assigned store.');
+  }
+
+  // We need the ownerId of the store for the model query.
+  const store = await prisma.vendor.findUnique({ where: { id: staffVendorId }, select: { userId: true } });
+  if (!store) throw new Error('Assigned store not found.');
+
+  return { ownerId: store.userId, vendorId: staffVendorId };
+};
+
+/**
+ * Retrieves transactions for staff members based on the requester's role.
+ * @param options - The options for listing transactions, including authorization details and filters.
+ * @returns A list of transactions.
+ */
+export const listStaffTransactionsService = async (options: ListStaffTransactionsOptions): Promise<Transaction[]> => {
+  const { requestingUserId, requestingUserRole, staffVendorId, filter } = options;
+  let scope: TransactionQueryScope;
+
+  switch (requestingUserRole) {
+    case Role.vendor:
+      scope = await _getScopeForVendor(requestingUserId, filter);
+      break;
+
+    case Role.store_admin:
+      scope = await _getScopeForStoreAdmin(staffVendorId, filter);
+      break;
+
+    default:
+      throw new Error('Forbidden: You do not have permission to view staff transactions.');
+  }
+
+  // The model function expects the ownerId to correctly scope the query.
   return staffModel.listStaffTransactions({
-    ownerId,
-    staffUserId,
-    vendorId,
+    ownerId: scope.ownerId,
+    vendorId: scope.vendorId,
+    staffUserId: filter.staffUserId,
   });
 };

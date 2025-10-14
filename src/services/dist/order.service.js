@@ -116,8 +116,8 @@ exports.createOrderService = function (payload) { return __awaiter(void 0, void 
  * @param id - The ID of the order to retrieve.
  * @returns The order, or null if not found.
  */
-exports.getOrderByIdService = function (id) { return __awaiter(void 0, void 0, Promise, function () {
-    var order, rating, distance, calculatedDistance, orderWithExtras;
+exports.getOrderByIdService = function (id, requestingUserId, requestingUserRole, staffVendorId) { return __awaiter(void 0, void 0, Promise, function () {
+    var order, isCustomer, isVendorOwner, isStoreStaff, isAdmin, rating, distance, calculatedDistance, orderWithExtras;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4 /*yield*/, orderModel.getOrderById(id)];
@@ -125,6 +125,14 @@ exports.getOrderByIdService = function (id) { return __awaiter(void 0, void 0, P
                 order = _a.sent();
                 if (!order || !order.vendor) {
                     return [2 /*return*/, null];
+                }
+                isCustomer = requestingUserRole === client_1.Role.customer && order.userId === requestingUserId;
+                isVendorOwner = requestingUserRole === client_1.Role.vendor && order.vendor.userId === requestingUserId;
+                isStoreStaff = (requestingUserRole === client_1.Role.store_admin || requestingUserRole === client_1.Role.store_shopper) &&
+                    staffVendorId === order.vendorId;
+                isAdmin = requestingUserRole === client_1.Role.admin;
+                if (!isCustomer && !isVendorOwner && !isStoreStaff && !isAdmin) {
+                    throw new OrderCreationError('You are not authorized to view this order.', 403);
                 }
                 return [4 /*yield*/, rating_service_1.getAggregateRatingService({ ratedVendorId: order.vendorId })];
             case 2:
@@ -435,12 +443,26 @@ exports.updateOrderService = function (orderId, updates) { return __awaiter(void
  * @param status - The new status of the order.
  * @returns The updated order.
  */
-exports.updateOrderStatusService = function (id, status) { return __awaiter(void 0, void 0, Promise, function () {
-    var updates, orderDetails, _a;
+exports.updateOrderStatusService = function (orderId, status, requestingUserId, requestingUserRole) { return __awaiter(void 0, void 0, Promise, function () {
+    var updates, orderForAuth, isCustomer, isVendorOwner, isAdmin, orderDetails, _a;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
                 updates = { orderStatus: status };
+                return [4 /*yield*/, prisma.order.findUnique({ where: { id: orderId }, select: { userId: true, vendor: { select: { userId: true } } } })];
+            case 1:
+                orderForAuth = _b.sent();
+                if (!orderForAuth) {
+                    throw new OrderCreationError('Order not found', 404);
+                }
+                isCustomer = requestingUserRole === client_1.Role.customer && orderForAuth.userId === requestingUserId;
+                isVendorOwner = requestingUserRole === client_1.Role.vendor && orderForAuth.vendor.userId === requestingUserId;
+                isAdmin = requestingUserRole === client_1.Role.admin;
+                // For now, only customer, vendor owner, or admin can change status.
+                // More granular logic can be added here based on which status transitions are allowed by which role.
+                if (!isCustomer && !isVendorOwner && !isAdmin) {
+                    throw new OrderCreationError('You are not authorized to update the status of this order.', 403);
+                }
                 // If order is delivered, handle payments to wallets
                 if (status === client_1.OrderStatus.delivered) {
                     updates.actualDeliveryTime = new Date();
@@ -449,7 +471,7 @@ exports.updateOrderStatusService = function (id, status) { return __awaiter(void
                             return __generator(this, function (_a) {
                                 switch (_a.label) {
                                     case 0: return [4 /*yield*/, tx.order.findUnique({
-                                            where: { id: id },
+                                            where: { id: orderId },
                                             include: { vendor: true }
                                         })];
                                     case 1:
@@ -525,44 +547,44 @@ exports.updateOrderStatusService = function (id, status) { return __awaiter(void
                                         _a.label = 10;
                                     case 10: 
                                     // 4. Update the order status
-                                    return [2 /*return*/, orderModel.updateOrder(id, updates, tx)];
+                                    return [2 /*return*/, orderModel.updateOrder(orderId, updates, tx)];
                                 }
                             });
                         }); })];
                 }
-                return [4 /*yield*/, orderModel.getOrderById(id)];
-            case 1:
+                return [4 /*yield*/, orderModel.getOrderById(orderId)];
+            case 2:
                 orderDetails = _b.sent();
-                if (!orderDetails) return [3 /*break*/, 6];
+                if (!orderDetails) return [3 /*break*/, 7];
                 _a = status;
                 switch (_a) {
-                    case 'ready_for_pickup': return [3 /*break*/, 2];
-                    case 'en_route': return [3 /*break*/, 4];
+                    case 'ready_for_pickup': return [3 /*break*/, 3];
+                    case 'en_route': return [3 /*break*/, 5];
                 }
-                return [3 /*break*/, 6];
-            case 2: return [4 /*yield*/, notificationService.createNotification({
+                return [3 /*break*/, 7];
+            case 3: return [4 /*yield*/, notificationService.createNotification({
                     userId: orderDetails.userId,
                     type: 'ORDER_READY_FOR_PICKUP',
                     title: 'Your order is ready for pickup!',
                     body: "Order #" + orderDetails.orderCode + " is now ready for pickup at " + orderDetails.vendor.name + ".",
-                    meta: { orderId: id }
+                    meta: { orderId: orderId }
                 })];
-            case 3:
+            case 4:
                 _b.sent();
-                return [3 /*break*/, 6];
-            case 4: return [4 /*yield*/, notificationService.createNotification({
+                return [3 /*break*/, 7];
+            case 5: return [4 /*yield*/, notificationService.createNotification({
                     userId: orderDetails.userId,
                     type: 'EN_ROUTE',
                     title: 'Your order is on the way!',
                     body: "Your delivery person is en route with order #" + orderDetails.orderCode + ".",
-                    meta: { orderId: id }
+                    meta: { orderId: orderId }
                 })];
-            case 5:
+            case 6:
                 _b.sent();
-                return [3 /*break*/, 6];
-            case 6: 
+                return [3 /*break*/, 7];
+            case 7: 
             // --- End Notification Logic ---
-            return [2 /*return*/, orderModel.updateOrder(id, updates, prisma)];
+            return [2 /*return*/, orderModel.updateOrder(orderId, updates, prisma)];
         }
     });
 }); };
@@ -732,10 +754,12 @@ exports.acceptOrderService = function (orderId, shoppingHandlerUserId, vendorId 
     var orderToUpdate, user, isVendorOwner, isAssignedStaff, acceptedOrder, error_3;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4 /*yield*/, prisma.order.findUnique({
-                    where: { id: orderId },
-                    select: { vendorId: true }
-                })];
+            case 0:
+                _a.trys.push([0, 5, , 6]);
+                return [4 /*yield*/, prisma.order.findUnique({
+                        where: { id: orderId },
+                        select: { vendorId: true }
+                    })];
             case 1:
                 orderToUpdate = _a.sent();
                 if (!orderToUpdate) {
@@ -743,18 +767,15 @@ exports.acceptOrderService = function (orderId, shoppingHandlerUserId, vendorId 
                 }
                 return [4 /*yield*/, prisma.user.findUnique({
                         where: { id: shoppingHandlerUserId },
-                        include: { vendors: { select: { id: true } } }
+                        select: { role: true, vendorId: true }
                     })];
             case 2:
                 user = _a.sent();
-                isVendorOwner = (user === null || user === void 0 ? void 0 : user.role) === client_1.Role.vendor && user.vendors.some(function (v) { return v.id === orderToUpdate.vendorId; });
+                isVendorOwner = (user === null || user === void 0 ? void 0 : user.role) === client_1.Role.vendor && vendorId === orderToUpdate.vendorId;
                 isAssignedStaff = ((user === null || user === void 0 ? void 0 : user.role) === client_1.Role.store_admin || (user === null || user === void 0 ? void 0 : user.role) === client_1.Role.store_shopper) && user.vendorId === orderToUpdate.vendorId;
                 if (!isVendorOwner && !isAssignedStaff) {
                     throw new OrderCreationError('You are not authorized to accept this order.', 403);
                 }
-                _a.label = 3;
-            case 3:
-                _a.trys.push([3, 6, , 7]);
                 return [4 /*yield*/, prisma.order.update({
                         where: {
                             id: orderId,
@@ -768,7 +789,7 @@ exports.acceptOrderService = function (orderId, shoppingHandlerUserId, vendorId 
                             shopperId: shoppingHandlerUserId
                         }
                     })];
-            case 4:
+            case 3:
                 acceptedOrder = _a.sent();
                 // --- Add Notification Logic Here ---
                 return [4 /*yield*/, notificationService.createNotification({
@@ -778,12 +799,12 @@ exports.acceptOrderService = function (orderId, shoppingHandlerUserId, vendorId 
                         body: "Your order with code #" + acceptedOrder.orderCode + " has been accepted  and will begin preparing it shortly.",
                         meta: { orderId: acceptedOrder.id }
                     })];
-            case 5:
+            case 4:
                 // --- Add Notification Logic Here ---
                 _a.sent();
                 // --- End Notification Logic ---
                 return [2 /*return*/, acceptedOrder];
-            case 6:
+            case 5:
                 error_3 = _a.sent();
                 if (error_3.code === 'P2025') { // Prisma error for record not found
                     // This means the order was not found OR it didn't match the where conditions (e.g., already accepted)
@@ -791,7 +812,7 @@ exports.acceptOrderService = function (orderId, shoppingHandlerUserId, vendorId 
                 }
                 console.error("Error accepting order " + orderId + ":", error_3);
                 throw new OrderCreationError('Failed to accept order: ' + error_3.message, 500);
-            case 7: return [2 /*return*/];
+            case 6: return [2 /*return*/];
         }
     });
 }); };
@@ -951,7 +972,7 @@ exports.startShoppingService = function (orderId, shoppingHandlerUserId, vendorI
  * @returns The updated order item.
  */
 exports.updateOrderItemShoppingStatusService = function (orderId, itemId, shopperId, payload) { return __awaiter(void 0, void 0, Promise, function () {
-    var status, quantityFound, chosenReplacementId, _a, order, requestingUser, isAssignedStaff, isStoreAdmin, isVendorOwner, vendor, updatedItem, io;
+    var status, quantityFound, chosenReplacementId, _a, order, requestingUser, isAssignedShopperByVendor, isAssignedShopperAsDeliveryPerson, isStoreAdmin, isVendorOwner, vendor, updatedItem, io;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -959,7 +980,7 @@ exports.updateOrderItemShoppingStatusService = function (orderId, itemId, shoppe
                 return [4 /*yield*/, Promise.all([
                         prisma.order.findUnique({
                             where: { id: orderId },
-                            select: { shopperId: true, deliveryPersonId: true, userId: true, vendorId: true }
+                            select: { shopperId: true, deliveryPersonId: true, userId: true, vendorId: true, shoppingMethod: true }
                         }),
                         prisma.user.findUnique({
                             where: { id: shopperId },
@@ -974,7 +995,8 @@ exports.updateOrderItemShoppingStatusService = function (orderId, itemId, shoppe
                 if (!requestingUser) {
                     throw new OrderCreationError('Requesting user not found.', 404);
                 }
-                isAssignedStaff = order.shopperId === shopperId || order.deliveryPersonId === shopperId;
+                isAssignedShopperByVendor = order.shoppingMethod === 'vendor' && order.shopperId === shopperId;
+                isAssignedShopperAsDeliveryPerson = order.shoppingMethod === 'delivery_person' && order.shopperId === shopperId;
                 isStoreAdmin = requestingUser.role === client_1.Role.store_admin && requestingUser.vendorId === order.vendorId;
                 isVendorOwner = false;
                 if (!(requestingUser.role === client_1.Role.vendor)) return [3 /*break*/, 3];
@@ -984,7 +1006,7 @@ exports.updateOrderItemShoppingStatusService = function (orderId, itemId, shoppe
                 isVendorOwner = !!vendor;
                 _b.label = 3;
             case 3:
-                if (!isAssignedStaff && !isStoreAdmin && !isVendorOwner) {
+                if (!isAssignedShopperByVendor && !isAssignedShopperAsDeliveryPerson && !isStoreAdmin && !isVendorOwner) {
                     throw new OrderCreationError('You are not authorized to update this order item.', 403);
                 }
                 // Validate payload logic

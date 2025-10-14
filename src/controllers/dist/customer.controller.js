@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.listCustomersController = void 0;
+exports.listCustomerTransactionsController = exports.listCustomersController = void 0;
 var customerService = require("../services/customer.service");
 var client_1 = require("@prisma/client");
 /**
@@ -88,17 +88,21 @@ exports.listCustomersController = function (req, res) { return __awaiter(void 0,
                 queryVendorId = req.query.vendorId;
                 vendorIdToQuery = void 0;
                 ownerId = void 0;
-                if (userRole === client_1.Role.vendor) {
-                    ownerId = userId;
-                    vendorIdToQuery = queryVendorId; // A vendor can filter by any of their stores
-                }
-                else {
-                    // For staff, they can only see customers of their assigned store.
-                    // Any query for a different store is an error.
-                    if (queryVendorId && queryVendorId !== staffVendorId) {
-                        return [2 /*return*/, res.status(403).json({ error: 'Forbidden: You can only access customers for your assigned store.' })];
-                    }
-                    vendorIdToQuery = staffVendorId;
+                switch (userRole) {
+                    case client_1.Role.vendor:
+                        ownerId = userId;
+                        vendorIdToQuery = queryVendorId; // A vendor can filter by any of their stores.
+                        break;
+                    case client_1.Role.store_admin:
+                    case client_1.Role.store_shopper:
+                        if (!staffVendorId) {
+                            return [2 /*return*/, res.status(403).json({ error: 'Forbidden: You are not assigned to a store.' })];
+                        }
+                        // Staff can only see customers of their assigned store.
+                        vendorIdToQuery = staffVendorId;
+                        break;
+                    default:
+                        return [2 /*return*/, res.status(403).json({ error: 'Forbidden: Your role does not permit this action.' })];
                 }
                 return [4 /*yield*/, customerService.listCustomersService({ ownerId: ownerId, vendorId: vendorIdToQuery })];
             case 1:
@@ -112,6 +116,75 @@ exports.listCustomersController = function (req, res) { return __awaiter(void 0,
                     return [2 /*return*/, res.status(403).json({ error: error_1.message })];
                 }
                 res.status(500).json({ error: 'An unexpected error occurred while listing customers.' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /customers/{customerId}/transactions:
+ *   get:
+ *     summary: List all transactions for a specific customer
+ *     tags: [Customers, Transactions]
+ *     description: >
+ *       Retrieves a list of all transactions for a given customer, with role-based access:
+ *       - **Vendor**: Can view all transactions for the customer across all their stores. Can optionally filter by a specific `vendorId` (store ID).
+ *       - **Store Admin**: Can only view transactions for the customer within their assigned store. The `vendorId` filter is ignored.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: customerId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: The ID of the customer.
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string, format: uuid }
+ *         description: Optional. For Vendors, filters transactions by a specific store ID. Ignored for other roles.
+ *     responses:
+ *       200:
+ *         description: A list of the customer's transactions.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Transaction'
+ *       403:
+ *         description: Forbidden. The authenticated user does not have permission.
+ *       404:
+ *         description: Not Found. The customer has no history with the specified vendor(s).
+ *       500:
+ *         description: Internal server error.
+ */
+exports.listCustomerTransactionsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var requestingUserId, requestingUserRole, staffVendorId, customerId, vendorId, transactions, error_2;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                requestingUserId = req.userId;
+                requestingUserRole = req.userRole;
+                staffVendorId = req.vendorId;
+                customerId = req.params.customerId;
+                vendorId = req.query.vendorId;
+                return [4 /*yield*/, customerService.listCustomerTransactionsService(requestingUserId, requestingUserRole, staffVendorId, vendorId, customerId)];
+            case 1:
+                transactions = _a.sent();
+                res.status(200).json(transactions);
+                return [3 /*break*/, 3];
+            case 2:
+                error_2 = _a.sent();
+                console.error('Error listing customer transactions for vendor:', error_2);
+                if (error_2.message.includes('Unauthorized') || error_2.message.includes('Forbidden')) {
+                    return [2 /*return*/, res.status(403).json({ error: error_2.message })];
+                }
+                if (error_2.message.includes('Customer has not placed any orders')) {
+                    return [2 /*return*/, res.status(404).json({ error: error_2.message })];
+                }
+                res.status(500).json({ error: error_2.message || 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }

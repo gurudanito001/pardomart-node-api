@@ -315,6 +315,7 @@ model Vendor {
   openingHours   VendorOpeningHours[]
   carts          Cart[]
   vendorProducts VendorProduct[]
+  transactions    Transaction[]
   orders         Order[]
   staff          User[]               @relation("VendorStaff")
   createdAt      DateTime             @default(now())
@@ -341,6 +342,7 @@ model SupportTicket {
   user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      String
   title       String
+  imageUrl    String?
   description String
   category    TicketCategory
   status      TicketStatus   @default(OPEN)
@@ -467,6 +469,8 @@ model Transaction {
   user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   walletId    String?
   wallet      Wallet?           @relation(fields: [walletId], references: [id], onDelete: SetNull)
+  vendorId    String?           
+  vendor      Vendor?           @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   amount      Float // Can be positive (credit) or negative (debit)
   type        TransactionType
   source      TransactionSource
@@ -523,6 +527,9 @@ enum TransactionType {
   REFUND
   VENDOR_PAYOUT
   TIP_PAYOUT
+
+  CREDIT
+  DEBIT
 }
 
 

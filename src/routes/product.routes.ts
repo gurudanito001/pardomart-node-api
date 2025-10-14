@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as productController from '../controllers/product.controllers';
-import { authenticate, authorize } from '../middlewares/auth.middleware';
+import { authenticate, authorize } from '../middlewares/auth.middleware'; // Assuming you have validation middleware
 import { validate } from '../middlewares/validation.middleware'; // Assuming you have validation middleware
 import {
     validateCreateProduct,
@@ -18,7 +18,9 @@ import {
     validateGetVendorProductsByTagIds,
     validateGetVendorProductsByCategory,
     validateGetVendorProductsByUser,
+    validateTransferProducts,
 } from '../middlewares/product.validation';
+import { Role } from '@prisma/client';
 
 const router = Router();
 
@@ -73,6 +75,22 @@ router.delete(
     authorize(['vendor', 'store_admin']),
     validate(validateId),
     productController.deleteVendorProduct
+);
+
+// Add this new route
+router.get(
+  '/vendor/my-products',
+  authenticate,
+  authorize([Role.vendor]),
+  productController.getMyVendorProductsController
+);
+
+router.post(
+  '/vendor/transfer',
+  authenticate,
+  authorize([Role.vendor]),
+  validate(validateTransferProducts),
+  productController.transferVendorProductsController
 );
 
 // --- Public/General Product Routes ---

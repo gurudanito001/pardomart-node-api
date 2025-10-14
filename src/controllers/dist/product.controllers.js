@@ -47,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.getTrendingVendorProducts = exports.deleteVendorProduct = exports.deleteProduct = exports.getVendorProductsByUserController = exports.getVendorProductsByCategory = exports.getAllVendorProducts = exports.getAllProducts = exports.updateVendorProduct = exports.updateProductBase = exports.getVendorProductsByTagIds = exports.getProductsByTagIds = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.createVendorProductWithBarcode = exports.getVendorProductById = exports.createVendorProduct = exports.createProduct = void 0;
+exports.transferVendorProductsController = exports.getMyVendorProductsController = exports.getTrendingVendorProducts = exports.deleteVendorProduct = exports.deleteProduct = exports.getVendorProductsByUserController = exports.getVendorProductsByCategory = exports.getAllVendorProducts = exports.getAllProducts = exports.updateVendorProduct = exports.updateProductBase = exports.getVendorProductsByTagIds = exports.getProductsByTagIds = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.createVendorProductWithBarcode = exports.getVendorProductById = exports.createVendorProduct = exports.createProduct = void 0;
 var productService = require("../services/product.service");
 var client_1 = require("@prisma/client");
 /**
@@ -970,19 +970,26 @@ exports.deleteProduct = function (req, res) { return __awaiter(void 0, void 0, v
  *         description: Vendor product not found.
  */
 exports.deleteVendorProduct = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var vendorProduct, error_16;
+    var vendorProductId, requestingUserId, requestingUserRole, staffVendorId, vendorProduct, error_16;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, productService.deleteVendorProduct(req.params.id)];
+                vendorProductId = req.params.id;
+                requestingUserId = req.userId;
+                requestingUserRole = req.userRole;
+                staffVendorId = req.vendorId;
+                return [4 /*yield*/, productService.deleteVendorProduct(vendorProductId, requestingUserId, requestingUserRole, staffVendorId)];
             case 1:
                 vendorProduct = _a.sent();
                 res.json(vendorProduct);
                 return [3 /*break*/, 3];
             case 2:
                 error_16 = _a.sent();
-                if (error_16 instanceof client_1.Prisma.PrismaClientKnownRequestError && error_16.code === 'P2025') {
+                if (error_16.message.includes('Forbidden')) {
+                    return [2 /*return*/, res.status(403).json({ error: error_16.message })];
+                }
+                if (error_16 instanceof client_1.Prisma.PrismaClientKnownRequestError && error_16.code === 'P2025' || error_16.message.includes('not found')) {
                     return [2 /*return*/, res.status(404).json({ error: 'Vendor product not found.' })];
                 }
                 console.error('Error deleting vendor product:', error_16);
@@ -1043,6 +1050,154 @@ exports.getTrendingVendorProducts = function (req, res) { return __awaiter(void 
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 4];
             case 4: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /product/vendor/my-products:
+ *   get:
+ *     summary: Get all products from all stores owned by the authenticated vendor
+ *     tags: [Product, Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string, format: uuid }
+ *         description: Optional. Filter products by a specific store ID owned by the vendor.
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *         description: Page number for pagination.
+ *       - in: query
+ *         name: size
+ *         schema: { type: integer, default: 20 }
+ *         description: Number of items per page.
+ *     description: Retrieves a complete list of all vendor-specific products from all stores owned by the authenticated vendor user.
+ *     responses:
+ *       200:
+ *         description: A paginated list of all vendor products.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 page: { type: integer }
+ *                 totalPages: { type: integer }
+ *                 pageSize: { type: integer }
+ *                 totalCount: { type: integer }
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/VendorProductWithRelations'
+ *       403:
+ *         description: Forbidden. User is not a vendor.
+ *       500:
+ *         description: Internal server error.
+ */
+exports.getMyVendorProductsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var ownerId, _a, vendorId, page, size, pagination, products, error_18;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _b.trys.push([0, 2, , 3]);
+                ownerId = req.userId;
+                _a = req.query, vendorId = _a.vendorId, page = _a.page, size = _a.size;
+                pagination = { page: page || '1', take: size || '20' };
+                return [4 /*yield*/, productService.getMyVendorProductsService(ownerId, vendorId, pagination)];
+            case 1:
+                products = _b.sent();
+                res.status(200).json(products);
+                return [3 /*break*/, 3];
+            case 2:
+                error_18 = _b.sent();
+                console.error('Error getting my vendor products:', error_18);
+                if (error_18.message.includes('Forbidden')) {
+                    return [2 /*return*/, res.status(403).json({ error: error_18.message })];
+                }
+                res.status(500).json({ error: 'Internal server error' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /product/vendor/transfer:
+ *   post:
+ *     summary: Transfer a product listing from one store to others
+ *     tags: [Product, Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     description: >
+ *       Copies a vendor product listing from a source store to one or more target stores owned by the same vendor.
+ *       The product will not be transferred to stores where it already exists.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [sourceVendorProductIds, targetVendorIds]
+ *             properties:
+ *               sourceVendorProductIds:
+ *                 type: array
+ *                 items: { type: string, format: uuid }
+ *                 description: An array of vendor product IDs to copy.
+ *               targetVendorIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 description: An array of store IDs to copy the product to.
+ *     responses:
+ *       200:
+ *         description: The result of the transfer operation.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 successfulTransfers: { type: integer }
+ *                 skippedTransfers: { type: integer }
+ *                 details:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       sourceVendorProductId: { type: string, format: uuid }
+ *                       transferredTo: { type: array, items: { type: string, format: uuid }, description: "List of store IDs the product was successfully transferred to." }
+ *                       skippedFor: { type: array, items: { type: string, format: uuid }, description: "List of store IDs where the product already existed." }
+ *       403:
+ *         description: Forbidden. User does not own the source or target stores.
+ *       404:
+ *         description: Source product not found.
+ */
+exports.transferVendorProductsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var ownerId, _a, sourceVendorProductIds, targetVendorIds, result, error_19;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _b.trys.push([0, 2, , 3]);
+                ownerId = req.userId;
+                _a = req.body, sourceVendorProductIds = _a.sourceVendorProductIds, targetVendorIds = _a.targetVendorIds;
+                return [4 /*yield*/, productService.transferVendorProductsService(ownerId, sourceVendorProductIds, targetVendorIds)];
+            case 1:
+                result = _b.sent();
+                res.status(200).json(result);
+                return [3 /*break*/, 3];
+            case 2:
+                error_19 = _b.sent();
+                if (error_19.message.includes('Forbidden') || error_19.message.includes('Unauthorized')) {
+                    return [2 /*return*/, res.status(403).json({ error: error_19.message })];
+                }
+                if (error_19.message.includes('not found')) {
+                    return [2 /*return*/, res.status(404).json({ error: error_19.message })];
+                }
+                res.status(500).json({ error: 'An unexpected error occurred during product transfer.' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
         }
     });
 }); };

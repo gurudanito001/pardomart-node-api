@@ -15,7 +15,7 @@ router.post('/', /* validate(validateCreateStaff), */ staffController.createStaf
 // List all staff for the authenticated user (across all their stores)
 router.get('/', authorize([Role.vendor, Role.store_admin]), staffController.listStaffForVendorOrAdminController);
 // List all transactions for staff of the authenticated vendor
-router.get('/transactions', authorize(['vendor']), staffController.listStaffTransactionsController);
+router.get('/transactions', authorize([Role.vendor, Role.store_admin]), staffController.listStaffTransactionsController);
 
 
 router.get('/store/:vendorId', /* validate(validateId('vendorId')), */ staffController.listStaffByVendorController);

@@ -1,5 +1,5 @@
 // models/product.model.ts
-import { PrismaClient, Product, VendorProduct, Prisma } from '@prisma/client';
+import { PrismaClient, Product, VendorProduct, Prisma, Vendor, Category, Tag } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -190,6 +190,58 @@ export const getAllVendorProducts = async (filters: getVendorProductsFilters, pa
 };
 
 
+
+/**
+ * Retrieves all vendor products for all stores owned by a specific user.
+ * @param ownerId - The user ID of the vendor owner.
+ * @returns A list of vendor products with their base product and vendor details.
+ */
+export const getVendorProductsByOwnerId = async (ownerId: string, vendorId?: string, pagination?: { page: string, take: string }) => {
+  const where: Prisma.VendorProductWhereInput = {
+    vendor: {
+      userId: ownerId,
+    },
+  };
+
+  if (vendorId) {
+    where.vendorId = vendorId;
+  }
+
+  const page = parseInt(pagination?.page || '1', 10);
+  const take = parseInt(pagination?.take || '20', 10);
+  const skip = (page - 1) * take;
+
+  const [vendorProducts, totalCount] = await prisma.$transaction([
+    prisma.vendorProduct.findMany({
+    where,
+    include: {
+      product: true, // Include the base product details
+      vendor: {      // Include the specific store's details
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      categories: true,
+      tags: true,
+    },
+    orderBy: {
+      vendor: {
+        name: 'asc',
+      },
+    },
+    skip,
+    take,
+    }),
+    prisma.vendorProduct.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / take);
+
+  return { page, totalPages, pageSize: take, totalCount, data: vendorProducts };
+};
+
+
 export const getProductsByTagIds = async (tagIds: string[]): Promise<Product[]> => {
   return prisma.product.findMany({
     where: {
@@ -228,7 +280,6 @@ export const getVendorProductsByTagIds = async (tagIds: string[]): Promise<Vendo
 };
 
 export const getAllProducts = async (): Promise<Product[]> => {
-  await prisma.order.deleteMany();
   return prisma.product.findMany({
     include: {
       categories: true,
@@ -261,9 +312,36 @@ export const getVendorProductsByCategory = async (
   });
 };
 
-export const getVendorProductById = async (vendorProductId: string): Promise<VendorProduct | null> =>{
+export interface vendorProductWithRelations extends VendorProduct {
+  vendor: Vendor
+  categories: Category[]
+  tags: Tag[]
+}
+  
+export const getVendorProductById = async (vendorProductId: string): Promise<vendorProductWithRelations | null> =>{
   return prisma.vendorProduct.findUnique({
     where: {id: vendorProductId},
+    include: {
+      vendor: true,
+      categories: true,
+      tags: true
+    },
+  });
+};
+
+/**
+ * Retrieves multiple vendor products by their IDs.
+ * @param vendorProductIds An array of vendor product IDs.
+ * @returns A list of vendor products with their relations.
+ */
+export const getVendorProductsByIds = async (vendorProductIds: string[]): Promise<vendorProductWithRelations[]> => {
+  return prisma.vendorProduct.findMany({
+    where: { id: { in: vendorProductIds } },
+    include: {
+      vendor: true,
+      categories: true,
+      tags: true,
+    },
   });
 };
 
@@ -390,6 +468,65 @@ export const deleteProduct = async (id: string): Promise<Product> => {
   return prisma.product.delete({
     where: { id },
   });
+};
+
+/**
+ * Copies a vendor product to other stores, skipping stores where it already exists.
+ * @param sourceProduct The full source VendorProduct object.
+ * @param targetVendorIds An array of store IDs to copy to.
+ * @returns An object with arrays of transferred and skipped vendor IDs.
+ */
+export const transferVendorProducts = async (
+  sourceProduct: VendorProduct & { categories: { id: string }[], tags: { id: string }[] },
+  targetVendorIds: string[]
+): Promise<{ transferred: string[], skipped: string[] }> => {
+  const transferred: string[] = [];
+  const skipped: string[] = [];
+
+  for (const targetVendorId of targetVendorIds) {
+    // Check if a product with the same base productId already exists in the target store
+    const existingProduct = await prisma.vendorProduct.findUnique({
+      where: {
+        vendorId_productId: {
+          vendorId: targetVendorId,
+          productId: sourceProduct.productId,
+        },
+      },
+    });
+
+    if (existingProduct) {
+      skipped.push(targetVendorId);
+      continue; // Skip to the next store
+    }
+
+    // Create the new vendor product, copying details from the source
+    await prisma.vendorProduct.create({
+      data: {
+        vendor: { connect: { id: targetVendorId } },
+        product: { connect: { id: sourceProduct.productId } },
+        name: sourceProduct.name,
+        description: sourceProduct.description,
+        price: sourceProduct.price,
+        discountedPrice: sourceProduct.discountedPrice,
+        images: sourceProduct.images,
+        weight: sourceProduct.weight,
+        weightUnit: sourceProduct.weightUnit,
+        isAvailable: sourceProduct.isAvailable,
+        isAlcohol: sourceProduct.isAlcohol,
+        isAgeRestricted: sourceProduct.isAgeRestricted,
+        attributes: sourceProduct.attributes ?? Prisma.JsonNull,
+        categories: {
+          connect: sourceProduct.categories.map(c => ({ id: c.id })),
+        },
+        tags: {
+          connect: sourceProduct.tags.map(t => ({ id: t.id })),
+        },
+      },
+    });
+    transferred.push(targetVendorId);
+  }
+
+  return { transferred, skipped };
 };
 
 export const deleteVendorProduct = async (id: string): Promise<VendorProduct> => {

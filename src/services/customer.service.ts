@@ -1,5 +1,5 @@
 // services/customer.service.ts
-import { PrismaClient, User } from '@prisma/client';
+import { PrismaClient, User, Role } from '@prisma/client';
 import * as customerModel from '../models/customer.model';
 
 const prisma = new PrismaClient();
@@ -21,20 +21,58 @@ export const listCustomersService = async (options: ListCustomersOptions): Promi
     throw new Error('Either ownerId or vendorId must be provided.');
   }
 
-  // If an owner is making the request for a specific store,
-  // ensure they own that store.
-  if (ownerId && vendorId) {
-    const vendor = await prisma.vendor.findFirst({
-      where: {
-        id: vendorId,
-        userId: ownerId,
-      },
-    });
+  return customerModel.listCustomers(options);
+};
 
-    if (!vendor) {
-      throw new Error('Unauthorized: You do not own this vendor.');
-    }
+/**
+ * Retrieves transactions for a specific customer, with role-based authorization.
+ * @param requestingUserId - The ID of the user making the request.
+ * @param requestingUserRole - The role of the user making the request.
+ * @param staffVendorId - The vendor ID from the staff member's token (for store_admin).
+ * @param filterByVendorId - An optional store ID to filter by (for vendors).
+ * @param customerId - The ID of the customer.
+ * @returns A list of transactions.
+ */
+export const listCustomerTransactionsService = async (
+  requestingUserId: string,
+  requestingUserRole: Role,
+  staffVendorId: string | undefined,
+  filterByVendorId: string | undefined,
+  customerId: string
+) => {
+  const modelFilters: customerModel.ListCustomerTransactionsFilters = {
+    customerId,
+  };
+
+  // 1. Authorize based on role
+  switch (requestingUserRole) {
+    case Role.vendor:
+      modelFilters.ownerId = requestingUserId;
+      // If a vendor filters by a specific store, authorize it.
+      if (filterByVendorId) {
+        const vendor = await prisma.vendor.findFirst({
+          where: { id: filterByVendorId, userId: requestingUserId },
+        });
+        if (!vendor) {
+          throw new Error('Forbidden: You do not own this store or store not found.');
+        }
+        modelFilters.vendorId = filterByVendorId;
+      }
+      break;
+
+    case Role.store_admin:
+      if (!staffVendorId) {
+        throw new Error('Forbidden: You are not assigned to a store.');
+      }
+      // A store admin can ONLY see transactions for their assigned store.
+      modelFilters.vendorId = staffVendorId;
+      break;
+
+    default:
+      throw new Error('Forbidden: You do not have permission to perform this action.');
   }
 
-  return customerModel.listCustomers({ ownerId, vendorId });
+  // 2. Retrieve transactions using the constructed filters.
+  // The model will handle validation of whether the customer has history.
+  return customerModel.listCustomerTransactions(modelFilters);
 };

@@ -126,14 +126,13 @@ var order_service_1 = require("../services/order.service"); // Adjust the path i
  *         - $ref: '#/components/schemas/OrderItem'
  *         - type: object
  *           properties:
- *             vendorProduct:
- *               $ref: '#/components/schemas/VendorProduct'
+ *             vendorProduct: { $ref: '#/components/schemas/VendorProductWithProduct' }
  *             chosenReplacement:
- *               $ref: '#/components/schemas/VendorProduct'
+ *               $ref: '#/components/schemas/VendorProductWithProduct'
  *             replacements:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/VendorProduct'
+ *                 $ref: '#/components/schemas/VendorProductWithProduct'
  *     UserSummary:
  *       type: object
  *       properties:
@@ -149,9 +148,9 @@ var order_service_1 = require("../services/order.service"); // Adjust the path i
  *               type: string
  *               description: A unique, human-readable code for the order.
  *               example: "AB12CD"
- *             user: { $ref: '#/components/schemas/UserSummary' }
- *             shopper: { $ref: '#/components/schemas/UserSummary' }
- *             deliveryPerson: { $ref: '#/components/schemas/UserSummary' }
+ *             user: { $ref: '#/components/schemas/UserSummary', nullable: true }
+ *             shopper: { $ref: '#/components/schemas/UserSummary', nullable: true }
+ *             deliveryPerson: { $ref: '#/components/schemas/UserSummary', nullable: true }
  *             orderItems:
  *               type: array
  *               items: { $ref: '#/components/schemas/OrderItemWithRelations' }
@@ -163,6 +162,23 @@ var order_service_1 = require("../services/order.service"); // Adjust the path i
  *         - type: object
  *           properties:
  *             user: { $ref: '#/components/schemas/User' }
+ *             rating:
+ *               type: object
+ *               properties:
+ *                 average: { type: number, format: float }
+ *                 count: { type: integer }
+ *             distance: { type: number, format: float, nullable: true }
+ *     VendorProductWithProduct:
+ *       allOf:
+ *         - $ref: '#/components/schemas/VendorProduct'
+ *         - type: object
+ *           properties:
+ *             product:
+ *               $ref: '#/components/schemas/Product'
+ *             categories:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Category'
  *     Vendor:
  *       type: object
  *       properties:
@@ -297,13 +313,14 @@ exports.createOrderController = function (req, res) { return __awaiter(void 0, v
  *         description: Order not found.
  */
 exports.getOrderByIdController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var orderId, order, error_2;
+    var orderId, userId, userRole, staffVendorId, order, error_2;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
                 orderId = req.params.id;
-                return [4 /*yield*/, order_service_1.getOrderByIdService(orderId)];
+                userId = req.userId, userRole = req.userRole, staffVendorId = req.vendorId;
+                return [4 /*yield*/, order_service_1.getOrderByIdService(orderId, userId, userRole, staffVendorId)];
             case 1:
                 order = _a.sent();
                 if (!order) {
@@ -391,21 +408,25 @@ exports.getOrdersByUserController = function (req, res) { return __awaiter(void 
  *         description: Order not found.
  */
 exports.updateOrderStatusController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var orderId, status, updatedOrder, error_4;
+    var orderId, status, userId, userRole, updatedOrder, error_4;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
                 orderId = req.params.id;
                 status = req.body.status;
-                return [4 /*yield*/, order_service_1.updateOrderStatusService(orderId, status)];
+                userId = req.userId, userRole = req.userRole;
+                return [4 /*yield*/, order_service_1.updateOrderStatusService(orderId, status, userId, userRole)];
             case 1:
                 updatedOrder = _a.sent();
                 res.status(200).json(updatedOrder);
                 return [3 /*break*/, 3];
             case 2:
                 error_4 = _a.sent();
-                if (error_4.message === 'Order not found') {
+                if (error_4 instanceof order_service_1.OrderCreationError) {
+                    return [2 /*return*/, res.status(error_4.statusCode).json({ error: error_4.message })];
+                }
+                if (error_4.message.includes('not found')) {
                     return [2 /*return*/, res.status(404).json({ error: error_4.message })];
                 }
                 res.status(500).json({ error: 'Failed to update order status: ' + error_4.message });

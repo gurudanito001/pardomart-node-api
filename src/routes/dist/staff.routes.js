@@ -13,7 +13,7 @@ router.post('/', /* validate(validateCreateStaff), */ staffController.createStaf
 // List all staff for the authenticated user (across all their stores)
 router.get('/', auth_middleware_1.authorize([client_1.Role.vendor, client_1.Role.store_admin]), staffController.listStaffForVendorOrAdminController);
 // List all transactions for staff of the authenticated vendor
-router.get('/transactions', auth_middleware_1.authorize(['vendor']), staffController.listStaffTransactionsController);
+router.get('/transactions', auth_middleware_1.authorize([client_1.Role.vendor, client_1.Role.store_admin]), staffController.listStaffTransactionsController);
 router.get('/store/:vendorId', /* validate(validateId('vendorId')), */ staffController.listStaffByVendorController);
 router.get('/:staffId', /* validate(validateId('staffId')), */ staffController.getStaffByIdController);
 router.patch('/:staffId', /* validate(validateId('staffId')), */ staffController.updateStaffController);

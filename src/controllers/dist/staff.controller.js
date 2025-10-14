@@ -109,20 +109,20 @@ exports.createStaffController = function (req, res) { return __awaiter(void 0, v
  *     summary: List all transactions for a vendor's staff
  *     tags: [Staff, Transactions]
  *     description: >
- *       Retrieves a list of all transactions for staff members belonging to the authenticated vendor.
- *       Can be filtered by a specific `staffUserId` and/or `vendorId` (store ID).
- *       If no filters are provided, it fetches transactions for all staff across all stores owned by the vendor.
+ *       Retrieves a list of transactions performed by staff members, with role-based access:
+ *       - **Vendor**: Can see transactions from all staff across all their stores. Can filter by `staffUserId` and/or `vendorId`.
+ *       - **Store Admin**: Can only see transactions from staff in their assigned store. The `vendorId` filter is ignored if provided.
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: staffUserId
  *         schema: { type: string, format: uuid }
- *         description: Optional. Filter transactions for a specific staff member.
+ *         description: Optional. Filter transactions for a specific staff member (shopper or admin).
  *       - in: query
  *         name: vendorId
  *         schema: { type: string, format: uuid }
- *         description: Optional. Filter transactions for staff at a specific store.
+ *         description: Optional. For Vendors, filters transactions for staff at a specific store. For Store Admins, this is ignored.
  *     responses:
  *       200:
  *         description: A list of staff transactions.
@@ -130,18 +130,23 @@ exports.createStaffController = function (req, res) { return __awaiter(void 0, v
  *         description: Forbidden if the user tries to access a vendor or staff they do not own.
  *       404:
  *         description: Not Found if the specified `staffUserId` or `vendorId` does not exist.
- *       500:
- *         description: Internal server error.
  */
 exports.listStaffTransactionsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var ownerId, _a, staffUserId, vendorId, transactions, error_2;
+    var ownerId, userRole, staffVendorId, _a, staffUserId, vendorId, transactions, error_2;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
                 _b.trys.push([0, 2, , 3]);
                 ownerId = req.userId;
+                userRole = req.userRole;
+                staffVendorId = req.vendorId;
                 _a = req.query, staffUserId = _a.staffUserId, vendorId = _a.vendorId;
-                return [4 /*yield*/, staffService.listStaffTransactionsService(ownerId, { staffUserId: staffUserId, vendorId: vendorId })];
+                return [4 /*yield*/, staffService.listStaffTransactionsService({
+                        requestingUserId: ownerId,
+                        requestingUserRole: userRole,
+                        staffVendorId: staffVendorId,
+                        filter: { staffUserId: staffUserId, vendorId: vendorId }
+                    })];
             case 1:
                 transactions = _b.sent();
                 res.status(200).json(transactions);
@@ -149,13 +154,13 @@ exports.listStaffTransactionsController = function (req, res) { return __awaiter
             case 2:
                 error_2 = _b.sent();
                 console.error('Error listing staff transactions:', error_2);
-                if (error_2.message.includes('not found')) {
+                if (error_2.message.includes('not found') || error_2.message.includes('Assigned store not found')) {
                     return [2 /*return*/, res.status(404).json({ error: error_2.message })];
                 }
-                if (error_2.message.includes('not authorized')) {
+                if (error_2.message.includes('not authorized') || error_2.message.includes('Forbidden')) {
                     return [2 /*return*/, res.status(403).json({ error: error_2.message })];
                 }
-                res.status(500).json({ error: 'An unexpected error occurred while fetching staff transactions.' });
+                res.status(500).json({ error: 'An unexpected error occurred while listing staff transactions.' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }

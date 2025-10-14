@@ -53,22 +53,22 @@ export const createStaffController = async (req: AuthenticatedRequest, res: Resp
  * /staff/transactions:
  *   get:
  *     summary: List all transactions for a vendor's staff
- *     tags: [Staff, Transactions]
+ *     tags: [Staff, Transactions] 
  *     description: >
- *       Retrieves a list of all transactions for staff members belonging to the authenticated vendor.
- *       Can be filtered by a specific `staffUserId` and/or `vendorId` (store ID).
- *       If no filters are provided, it fetches transactions for all staff across all stores owned by the vendor.
+ *       Retrieves a list of transactions performed by staff members, with role-based access:
+ *       - **Vendor**: Can see transactions from all staff across all their stores. Can filter by `staffUserId` and/or `vendorId`.
+ *       - **Store Admin**: Can only see transactions from staff in their assigned store. The `vendorId` filter is ignored if provided.
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: staffUserId
  *         schema: { type: string, format: uuid }
- *         description: Optional. Filter transactions for a specific staff member.
+ *         description: Optional. Filter transactions for a specific staff member (shopper or admin).
  *       - in: query
  *         name: vendorId
  *         schema: { type: string, format: uuid }
- *         description: Optional. Filter transactions for staff at a specific store.
+ *         description: Optional. For Vendors, filters transactions for staff at a specific store. For Store Admins, this is ignored.
  *     responses:
  *       200:
  *         description: A list of staff transactions.
@@ -76,24 +76,29 @@ export const createStaffController = async (req: AuthenticatedRequest, res: Resp
  *         description: Forbidden if the user tries to access a vendor or staff they do not own.
  *       404:
  *         description: Not Found if the specified `staffUserId` or `vendorId` does not exist.
- *       500:
- *         description: Internal server error.
  */
 export const listStaffTransactionsController = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const ownerId = req.userId as string;
+    const userRole = req.userRole as Role;
+    const staffVendorId = req.vendorId; // The vendorId from the staff's token
     const { staffUserId, vendorId } = req.query as { staffUserId?: string; vendorId?: string };
-    const transactions = await staffService.listStaffTransactionsService(ownerId, { staffUserId, vendorId });
+    const transactions = await staffService.listStaffTransactionsService({
+      requestingUserId: ownerId,
+      requestingUserRole: userRole,
+      staffVendorId,
+      filter: { staffUserId, vendorId },
+    });
     res.status(200).json(transactions);
   } catch (error: any) {
     console.error('Error listing staff transactions:', error);
-    if (error.message.includes('not found')) {
+    if (error.message.includes('not found') || error.message.includes('Assigned store not found')) {
       return res.status(404).json({ error: error.message });
     }
-    if (error.message.includes('not authorized')) {
+    if (error.message.includes('not authorized') || error.message.includes('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
-    res.status(500).json({ error: 'An unexpected error occurred while fetching staff transactions.' });
+    res.status(500).json({ error: 'An unexpected error occurred while listing staff transactions.' });
   }
 };
 

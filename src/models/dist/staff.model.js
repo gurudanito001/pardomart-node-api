@@ -120,7 +120,7 @@ exports.getStaffById = function (staffId) { return __awaiter(void 0, void 0, Pro
         return [2 /*return*/, prisma.user.findFirst({
                 where: {
                     id: staffId,
-                    role: client_1.Role.store_shopper
+                    role: { "in": [client_1.Role.store_shopper, client_1.Role.store_admin] }
                 }
             })];
     });
@@ -159,29 +159,44 @@ exports.deleteStaff = function (staffId) { return __awaiter(void 0, void 0, Prom
  * @returns A list of transactions.
  */
 exports.listStaffTransactions = function (filters) { return __awaiter(void 0, void 0, Promise, function () {
-    var ownerId, staffUserId, vendorId, where;
+    var ownerId, staffUserId, vendorId, staffWhere, staffMembers, staffIds, transactionWhere;
     return __generator(this, function (_a) {
-        ownerId = filters.ownerId, staffUserId = filters.staffUserId, vendorId = filters.vendorId;
-        where = {
-            user: {
-                role: client_1.Role.store_shopper,
-                vendor: {
-                    userId: ownerId
+        switch (_a.label) {
+            case 0:
+                ownerId = filters.ownerId, staffUserId = filters.staffUserId, vendorId = filters.vendorId;
+                staffWhere = {
+                    role: { "in": [client_1.Role.store_shopper, client_1.Role.store_admin] },
+                    vendor: {
+                        userId: ownerId
+                    }
+                };
+                if (staffUserId) {
+                    staffWhere.id = staffUserId;
                 }
-            }
-        };
-        if (staffUserId) {
-            where.userId = staffUserId;
+                if (vendorId) {
+                    staffWhere.vendorId = vendorId;
+                }
+                return [4 /*yield*/, prisma.user.findMany({
+                        where: staffWhere,
+                        select: { id: true }
+                    })];
+            case 1:
+                staffMembers = _a.sent();
+                if (staffMembers.length === 0) {
+                    return [2 /*return*/, []]; // No matching staff, so no transactions.
+                }
+                staffIds = staffMembers.map(function (staff) { return staff.id; });
+                transactionWhere = {
+                    userId: { "in": staffIds }
+                };
+                // If filtering by a specific store, we can add it here too for query optimization.
+                if (vendorId) {
+                    transactionWhere.vendorId = vendorId;
+                }
+                return [2 /*return*/, prisma.transaction.findMany({
+                        where: transactionWhere,
+                        orderBy: { createdAt: 'desc' }
+                    })];
         }
-        if (vendorId) {
-            // This is the correct way to filter by the staff member's store
-            if (where.user) {
-                where.user.vendorId = vendorId;
-            }
-        }
-        return [2 /*return*/, prisma.transaction.findMany({
-                where: where,
-                orderBy: { createdAt: 'desc' }
-            })];
     });
 }); };

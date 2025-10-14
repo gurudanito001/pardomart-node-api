@@ -36,88 +36,46 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.listCustomerTransactions = exports.listCustomers = void 0;
-// models/customer.model.ts
+exports.listEarnings = void 0;
+// src/models/earnings.model.ts
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
 /**
- * Retrieves a list of unique customers who have placed orders
- * with a vendor's store(s).
- * @param filters - The filters to apply, including ownerId or vendorId.
- * @returns A list of unique customer users.
+ * Retrieves earnings transactions for a vendor owner.
+ * @param filters - The filters to apply, including the ownerId and an optional vendorId.
+ * @returns A list of VENDOR_PAYOUT transactions.
  */
-exports.listCustomers = function (filters) { return __awaiter(void 0, void 0, Promise, function () {
-    var ownerId, vendorId, where, orders;
+exports.listEarnings = function (filters) { return __awaiter(void 0, void 0, Promise, function () {
+    var ownerId, vendorId, where;
     return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                ownerId = filters.ownerId, vendorId = filters.vendorId;
-                where = {};
-                if (vendorId) {
-                    // Filter by a specific store ID
-                    where.vendorId = vendorId;
-                }
-                else if (ownerId) {
-                    // Filter by all stores belonging to a vendor owner
-                    where.vendor = {
-                        userId: ownerId
-                    };
-                }
-                else {
-                    return [2 /*return*/, []]; // Should not happen if service validation is correct
-                }
-                return [4 /*yield*/, prisma.order.findMany({
-                        where: where,
-                        select: {
-                            user: {
-                                select: {
-                                    id: true,
-                                    name: true,
-                                    email: true,
-                                    mobileNumber: true
-                                }
-                            }
-                        },
-                        distinct: ['userId']
-                    })];
-            case 1:
-                orders = _a.sent();
-                return [2 /*return*/, orders.map(function (order) { return order.user; })];
-        }
-    });
-}); };
-/**
- * Retrieves transactions for a specific customer, scoped by vendor or owner.
- * @param filters - The filters to apply, including customerId and owner/vendor scope.
- * @returns A list of transactions.
- */
-exports.listCustomerTransactions = function (filters) { return __awaiter(void 0, void 0, void 0, function () {
-    var customerId, ownerId, vendorId, where;
-    return __generator(this, function (_a) {
-        customerId = filters.customerId, ownerId = filters.ownerId, vendorId = filters.vendorId;
+        ownerId = filters.ownerId, vendorId = filters.vendorId;
         where = {
-            userId: customerId
-        };
-        if (vendorId) {
-            // Highest precedence: filter by a specific store ID.
-            where.vendorId = vendorId;
-        }
-        else if (ownerId) {
-            // Filter by all stores belonging to a vendor owner.
-            where.vendor = {
+            type: 'VENDOR_PAYOUT',
+            vendor: {
                 userId: ownerId
-            };
-        }
-        else {
-            // This case should be prevented by the service layer.
-            return [2 /*return*/, []];
+            }
+        };
+        // If a specific store is requested, add it to the filter.
+        if (vendorId) {
+            where.vendorId = vendorId;
         }
         return [2 /*return*/, prisma.transaction.findMany({
                 where: where,
                 include: {
-                    order: true
+                    order: {
+                        select: {
+                            orderCode: true
+                        }
+                    },
+                    vendor: {
+                        select: {
+                            name: true
+                        }
+                    }
                 },
-                orderBy: { createdAt: 'desc' }
+                orderBy: {
+                    createdAt: 'desc'
+                }
             })];
     });
 }); };

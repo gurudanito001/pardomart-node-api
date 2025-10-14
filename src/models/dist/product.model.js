@@ -58,7 +58,7 @@ var __rest = (this && this.__rest) || function (s, e) {
     return t;
 };
 exports.__esModule = true;
-exports.deleteVendorProduct = exports.deleteProduct = exports.updateVendorProduct = exports.updateProductBase = exports.getTrendingVendorProducts = exports.getVendorProductsByUserId = exports.getVendorProductById = exports.getVendorProductsByCategory = exports.getAllProducts = exports.getVendorProductsByTagIds = exports.getProductsByTagIds = exports.getAllVendorProducts = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.createVendorProduct = exports.createProduct = void 0;
+exports.deleteVendorProduct = exports.transferVendorProducts = exports.deleteProduct = exports.updateVendorProduct = exports.updateProductBase = exports.getTrendingVendorProducts = exports.getVendorProductsByUserId = exports.getVendorProductsByIds = exports.getVendorProductById = exports.getVendorProductsByCategory = exports.getAllProducts = exports.getVendorProductsByTagIds = exports.getProductsByTagIds = exports.getVendorProductsByOwnerId = exports.getAllVendorProducts = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.createVendorProduct = exports.createProduct = void 0;
 // models/product.model.ts
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
@@ -179,6 +179,58 @@ exports.getAllVendorProducts = function (filters, pagination) { return __awaiter
         }
     });
 }); };
+/**
+ * Retrieves all vendor products for all stores owned by a specific user.
+ * @param ownerId - The user ID of the vendor owner.
+ * @returns A list of vendor products with their base product and vendor details.
+ */
+exports.getVendorProductsByOwnerId = function (ownerId, vendorId, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+    var where, page, take, skip, _a, vendorProducts, totalCount, totalPages;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                where = {
+                    vendor: {
+                        userId: ownerId
+                    }
+                };
+                if (vendorId) {
+                    where.vendorId = vendorId;
+                }
+                page = parseInt((pagination === null || pagination === void 0 ? void 0 : pagination.page) || '1', 10);
+                take = parseInt((pagination === null || pagination === void 0 ? void 0 : pagination.take) || '20', 10);
+                skip = (page - 1) * take;
+                return [4 /*yield*/, prisma.$transaction([
+                        prisma.vendorProduct.findMany({
+                            where: where,
+                            include: {
+                                product: true,
+                                vendor: {
+                                    select: {
+                                        id: true,
+                                        name: true
+                                    }
+                                },
+                                categories: true,
+                                tags: true
+                            },
+                            orderBy: {
+                                vendor: {
+                                    name: 'asc'
+                                }
+                            },
+                            skip: skip,
+                            take: take
+                        }),
+                        prisma.vendorProduct.count({ where: where }),
+                    ])];
+            case 1:
+                _a = _b.sent(), vendorProducts = _a[0], totalCount = _a[1];
+                totalPages = Math.ceil(totalCount / take);
+                return [2 /*return*/, { page: page, totalPages: totalPages, pageSize: take, totalCount: totalCount, data: vendorProducts }];
+        }
+    });
+}); };
 exports.getProductsByTagIds = function (tagIds) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
         return [2 /*return*/, prisma.product.findMany({
@@ -219,18 +271,13 @@ exports.getVendorProductsByTagIds = function (tagIds) { return __awaiter(void 0,
 }); };
 exports.getAllProducts = function () { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0: return [4 /*yield*/, prisma.order.deleteMany()];
-            case 1:
-                _a.sent();
-                return [2 /*return*/, prisma.product.findMany({
-                        include: {
-                            categories: true,
-                            tags: true,
-                            vendorProducts: true
-                        }
-                    })];
-        }
+        return [2 /*return*/, prisma.product.findMany({
+                include: {
+                    categories: true,
+                    tags: true,
+                    vendorProducts: true
+                }
+            })];
     });
 }); };
 exports.getVendorProductsByCategory = function (vendorId, categoryId) { return __awaiter(void 0, void 0, Promise, function () {
@@ -257,7 +304,29 @@ exports.getVendorProductsByCategory = function (vendorId, categoryId) { return _
 exports.getVendorProductById = function (vendorProductId) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
         return [2 /*return*/, prisma.vendorProduct.findUnique({
-                where: { id: vendorProductId }
+                where: { id: vendorProductId },
+                include: {
+                    vendor: true,
+                    categories: true,
+                    tags: true
+                }
+            })];
+    });
+}); };
+/**
+ * Retrieves multiple vendor products by their IDs.
+ * @param vendorProductIds An array of vendor product IDs.
+ * @returns A list of vendor products with their relations.
+ */
+exports.getVendorProductsByIds = function (vendorProductIds) { return __awaiter(void 0, void 0, Promise, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, prisma.vendorProduct.findMany({
+                where: { id: { "in": vendorProductIds } },
+                include: {
+                    vendor: true,
+                    categories: true,
+                    tags: true
+                }
             })];
     });
 }); };
@@ -366,6 +435,75 @@ exports.deleteProduct = function (id) { return __awaiter(void 0, void 0, Promise
         return [2 /*return*/, prisma.product["delete"]({
                 where: { id: id }
             })];
+    });
+}); };
+/**
+ * Copies a vendor product to other stores, skipping stores where it already exists.
+ * @param sourceProduct The full source VendorProduct object.
+ * @param targetVendorIds An array of store IDs to copy to.
+ * @returns An object with arrays of transferred and skipped vendor IDs.
+ */
+exports.transferVendorProducts = function (sourceProduct, targetVendorIds) { return __awaiter(void 0, void 0, Promise, function () {
+    var transferred, skipped, _i, targetVendorIds_1, targetVendorId, existingProduct;
+    var _a;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                transferred = [];
+                skipped = [];
+                _i = 0, targetVendorIds_1 = targetVendorIds;
+                _b.label = 1;
+            case 1:
+                if (!(_i < targetVendorIds_1.length)) return [3 /*break*/, 5];
+                targetVendorId = targetVendorIds_1[_i];
+                return [4 /*yield*/, prisma.vendorProduct.findUnique({
+                        where: {
+                            vendorId_productId: {
+                                vendorId: targetVendorId,
+                                productId: sourceProduct.productId
+                            }
+                        }
+                    })];
+            case 2:
+                existingProduct = _b.sent();
+                if (existingProduct) {
+                    skipped.push(targetVendorId);
+                    return [3 /*break*/, 4]; // Skip to the next store
+                }
+                // Create the new vendor product, copying details from the source
+                return [4 /*yield*/, prisma.vendorProduct.create({
+                        data: {
+                            vendor: { connect: { id: targetVendorId } },
+                            product: { connect: { id: sourceProduct.productId } },
+                            name: sourceProduct.name,
+                            description: sourceProduct.description,
+                            price: sourceProduct.price,
+                            discountedPrice: sourceProduct.discountedPrice,
+                            images: sourceProduct.images,
+                            weight: sourceProduct.weight,
+                            weightUnit: sourceProduct.weightUnit,
+                            isAvailable: sourceProduct.isAvailable,
+                            isAlcohol: sourceProduct.isAlcohol,
+                            isAgeRestricted: sourceProduct.isAgeRestricted,
+                            attributes: (_a = sourceProduct.attributes) !== null && _a !== void 0 ? _a : client_1.Prisma.JsonNull,
+                            categories: {
+                                connect: sourceProduct.categories.map(function (c) { return ({ id: c.id }); })
+                            },
+                            tags: {
+                                connect: sourceProduct.tags.map(function (t) { return ({ id: t.id }); })
+                            }
+                        }
+                    })];
+            case 3:
+                // Create the new vendor product, copying details from the source
+                _b.sent();
+                transferred.push(targetVendorId);
+                _b.label = 4;
+            case 4:
+                _i++;
+                return [3 /*break*/, 1];
+            case 5: return [2 /*return*/, { transferred: transferred, skipped: skipped }];
+        }
     });
 }); };
 exports.deleteVendorProduct = function (id) { return __awaiter(void 0, void 0, Promise, function () {

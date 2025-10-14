@@ -111,14 +111,13 @@ import { AuthenticatedRequest } from './vendor.controller';
  *         - $ref: '#/components/schemas/OrderItem'
  *         - type: object
  *           properties:
- *             vendorProduct:
- *               $ref: '#/components/schemas/VendorProduct'
+ *             vendorProduct: { $ref: '#/components/schemas/VendorProductWithProduct' }
  *             chosenReplacement:
- *               $ref: '#/components/schemas/VendorProduct'
+ *               $ref: '#/components/schemas/VendorProductWithProduct'
  *             replacements:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/VendorProduct'
+ *                 $ref: '#/components/schemas/VendorProductWithProduct'
  *     UserSummary:
  *       type: object
  *       properties:
@@ -134,9 +133,9 @@ import { AuthenticatedRequest } from './vendor.controller';
  *               type: string
  *               description: A unique, human-readable code for the order.
  *               example: "AB12CD"
- *             user: { $ref: '#/components/schemas/UserSummary' }
- *             shopper: { $ref: '#/components/schemas/UserSummary' }
- *             deliveryPerson: { $ref: '#/components/schemas/UserSummary' }
+ *             user: { $ref: '#/components/schemas/UserSummary', nullable: true }
+ *             shopper: { $ref: '#/components/schemas/UserSummary', nullable: true }
+ *             deliveryPerson: { $ref: '#/components/schemas/UserSummary', nullable: true }
  *             orderItems:
  *               type: array
  *               items: { $ref: '#/components/schemas/OrderItemWithRelations' }
@@ -148,6 +147,23 @@ import { AuthenticatedRequest } from './vendor.controller';
  *         - type: object
  *           properties:
  *             user: { $ref: '#/components/schemas/User' }
+ *             rating:
+ *               type: object
+ *               properties:
+ *                 average: { type: number, format: float }
+ *                 count: { type: integer }
+ *             distance: { type: number, format: float, nullable: true }
+ *     VendorProductWithProduct:
+ *       allOf:
+ *         - $ref: '#/components/schemas/VendorProduct'
+ *         - type: object
+ *           properties:
+ *             product:
+ *               $ref: '#/components/schemas/Product'
+ *             categories:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Category'
  *     Vendor:
  *       type: object
  *       properties:
@@ -271,11 +287,12 @@ export const createOrderController = async (req: AuthenticatedRequest, res: Resp
  *       404:
  *         description: Order not found.
  */
-export const getOrderByIdController = async (req: Request, res: Response) => {
+export const getOrderByIdController = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const orderId = req.params.id;
+    const { userId, userRole, vendorId: staffVendorId } = req;
 
-    const order = await getOrderByIdService(orderId);
+    const order = await getOrderByIdService(orderId, userId as string, userRole as any, staffVendorId);
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
     }
@@ -346,15 +363,19 @@ export const getOrdersByUserController = async (req: AuthenticatedRequest, res: 
  *       404:
  *         description: Order not found.
  */
-export const updateOrderStatusController = async (req: Request, res: Response) => {
+export const updateOrderStatusController = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const orderId = req.params.id;
     const { status } = req.body;
+    const { userId, userRole } = req;
 
-    const updatedOrder = await updateOrderStatusService(orderId, status);
+    const updatedOrder = await updateOrderStatusService(orderId, status, userId as string, userRole as any);
     res.status(200).json(updatedOrder);
   } catch (error: any) {
-    if (error.message === 'Order not found') {
+    if (error instanceof OrderCreationError) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+    if (error.message.includes('not found')) {
       return res.status(404).json({ error: error.message });
     }
     res.status(500).json({ error: 'Failed to update order status: ' + error.message });

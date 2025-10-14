@@ -49,3 +49,43 @@ export const listCustomers = async (filters: ListCustomersFilters): Promise<Part
 
   return orders.map((order) => order.user);
 };
+
+export interface ListCustomerTransactionsFilters {
+  customerId: string;
+  ownerId?: string; // To scope transactions to a vendor owner
+  vendorId?: string; // To scope transactions to a specific store
+}
+
+/**
+ * Retrieves transactions for a specific customer, scoped by vendor or owner.
+ * @param filters - The filters to apply, including customerId and owner/vendor scope.
+ * @returns A list of transactions.
+ */
+export const listCustomerTransactions = async (filters: ListCustomerTransactionsFilters) => {
+  const { customerId, ownerId, vendorId } = filters;
+
+  const where: Prisma.TransactionWhereInput = {
+    userId: customerId,
+  };
+
+  if (vendorId) {
+    // Highest precedence: filter by a specific store ID.
+    where.vendorId = vendorId;
+  } else if (ownerId) {
+    // Filter by all stores belonging to a vendor owner.
+    where.vendor = {
+      userId: ownerId,
+    };
+  } else {
+    // This case should be prevented by the service layer.
+    return [];
+  }
+
+  return prisma.transaction.findMany({
+    where,
+    include: {
+      order: true, // Include order details with the transaction
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+};

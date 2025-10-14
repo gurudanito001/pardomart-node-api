@@ -2,9 +2,10 @@
 exports.__esModule = true;
 var express_1 = require("express");
 var productController = require("../controllers/product.controllers");
-var auth_middleware_1 = require("../middlewares/auth.middleware");
+var auth_middleware_1 = require("../middlewares/auth.middleware"); // Assuming you have validation middleware
 var validation_middleware_1 = require("../middlewares/validation.middleware"); // Assuming you have validation middleware
 var product_validation_1 = require("../middlewares/product.validation");
+var client_1 = require("@prisma/client");
 var router = express_1.Router();
 // --- Base Product Routes (Admin Only) ---
 router.post('/', auth_middleware_1.authenticate, auth_middleware_1.authorize(['admin']), validation_middleware_1.validate(product_validation_1.validateCreateProduct), productController.createProduct);
@@ -15,6 +16,9 @@ router.post('/vendor', auth_middleware_1.authenticate, auth_middleware_1.authori
 router.post('/vendor/barcode', auth_middleware_1.authenticate, auth_middleware_1.authorize(['vendor', 'store_admin']), validation_middleware_1.validate(product_validation_1.validateCreateVendorProductWithBarcode), productController.createVendorProductWithBarcode);
 router.patch('/vendor/:id', auth_middleware_1.authenticate, auth_middleware_1.authorize(['vendor', 'store_admin']), validation_middleware_1.validate(product_validation_1.validateUpdateVendorProduct), productController.updateVendorProduct);
 router["delete"]('/vendor/:id', auth_middleware_1.authenticate, auth_middleware_1.authorize(['vendor', 'store_admin']), validation_middleware_1.validate(product_validation_1.validateId), productController.deleteVendorProduct);
+// Add this new route
+router.get('/vendor/my-products', auth_middleware_1.authenticate, auth_middleware_1.authorize([client_1.Role.vendor]), productController.getMyVendorProductsController);
+router.post('/vendor/transfer', auth_middleware_1.authenticate, auth_middleware_1.authorize([client_1.Role.vendor]), validation_middleware_1.validate(product_validation_1.validateTransferProducts), productController.transferVendorProductsController);
 // --- Public/General Product Routes ---
 router.get('/', productController.getAllProducts);
 router.get('/vendor', validation_middleware_1.validate(product_validation_1.validateGetAllVendorProducts), productController.getAllVendorProducts);

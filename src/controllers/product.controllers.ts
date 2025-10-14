@@ -2,7 +2,7 @@
 // controllers/product.controller.ts
 import { Request, Response } from 'express';
 import * as productService from '../services/product.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 import { getVendorProductsFilters } from '../models/product.model';
 import { AuthenticatedRequest } from './vendor.controller';
 
@@ -779,12 +779,20 @@ export const deleteProduct = async (req: Request, res: Response) => {
  *       404:
  *         description: Vendor product not found.
  */
-export const deleteVendorProduct = async (req: Request, res: Response) => {
+export const deleteVendorProduct = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const vendorProduct = await productService.deleteVendorProduct(req.params.id);
+    const vendorProductId = req.params.id;
+    const requestingUserId = req.userId as string;
+    const requestingUserRole = req.userRole as Role;
+    const staffVendorId = req.vendorId;
+
+    const vendorProduct = await productService.deleteVendorProduct(vendorProductId, requestingUserId, requestingUserRole, staffVendorId);
     res.json(vendorProduct);
   } catch (error: any) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+    if (error.message.includes('Forbidden')) {
+      return res.status(403).json({ error: error.message });
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025' || error.message.includes('not found')) {
       return res.status(404).json({ error: 'Vendor product not found.' });
     }
     console.error('Error deleting vendor product:', error);
@@ -835,5 +843,136 @@ export const getTrendingVendorProducts = async (req: Request, res: Response) => 
   } catch (error) {
     console.error('Error getting trending vendor products:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
+ * /product/vendor/my-products:
+ *   get:
+ *     summary: Get all products from all stores owned by the authenticated vendor
+ *     tags: [Product, Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string, format: uuid }
+ *         description: Optional. Filter products by a specific store ID owned by the vendor.
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *         description: Page number for pagination.
+ *       - in: query
+ *         name: size
+ *         schema: { type: integer, default: 20 }
+ *         description: Number of items per page.
+ *     description: Retrieves a complete list of all vendor-specific products from all stores owned by the authenticated vendor user.
+ *     responses:
+ *       200:
+ *         description: A paginated list of all vendor products.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 page: { type: integer }
+ *                 totalPages: { type: integer }
+ *                 pageSize: { type: integer }
+ *                 totalCount: { type: integer }
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/VendorProductWithRelations'
+ *       403:
+ *         description: Forbidden. User is not a vendor.
+ *       500:
+ *         description: Internal server error.
+ */
+export const getMyVendorProductsController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const ownerId = req.userId as string;
+    const { vendorId, page, size } = req.query as { vendorId?: string, page?: string, size?: string };
+
+    const pagination = { page: page || '1', take: size || '20' };
+
+    // Authorization is handled by the route middleware, which ensures only vendors can access this.
+    const products = await productService.getMyVendorProductsService(ownerId, vendorId, pagination);
+    res.status(200).json(products);
+  } catch (error: any) {
+    console.error('Error getting my vendor products:', error);
+    if (error.message.includes('Forbidden')) {
+      return res.status(403).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
+ * /product/vendor/transfer:
+ *   post:
+ *     summary: Transfer a product listing from one store to others
+ *     tags: [Product, Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     description: >
+ *       Copies a vendor product listing from a source store to one or more target stores owned by the same vendor.
+ *       The product will not be transferred to stores where it already exists.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [sourceVendorProductIds, targetVendorIds]
+ *             properties:
+ *               sourceVendorProductIds:
+ *                 type: array
+ *                 items: { type: string, format: uuid }
+ *                 description: An array of vendor product IDs to copy.
+ *               targetVendorIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 description: An array of store IDs to copy the product to.
+ *     responses:
+ *       200:
+ *         description: The result of the transfer operation.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 successfulTransfers: { type: integer }
+ *                 skippedTransfers: { type: integer }
+ *                 details:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       sourceVendorProductId: { type: string, format: uuid }
+ *                       transferredTo: { type: array, items: { type: string, format: uuid }, description: "List of store IDs the product was successfully transferred to." }
+ *                       skippedFor: { type: array, items: { type: string, format: uuid }, description: "List of store IDs where the product already existed." }
+ *       403:
+ *         description: Forbidden. User does not own the source or target stores.
+ *       404:
+ *         description: Source product not found.
+ */
+export const transferVendorProductsController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const ownerId = req.userId as string;
+    const { sourceVendorProductIds, targetVendorIds } = req.body;
+    const result = await productService.transferVendorProductsService(ownerId, sourceVendorProductIds, targetVendorIds);
+    res.status(200).json(result);
+  } catch (error: any) {
+    if (error.message.includes('Forbidden') || error.message.includes('Unauthorized')) {
+      return res.status(403).json({ error: error.message });
+    }
+    if (error.message.includes('not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'An unexpected error occurred during product transfer.' });
   }
 };

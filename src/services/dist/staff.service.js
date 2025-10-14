@@ -251,42 +251,85 @@ exports.deleteStaffService = function (staffId, ownerId) { return __awaiter(void
     });
 }); };
 /**
- * Retrieves transactions for staff members owned by a vendor.
- * @param ownerId - The ID of the vendor owner.
- * @param options - Filtering options for staffUserId and vendorId.
- * @returns A list of transactions.
+ * Handles authorization and determines query scope for a vendor.
+ * @private
  */
-exports.listStaffTransactionsService = function (ownerId, options) { return __awaiter(void 0, void 0, Promise, function () {
-    var staffUserId, vendorId, staffUser, vendor;
+var _getScopeForVendor = function (requestingUserId, filter) { return __awaiter(void 0, void 0, Promise, function () {
+    var ownerId, vendor;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                staffUserId = options.staffUserId, vendorId = options.vendorId;
-                if (!staffUserId) return [3 /*break*/, 2];
-                return [4 /*yield*/, exports.getStaffByIdService(staffUserId, ownerId)];
+                ownerId = requestingUserId;
+                if (!filter.vendorId) return [3 /*break*/, 2];
+                return [4 /*yield*/, prisma.vendor.findFirst({ where: { id: filter.vendorId, userId: ownerId } })];
             case 1:
-                staffUser = _a.sent();
-                if (!staffUser) {
-                    // Throws an error if owner doesn't own the staff, or if staff not found.
-                    // This implicitly handles authorization.
-                    throw new Error('Staff member not found or you are not authorized to view their transactions.');
-                }
-                _a.label = 2;
-            case 2:
-                if (!vendorId) return [3 /*break*/, 4];
-                return [4 /*yield*/, prisma.vendor.findFirst({
-                        where: { id: vendorId, userId: ownerId }
-                    })];
-            case 3:
                 vendor = _a.sent();
                 if (!vendor) {
                     throw new Error('Vendor not found or you are not authorized to view its transactions.');
                 }
-                _a.label = 4;
-            case 4: return [2 /*return*/, staffModel.listStaffTransactions({
-                    ownerId: ownerId,
-                    staffUserId: staffUserId,
-                    vendorId: vendorId
+                _a.label = 2;
+            case 2: return [2 /*return*/, { ownerId: ownerId, vendorId: filter.vendorId }];
+        }
+    });
+}); };
+/**
+ * Handles authorization and determines query scope for a store admin.
+ * @private
+ */
+var _getScopeForStoreAdmin = function (staffVendorId, filter) { return __awaiter(void 0, void 0, Promise, function () {
+    var store;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                if (!staffVendorId) {
+                    throw new Error('Forbidden: You are not assigned to a store.');
+                }
+                // A store admin can only see transactions for their own store.
+                // They cannot query for other stores.
+                if (filter.vendorId && filter.vendorId !== staffVendorId) {
+                    throw new Error('Forbidden: You can only view transactions for your assigned store.');
+                }
+                return [4 /*yield*/, prisma.vendor.findUnique({ where: { id: staffVendorId }, select: { userId: true } })];
+            case 1:
+                store = _a.sent();
+                if (!store)
+                    throw new Error('Assigned store not found.');
+                return [2 /*return*/, { ownerId: store.userId, vendorId: staffVendorId }];
+        }
+    });
+}); };
+/**
+ * Retrieves transactions for staff members based on the requester's role.
+ * @param options - The options for listing transactions, including authorization details and filters.
+ * @returns A list of transactions.
+ */
+exports.listStaffTransactionsService = function (options) { return __awaiter(void 0, void 0, Promise, function () {
+    var requestingUserId, requestingUserRole, staffVendorId, filter, scope, _a;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                requestingUserId = options.requestingUserId, requestingUserRole = options.requestingUserRole, staffVendorId = options.staffVendorId, filter = options.filter;
+                _a = requestingUserRole;
+                switch (_a) {
+                    case client_1.Role.vendor: return [3 /*break*/, 1];
+                    case client_1.Role.store_admin: return [3 /*break*/, 3];
+                }
+                return [3 /*break*/, 5];
+            case 1: return [4 /*yield*/, _getScopeForVendor(requestingUserId, filter)];
+            case 2:
+                scope = _b.sent();
+                return [3 /*break*/, 6];
+            case 3: return [4 /*yield*/, _getScopeForStoreAdmin(staffVendorId, filter)];
+            case 4:
+                scope = _b.sent();
+                return [3 /*break*/, 6];
+            case 5: throw new Error('Forbidden: You do not have permission to view staff transactions.');
+            case 6: 
+            // The model function expects the ownerId to correctly scope the query.
+            return [2 /*return*/, staffModel.listStaffTransactions({
+                    ownerId: scope.ownerId,
+                    vendorId: scope.vendorId,
+                    staffUserId: filter.staffUserId
                 })];
         }
     });

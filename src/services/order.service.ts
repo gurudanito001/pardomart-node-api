@@ -65,11 +65,28 @@ export const createOrderService = async (payload: orderModel.CreateOrderPayload)
  * @param id - The ID of the order to retrieve.
  * @returns The order, or null if not found.
  */
-export const getOrderByIdService = async (id: string): Promise<any | null> => {
+export const getOrderByIdService = async (
+  id: string,
+  requestingUserId: string,
+  requestingUserRole: Role,
+  staffVendorId?: string
+): Promise<any | null> => {
   const order = await orderModel.getOrderById(id);
 
   if (!order || !order.vendor) {
     return null;
+  }
+
+  // --- Authorization Check ---
+  const isCustomer = requestingUserRole === Role.customer && order.userId === requestingUserId;
+  const isVendorOwner = requestingUserRole === Role.vendor && order.vendor.userId === requestingUserId;
+  const isStoreStaff =
+    (requestingUserRole === Role.store_admin || requestingUserRole === Role.store_shopper) &&
+    staffVendorId === order.vendorId;
+  const isAdmin = requestingUserRole === Role.admin;
+
+  if (!isCustomer && !isVendorOwner && !isStoreStaff && !isAdmin) {
+    throw new OrderCreationError('You are not authorized to view this order.', 403);
   }
 
   // 1. Get aggregate rating for the vendor.
@@ -438,10 +455,28 @@ export const updateOrderService = async (
  * @returns The updated order.
  */
 export const updateOrderStatusService = async (
-  id: string,
-  status: OrderStatus
+  orderId: string,
+  status: OrderStatus,
+  requestingUserId: string,
+  requestingUserRole: Role
 ): Promise<Order> => {
   const updates: orderModel.UpdateOrderPayload = { orderStatus: status };
+
+  // --- Authorization Check ---
+  const orderForAuth = await prisma.order.findUnique({ where: { id: orderId }, select: { userId: true, vendor: { select: { userId: true } } } });
+  if (!orderForAuth) {
+    throw new OrderCreationError('Order not found', 404);
+  }
+
+  const isCustomer = requestingUserRole === Role.customer && orderForAuth.userId === requestingUserId;
+  const isVendorOwner = requestingUserRole === Role.vendor && orderForAuth.vendor.userId === requestingUserId;
+  const isAdmin = requestingUserRole === Role.admin;
+
+  // For now, only customer, vendor owner, or admin can change status.
+  // More granular logic can be added here based on which status transitions are allowed by which role.
+  if (!isCustomer && !isVendorOwner && !isAdmin) {
+    throw new OrderCreationError('You are not authorized to update the status of this order.', 403);
+  }
 
   // If order is delivered, handle payments to wallets
   if (status === OrderStatus.delivered) {
@@ -449,7 +484,7 @@ export const updateOrderStatusService = async (
 
     return prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
-        where: { id },
+        where: { id: orderId },
         include: { vendor: true }, // includes the nested user object for the vendor
       });
       if (!order) {
@@ -516,13 +551,13 @@ export const updateOrderStatusService = async (
       }
 
       // 4. Update the order status
-      return orderModel.updateOrder(id, updates, tx);
+      return orderModel.updateOrder(orderId, updates, tx);
     });
   }
 
 
    // --- Add Notification Logic Here ---
-  const orderDetails = await orderModel.getOrderById(id); // Fetch details for notification
+  const orderDetails = await orderModel.getOrderById(orderId); // Fetch details for notification
   if (orderDetails) {
     switch (status) {
       case 'ready_for_pickup':
@@ -531,7 +566,7 @@ export const updateOrderStatusService = async (
           type: 'ORDER_READY_FOR_PICKUP',
           title: 'Your order is ready for pickup!',
           body: `Order #${orderDetails.orderCode} is now ready for pickup at ${orderDetails.vendor.name}.`,
-          meta: { orderId: id }
+          meta: { orderId: orderId }
         });
         break;
 
@@ -541,7 +576,7 @@ export const updateOrderStatusService = async (
           type: 'EN_ROUTE',
           title: 'Your order is on the way!',
           body: `Your delivery person is en route with order #${orderDetails.orderCode}.`,
-          meta: { orderId: id }
+          meta: { orderId: orderId }
         });
         break;
       
@@ -550,7 +585,7 @@ export const updateOrderStatusService = async (
   }
   // --- End Notification Logic ---
 
-  return orderModel.updateOrder(id, updates, prisma);
+  return orderModel.updateOrder(orderId, updates, prisma);
 };
 
 interface TimeSlot {
@@ -760,30 +795,30 @@ export const acceptOrderService = async (
   shoppingHandlerUserId: string,
   vendorId: string // Pass vendorId for stricter security check at service layer
 ): Promise<Order> => {
-  // 1. Fetch the order first to get its vendorId for authorization
-  const orderToUpdate = await prisma.order.findUnique({
-    where: { id: orderId },
-    select: { vendorId: true },
-  });
-
-  if (!orderToUpdate) {
-    throw new OrderCreationError('Order not found.', 404);
-  }
-
-  // 2. Authorize the user
-  const user = await prisma.user.findUnique({
-    where: { id: shoppingHandlerUserId },
-    include: { vendors: { select: { id: true } } },
-  });
-
-  const isVendorOwner = user?.role === Role.vendor && user.vendors.some(v => v.id === orderToUpdate.vendorId);
-  const isAssignedStaff = (user?.role === Role.store_admin || user?.role === Role.store_shopper) && user.vendorId === orderToUpdate.vendorId;
-
-  if (!isVendorOwner && !isAssignedStaff) {
-    throw new OrderCreationError('You are not authorized to accept this order.', 403);
-  }
-
   try {
+    // 1. Fetch the order first to get its vendorId for authorization
+    const orderToUpdate = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { vendorId: true },
+    });
+
+    if (!orderToUpdate) {
+      throw new OrderCreationError('Order not found.', 404);
+    }
+
+    // 2. Authorize the user
+    const user = await prisma.user.findUnique({
+      where: { id: shoppingHandlerUserId },
+      select: { role: true, vendorId: true },
+    });
+
+    const isVendorOwner = user?.role === Role.vendor && vendorId === orderToUpdate.vendorId;
+    const isAssignedStaff = (user?.role === Role.store_admin || user?.role === Role.store_shopper) && user.vendorId === orderToUpdate.vendorId;
+
+    if (!isVendorOwner && !isAssignedStaff) {
+      throw new OrderCreationError('You are not authorized to accept this order.', 403);
+    }
+
     // Perform an atomic update with a where clause to enforce state and ownership
     const acceptedOrder = await prisma.order.update({
       where: {
@@ -995,7 +1030,7 @@ export const updateOrderItemShoppingStatusService = async (
   const [order, requestingUser] = await Promise.all([
     prisma.order.findUnique({
       where: { id: orderId },
-      select: { shopperId: true, deliveryPersonId: true, userId: true, vendorId: true },
+      select: { shopperId: true, deliveryPersonId: true, userId: true, vendorId: true, shoppingMethod: true },
     }),
     prisma.user.findUnique({
       where: { id: shopperId },
@@ -1007,7 +1042,8 @@ export const updateOrderItemShoppingStatusService = async (
   if (!requestingUser) { throw new OrderCreationError('Requesting user not found.', 404); }
 
   // 2. Authorize the request
-  const isAssignedStaff = order.shopperId === shopperId || order.deliveryPersonId === shopperId;
+  const isAssignedShopperByVendor = order.shoppingMethod === 'vendor' && order.shopperId === shopperId;
+  const isAssignedShopperAsDeliveryPerson = order.shoppingMethod === 'delivery_person' && order.shopperId === shopperId;
   const isStoreAdmin = requestingUser.role === Role.store_admin && requestingUser.vendorId === order.vendorId;
   
   // For a vendor, we need to check if they own the store associated with the order.
@@ -1017,7 +1053,7 @@ export const updateOrderItemShoppingStatusService = async (
     isVendorOwner = !!vendor;
   }
 
-  if (!isAssignedStaff && !isStoreAdmin && !isVendorOwner) {
+  if (!isAssignedShopperByVendor && !isAssignedShopperAsDeliveryPerson && !isStoreAdmin && !isVendorOwner) {
     throw new OrderCreationError('You are not authorized to update this order item.', 403);
   }
 

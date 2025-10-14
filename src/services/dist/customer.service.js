@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.listCustomersService = void 0;
+exports.listCustomerTransactionsService = exports.listCustomersService = void 0;
 // services/customer.service.ts
 var client_1 = require("@prisma/client");
 var customerModel = require("../models/customer.model");
@@ -47,28 +47,64 @@ var prisma = new client_1.PrismaClient();
  * @returns A list of unique customer users.
  */
 exports.listCustomersService = function (options) { return __awaiter(void 0, void 0, Promise, function () {
-    var ownerId, vendorId, vendor;
+    var ownerId, vendorId;
     return __generator(this, function (_a) {
-        switch (_a.label) {
+        ownerId = options.ownerId, vendorId = options.vendorId;
+        if (!ownerId && !vendorId) {
+            throw new Error('Either ownerId or vendorId must be provided.');
+        }
+        return [2 /*return*/, customerModel.listCustomers(options)];
+    });
+}); };
+/**
+ * Retrieves transactions for a specific customer, with role-based authorization.
+ * @param requestingUserId - The ID of the user making the request.
+ * @param requestingUserRole - The role of the user making the request.
+ * @param staffVendorId - The vendor ID from the staff member's token (for store_admin).
+ * @param filterByVendorId - An optional store ID to filter by (for vendors).
+ * @param customerId - The ID of the customer.
+ * @returns A list of transactions.
+ */
+exports.listCustomerTransactionsService = function (requestingUserId, requestingUserRole, staffVendorId, filterByVendorId, customerId) { return __awaiter(void 0, void 0, void 0, function () {
+    var modelFilters, _a, vendor;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
             case 0:
-                ownerId = options.ownerId, vendorId = options.vendorId;
-                if (!ownerId && !vendorId) {
-                    throw new Error('Either ownerId or vendorId must be provided.');
+                modelFilters = {
+                    customerId: customerId
+                };
+                _a = requestingUserRole;
+                switch (_a) {
+                    case client_1.Role.vendor: return [3 /*break*/, 1];
+                    case client_1.Role.store_admin: return [3 /*break*/, 4];
                 }
-                if (!(ownerId && vendorId)) return [3 /*break*/, 2];
-                return [4 /*yield*/, prisma.vendor.findFirst({
-                        where: {
-                            id: vendorId,
-                            userId: ownerId
-                        }
-                    })];
+                return [3 /*break*/, 5];
             case 1:
-                vendor = _a.sent();
+                modelFilters.ownerId = requestingUserId;
+                if (!filterByVendorId) return [3 /*break*/, 3];
+                return [4 /*yield*/, prisma.vendor.findFirst({
+                        where: { id: filterByVendorId, userId: requestingUserId }
+                    })];
+            case 2:
+                vendor = _b.sent();
                 if (!vendor) {
-                    throw new Error('Unauthorized: You do not own this vendor.');
+                    throw new Error('Forbidden: You do not own this store or store not found.');
                 }
-                _a.label = 2;
-            case 2: return [2 /*return*/, customerModel.listCustomers({ ownerId: ownerId, vendorId: vendorId })];
+                modelFilters.vendorId = filterByVendorId;
+                _b.label = 3;
+            case 3: return [3 /*break*/, 6];
+            case 4:
+                if (!staffVendorId) {
+                    throw new Error('Forbidden: You are not assigned to a store.');
+                }
+                // A store admin can ONLY see transactions for their assigned store.
+                modelFilters.vendorId = staffVendorId;
+                return [3 /*break*/, 6];
+            case 5: throw new Error('Forbidden: You do not have permission to perform this action.');
+            case 6: 
+            // 2. Retrieve transactions using the constructed filters.
+            // The model will handle validation of whether the customer has history.
+            return [2 /*return*/, customerModel.listCustomerTransactions(modelFilters)];
         }
     });
 }); };

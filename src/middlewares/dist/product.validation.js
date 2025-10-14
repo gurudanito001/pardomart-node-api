@@ -1,6 +1,6 @@
 "use strict";
 exports.__esModule = true;
-exports.validateGetVendorProductsByUser = exports.validateGetVendorProductsByCategory = exports.validateGetVendorProductsByTagIds = exports.validateGetProductsByTagIds = exports.validateGetVendorProductByBarcode = exports.validateGetProductByBarcode = exports.validateCreateVendorProductWithBarcode = exports.validateGetTrendingVendorProducts = exports.validateGetAllVendorProducts = exports.validateGetVendorProductById = exports.validateUpdateVendorProduct = exports.validateCreateVendorProduct = exports.validateUpdateProductBase = exports.validateCreateProduct = exports.validateId = void 0;
+exports.validateTransferProducts = exports.validateGetVendorProductsByUser = exports.validateGetVendorProductsByCategory = exports.validateGetVendorProductsByTagIds = exports.validateGetProductsByTagIds = exports.validateGetVendorProductByBarcode = exports.validateGetProductByBarcode = exports.validateCreateVendorProductWithBarcode = exports.validateGetTrendingVendorProducts = exports.validateGetAllVendorProducts = exports.validateGetVendorProductById = exports.validateUpdateVendorProduct = exports.validateCreateVendorProduct = exports.validateUpdateProductBase = exports.validateCreateProduct = exports.validateId = void 0;
 var express_validator_1 = require("express-validator");
 exports.validateId = [
     express_validator_1.param('id').isUUID(4).withMessage('A valid ID is required in the URL path.'),
@@ -100,4 +100,18 @@ exports.validateGetVendorProductsByCategory = [
 ];
 exports.validateGetVendorProductsByUser = [
     express_validator_1.param('userId').isUUID(4).withMessage('A valid user ID is required in the URL path.'),
+];
+exports.validateTransferProducts = [
+    express_validator_1.body('sourceVendorProductIds')
+        .isArray({ min: 1 })
+        .withMessage('At least one source product ID is required.'),
+    express_validator_1.body('sourceVendorProductIds.*')
+        .isUUID(4)
+        .withMessage('Each source product ID must be a valid UUID.'),
+    express_validator_1.body('targetVendorIds')
+        .isArray({ min: 1 })
+        .withMessage('At least one target vendor ID is required.'),
+    express_validator_1.body('targetVendorIds.*')
+        .isUUID(4)
+        .withMessage('Each target vendor ID must be a valid UUID.'),
 ];

@@ -91,7 +91,7 @@ export const getStaffById = async (staffId: string): Promise<User | null> => {
   return prisma.user.findFirst({
     where: {
       id: staffId,
-      role: Role.store_shopper,
+      role: { in: [Role.store_shopper, Role.store_admin] },
     },
   });
 };
@@ -130,28 +130,45 @@ export const deleteStaff = async (staffId: string): Promise<User> => {
 export const listStaffTransactions = async (filters: ListStaffTransactionsFilters): Promise<Transaction[]> => {
   const { ownerId, staffUserId, vendorId } = filters;
 
-  const where: Prisma.TransactionWhereInput = {
-    user: {
-      role: Role.store_shopper,
-      vendor: {
-        userId: ownerId,
-      },
+  // Step 1: Find the IDs of the staff members that match the filter criteria.
+  const staffWhere: Prisma.UserWhereInput = {
+    role: { in: [Role.store_shopper, Role.store_admin] },
+    vendor: {
+      userId: ownerId, // This is the primary authorization scope.
     },
   };
 
   if (staffUserId) {
-    where.userId = staffUserId;
+    staffWhere.id = staffUserId;
   }
 
   if (vendorId) {
-    // This is the correct way to filter by the staff member's store
-    if (where.user) {
-      where.user.vendorId = vendorId;
-    }
+    staffWhere.vendorId = vendorId;
+  }
+
+  const staffMembers = await prisma.user.findMany({
+    where: staffWhere,
+    select: { id: true },
+  });
+
+  if (staffMembers.length === 0) {
+    return []; // No matching staff, so no transactions.
+  }
+
+  const staffIds = staffMembers.map((staff) => staff.id);
+
+  // Step 2: Find all transactions performed by those staff members.
+  const transactionWhere: Prisma.TransactionWhereInput = {
+    userId: { in: staffIds },
+  };
+
+  // If filtering by a specific store, we can add it here too for query optimization.
+  if (vendorId) {
+    transactionWhere.vendorId = vendorId;
   }
 
   return prisma.transaction.findMany({
-    where,
+    where: transactionWhere,
     orderBy: { createdAt: 'desc' },
   });
 };

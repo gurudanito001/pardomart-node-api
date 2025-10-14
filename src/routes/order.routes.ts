@@ -29,7 +29,7 @@ router.use(authenticate);
 
 
 // --- Vendor-facing routes ---
-router.get('/vendorOrders', authorize([Role.store_admin, Role.store_shopper]), validate(validateGetVendorOrders), orderController.getVendorOrdersController);
+//router.get('/vendorOrders', authorize([Role.store_admin, Role.store_shopper]), validate(validateGetVendorOrders), orderController.getVendorOrdersController);
 router.patch('/:orderId/accept', authorizeVendorAccess, validate(validateVendorOrderAction), orderController.acceptOrderController);
 router.patch('/:orderId/decline', authorizeVendorAccess, validate(validateDeclineOrder), orderController.declineOrderController);
 router.patch('/:orderId/start-shopping', authorizeVendorAccess, validate(validateVendorOrderAction), orderController.startShoppingController);

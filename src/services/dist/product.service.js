@@ -58,7 +58,9 @@ var __rest = (this && this.__rest) || function (s, e) {
     return t;
 };
 exports.__esModule = true;
-exports.getTrendingVendorProductsService = exports.deleteVendorProduct = exports.deleteProduct = exports.getVendorProductsByUser = exports.getVendorProductsByCategory = exports.getAllVendorProducts = exports.getAllProducts = exports.updateVendorProduct = exports.updateProductBase = exports.getVendorProductsByTagIds = exports.getProductsByTagIds = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.createVendorProductWithBarcode = exports.getVendorProductById = exports.createProduct = exports.createVendorProduct = void 0;
+exports.transferVendorProductsService = exports.deleteVendorProduct = exports.getTrendingVendorProductsService = exports.deleteProduct = exports.getVendorProductsByUser = exports.getVendorProductsByCategory = exports.getAllVendorProducts = exports.getAllProducts = exports.updateVendorProduct = exports.updateProductBase = exports.getVendorProductsByTagIds = exports.getProductsByTagIds = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.getMyVendorProductsService = exports.createVendorProductWithBarcode = exports.getVendorProductById = exports.createProduct = exports.createVendorProduct = void 0;
+// services/product.service.ts
+var client_1 = require("@prisma/client");
 var productModel = require("../models/product.model");
 var vendorModel = require("../models/vendor.model");
 var media_service_1 = require("./media.service");
@@ -216,6 +218,32 @@ exports.createVendorProductWithBarcode = function (payload, ownerId) { return __
         }
     });
 }); };
+/**
+ * Retrieves all vendor products across all stores owned by a specific vendor user.
+ * @param ownerId - The ID of the vendor owner.
+ * @param vendorId - Optional. The ID of a specific store to filter by.
+ * @param pagination - Pagination options.
+ * @returns A list of all vendor products.
+ */
+exports.getMyVendorProductsService = function (ownerId, vendorId, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+    var vendor;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                if (!vendorId) return [3 /*break*/, 2];
+                return [4 /*yield*/, vendorModel.getVendorById(vendorId)];
+            case 1:
+                vendor = _a.sent();
+                if (!vendor || vendor.userId !== ownerId) {
+                    throw new Error('Forbidden: You do not own this store or the store does not exist.');
+                }
+                _a.label = 2;
+            case 2: 
+            // Now, call the model with the owner's ID and the validated (or undefined) vendorId.
+            return [2 /*return*/, productModel.getVendorProductsByOwnerId(ownerId, vendorId, pagination)];
+        }
+    });
+}); };
 exports.getProductByBarcode = function (barcode) { return productModel.getProductByBarcode(barcode); };
 exports.getVendorProductByBarcode = function (barcode, vendorId) { return productModel.getVendorProductByBarcode(barcode, vendorId); };
 exports.getProductsByTagIds = function (tagIds) { return productModel.getProductsByTagIds(tagIds); };
@@ -227,5 +255,106 @@ exports.getAllVendorProducts = function (filters, pagination) { return productMo
 exports.getVendorProductsByCategory = function (vendorId, categoryId) { return productModel.getVendorProductsByCategory(vendorId, categoryId); };
 exports.getVendorProductsByUser = function (userId) { return productModel.getVendorProductsByUserId(userId); };
 exports.deleteProduct = function (id) { return productModel.deleteProduct(id); };
-exports.deleteVendorProduct = function (id) { return productModel.deleteVendorProduct(id); };
 exports.getTrendingVendorProductsService = function (filters, pagination) { return productModel.getTrendingVendorProducts(filters, pagination); };
+/**
+ * Deletes a vendor-specific product, ensuring the user has ownership.
+ * @param vendorProductId The ID of the vendor product to delete.
+ * @param requestingUserId The ID of the user making the request.
+ * @param requestingUserRole The role of the user making the request.
+ * @param staffVendorId The vendor ID from the staff member's token.
+ * @returns The deleted vendor product.
+ */
+exports.deleteVendorProduct = function (vendorProductId, requestingUserId, requestingUserRole, staffVendorId) { return __awaiter(void 0, void 0, Promise, function () {
+    var productToDelete;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, productModel.getVendorProductById(vendorProductId)];
+            case 1:
+                productToDelete = _a.sent();
+                if (!productToDelete) {
+                    throw new Error('Vendor product not found.');
+                }
+                if (requestingUserRole === client_1.Role.vendor) {
+                    if (productToDelete.vendor.userId !== requestingUserId) {
+                        throw new Error('Forbidden: You do not own the store this product belongs to.');
+                    }
+                }
+                else if (requestingUserRole === client_1.Role.store_admin) {
+                    if (productToDelete.vendorId !== staffVendorId) {
+                        throw new Error('Forbidden: You can only delete products from your assigned store.');
+                    }
+                }
+                else {
+                    throw new Error('Forbidden: You do not have permission to delete this product.');
+                }
+                return [2 /*return*/, productModel.deleteVendorProduct(vendorProductId)];
+        }
+    });
+}); };
+/**
+ * Transfers a vendor product from a source store to multiple target stores.
+ * @param ownerId The ID of the vendor owner making the request.
+ * @param sourceVendorProductIds An array of product listing IDs to copy.
+ * @param targetVendorIds An array of store IDs to copy the product to.
+ * @returns An object summarizing the transferred and skipped products.
+ */
+exports.transferVendorProductsService = function (ownerId, sourceVendorProductIds, targetVendorIds) { return __awaiter(void 0, void 0, void 0, function () {
+    var ownedVendors, ownedVendorIds, _i, targetVendorIds_1, targetId, sourceProducts, sourceProductMap, _a, sourceVendorProductIds_1, sourceId, product, results, successfulTransfers, skippedTransfers, _b, sourceProducts_1, sourceProduct, result;
+    return __generator(this, function (_c) {
+        switch (_c.label) {
+            case 0: return [4 /*yield*/, vendorModel.getVendorsByUserId(ownerId)];
+            case 1:
+                ownedVendors = _c.sent();
+                ownedVendorIds = new Set(ownedVendors.map(function (v) { return v.id; }));
+                for (_i = 0, targetVendorIds_1 = targetVendorIds; _i < targetVendorIds_1.length; _i++) {
+                    targetId = targetVendorIds_1[_i];
+                    if (!ownedVendorIds.has(targetId)) {
+                        throw new Error("Forbidden: You do not own the target store with ID " + targetId + ".");
+                    }
+                }
+                return [4 /*yield*/, productModel.getVendorProductsByIds(sourceVendorProductIds)];
+            case 2:
+                sourceProducts = _c.sent();
+                sourceProductMap = new Map(sourceProducts.map(function (p) { return [p.id, p]; }));
+                for (_a = 0, sourceVendorProductIds_1 = sourceVendorProductIds; _a < sourceVendorProductIds_1.length; _a++) {
+                    sourceId = sourceVendorProductIds_1[_a];
+                    product = sourceProductMap.get(sourceId);
+                    if (!product) {
+                        throw new Error("Source product with ID " + sourceId + " not found.");
+                    }
+                    if (product.vendor.userId !== ownerId) {
+                        throw new Error("Forbidden: You do not own the source product with ID " + sourceId + ".");
+                    }
+                }
+                results = [];
+                successfulTransfers = 0;
+                skippedTransfers = 0;
+                _b = 0, sourceProducts_1 = sourceProducts;
+                _c.label = 3;
+            case 3:
+                if (!(_b < sourceProducts_1.length)) return [3 /*break*/, 6];
+                sourceProduct = sourceProducts_1[_b];
+                return [4 /*yield*/, productModel.transferVendorProducts(sourceProduct, targetVendorIds)];
+            case 4:
+                result = _c.sent();
+                successfulTransfers += result.transferred.length;
+                skippedTransfers += result.skipped.length;
+                results.push({
+                    sourceVendorProductId: sourceProduct.id,
+                    transferredTo: result.transferred,
+                    skippedFor: result.skipped
+                });
+                _c.label = 5;
+            case 5:
+                _b++;
+                return [3 /*break*/, 3];
+            case 6: 
+            // Optional: Invalidate cache or trigger re-indexing for the new products if needed.
+            return [2 /*return*/, {
+                    successfulTransfers: successfulTransfers,
+                    skippedTransfers: skippedTransfers,
+                    details: results
+                }];
+        }
+    });
+}); };

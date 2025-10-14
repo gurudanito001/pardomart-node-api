@@ -113,3 +113,18 @@ export const validateGetVendorProductsByCategory = [
 export const validateGetVendorProductsByUser = [
     param('userId').isUUID(4).withMessage('A valid user ID is required in the URL path.'),
 ];
+
+export const validateTransferProducts = [
+  body('sourceVendorProductIds')
+    .isArray({ min: 1 })
+    .withMessage('At least one source product ID is required.'),
+  body('sourceVendorProductIds.*')
+    .isUUID(4)
+    .withMessage('Each source product ID must be a valid UUID.'),
+  body('targetVendorIds')
+    .isArray({ min: 1 })
+    .withMessage('At least one target vendor ID is required.'),
+  body('targetVendorIds.*')
+    .isUUID(4)
+    .withMessage('Each target vendor ID must be a valid UUID.'),
+];
