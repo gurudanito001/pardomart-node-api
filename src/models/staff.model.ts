@@ -64,14 +64,20 @@ export const listStaffByVendorId = async (vendorId: string): Promise<User[]> => 
  * @param ownerId - The user ID of the vendor owner.
  * @returns A list of all staff users across all stores owned by the user.
  */
-export const listStaffByOwnerId = async (ownerId: string): Promise<User[]> => {
-  return prisma.user.findMany({
-    where: {
-      role: Role.store_shopper,
-      vendor: {
-        userId: ownerId,
-      },
+export const listStaffByOwnerId = async (ownerId: string, vendorId?: string): Promise<User[]> => {
+  const whereClause: Prisma.UserWhereInput = {
+    role: { in: [Role.store_shopper, Role.store_admin] },
+    vendor: {
+      userId: ownerId,
     },
+  };
+
+  if (vendorId) {
+    whereClause.vendorId = vendorId;
+  }
+
+  return prisma.user.findMany({
+    where: whereClause,
     include: {
       vendor: {
         select: {

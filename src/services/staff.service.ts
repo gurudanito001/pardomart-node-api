@@ -1,6 +1,7 @@
 // services/staff.service.ts
 import * as staffModel from '../models/staff.model';
-import { User, Role, Transaction } from '@prisma/client';
+import * as vendorModel from '../models/vendor.model';
+import { User, Role, Transaction, Prisma } from '@prisma/client';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -28,6 +29,7 @@ export interface ListStaffOptions {
   userId: string;
   userRole: Role;
   staffVendorId?: string;
+  vendorId?: string; // Optional filter for vendors to specify a store
 }
 
 export interface ListStaffTransactionsOptions {
@@ -100,13 +102,20 @@ export const listStaffByVendorIdService = async (vendorId: string, ownerId: stri
  * @returns A list of all staff users.
  */
 export const listStaffService = async (options: ListStaffOptions): Promise<Omit<User, 'rememberToken'>[]> => {
-  const { userId, userRole, staffVendorId } = options;
+  const { userId, userRole, staffVendorId, vendorId: filterByVendorId } = options;
   let staffList: User[] = [];
 
   switch (userRole) {
     case Role.vendor:
-      // A vendor owner gets all staff from all their stores.
-      staffList = await staffModel.listStaffByOwnerId(userId);
+      // Authorization: If a vendorId is provided for filtering, ensure the requester owns it.
+      if (filterByVendorId) {
+        const vendor = await vendorModel.getVendorById(filterByVendorId);
+        if (!vendor || vendor.userId !== userId) {
+          throw new Error('Forbidden: You are not authorized to view staff for this store.');
+        }
+      }
+      // A vendor owner can get all staff, or filter by a specific vendorId they own.
+      staffList = await staffModel.listStaffByOwnerId(userId, filterByVendorId);
       break;
 
     case Role.store_admin:

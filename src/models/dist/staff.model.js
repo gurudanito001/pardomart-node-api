@@ -91,15 +91,20 @@ exports.listStaffByVendorId = function (vendorId) { return __awaiter(void 0, voi
  * @param ownerId - The user ID of the vendor owner.
  * @returns A list of all staff users across all stores owned by the user.
  */
-exports.listStaffByOwnerId = function (ownerId) { return __awaiter(void 0, void 0, Promise, function () {
+exports.listStaffByOwnerId = function (ownerId, vendorId) { return __awaiter(void 0, void 0, Promise, function () {
+    var whereClause;
     return __generator(this, function (_a) {
+        whereClause = {
+            role: { "in": [client_1.Role.store_shopper, client_1.Role.store_admin] },
+            vendor: {
+                userId: ownerId
+            }
+        };
+        if (vendorId) {
+            whereClause.vendorId = vendorId;
+        }
         return [2 /*return*/, prisma.user.findMany({
-                where: {
-                    role: client_1.Role.store_shopper,
-                    vendor: {
-                        userId: ownerId
-                    }
-                },
+                where: whereClause,
                 include: {
                     vendor: {
                         select: {

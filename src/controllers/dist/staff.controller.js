@@ -178,6 +178,11 @@ exports.listStaffTransactionsController = function (req, res) { return __awaiter
  *       - **Store Admin**: Can only see staff members from their assigned store.
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string, format: uuid }
+ *         description: Optional. For Vendors, filters staff by a specific store ID. Ignored for other roles.
  *     responses:
  *       200:
  *         description: A list of staff members.
@@ -185,7 +190,7 @@ exports.listStaffTransactionsController = function (req, res) { return __awaiter
  *         description: Internal server error.
  */
 exports.listStaffForVendorOrAdminController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var userId, userRole, staffVendorId, staffList, error_3;
+    var userId, userRole, staffVendorId, vendorId, staffList, error_3;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -193,7 +198,8 @@ exports.listStaffForVendorOrAdminController = function (req, res) { return __awa
                 userId = req.userId;
                 userRole = req.userRole;
                 staffVendorId = req.vendorId;
-                return [4 /*yield*/, staffService.listStaffService({ userId: userId, userRole: userRole, staffVendorId: staffVendorId })];
+                vendorId = req.query.vendorId;
+                return [4 /*yield*/, staffService.listStaffService({ userId: userId, userRole: userRole, staffVendorId: staffVendorId, vendorId: vendorId })];
             case 1:
                 staffList = _a.sent();
                 res.status(200).json(staffList);

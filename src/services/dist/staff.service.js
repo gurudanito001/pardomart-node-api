@@ -50,6 +50,7 @@ exports.__esModule = true;
 exports.listStaffTransactionsService = exports.deleteStaffService = exports.updateStaffService = exports.getStaffByIdService = exports.listStaffService = exports.listStaffByVendorIdService = exports.createStaffService = void 0;
 // services/staff.service.ts
 var staffModel = require("../models/staff.model");
+var vendorModel = require("../models/vendor.model");
 var client_1 = require("@prisma/client");
 var client_2 = require("@prisma/client");
 var prisma = new client_2.PrismaClient();
@@ -120,38 +121,47 @@ exports.listStaffByVendorIdService = function (vendorId, ownerId) { return __awa
  * @returns A list of all staff users.
  */
 exports.listStaffService = function (options) { return __awaiter(void 0, void 0, Promise, function () {
-    var userId, userRole, staffVendorId, staffList, _a;
+    var userId, userRole, staffVendorId, filterByVendorId, staffList, _a, vendor;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
-                userId = options.userId, userRole = options.userRole, staffVendorId = options.staffVendorId;
+                userId = options.userId, userRole = options.userRole, staffVendorId = options.staffVendorId, filterByVendorId = options.vendorId;
                 staffList = [];
                 _a = userRole;
                 switch (_a) {
                     case client_1.Role.vendor: return [3 /*break*/, 1];
-                    case client_1.Role.store_admin: return [3 /*break*/, 3];
-                    case client_1.Role.store_shopper: return [3 /*break*/, 5];
+                    case client_1.Role.store_admin: return [3 /*break*/, 5];
+                    case client_1.Role.store_shopper: return [3 /*break*/, 7];
                 }
-                return [3 /*break*/, 6];
-            case 1: return [4 /*yield*/, staffModel.listStaffByOwnerId(userId)];
+                return [3 /*break*/, 8];
+            case 1:
+                if (!filterByVendorId) return [3 /*break*/, 3];
+                return [4 /*yield*/, vendorModel.getVendorById(filterByVendorId)];
             case 2:
-                // A vendor owner gets all staff from all their stores.
+                vendor = _b.sent();
+                if (!vendor || vendor.userId !== userId) {
+                    throw new Error('Forbidden: You are not authorized to view staff for this store.');
+                }
+                _b.label = 3;
+            case 3: return [4 /*yield*/, staffModel.listStaffByOwnerId(userId, filterByVendorId)];
+            case 4:
+                // A vendor owner can get all staff, or filter by a specific vendorId they own.
                 staffList = _b.sent();
-                return [3 /*break*/, 7];
-            case 3:
+                return [3 /*break*/, 9];
+            case 5:
                 // A store admin gets all staff from their assigned store.
                 if (!staffVendorId) {
                     throw new Error('Store admin is not associated with a vendor.');
                 }
                 return [4 /*yield*/, staffModel.listStaffByVendorId(staffVendorId)];
-            case 4:
+            case 6:
                 staffList = _b.sent();
-                return [3 /*break*/, 7];
-            case 5: 
+                return [3 /*break*/, 9];
+            case 7: 
             // A store shopper is not permitted to list other staff members.
             throw new Error('Unauthorized role.');
-            case 6: throw new Error('Unauthorized role.');
-            case 7: return [2 /*return*/, staffList.map(sanitizeUser)];
+            case 8: throw new Error('Unauthorized role.');
+            case 9: return [2 /*return*/, staffList.map(sanitizeUser)];
         }
     });
 }); };

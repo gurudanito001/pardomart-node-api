@@ -114,6 +114,11 @@ export const listStaffTransactionsController = async (req: AuthenticatedRequest,
  *       - **Store Admin**: Can only see staff members from their assigned store.
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string, format: uuid }
+ *         description: Optional. For Vendors, filters staff by a specific store ID. Ignored for other roles.
  *     responses:
  *       200:
  *         description: A list of staff members.
@@ -125,7 +130,8 @@ export const listStaffForVendorOrAdminController = async (req: AuthenticatedRequ
     const userId = req.userId as string;
     const userRole = req.userRole as Role;
     const staffVendorId = req.vendorId; // The vendorId from the staff's token
-    const staffList = await staffService.listStaffService({ userId, userRole, staffVendorId });
+    const { vendorId } = req.query as { vendorId?: string };
+    const staffList = await staffService.listStaffService({ userId, userRole, staffVendorId, vendorId });
     res.status(200).json(staffList);
   } catch (error: any) {
     console.error('Error listing staff:', error);
