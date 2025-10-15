@@ -13,7 +13,7 @@ router.get('/verificationCodes', userController.getAllVerificationCodes);
 router.get('/', validation_middleware_1.validate(validation_middleware_1.validateGetAllUsers), userController.getAllUsers);
 router.get('/:id', validation_middleware_1.validate(validation_middleware_1.validateUserId), userController.getUserById);
 // router.post('/', userController.createUser); // Create user is handled by /auth/register
-router.put('/:id', validation_middleware_1.validate(validation_middleware_1.validateUpdateUser), userController.updateUser); // user should be able to update their own profile
+router.put('/update', validation_middleware_1.validate(validation_middleware_1.validateUpdateUser), userController.updateUser); // user should be able to update their own profile
 router["delete"]('/:id', validation_middleware_1.validate(validation_middleware_1.validateUserId), userController.deleteUser);
 //router.post('/user/support', userController.createSupport);
 exports["default"] = router;

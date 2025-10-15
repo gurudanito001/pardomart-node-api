@@ -39,6 +39,8 @@ exports.__esModule = true;
 exports.deleteUser = exports.updateUser = exports.createUser = exports.getUserById = exports.getAllVerificationCodes = exports.findMany = exports.getAllUsers = void 0;
 // user.service.ts
 var userModel = require("../models/user.model"); // Import functions from user.model.ts
+var media_service_1 = require("./media.service"); // Assuming you have a media.service.ts file
+var stream_1 = require("stream");
 exports.getAllUsers = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
         return [2 /*return*/, userModel.getAllUsers(filters, pagination)];
@@ -64,9 +66,42 @@ exports.createUser = function (payload) { return __awaiter(void 0, void 0, void 
         return [2 /*return*/, userModel.createUser(payload)];
     });
 }); };
-exports.updateUser = function (payload) { return __awaiter(void 0, void 0, void 0, function () {
+exports.updateUser = function (id, payload) { return __awaiter(void 0, void 0, void 0, function () {
+    var imageBuffer, mockFile, uploadResult, error_1;
     return __generator(this, function (_a) {
-        return [2 /*return*/, userModel.updateUser(payload)];
+        switch (_a.label) {
+            case 0:
+                if (!(payload.image && !payload.image.startsWith('http'))) return [3 /*break*/, 4];
+                _a.label = 1;
+            case 1:
+                _a.trys.push([1, 3, , 4]);
+                imageBuffer = Buffer.from(payload.image, 'base64');
+                mockFile = {
+                    fieldname: 'image',
+                    originalname: id + "-user-image.jpg",
+                    encoding: '7bit',
+                    mimetype: 'image/jpeg',
+                    buffer: imageBuffer,
+                    size: imageBuffer.length,
+                    stream: new stream_1.Readable(),
+                    destination: '',
+                    filename: '',
+                    path: ''
+                };
+                return [4 /*yield*/, media_service_1.uploadMedia(mockFile, id, 'user_image')];
+            case 2:
+                uploadResult = _a.sent();
+                payload.image = uploadResult.cloudinaryResult.secure_url; // Update payload with the new URL
+                return [3 /*break*/, 4];
+            case 3:
+                error_1 = _a.sent();
+                console.error('Error uploading new user image during update:', error_1);
+                // To prevent saving the base64 string, we remove the image from the payload on failure.
+                // The user can try uploading again.
+                delete payload.image;
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/, userModel.updateUser(id, payload)];
+        }
     });
 }); };
 exports.deleteUser = function (userId) { return __awaiter(void 0, void 0, void 0, function () {

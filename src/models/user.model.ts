@@ -102,10 +102,10 @@ export const createUser = async (payload: CreateUserPayload): Promise<User> => {
 };
 
 export interface UpdateUserPayload {
-  id: string;
   name?: string;
   email?: string;
   mobileNumber?: string;
+  image?: string; // URL or base64 string;
   role?: Role;
   mobileVerified?: boolean;
   active?: boolean;
@@ -114,13 +114,14 @@ export interface UpdateUserPayload {
   referralCode?: string;
 }
 
-export const updateUser = async (payload: UpdateUserPayload): Promise<User> => {
+export const updateUser = async (id: string, payload: UpdateUserPayload): Promise<User> => {
   return prisma.user.update({
     where: {
-      id: payload.id,
+      id: id,
     },
     data: {
       name: payload.name,
+      image: payload.image,
       email: payload.email,
       mobileNumber: payload.mobileNumber,
       role: payload.role,

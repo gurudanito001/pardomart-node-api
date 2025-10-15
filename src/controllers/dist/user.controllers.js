@@ -1,15 +1,4 @@
 "use strict";
-var __assign = (this && this.__assign) || function () {
-    __assign = Object.assign || function(t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-            s = arguments[i];
-            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-                t[p] = s[p];
-        }
-        return t;
-    };
-    return __assign.apply(this, arguments);
-};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -341,13 +330,18 @@ exports.createUser = function (req, res) { return __awaiter(void 0, void 0, void
  *         description: User not found.
  */
 exports.updateUser = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var userId, updatedUser, error_5;
+    var userId, payload, updatedUser, error_5;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                userId = req.params.id;
-                return [4 /*yield*/, userService.updateUser(__assign({ id: userId }, req.body))];
+                userId = req.userId;
+                payload = req.body;
+                // Sanitize image data: remove data URI prefix if it exists, for base64 uploads.
+                if (payload.image && payload.image.startsWith('data:')) {
+                    payload.image = payload.image.split(',')[1];
+                }
+                return [4 /*yield*/, userService.updateUser(userId, payload)];
             case 1:
                 updatedUser = _a.sent();
                 res.status(200).json(updatedUser);

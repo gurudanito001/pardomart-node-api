@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import * as userService from '../services/user.service'; // Assuming you have a user.service.ts file
 import { User, Role } from '@prisma/client'; // Import User type
 import { GetUserFilters } from '../models/user.model';
+import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 
 // User Controllers
 /**
@@ -255,10 +256,17 @@ export const createUser = async (req: Request, res: Response) => {
  *       404:
  *         description: User not found.
  */
-export const updateUser = async (req: Request, res: Response) => {
+export const updateUser = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = req.params.id;
-    const updatedUser = await userService.updateUser({ id: userId, ...req.body });
+    const userId = req.userId as string;
+    const payload = req.body;
+
+    // Sanitize image data: remove data URI prefix if it exists, for base64 uploads.
+    if (payload.image && payload.image.startsWith('data:')) {
+      payload.image = payload.image.split(',')[1];
+    }
+
+    const updatedUser = await userService.updateUser(userId, payload);
     res.status(200).json(updatedUser);
   } catch (error: any) {
     console.error('Error updating user:', error);
