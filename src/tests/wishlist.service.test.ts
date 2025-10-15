@@ -3,7 +3,7 @@ import * as wishlistService from '../services/wishlist.service';
 import * as wishlistModel from '../models/wishlist.model';
 import * as productModel from '../models/product.model';
 import { WishlistError } from '../services/wishlist.service';
-import { VendorProduct, WishlistItem } from '@prisma/client';
+import { VendorProduct, WishlistItem, Product, Vendor } from '@prisma/client';
 
 // Mock the model files to isolate the service for testing
 jest.mock('../models/wishlist.model');
@@ -25,7 +25,12 @@ describe('Wishlist Service', () => {
 
   describe('addToWishlistService', () => {
     it('should add a product to the wishlist successfully', async () => {
-      const mockProduct = { id: vendorProductId } as VendorProduct;
+      // The service expects a product with relations, so we mock the nested structure.
+      const mockProduct = { 
+        id: vendorProductId,
+        product: { id: 'prod-123' } as Product,
+        vendor: { id: 'vendor-123', userId: 'vendor-user-123' } as Vendor,
+      } as any; // Using 'any' to simplify mock creation for the test's purpose.
       const mockWishlistItem = { id: wishlistItemId, userId, vendorProductId } as WishlistItem;
 
       mockProductModel.getVendorProductById.mockResolvedValue(mockProduct);
@@ -48,7 +53,11 @@ describe('Wishlist Service', () => {
     });
 
     it('should throw a 409 error if the product is already in the wishlist', async () => {
-      const mockProduct = { id: vendorProductId } as VendorProduct;
+      const mockProduct = { 
+        id: vendorProductId,
+        product: { id: 'prod-123' } as Product,
+        vendor: { id: 'vendor-123', userId: 'vendor-user-123' } as Vendor,
+      } as any;
       const existingWishlistItem = { id: wishlistItemId, userId, vendorProductId } as WishlistItem;
 
       mockProductModel.getVendorProductById.mockResolvedValue(mockProduct);

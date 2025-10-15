@@ -71,7 +71,11 @@ describe('Wishlist Service', function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        mockProduct = { id: vendorProductId };
+                        mockProduct = {
+                            id: vendorProductId,
+                            product: { id: 'prod-123' },
+                            vendor: { id: 'vendor-123', userId: 'vendor-user-123' }
+                        };
                         mockWishlistItem = { id: wishlistItemId, userId: userId, vendorProductId: vendorProductId };
                         mockProductModel.getVendorProductById.mockResolvedValue(mockProduct);
                         mockWishlistModel.findWishlistItem.mockResolvedValue(null);
@@ -105,7 +109,11 @@ describe('Wishlist Service', function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        mockProduct = { id: vendorProductId };
+                        mockProduct = {
+                            id: vendorProductId,
+                            product: { id: 'prod-123' },
+                            vendor: { id: 'vendor-123', userId: 'vendor-user-123' }
+                        };
                         existingWishlistItem = { id: wishlistItemId, userId: userId, vendorProductId: vendorProductId };
                         mockProductModel.getVendorProductById.mockResolvedValue(mockProduct);
                         mockWishlistModel.findWishlistItem.mockResolvedValue(existingWishlistItem);
