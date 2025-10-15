@@ -38,9 +38,8 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 exports.__esModule = true;
 exports.getTotalEarningsService = exports.listEarningsService = void 0;
 // src/services/earnings.service.ts
-var client_1 = require("@prisma/client");
 var earningsModel = require("../models/earnings.model");
-var prisma = new client_1.PrismaClient();
+var vendorModel = require("../models/vendor.model");
 /**
  * Retrieves earnings for a vendor owner, with optional filtering by store.
  * @param options - The options for listing earnings, including the user ID and optional vendor ID filter.
@@ -53,15 +52,10 @@ exports.listEarningsService = function (options) { return __awaiter(void 0, void
             case 0:
                 requestingUserId = options.requestingUserId, filterByVendorId = options.filterByVendorId;
                 if (!filterByVendorId) return [3 /*break*/, 2];
-                return [4 /*yield*/, prisma.vendor.findFirst({
-                        where: {
-                            id: filterByVendorId,
-                            userId: requestingUserId
-                        }
-                    })];
+                return [4 /*yield*/, vendorModel.getVendorById(filterByVendorId)];
             case 1:
                 vendor = _a.sent();
-                if (!vendor) {
+                if (!vendor || vendor.userId !== requestingUserId) {
                     throw new Error('Forbidden: You do not own this store or store not found.');
                 }
                 _a.label = 2;

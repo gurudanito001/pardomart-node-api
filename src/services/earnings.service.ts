@@ -1,8 +1,6 @@
 // src/services/earnings.service.ts
-import { PrismaClient } from '@prisma/client';
 import * as earningsModel from '../models/earnings.model';
-
-const prisma = new PrismaClient();
+import * as vendorModel from '../models/vendor.model';
 
 export interface ListEarningsOptions {
   requestingUserId: string;
@@ -19,14 +17,10 @@ export const listEarningsService = async (options: ListEarningsOptions) => {
 
   // Authorization: If a vendorId is provided, ensure the requester owns it.
   if (filterByVendorId) {
-    const vendor = await prisma.vendor.findFirst({
-      where: {
-        id: filterByVendorId,
-        userId: requestingUserId,
-      },
-    });
+    // Use the existing model function for consistency
+    const vendor = await vendorModel.getVendorById(filterByVendorId);
 
-    if (!vendor) {
+    if (!vendor || vendor.userId !== requestingUserId) {
       throw new Error('Forbidden: You do not own this store or store not found.');
     }
   }
