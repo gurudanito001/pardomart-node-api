@@ -31,6 +31,8 @@ export const listCustomers = async (filters: ListCustomersFilters): Promise<Part
     return []; // Should not happen if service validation is correct
   }
 
+  console.log('Order where clause:', where);
+
   // Find all orders matching the filter
   const orders = await prisma.order.findMany({
     where,

@@ -109,9 +109,10 @@ export const listStaffTransactionsController = async (req: AuthenticatedRequest,
  *     summary: List staff members based on user role
  *     tags: [Staff]
  *     description: >
- *       Retrieves a list of staff members with role-based access:
- *       - **Vendor**: Can see all staff members across all of their stores.
- *       - **Store Admin**: Can only see staff members from their assigned store.
+ *       Retrieves a list of staff members with role-based access control:
+ *       - **Vendor**: Can see all staff members across all of their stores. Can filter by a specific `vendorId` they own.
+ *       - **Store Admin**: Can only see staff members from their assigned store. The `vendorId` filter is ignored.
+ *       - **Store Shopper**: Not authorized to use this endpoint.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -122,6 +123,8 @@ export const listStaffTransactionsController = async (req: AuthenticatedRequest,
  *     responses:
  *       200:
  *         description: A list of staff members.
+ *       403:
+ *         description: Forbidden. The user is not authorized to view staff for the specified store.
  *       500:
  *         description: Internal server error.
  */
@@ -135,7 +138,7 @@ export const listStaffForVendorOrAdminController = async (req: AuthenticatedRequ
     res.status(200).json(staffList);
   } catch (error: any) {
     console.error('Error listing staff:', error);
-    if (error.message.includes('Unauthorized') || error.message.includes('not associated')) {
+    if (error.message.includes('Unauthorized') || error.message.includes('not associated') || error.message.includes('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
     res.status(500).json({ error: 'An unexpected error occurred while listing staff.' });

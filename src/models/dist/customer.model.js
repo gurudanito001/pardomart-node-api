@@ -66,6 +66,7 @@ exports.listCustomers = function (filters) { return __awaiter(void 0, void 0, Pr
                 else {
                     return [2 /*return*/, []]; // Should not happen if service validation is correct
                 }
+                console.log('Order where clause:', where);
                 return [4 /*yield*/, prisma.order.findMany({
                         where: where,
                         select: {
