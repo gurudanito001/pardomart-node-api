@@ -1,7 +1,9 @@
 // services/vendor.service.ts
 import * as vendorModel from '../models/vendor.model';
 import { Vendor } from '@prisma/client';
+import { uploadMedia } from './media.service';
 import { getAggregateRatingService, getAggregateRatingsForVendorsService } from './rating.service';
+import { prisma } from '../config/prisma';
 
 
 interface VendorWithDistance extends Vendor {
@@ -32,10 +34,57 @@ const calculateDistance = (
 };
 
 export const createVendor = async (payload: vendorModel.CreateVendorPayload): Promise<Vendor> => {
-  return vendorModel.createVendor(payload);
+  const { image, ...vendorData } = payload;
+
+  // Use a transaction to ensure both vendor and wallet are created or neither.
+  const newVendor = await prisma.$transaction(async (tx) => {
+    // 1. Create the Vendor using the existing model function, but within the transaction
+    const vendor = await vendorModel.createVendor(vendorData, tx);
+
+    // 2. Create a Wallet and link it to the new Vendor
+    await tx.wallet.create({
+      data: {
+        vendorId: vendor.id,
+      },
+    });
+
+    return vendor;
+  });
+
+  // 3. Handle image upload outside the main transaction.
+  // If this fails, the vendor and wallet still exist, which is acceptable.
+  if (image) {
+    try {
+      const imageBuffer = Buffer.from(image, 'base64');
+      const mockFile: Express.Multer.File = {
+        fieldname: 'image',
+        originalname: `${newVendor.id}-store-image.jpg`,
+        encoding: '7bit',
+        mimetype: 'image/jpeg',
+        buffer: imageBuffer,
+        size: imageBuffer.length,
+        stream: new (require('stream').Readable)(),
+        destination: '',
+        filename: '',
+        path: '',
+      };
+
+      const uploadResult = await uploadMedia(mockFile, newVendor.id, 'store_image');
+
+      // Update the vendor with the final image URL
+      return vendorModel.updateVendor(newVendor.id, { image: uploadResult.cloudinaryResult.secure_url });
+    } catch (error) {
+      console.error('Error uploading vendor image after creation:', error);
+      // The vendor was created, but image upload failed. Return the vendor without the image.
+    }
+  }
+
+  // 4. Fetch and return the complete vendor data with relations.
+  // This ensures the final object is consistent, whether the image was uploaded or not.
+  return (await getVendorById(newVendor.id)) as Vendor;
 };
 
-export const getVendorById = async (id: string, latitude?: string, longitude?: string): Promise<(vendorModel.VendorWithRelations & { distance?: number; productCount?: number; documentCount?: number }) | null> => {
+export const getVendorById = async (id: string, latitude?: string, longitude?: string): Promise<(vendorModel.VendorWithRelations & { distance?: number; productCount?: number; documentCount?: number; rating?: { average: number; count: number; } }) | null> => {
   const vendor = await vendorModel.getVendorById(id);
 
   if (!vendor) {

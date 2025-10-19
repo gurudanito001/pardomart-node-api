@@ -45,6 +45,7 @@ const calculateDistance = (
 };
 
 
+
 // --- Order Service Functions ---
 
 /**
@@ -149,6 +150,11 @@ const generateUniqueOrderCode = async (tx: Prisma.TransactionClient): Promise<st
     }
   }
   return orderCode as string;
+};
+
+const generatePickupOtp = (): string => {
+  // Generate a 6-digit OTP
+  return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
 
@@ -280,12 +286,14 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
       (deliveryPersonTip || 0);
 
     const orderCode = await generateUniqueOrderCode(tx);
+    const pickupOtp = generatePickupOtp();
 
     // --- 5. Create the Order record ---
     const newOrder = await orderModel.createOrder({
       userId,
       vendorId,
       orderCode,
+      pickupOtp,
       subtotal,
       totalAmount: finalTotalAmount,
       deliveryFee, serviceFee, shoppingFee,
@@ -338,6 +346,10 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
       body: `Your order #${finalOrder.orderCode} has been placed.`,
       meta: { orderId: finalOrder.id },
     });
+    // TODO: In a real application, you would send the `pickupOtp` to the customer
+    // via SMS or a push notification that is only visible to them.
+    // For now, it's available on the order object returned to the creating user.
+
     // --- End Notification Logic ---
     // --- End Notification Logic ---
 
@@ -495,18 +507,20 @@ export const updateOrderStatusService = async (
       // The vendor gets paid the subtotal of the items. Platform fees are handled separately.
       const vendorAmount = order.subtotal;
       if (vendorAmount > 0 && order.vendor.userId) {
-        await tx.wallet.update({
-          where: { userId: order.vendor.userId },
-          data: { balance: { increment: vendorAmount } },
+        // Credit the vendor's own wallet directly
+        await tx.wallet.updateMany({
+          where: { vendorId: order.vendorId },
+          data: { balance: { increment: vendorAmount } }
         });
         await tx.transaction.create({
           data: {
-          userId: order.vendor.userId,
-          amount: vendorAmount,
-          type: TransactionType.VENDOR_PAYOUT,
-          source: TransactionSource.SYSTEM,
-          status: 'COMPLETED',
-          description: `Payment for order #${order.id.substring(0, 8)}`,
+            vendorId: order.vendorId, // Link transaction to vendor
+            userId: order.vendor.userId, // Required: associate the transaction with the vendor's user record
+            amount: vendorAmount,
+            type: TransactionType.VENDOR_PAYOUT,
+            source: TransactionSource.SYSTEM,
+            status: 'COMPLETED',
+            description: `Payment for order #${order.id.substring(0, 8)}`,
             orderId: order.id,
           },
         });
@@ -793,13 +807,13 @@ export const getOrdersForVendorDashboard = async (
 export const acceptOrderService = async (
   orderId: string,
   shoppingHandlerUserId: string,
-  vendorId: string // Pass vendorId for stricter security check at service layer
+  vendorId?: string // This is now optional, only provided for staff roles
 ): Promise<Order> => {
   try {
     // 1. Fetch the order first to get its vendorId for authorization
     const orderToUpdate = await prisma.order.findUnique({
       where: { id: orderId },
-      select: { vendorId: true },
+      select: { vendorId: true, vendor: { select: { userId: true } } },
     });
 
     if (!orderToUpdate) {
@@ -812,10 +826,12 @@ export const acceptOrderService = async (
       select: { role: true, vendorId: true },
     });
 
-    const isVendorOwner = user?.role === Role.vendor && vendorId === orderToUpdate.vendorId;
+    // Correctly check if the user's ID matches the userId on the order's vendor record.
+    const isVendorOwner = user?.role === Role.vendor && orderToUpdate.vendor.userId === shoppingHandlerUserId;
     const isAssignedStaff = (user?.role === Role.store_admin || user?.role === Role.store_shopper) && user.vendorId === orderToUpdate.vendorId;
+    const isAdmin = user?.role === Role.admin;
 
-    if (!isVendorOwner && !isAssignedStaff) {
+    if (!isVendorOwner && !isAssignedStaff && !isAdmin) {
       throw new OrderCreationError('You are not authorized to accept this order.', 403);
     }
 
@@ -1226,4 +1242,74 @@ export const getOrdersForVendorUserService = async (
   // 3. Fetch the orders using the determined vendor IDs and optional status.
   modelFilters.status = status;
   return orderModel.findOrdersForVendors(modelFilters);
+};
+
+/**
+ * Verifies the pickup OTP for an order and transitions its status.
+ * This is performed by a vendor or their staff when a customer/delivery person picks up an order.
+ *
+ * @param orderId The ID of the order.
+ * @param otp The 6-digit OTP provided for verification.
+ * @param requestingUserId The ID of the user (vendor/staff) performing the verification.
+ * @param requestingUserRole The role of the user.
+ * @param staffVendorId The vendor ID associated with the staff member, if applicable.
+ * @returns The updated order object.
+ * @throws OrderCreationError if OTP is invalid, order is in the wrong state, or user is unauthorized.
+ */
+export const verifyPickupOtpService = async (
+  orderId: string,
+  otp: string,
+  requestingUserId: string,
+  requestingUserRole: Role,
+  staffVendorId?: string
+): Promise<Order> => {
+  return prisma.$transaction(async (tx) => {
+    // 1. Fetch the order to verify against
+    const order = await tx.order.findUnique({
+      where: { id: orderId },
+      include: { vendor: { select: { userId: true } } },
+    });
+
+    if (!order) {
+      throw new OrderCreationError('Order not found.', 404);
+    }
+
+    // 2. Authorization Check
+    const isVendorOwner = requestingUserRole === Role.vendor && order.vendor.userId === requestingUserId;
+    const isStoreStaff = (requestingUserRole === Role.store_admin || requestingUserRole === Role.store_shopper) && staffVendorId === order.vendorId;
+
+    if (!isVendorOwner && !isStoreStaff) {
+      throw new OrderCreationError('You are not authorized to verify this order.', 403);
+    }
+
+    // 3. OTP and Status Validation
+    if (order.pickupOtp !== otp) {
+      throw new OrderCreationError('Invalid OTP provided.', 400);
+    }
+
+    let nextStatus: OrderStatus;
+    if (order.deliveryMethod === DeliveryMethod.customer_pickup && order.orderStatus === OrderStatus.ready_for_pickup) {
+      nextStatus = OrderStatus.picked_up_by_customer;
+    } else if (order.deliveryMethod === DeliveryMethod.delivery_person && order.orderStatus === OrderStatus.ready_for_delivery) {
+      nextStatus = OrderStatus.en_route;
+    } else {
+      throw new OrderCreationError(`Order is not ready for pickup. Current status: ${order.orderStatus}`, 400);
+    }
+
+    // 4. Update the order: set new status, clear OTP, and timestamp verification
+    const updatedOrder = await tx.order.update({
+      where: { id: orderId },
+      data: {
+        orderStatus: nextStatus,
+        pickupOtp: null, // Clear the OTP after successful verification
+        pickupOtpVerifiedAt: new Date(),
+        // Set actual delivery time if it's a customer pickup
+        actualDeliveryTime: nextStatus === OrderStatus.picked_up_by_customer ? new Date() : undefined,
+      },
+    });
+
+    // TODO: Add notification logic here to inform the customer that their order is on its way or has been picked up.
+
+    return updatedOrder;
+  });
 };

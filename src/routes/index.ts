@@ -34,7 +34,7 @@ const router = Router();
 router.use('/health', healthRouter); // For server wake-up calls
 
 router.use('/api/v1/auth', authRouter);
-router.use('/api/v1/users', usersRouter);
+router.use('/api/v1/users', usersRouter); // This now includes the new /api/v1/users/all route
 router.use('/api/v1/vendors', vendorRouter);
 router.use('/api/v1/openingHours', vendorOpeningHoursRouter);
 router.use('/api/v1/product', productRouter);

@@ -1,7 +1,5 @@
 // models/staff.model.ts
 import { PrismaClient, User, Role, Prisma, Transaction } from '@prisma/client';
-
-
 const prisma = new PrismaClient();
 
 export interface CreateStaffPayload {

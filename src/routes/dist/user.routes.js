@@ -6,6 +6,9 @@ var userController = require("../controllers/user.controllers");
 var auth_middleware_1 = require("../middlewares/auth.middleware");
 var validation_middleware_1 = require("../middlewares/validation.middleware");
 var router = express_1["default"].Router();
+// Public route to get all users without authentication
+// GET /users/all
+router.get('/all', userController.getAllUsers);
 // User Routes
 // Note: These routes are protected and require admin privileges.
 router.use(auth_middleware_1.authenticate);

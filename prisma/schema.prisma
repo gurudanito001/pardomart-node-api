@@ -233,6 +233,8 @@ model Order {
   orderItems                 OrderItem[]
   createdAt                  DateTime         @default(now())
   updatedAt                  DateTime         @updatedAt
+  pickupOtp                  String?          // OTP for verifying pickup
+  pickupOtpVerifiedAt        DateTime?        // Timestamp when OTP was verified
   ratings Rating[]
   deliveryPersonLocations DeliveryPersonLocation[]
   messages                   Message[]
@@ -320,6 +322,7 @@ model Vendor {
   staff          User[]               @relation("VendorStaff")
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
+  wallet         Wallet?
 
   ratings Rating[]
 }
@@ -415,12 +418,17 @@ model Message {
 
 model Wallet {
   id           String              @id @default(uuid())
-  userId       String              @unique
-  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   balance      Float               @default(0.0)
   transactions Transaction[]       // Transactions related to wallet top-ups and deductions
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
+
+  // A Wallet can belong to either a User or a Vendor, but not both.
+  // The @unique constraint ensures a one-to-one relationship.
+  userId       String?             @unique
+  user         User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendorId     String?             @unique
+  vendor       Vendor?             @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 }
 
 model BugReport {

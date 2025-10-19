@@ -60,7 +60,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.getOrdersForVendorUserService = exports.respondToReplacementService = exports.updateOrderItemShoppingStatusService = exports.startShoppingService = exports.declineOrderService = exports.acceptOrderService = exports.getOrdersForVendorDashboard = exports.getAvailableDeliverySlots = exports.updateOrderStatusService = exports.updateOrderService = exports.updateOrderTipService = exports.createOrderFromClient = exports.getOrdersByUserIdService = exports.OrderCreationError = exports.getOrderByIdService = exports.createOrderService = void 0;
+exports.verifyPickupOtpService = exports.getOrdersForVendorUserService = exports.respondToReplacementService = exports.updateOrderItemShoppingStatusService = exports.startShoppingService = exports.declineOrderService = exports.acceptOrderService = exports.getOrdersForVendorDashboard = exports.getAvailableDeliverySlots = exports.updateOrderStatusService = exports.updateOrderService = exports.updateOrderTipService = exports.createOrderFromClient = exports.getOrdersByUserIdService = exports.OrderCreationError = exports.getOrderByIdService = exports.createOrderService = void 0;
 var orderModel = require("../models/order.model"); // Adjust the path if needed
 var vendorModel = require("../models/vendor.model"); // Add this import for vendorModel
 var client_1 = require("@prisma/client");
@@ -187,6 +187,10 @@ var generateUniqueOrderCode = function (tx) { return __awaiter(void 0, void 0, P
         }
     });
 }); };
+var generatePickupOtp = function () {
+    // Generate a 6-digit OTP
+    return Math.floor(100000 + Math.random() * 900000).toString();
+};
 /**
  * Retrieves all orders for a specific user.
  * @param userId - The ID of the user whose orders are to be retrieved.
@@ -244,7 +248,7 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
             case 2: 
             // --- Transactional Block ---
             return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
-                    var fees, subtotal, deliveryFee, serviceFee, shoppingFee, finalTotalAmount, orderCode, newOrder, _i, orderItems_1, item, finalOrder;
+                    var fees, subtotal, deliveryFee, serviceFee, shoppingFee, finalTotalAmount, orderCode, pickupOtp, newOrder, _i, orderItems_1, item, finalOrder;
                     return __generator(this, function (_a) {
                         switch (_a.label) {
                             case 0: return [4 /*yield*/, fee_service_1.calculateOrderFeesService({
@@ -264,10 +268,12 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                 return [4 /*yield*/, generateUniqueOrderCode(tx)];
                             case 2:
                                 orderCode = _a.sent();
+                                pickupOtp = generatePickupOtp();
                                 return [4 /*yield*/, orderModel.createOrder({
                                         userId: userId,
                                         vendorId: vendorId,
                                         orderCode: orderCode,
+                                        pickupOtp: pickupOtp,
                                         subtotal: subtotal,
                                         totalAmount: finalTotalAmount,
                                         deliveryFee: deliveryFee, serviceFee: serviceFee, shoppingFee: shoppingFee,
@@ -336,6 +342,9 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                             case 10:
                                 // I will remove it later
                                 _a.sent();
+                                // TODO: In a real application, you would send the `pickupOtp` to the customer
+                                // via SMS or a push notification that is only visible to them.
+                                // For now, it's available on the order object returned to the creating user.
                                 // --- End Notification Logic ---
                                 // --- End Notification Logic ---
                                 return [2 /*return*/, finalOrder];
@@ -481,14 +490,17 @@ exports.updateOrderStatusService = function (orderId, status, requestingUserId, 
                                         }
                                         vendorAmount = order.subtotal;
                                         if (!(vendorAmount > 0 && order.vendor.userId)) return [3 /*break*/, 4];
-                                        return [4 /*yield*/, tx.wallet.update({
-                                                where: { userId: order.vendor.userId },
+                                        // Credit the vendor's own wallet directly
+                                        return [4 /*yield*/, tx.wallet.updateMany({
+                                                where: { vendorId: order.vendorId },
                                                 data: { balance: { increment: vendorAmount } }
                                             })];
                                     case 2:
+                                        // Credit the vendor's own wallet directly
                                         _a.sent();
                                         return [4 /*yield*/, tx.transaction.create({
                                                 data: {
+                                                    vendorId: order.vendorId,
                                                     userId: order.vendor.userId,
                                                     amount: vendorAmount,
                                                     type: client_1.TransactionType.VENDOR_PAYOUT,
@@ -749,16 +761,16 @@ exports.getOrdersForVendorDashboard = function (vendorId, options) { return __aw
  * @returns The updated Order object.
  * @throws Error if order not found, not pending, or does not belong to the vendor.
  */
-exports.acceptOrderService = function (orderId, shoppingHandlerUserId, vendorId // Pass vendorId for stricter security check at service layer
+exports.acceptOrderService = function (orderId, shoppingHandlerUserId, vendorId // This is now optional, only provided for staff roles
 ) { return __awaiter(void 0, void 0, Promise, function () {
-    var orderToUpdate, user, isVendorOwner, isAssignedStaff, acceptedOrder, error_3;
+    var orderToUpdate, user, isVendorOwner, isAssignedStaff, isAdmin, acceptedOrder, error_3;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 5, , 6]);
                 return [4 /*yield*/, prisma.order.findUnique({
                         where: { id: orderId },
-                        select: { vendorId: true }
+                        select: { vendorId: true, vendor: { select: { userId: true } } }
                     })];
             case 1:
                 orderToUpdate = _a.sent();
@@ -771,9 +783,10 @@ exports.acceptOrderService = function (orderId, shoppingHandlerUserId, vendorId 
                     })];
             case 2:
                 user = _a.sent();
-                isVendorOwner = (user === null || user === void 0 ? void 0 : user.role) === client_1.Role.vendor && vendorId === orderToUpdate.vendorId;
+                isVendorOwner = (user === null || user === void 0 ? void 0 : user.role) === client_1.Role.vendor && orderToUpdate.vendor.userId === shoppingHandlerUserId;
                 isAssignedStaff = ((user === null || user === void 0 ? void 0 : user.role) === client_1.Role.store_admin || (user === null || user === void 0 ? void 0 : user.role) === client_1.Role.store_shopper) && user.vendorId === orderToUpdate.vendorId;
-                if (!isVendorOwner && !isAssignedStaff) {
+                isAdmin = (user === null || user === void 0 ? void 0 : user.role) === client_1.Role.admin;
+                if (!isVendorOwner && !isAssignedStaff && !isAdmin) {
                     throw new OrderCreationError('You are not authorized to accept this order.', 403);
                 }
                 return [4 /*yield*/, prisma.order.update({
@@ -1166,5 +1179,69 @@ exports.getOrdersForVendorUserService = function (requestingUserId, requestingUs
                 modelFilters.status = status;
                 return [2 /*return*/, orderModel.findOrdersForVendors(modelFilters)];
         }
+    });
+}); };
+/**
+ * Verifies the pickup OTP for an order and transitions its status.
+ * This is performed by a vendor or their staff when a customer/delivery person picks up an order.
+ *
+ * @param orderId The ID of the order.
+ * @param otp The 6-digit OTP provided for verification.
+ * @param requestingUserId The ID of the user (vendor/staff) performing the verification.
+ * @param requestingUserRole The role of the user.
+ * @param staffVendorId The vendor ID associated with the staff member, if applicable.
+ * @returns The updated order object.
+ * @throws OrderCreationError if OTP is invalid, order is in the wrong state, or user is unauthorized.
+ */
+exports.verifyPickupOtpService = function (orderId, otp, requestingUserId, requestingUserRole, staffVendorId) { return __awaiter(void 0, void 0, Promise, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
+                var order, isVendorOwner, isStoreStaff, nextStatus, updatedOrder;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0: return [4 /*yield*/, tx.order.findUnique({
+                                where: { id: orderId },
+                                include: { vendor: { select: { userId: true } } }
+                            })];
+                        case 1:
+                            order = _a.sent();
+                            if (!order) {
+                                throw new OrderCreationError('Order not found.', 404);
+                            }
+                            isVendorOwner = requestingUserRole === client_1.Role.vendor && order.vendor.userId === requestingUserId;
+                            isStoreStaff = (requestingUserRole === client_1.Role.store_admin || requestingUserRole === client_1.Role.store_shopper) && staffVendorId === order.vendorId;
+                            if (!isVendorOwner && !isStoreStaff) {
+                                throw new OrderCreationError('You are not authorized to verify this order.', 403);
+                            }
+                            // 3. OTP and Status Validation
+                            if (order.pickupOtp !== otp) {
+                                throw new OrderCreationError('Invalid OTP provided.', 400);
+                            }
+                            if (order.deliveryMethod === client_1.DeliveryMethod.customer_pickup && order.orderStatus === client_1.OrderStatus.ready_for_pickup) {
+                                nextStatus = client_1.OrderStatus.picked_up_by_customer;
+                            }
+                            else if (order.deliveryMethod === client_1.DeliveryMethod.delivery_person && order.orderStatus === client_1.OrderStatus.ready_for_delivery) {
+                                nextStatus = client_1.OrderStatus.en_route;
+                            }
+                            else {
+                                throw new OrderCreationError("Order is not ready for pickup. Current status: " + order.orderStatus, 400);
+                            }
+                            return [4 /*yield*/, tx.order.update({
+                                    where: { id: orderId },
+                                    data: {
+                                        orderStatus: nextStatus,
+                                        pickupOtp: null,
+                                        pickupOtpVerifiedAt: new Date(),
+                                        // Set actual delivery time if it's a customer pickup
+                                        actualDeliveryTime: nextStatus === client_1.OrderStatus.picked_up_by_customer ? new Date() : undefined
+                                    }
+                                })];
+                        case 2:
+                            updatedOrder = _a.sent();
+                            // TODO: Add notification logic here to inform the customer that their order is on its way or has been picked up.
+                            return [2 /*return*/, updatedOrder];
+                    }
+                });
+            }); })];
     });
 }); };

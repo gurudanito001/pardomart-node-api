@@ -35,6 +35,13 @@ router.patch('/:orderId/decline', authorizeVendorAccess, validate(validateDeclin
 router.patch('/:orderId/start-shopping', authorizeVendorAccess, validate(validateVendorOrderAction), orderController.startShoppingController);
 // GET /api/v1/orders/vendor - Get all orders for the authenticated vendor's stores
 router.get('/vendor', authenticate, authorize([Role.vendor, Role.store_admin, Role.store_shopper]), orderController.getOrdersForVendor);
+// OTP Verification Route
+router.post(
+  '/:id/verify-pickup',
+  authenticate,
+  authorize(['vendor', 'store_admin', 'store_shopper']),
+  orderController.verifyPickupOtp
+);
 
 
 

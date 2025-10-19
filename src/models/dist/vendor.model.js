@@ -46,73 +46,47 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 exports.__esModule = true;
 exports.getVendorDocumentCounts = exports.getVendorDocumentCount = exports.getVendorsByUserIdWithProductCount = exports.deleteVendor = exports.updateVendor = exports.getVendorsByUserId = exports.getFullListOfVendors = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
 // models/vendor.model.ts
 var client_1 = require("@prisma/client");
 var media_service_1 = require("../services/media.service");
 var prisma = new client_1.PrismaClient();
-exports.createVendor = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
-    var vendor, openingHoursData, imageBuffer, mockFile, uploadResult, error_1, data;
+exports.createVendor = function (payload, tx) { return __awaiter(void 0, void 0, Promise, function () {
+    var db, image, vendorData, vendor, openingHoursData;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4 /*yield*/, prisma.vendor.create({
-                    data: __assign(__assign({}, payload), { image: payload.image ? 'placeholder' : undefined })
-                })];
+            case 0:
+                db = tx || prisma;
+                image = payload.image, vendorData = __rest(payload, ["image"]);
+                return [4 /*yield*/, db.vendor.create({
+                        data: __assign({}, vendorData)
+                    })];
             case 1:
                 vendor = _a.sent();
                 openingHoursData = Object.values(client_1.Days).map(function (day) { return ({
-                    vendorId: vendor === null || vendor === void 0 ? void 0 : vendor.id,
+                    vendorId: vendor.id,
                     day: day,
                     open: '09:00',
                     close: '18:00'
                 }); });
-                return [4 /*yield*/, prisma.vendorOpeningHours.createMany({
+                return [4 /*yield*/, db.vendorOpeningHours.createMany({
                         data: openingHoursData
                     })];
             case 2:
                 _a.sent();
-                if (!payload.image) return [3 /*break*/, 7];
-                _a.label = 3;
-            case 3:
-                _a.trys.push([3, 6, , 7]);
-                imageBuffer = Buffer.from(payload.image, 'base64');
-                mockFile = {
-                    fieldname: 'image',
-                    originalname: vendor.id + "-store-image.jpg",
-                    encoding: '7bit',
-                    mimetype: 'image/jpeg',
-                    buffer: imageBuffer,
-                    size: imageBuffer.length,
-                    stream: new (require('stream').Readable)(),
-                    destination: '',
-                    filename: '',
-                    path: ''
-                };
-                return [4 /*yield*/, media_service_1.uploadMedia(mockFile, vendor.id, 'store_image')];
-            case 4:
-                uploadResult = _a.sent();
-                // Update the vendor with the final image URL
-                return [4 /*yield*/, exports.updateVendor(vendor.id, { image: uploadResult.cloudinaryResult.secure_url })];
-            case 5:
-                // Update the vendor with the final image URL
-                _a.sent();
-                return [3 /*break*/, 7];
-            case 6:
-                error_1 = _a.sent();
-                console.error('Error uploading vendor image:', error_1);
-                return [3 /*break*/, 7];
-            case 7: return [4 /*yield*/, prisma.vendor.findUnique({
-                    where: {
-                        id: vendor.id
-                    },
-                    include: {
-                        openingHours: true
-                    }
-                })];
-            case 8:
-                data = _a.sent();
-                return [2 /*return*/, data];
+                return [2 /*return*/, vendor];
         }
     });
 }); };
@@ -189,7 +163,7 @@ exports.getVendorsByUserId = function (userId) { return __awaiter(void 0, void 0
     });
 }); };
 exports.updateVendor = function (id, payload) { return __awaiter(void 0, void 0, Promise, function () {
-    var imageBuffer, mockFile, uploadResult, error_2;
+    var imageBuffer, mockFile, uploadResult, error_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -216,8 +190,8 @@ exports.updateVendor = function (id, payload) { return __awaiter(void 0, void 0,
                 payload.image = uploadResult.cloudinaryResult.secure_url; // Update payload with the new URL
                 return [3 /*break*/, 4];
             case 3:
-                error_2 = _a.sent();
-                console.error('Error uploading new vendor image during update:', error_2);
+                error_1 = _a.sent();
+                console.error('Error uploading new vendor image during update:', error_1);
                 // Decide on error handling. For now, we'll remove the image from the payload
                 // so it doesn't overwrite the existing URL with a base64 string.
                 delete payload.image;

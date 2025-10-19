@@ -30,6 +30,8 @@ export interface GetUserFilters {
 }
 
 export const getAllUsers = async (filters: GetUserFilters, pagination: { page: number; take: number }) => {
+
+  
   const skip = (pagination.page - 1) * pagination.take;
   const takeVal = pagination.take;
   const users = await prisma.user.findMany({

@@ -33,7 +33,7 @@ var router = express_1.Router();
 // Mount the routers
 router.use('/health', health_routes_1["default"]); // For server wake-up calls
 router.use('/api/v1/auth', auth_routes_1["default"]);
-router.use('/api/v1/users', user_routes_1["default"]);
+router.use('/api/v1/users', user_routes_1["default"]); // This now includes the new /api/v1/users/all route
 router.use('/api/v1/vendors', vendor_routes_1["default"]);
 router.use('/api/v1/openingHours', vendorOpeningHours_routes_1["default"]);
 router.use('/api/v1/product', product_routes_1["default"]);

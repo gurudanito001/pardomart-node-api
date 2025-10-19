@@ -61,7 +61,9 @@ exports.__esModule = true;
 exports.approveVendor = exports.publishVendor = exports.getVendorDocumentCounts = exports.getVendorsByUserIdWithProductCount = exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
 // services/vendor.service.ts
 var vendorModel = require("../models/vendor.model");
+var media_service_1 = require("./media.service");
 var rating_service_1 = require("./rating.service");
+var prisma_1 = require("../config/prisma");
 var toRadians = function (degrees) {
     return degrees * (Math.PI / 180);
 };
@@ -78,8 +80,65 @@ var calculateDistance = function (lat1, lon1, lat2, lon2) {
     return R * c;
 };
 exports.createVendor = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
+    var image, vendorData, newVendor, imageBuffer, mockFile, uploadResult, error_1;
     return __generator(this, function (_a) {
-        return [2 /*return*/, vendorModel.createVendor(payload)];
+        switch (_a.label) {
+            case 0:
+                image = payload.image, vendorData = __rest(payload, ["image"]);
+                return [4 /*yield*/, prisma_1.prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
+                        var vendor;
+                        return __generator(this, function (_a) {
+                            switch (_a.label) {
+                                case 0: return [4 /*yield*/, vendorModel.createVendor(vendorData, tx)];
+                                case 1:
+                                    vendor = _a.sent();
+                                    // 2. Create a Wallet and link it to the new Vendor
+                                    return [4 /*yield*/, tx.wallet.create({
+                                            data: {
+                                                vendorId: vendor.id
+                                            }
+                                        })];
+                                case 2:
+                                    // 2. Create a Wallet and link it to the new Vendor
+                                    _a.sent();
+                                    return [2 /*return*/, vendor];
+                            }
+                        });
+                    }); })];
+            case 1:
+                newVendor = _a.sent();
+                if (!image) return [3 /*break*/, 5];
+                _a.label = 2;
+            case 2:
+                _a.trys.push([2, 4, , 5]);
+                imageBuffer = Buffer.from(image, 'base64');
+                mockFile = {
+                    fieldname: 'image',
+                    originalname: newVendor.id + "-store-image.jpg",
+                    encoding: '7bit',
+                    mimetype: 'image/jpeg',
+                    buffer: imageBuffer,
+                    size: imageBuffer.length,
+                    stream: new (require('stream').Readable)(),
+                    destination: '',
+                    filename: '',
+                    path: ''
+                };
+                return [4 /*yield*/, media_service_1.uploadMedia(mockFile, newVendor.id, 'store_image')];
+            case 3:
+                uploadResult = _a.sent();
+                // Update the vendor with the final image URL
+                return [2 /*return*/, vendorModel.updateVendor(newVendor.id, { image: uploadResult.cloudinaryResult.secure_url })];
+            case 4:
+                error_1 = _a.sent();
+                console.error('Error uploading vendor image after creation:', error_1);
+                return [3 /*break*/, 5];
+            case 5: return [4 /*yield*/, exports.getVendorById(newVendor.id)];
+            case 6: 
+            // 4. Fetch and return the complete vendor data with relations.
+            // This ensures the final object is consistent, whether the image was uploaded or not.
+            return [2 /*return*/, (_a.sent())];
+        }
     });
 }); };
 exports.getVendorById = function (id, latitude, longitude) { return __awaiter(void 0, void 0, Promise, function () {

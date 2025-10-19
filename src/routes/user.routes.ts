@@ -7,6 +7,10 @@ import { Role } from '@prisma/client';
 
 const router = express.Router();
 
+// Public route to get all users without authentication
+// GET /users/all
+router.get('/all', userController.getAllUsers);
+
 // User Routes
 // Note: These routes are protected and require admin privileges.
 router.use(authenticate, /* authorize([Role.admin]) */);

@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.getOrdersForVendor = exports.updateOrderTipController = exports.startShoppingController = exports.declineOrderController = exports.getAvailableDeliverySlotsController = exports.acceptOrderController = exports.respondToReplacementController = exports.updateOrderItemShoppingStatusController = exports.getVendorOrdersController = exports.updateOrderController = exports.updateOrderStatusController = exports.getOrdersByUserController = exports.getOrderByIdController = exports.createOrderController = void 0;
+exports.verifyPickupOtp = exports.getOrdersForVendor = exports.updateOrderTipController = exports.startShoppingController = exports.declineOrderController = exports.getAvailableDeliverySlotsController = exports.acceptOrderController = exports.respondToReplacementController = exports.updateOrderItemShoppingStatusController = exports.getVendorOrdersController = exports.updateOrderController = exports.updateOrderStatusController = exports.getOrdersByUserController = exports.getOrderByIdController = exports.createOrderController = void 0;
 var order_service_1 = require("../services/order.service"); // Adjust the path if needed
 // --- Order Controllers ---
 /**
@@ -996,6 +996,68 @@ exports.getOrdersForVendor = function (req, res) { return __awaiter(void 0, void
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /order/{id}/verify-pickup:
+ *   post:
+ *     summary: Verify order pickup with an OTP
+ *     tags: [Order]
+ *     security:
+ *       - bearerAuth: []
+ *     description: >
+ *       Allows a vendor or their staff to verify an order for pickup by providing a 6-digit OTP.
+ *       Upon successful verification, the order status is automatically transitioned.
+ *       - If `deliveryMethod` is `customer_pickup`, status changes from `ready_for_pickup` to `picked_up_by_customer`.
+ *       - If `deliveryMethod` is `delivery_person`, status changes from `ready_for_delivery` to `en_route`.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: The ID of the order to verify.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [otp]
+ *             properties:
+ *               otp: { type: string, description: "The 6-digit pickup OTP." }
+ *     responses:
+ *       200: { description: "The updated order after successful verification." }
+ *       400: { description: "Invalid OTP or order not in a verifiable state." }
+ *       403: { description: "User not authorized to perform this action." }
+ *       404: { description: "Order not found." }
+ */
+exports.verifyPickupOtp = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var id, otp, userId, userRole, staffVendorId, updatedOrder, error_15;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                id = req.params.id;
+                otp = req.body.otp;
+                userId = req.userId, userRole = req.userRole, staffVendorId = req.vendorId;
+                _a.label = 1;
+            case 1:
+                _a.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, order_service_1.verifyPickupOtpService(id, otp, userId, userRole, staffVendorId)];
+            case 2:
+                updatedOrder = _a.sent();
+                res.status(200).json(updatedOrder);
+                return [3 /*break*/, 4];
+            case 3:
+                error_15 = _a.sent();
+                console.error("Error verifying OTP for order " + id + ":", error_15);
+                if (error_15 instanceof order_service_1.OrderCreationError) {
+                    return [2 /*return*/, res.status(error_15.statusCode).json({ error: error_15.message })];
+                }
+                res.status(500).json({ error: 'Internal server error' });
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
         }
     });
 }); };

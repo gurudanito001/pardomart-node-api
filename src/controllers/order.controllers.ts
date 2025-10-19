@@ -17,9 +17,10 @@ import {
   respondToReplacementService,
   UpdateOrderItemShoppingStatusPayload,
   RespondToReplacementPayload,
-  getOrdersForVendorUserService
+  getOrdersForVendorUserService,
+  verifyPickupOtpService,
 } from '../services/order.service'; // Adjust the path if needed
-import { Order, PaymentMethods, PaymentStatus, OrderStatus, DeliveryMethod, OrderItemStatus } from '@prisma/client';
+import { Role, OrderStatus, DeliveryMethod, } from '@prisma/client';
 import { AuthenticatedRequest } from './vendor.controller';
 
 // --- Order Controllers ---
@@ -863,6 +864,60 @@ export const getOrdersForVendor = async (req: AuthenticatedRequest, res: Respons
     const orders = await getOrdersForVendorUserService(userId as string, userRole as any, { vendorId, status, staffVendorId });
     res.status(200).json(orders);
   } catch (error: any) {
+    if (error instanceof OrderCreationError) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+
+
+
+/**
+ * @swagger
+ * /order/{id}/verify-pickup:
+ *   post:
+ *     summary: Verify order pickup with an OTP
+ *     tags: [Order]
+ *     security:
+ *       - bearerAuth: []
+ *     description: >
+ *       Allows a vendor or their staff to verify an order for pickup by providing a 6-digit OTP.
+ *       Upon successful verification, the order status is automatically transitioned.
+ *       - If `deliveryMethod` is `customer_pickup`, status changes from `ready_for_pickup` to `picked_up_by_customer`.
+ *       - If `deliveryMethod` is `delivery_person`, status changes from `ready_for_delivery` to `en_route`.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: The ID of the order to verify.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [otp]
+ *             properties:
+ *               otp: { type: string, description: "The 6-digit pickup OTP." }
+ *     responses:
+ *       200: { description: "The updated order after successful verification." }
+ *       400: { description: "Invalid OTP or order not in a verifiable state." }
+ *       403: { description: "User not authorized to perform this action." }
+ *       404: { description: "Order not found." }
+ */
+export const verifyPickupOtp = async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const { otp } = req.body;
+  const { userId, userRole, vendorId: staffVendorId } = req;
+
+  try {
+    const updatedOrder = await verifyPickupOtpService(id, otp, userId!, userRole as Role, staffVendorId);
+    res.status(200).json(updatedOrder);
+  } catch (error: any) {
+    console.error(`Error verifying OTP for order ${id}:`, error);
     if (error instanceof OrderCreationError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
