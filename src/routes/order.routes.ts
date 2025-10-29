@@ -42,13 +42,6 @@ router.post(
   authorize(['vendor', 'store_admin', 'store_shopper']),
   orderController.verifyPickupOtp
 );
-// OTP Verification Route
-router.post(
-  '/:id/verify-pickup',
-  authenticate,
-  authorize(['vendor', 'store_admin', 'store_shopper']),
-  orderController.verifyPickupOtp
-);
 
 
 

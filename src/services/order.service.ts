@@ -57,7 +57,11 @@ const calculateDistance = (
  */
 
 export const createOrderService = async (payload: orderModel.CreateOrderPayload): Promise<Order> => {
-  const order = await orderModel.createOrder(payload);
+  const order = await orderModel.createOrder({
+    ...payload,
+    // Ensure an OTP is always generated, even when using this older service
+    pickupOtp: payload.pickupOtp || generatePickupOtp(),
+  });
   return order;
 };
 
@@ -1231,8 +1235,8 @@ export const getOrdersForVendorUserService = async (
       if (vendorId && vendorId !== staffVendorId) {
         throw new OrderCreationError('You are not authorized to access orders for this vendor.', 403);
       }
-      modelFilters.vendorIds = [staffVendorId];
-      modelFilters.shopperId = requestingUserId;
+      modelFilters.vendorIds = [staffVendorId]; // A shopper can only see orders for their assigned store.
+      modelFilters.shopperId = requestingUserId; // A shopper can only see orders assigned to them.
       break;
 
     default:
@@ -1301,7 +1305,6 @@ export const verifyPickupOtpService = async (
       where: { id: orderId },
       data: {
         orderStatus: nextStatus,
-        pickupOtp: null, // Clear the OTP after successful verification
         pickupOtpVerifiedAt: new Date(),
         // Set actual delivery time if it's a customer pickup
         actualDeliveryTime: nextStatus === OrderStatus.picked_up_by_customer ? new Date() : undefined,

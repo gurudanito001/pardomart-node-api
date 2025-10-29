@@ -20,8 +20,6 @@ router.patch('/:orderId/start-shopping', auth_middleware_1.authorizeVendorAccess
 router.get('/vendor', auth_middleware_1.authenticate, auth_middleware_1.authorize([client_1.Role.vendor, client_1.Role.store_admin, client_1.Role.store_shopper]), orderController.getOrdersForVendor);
 // OTP Verification Route
 router.post('/:id/verify-pickup', auth_middleware_1.authenticate, auth_middleware_1.authorize(['vendor', 'store_admin', 'store_shopper']), orderController.verifyPickupOtp);
-// OTP Verification Route
-router.post('/:id/verify-pickup', auth_middleware_1.authenticate, auth_middleware_1.authorize(['vendor', 'store_admin', 'store_shopper']), orderController.verifyPickupOtp);
 // --- Customer-facing routes ---
 router.post('/', validation_middleware_1.validate(validation_middleware_1.validateCreateOrder), orderController.createOrderController);
 router.get('/user/me', orderController.getOrdersByUserController);

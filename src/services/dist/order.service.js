@@ -104,7 +104,9 @@ exports.createOrderService = function (payload) { return __awaiter(void 0, void 
     var order;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4 /*yield*/, orderModel.createOrder(payload)];
+            case 0: return [4 /*yield*/, orderModel.createOrder(__assign(__assign({}, payload), { 
+                    // Ensure an OTP is always generated, even when using this older service
+                    pickupOtp: payload.pickupOtp || generatePickupOtp() }))];
             case 1:
                 order = _a.sent();
                 return [2 /*return*/, order];
@@ -1170,8 +1172,8 @@ exports.getOrdersForVendorUserService = function (requestingUserId, requestingUs
                 if (vendorId && vendorId !== staffVendorId) {
                     throw new OrderCreationError('You are not authorized to access orders for this vendor.', 403);
                 }
-                modelFilters.vendorIds = [staffVendorId];
-                modelFilters.shopperId = requestingUserId;
+                modelFilters.vendorIds = [staffVendorId]; // A shopper can only see orders for their assigned store.
+                modelFilters.shopperId = requestingUserId; // A shopper can only see orders assigned to them.
                 return [3 /*break*/, 6];
             case 5: throw new OrderCreationError('You are not authorized to perform this action.', 403);
             case 6:
@@ -1230,7 +1232,6 @@ exports.verifyPickupOtpService = function (orderId, otp, requestingUserId, reque
                                     where: { id: orderId },
                                     data: {
                                         orderStatus: nextStatus,
-                                        pickupOtp: null,
                                         pickupOtpVerifiedAt: new Date(),
                                         // Set actual delivery time if it's a customer pickup
                                         actualDeliveryTime: nextStatus === client_1.OrderStatus.picked_up_by_customer ? new Date() : undefined
