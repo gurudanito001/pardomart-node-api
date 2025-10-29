@@ -1172,8 +1172,7 @@ exports.getOrdersForVendorUserService = function (requestingUserId, requestingUs
                 if (vendorId && vendorId !== staffVendorId) {
                     throw new OrderCreationError('You are not authorized to access orders for this vendor.', 403);
                 }
-                modelFilters.vendorIds = [staffVendorId]; // A shopper can only see orders for their assigned store.
-                modelFilters.shopperId = requestingUserId; // A shopper can only see orders assigned to them.
+                modelFilters.vendorIds = [staffVendorId];
                 return [3 /*break*/, 6];
             case 5: throw new OrderCreationError('You are not authorized to perform this action.', 403);
             case 6:
