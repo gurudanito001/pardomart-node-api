@@ -189,6 +189,40 @@ export const updateStaffService = async (payload: UpdateStaffServicePayload): Pr
 };
 
 /**
+ * (Admin) Retrieves a list of all staff members for any given store.
+ * @param vendorId - The ID of the store.
+ * @returns A list of staff users.
+ * @throws Error if the vendor is not found.
+ */
+export const adminListStaffByVendorIdService = async (vendorId: string): Promise<Omit<User, 'rememberToken'>[]> => {
+  // Admin doesn't need an ownership check, just that the vendor exists.
+  const vendor = await vendorModel.getVendorById(vendorId);
+  if (!vendor) {
+    throw new Error('Vendor not found.');
+  }
+
+  const staffList = await staffModel.listStaffByVendorId(vendorId);
+  return staffList.map(sanitizeUser);
+};
+
+/**
+ * (Admin) Retrieves a single staff member by their ID without ownership checks.
+ * @param staffId - The ID of the staff user.
+ * @returns A user object or null if not found or not a staff member.
+ * @throws Error if the user is not a staff member.
+ */
+export const adminGetStaffByIdService = async (staffId: string): Promise<Omit<User, 'rememberToken'> | null> => {
+  const staffUser = await staffModel.getStaffById(staffId);
+
+  if (!staffUser) {
+    return null; // Not found
+  }
+
+  // The model function already ensures the user has a staff role.
+  return sanitizeUser(staffUser);
+};
+
+/**
  * Deletes a staff member's account.
  * @param staffId - The ID of the staff user to delete.
  * @param ownerId - The ID of the user requesting the deletion.

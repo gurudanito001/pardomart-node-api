@@ -299,6 +299,28 @@ export const getVendorById = async (req: Request, res: Response) => {
  *           type: string
  *         description: Filter vendors by the user who owns them.
  *       - in: query
+ *         name: isVerified
+ *         schema:
+ *           type: boolean
+ *         description: Filter vendors by their verification status.
+ *       - in: query
+ *         name: isPublished
+ *         schema:
+ *           type: boolean
+ *         description: Filter vendors by their published status.
+ *       - in: query
+ *         name: createdAtStart
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Filter vendors created on or after this date (ISO 8601 format).
+ *       - in: query
+ *         name: createdAtEnd
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Filter vendors created on or before this date (ISO 8601 format).
+ *       - in: query
  *         name: page
  *         schema:
  *           type: integer
@@ -321,12 +343,34 @@ export const getVendorById = async (req: Request, res: Response) => {
  *         description: Internal server error.
  */
 export const getAllVendors = async (req: AuthenticatedRequest, res: Response) => {
-  const {name, latitude, longitude, userId: queryUserId}: getVendorsFilters = req.query;
+  const {
+    name,
+    latitude,
+    longitude,
+    userId: queryUserId,
+    isVerified, // New
+    isPublished, // New
+    createdAtStart, // New
+    createdAtEnd, // New
+  }: getVendorsFilters = req.query;
   const authUserId = req.userId;
   const page = req?.query?.page?.toString() || "1";
   const take = req?.query?.size?.toString() || "20"; 
   try {
-    const vendors = await vendorService.getAllVendors({name, latitude, longitude, userId: queryUserId || authUserId}, {page, take});
+    const parseBoolean = (value: any): boolean | undefined => {
+      if (value === 'true') return true;
+      if (value === 'false') return false;
+      return undefined;
+    };
+
+    const filters: getVendorsFilters = {
+      name, latitude, longitude, userId: queryUserId || authUserId,
+      isVerified: parseBoolean(isVerified),
+      isPublished: parseBoolean(isPublished),
+      createdAtStart: createdAtStart as string | undefined,
+      createdAtEnd: createdAtEnd as string | undefined,
+    };
+    const vendors = await vendorService.getAllVendors(filters, {page, take});
     res.status(200).json(vendors);
   } catch (error) {
     console.error('Error getting all vendors:', error);
@@ -616,5 +660,73 @@ export const approveVendor = async (req: Request, res: Response) => {
     res.status(200).json(vendor);
   } catch (error: any) {
     res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message });
+  }
+};
+
+/**
+ * @swagger
+ * /vendors/users/{userId}:
+ *   get:
+ *     summary: Get a single vendor user by their User ID (Admin)
+ *     tags: [Vendor, Users]
+ *     description: Retrieves the details of a specific user who has the 'vendor' role. Intended for admin use.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the vendor user to retrieve.
+ *     responses:
+ *       200:
+ *         description: The requested vendor user's details.
+ *       404:
+ *         description: Vendor user not found or user is not a vendor.
+ *       500:
+ *         description: Internal server error.
+ */
+export const getVendorUserByIdController = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const vendorUser = await vendorService.getVendorUserByIdService(userId);
+    res.status(200).json(vendorUser);
+  } catch (error: any) {
+    res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message });
+  }
+};
+
+/**
+ * @swagger
+ * /vendors/overview:
+ *   get:
+ *     summary: Get platform overview data (Admin)
+ *     tags: [Vendor, Admin]
+ *     description: Retrieves aggregate data about the platform, such as the total number of vendor users, stores, and staff members. Only accessible by admins.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: An object containing the overview data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalVendorUsers: { type: integer }
+ *                 totalStores: { type: integer }
+ *                 totalStaff: { type: integer }
+ *       500:
+ *         description: Internal server error.
+ */
+export const getOverviewDataController = async (req: Request, res: Response) => {
+  try {
+    const overviewData = await vendorService.getOverviewDataService();
+    res.status(200).json(overviewData);
+  } catch (error: any) {
+    console.error('Error getting overview data:', error);
+    res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };

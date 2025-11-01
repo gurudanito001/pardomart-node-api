@@ -178,6 +178,70 @@ export const listStaffByVendorController = async (req: AuthenticatedRequest, res
 
 /**
  * @swagger
+ * /staff/admin/store/{vendorId}:
+ *   get:
+ *     summary: List all staff for a specific store (Admin)
+ *     tags: [Staff, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Retrieves a list of all staff members (store_admin, store_shopper) for a given store ID. Only accessible by admins.
+ *     parameters:
+ *       - in: path
+ *         name: vendorId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: The ID of the store.
+ *     responses:
+ *       200:
+ *         description: A list of staff members for the specified store.
+ *       404:
+ *         description: Vendor not found.
+ *       403:
+ *         description: Forbidden.
+ */
+export const adminListStaffByVendorController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { vendorId } = req.params;
+    const staffList = await staffService.adminListStaffByVendorIdService(vendorId);
+    res.status(200).json(staffList);
+  } catch (error: any) {
+    if (error.message.includes('not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
+ * /staff/admin/{staffId}:
+ *   get:
+ *     summary: Get a single staff member by ID (Admin)
+ *     tags: [Staff, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Retrieves the details of a specific staff member by their user ID. Only accessible by admins.
+ *     parameters:
+ *       - in: path
+ *         name: staffId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: The user ID of the staff member.
+ *     responses:
+ *       200:
+ *         description: The requested staff member.
+ *       404:
+ *         description: Staff member not found.
+ */
+export const adminGetStaffByIdController = async (req: AuthenticatedRequest, res: Response) => {
+  const { staffId } = req.params;
+  const staff = await staffService.adminGetStaffByIdService(staffId);
+  if (!staff) return res.status(404).json({ error: 'Staff member not found.' });
+  res.status(200).json(staff);
+};
+
+/**
+ * @swagger
  * /staff/{staffId}:
  *   get:
  *     summary: Get a single staff member by ID

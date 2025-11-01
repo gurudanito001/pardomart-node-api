@@ -14,6 +14,10 @@ router.get('/', validation_middleware_1.validate(validation_middleware_1.validat
 //router.get('/findVendors/nearby', vendorController.getVendorsByProximity);
 router.get('/incomplete-setups', auth_middleware_1.authenticate, vendorController.getIncompleteSetups);
 router.get('/getvendorsby/userId', auth_middleware_1.authenticate, vendorController.getVendorsByUserId);
+// Admin-specific route to get platform overview data
+router.get('/overview', auth_middleware_1.authenticate, auth_middleware_1.authorize(['admin']), vendorController.getOverviewDataController);
+// Admin-specific route to get a vendor user's details
+router.get('/users/:userId', auth_middleware_1.authenticate, auth_middleware_1.authorize(['admin']), vendorController.getVendorUserByIdController);
 router.get('/:id', validation_middleware_1.validate(validation_middleware_1.validateGetVendorById), vendorController.getVendorById);
 router.patch('/:id/approve', auth_middleware_1.authenticate, auth_middleware_1.authorize(['admin']), validation_middleware_1.validate(validation_middleware_1.validateVendorId), vendorController.approveVendor); // Admin only
 router.patch('/:id/publish', auth_middleware_1.authenticate, auth_middleware_1.authorize(['vendor', 'store_admin']), validation_middleware_1.validate(validation_middleware_1.validateVendorId), vendorController.publishVendor); // Vendor owner or store admin

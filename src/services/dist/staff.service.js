@@ -47,7 +47,7 @@ var __rest = (this && this.__rest) || function (s, e) {
     return t;
 };
 exports.__esModule = true;
-exports.listStaffTransactionsService = exports.deleteStaffService = exports.updateStaffService = exports.getStaffByIdService = exports.listStaffService = exports.listStaffByVendorIdService = exports.createStaffService = void 0;
+exports.listStaffTransactionsService = exports.deleteStaffService = exports.adminGetStaffByIdService = exports.adminListStaffByVendorIdService = exports.updateStaffService = exports.getStaffByIdService = exports.listStaffService = exports.listStaffByVendorIdService = exports.createStaffService = void 0;
 // services/staff.service.ts
 var staffModel = require("../models/staff.model");
 var vendorModel = require("../models/vendor.model");
@@ -222,6 +222,50 @@ exports.updateStaffService = function (payload) { return __awaiter(void 0, void 
             case 3:
                 updatedUser = _a.sent();
                 return [2 /*return*/, sanitizeUser(updatedUser)];
+        }
+    });
+}); };
+/**
+ * (Admin) Retrieves a list of all staff members for any given store.
+ * @param vendorId - The ID of the store.
+ * @returns A list of staff users.
+ * @throws Error if the vendor is not found.
+ */
+exports.adminListStaffByVendorIdService = function (vendorId) { return __awaiter(void 0, void 0, Promise, function () {
+    var vendor, staffList;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, vendorModel.getVendorById(vendorId)];
+            case 1:
+                vendor = _a.sent();
+                if (!vendor) {
+                    throw new Error('Vendor not found.');
+                }
+                return [4 /*yield*/, staffModel.listStaffByVendorId(vendorId)];
+            case 2:
+                staffList = _a.sent();
+                return [2 /*return*/, staffList.map(sanitizeUser)];
+        }
+    });
+}); };
+/**
+ * (Admin) Retrieves a single staff member by their ID without ownership checks.
+ * @param staffId - The ID of the staff user.
+ * @returns A user object or null if not found or not a staff member.
+ * @throws Error if the user is not a staff member.
+ */
+exports.adminGetStaffByIdService = function (staffId) { return __awaiter(void 0, void 0, Promise, function () {
+    var staffUser;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, staffModel.getStaffById(staffId)];
+            case 1:
+                staffUser = _a.sent();
+                if (!staffUser) {
+                    return [2 /*return*/, null]; // Not found
+                }
+                // The model function already ensures the user has a staff role.
+                return [2 /*return*/, sanitizeUser(staffUser)];
         }
     });
 }); };

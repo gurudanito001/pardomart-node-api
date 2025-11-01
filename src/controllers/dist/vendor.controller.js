@@ -47,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.approveVendor = exports.publishVendor = exports.getIncompleteSetups = exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
+exports.getOverviewDataController = exports.getVendorUserByIdController = exports.approveVendor = exports.publishVendor = exports.getIncompleteSetups = exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
 var vendorService = require("../services/vendor.service");
 /**
  * @swagger
@@ -357,6 +357,28 @@ exports.getVendorById = function (req, res) { return __awaiter(void 0, void 0, v
  *           type: string
  *         description: Filter vendors by the user who owns them.
  *       - in: query
+ *         name: isVerified
+ *         schema:
+ *           type: boolean
+ *         description: Filter vendors by their verification status.
+ *       - in: query
+ *         name: isPublished
+ *         schema:
+ *           type: boolean
+ *         description: Filter vendors by their published status.
+ *       - in: query
+ *         name: createdAtStart
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Filter vendors created on or after this date (ISO 8601 format).
+ *       - in: query
+ *         name: createdAtEnd
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Filter vendors created on or before this date (ISO 8601 format).
+ *       - in: query
  *         name: page
  *         schema:
  *           type: integer
@@ -379,19 +401,34 @@ exports.getVendorById = function (req, res) { return __awaiter(void 0, void 0, v
  *         description: Internal server error.
  */
 exports.getAllVendors = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, name, latitude, longitude, queryUserId, authUserId, page, take, vendors, error_3;
+    var _a, name, latitude, longitude, queryUserId, isVerified, isPublished, createdAtStart, createdAtEnd, authUserId, page, take, parseBoolean, filters, vendors, error_3;
     var _b, _c, _d, _e;
     return __generator(this, function (_f) {
         switch (_f.label) {
             case 0:
-                _a = req.query, name = _a.name, latitude = _a.latitude, longitude = _a.longitude, queryUserId = _a.userId;
+                _a = req.query, name = _a.name, latitude = _a.latitude, longitude = _a.longitude, queryUserId = _a.userId, isVerified = _a.isVerified, isPublished = _a.isPublished, createdAtStart = _a.createdAtStart, createdAtEnd = _a.createdAtEnd;
                 authUserId = req.userId;
                 page = ((_c = (_b = req === null || req === void 0 ? void 0 : req.query) === null || _b === void 0 ? void 0 : _b.page) === null || _c === void 0 ? void 0 : _c.toString()) || "1";
                 take = ((_e = (_d = req === null || req === void 0 ? void 0 : req.query) === null || _d === void 0 ? void 0 : _d.size) === null || _e === void 0 ? void 0 : _e.toString()) || "20";
                 _f.label = 1;
             case 1:
                 _f.trys.push([1, 3, , 4]);
-                return [4 /*yield*/, vendorService.getAllVendors({ name: name, latitude: latitude, longitude: longitude, userId: queryUserId || authUserId }, { page: page, take: take })];
+                parseBoolean = function (value) {
+                    if (value === 'true')
+                        return true;
+                    if (value === 'false')
+                        return false;
+                    return undefined;
+                };
+                filters = {
+                    name: name, latitude: latitude, longitude: longitude,
+                    userId: queryUserId || authUserId,
+                    isVerified: parseBoolean(isVerified),
+                    isPublished: parseBoolean(isPublished),
+                    createdAtStart: createdAtStart,
+                    createdAtEnd: createdAtEnd
+                };
+                return [4 /*yield*/, vendorService.getAllVendors(filters, { page: page, take: take })];
             case 2:
                 vendors = _f.sent();
                 res.status(200).json(vendors);
@@ -740,6 +777,94 @@ exports.approveVendor = function (req, res) { return __awaiter(void 0, void 0, v
             case 2:
                 error_9 = _a.sent();
                 res.status(error_9.message.includes('not found') ? 404 : 500).json({ error: error_9.message });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /vendors/users/{userId}:
+ *   get:
+ *     summary: Get a single vendor user by their User ID (Admin)
+ *     tags: [Vendor, Users]
+ *     description: Retrieves the details of a specific user who has the 'vendor' role. Intended for admin use.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the vendor user to retrieve.
+ *     responses:
+ *       200:
+ *         description: The requested vendor user's details.
+ *       404:
+ *         description: Vendor user not found or user is not a vendor.
+ *       500:
+ *         description: Internal server error.
+ */
+exports.getVendorUserByIdController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var userId, vendorUser, error_10;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                userId = req.params.userId;
+                return [4 /*yield*/, vendorService.getVendorUserByIdService(userId)];
+            case 1:
+                vendorUser = _a.sent();
+                res.status(200).json(vendorUser);
+                return [3 /*break*/, 3];
+            case 2:
+                error_10 = _a.sent();
+                res.status(error_10.message.includes('not found') ? 404 : 500).json({ error: error_10.message });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /vendors/overview:
+ *   get:
+ *     summary: Get platform overview data (Admin)
+ *     tags: [Vendor, Admin]
+ *     description: Retrieves aggregate data about the platform, such as the total number of vendor users, stores, and staff members. Only accessible by admins.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: An object containing the overview data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalVendorUsers: { type: integer }
+ *                 totalStores: { type: integer }
+ *                 totalStaff: { type: integer }
+ *       500:
+ *         description: Internal server error.
+ */
+exports.getOverviewDataController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var overviewData, error_11;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                return [4 /*yield*/, vendorService.getOverviewDataService()];
+            case 1:
+                overviewData = _a.sent();
+                res.status(200).json(overviewData);
+                return [3 /*break*/, 3];
+            case 2:
+                error_11 = _a.sent();
+                console.error('Error getting overview data:', error_11);
+                res.status(500).json({ error: 'An unexpected error occurred.' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }

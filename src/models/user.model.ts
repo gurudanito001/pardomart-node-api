@@ -143,3 +143,13 @@ export const deleteUser = async (userId: string): Promise<User> => {
     },
   });
 };
+
+
+/**
+ * Retrieves a single user by their ID, ensuring they have the 'vendor' role.
+ * @param userId The ID of the vendor user to retrieve.
+ * @returns The user object if found and is a vendor, otherwise null.
+ */
+export const getVendorUserById = async (userId: string): Promise<User | null> => prisma.user.findFirst({
+  where: { id: userId, role: Role.vendor },
+});

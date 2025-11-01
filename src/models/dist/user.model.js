@@ -47,7 +47,8 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteUser = exports.updateUser = exports.createUser = exports.getUserById = exports.getAllVerificationCodes = exports.getAllUsers = exports.findMany = exports.checkUserExistence = void 0;
+exports.getVendorUserById = exports.deleteUser = exports.updateUser = exports.createUser = exports.getUserById = exports.getAllVerificationCodes = exports.getAllUsers = exports.findMany = exports.checkUserExistence = void 0;
+var client_1 = require("@prisma/client"); // Assuming you're using @prisma/client
 var prisma_1 = require("../config/prisma");
 exports.checkUserExistence = function (filters) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
@@ -149,6 +150,18 @@ exports.deleteUser = function (userId) { return __awaiter(void 0, void 0, Promis
                 where: {
                     id: userId
                 }
+            })];
+    });
+}); };
+/**
+ * Retrieves a single user by their ID, ensuring they have the 'vendor' role.
+ * @param userId The ID of the vendor user to retrieve.
+ * @returns The user object if found and is a vendor, otherwise null.
+ */
+exports.getVendorUserById = function (userId) { return __awaiter(void 0, void 0, Promise, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, prisma_1.prisma.user.findFirst({
+                where: { id: userId, role: client_1.Role.vendor }
             })];
     });
 }); };

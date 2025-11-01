@@ -21,6 +21,13 @@ router.get('/', validate(validateGetAllVendors), vendorController.getAllVendors)
 //router.get('/findVendors/nearby', vendorController.getVendorsByProximity);
 router.get('/incomplete-setups', authenticate, vendorController.getIncompleteSetups);
 router.get('/getvendorsby/userId', authenticate, vendorController.getVendorsByUserId);
+
+// Admin-specific route to get platform overview data
+router.get('/overview', authenticate, authorize(['admin']), vendorController.getOverviewDataController);
+
+// Admin-specific route to get a vendor user's details
+router.get('/users/:userId', authenticate, authorize(['admin']), vendorController.getVendorUserByIdController);
+
 router.get('/:id', validate(validateGetVendorById), vendorController.getVendorById);
 router.patch('/:id/approve', authenticate, authorize(['admin']), validate(validateVendorId), vendorController.approveVendor); // Admin only
 router.patch('/:id/publish', authenticate, authorize(['vendor', 'store_admin']), validate(validateVendorId), vendorController.publishVendor); // Vendor owner or store admin

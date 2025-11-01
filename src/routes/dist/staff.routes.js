@@ -14,6 +14,9 @@ router.post('/', /* validate(validateCreateStaff), */ staffController.createStaf
 router.get('/', auth_middleware_1.authorize([client_1.Role.vendor, client_1.Role.store_admin]), staffController.listStaffForVendorOrAdminController);
 // List all transactions for staff of the authenticated vendor
 router.get('/transactions', auth_middleware_1.authorize([client_1.Role.vendor, client_1.Role.store_admin]), staffController.listStaffTransactionsController);
+// --- Admin-only routes for staff management ---
+router.get('/admin/store/:vendorId', auth_middleware_1.authorize([client_1.Role.admin]), staffController.adminListStaffByVendorController);
+router.get('/admin/:staffId', auth_middleware_1.authorize([client_1.Role.admin]), staffController.adminGetStaffByIdController);
 router.get('/store/:vendorId', /* validate(validateId('vendorId')), */ staffController.listStaffByVendorController);
 router.get('/:staffId', /* validate(validateId('staffId')), */ staffController.getStaffByIdController);
 router.patch('/:staffId', /* validate(validateId('staffId')), */ staffController.updateStaffController);

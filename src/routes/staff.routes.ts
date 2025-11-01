@@ -17,6 +17,10 @@ router.get('/', authorize([Role.vendor, Role.store_admin]), staffController.list
 // List all transactions for staff of the authenticated vendor
 router.get('/transactions', authorize([Role.vendor, Role.store_admin]), staffController.listStaffTransactionsController);
 
+// --- Admin-only routes for staff management ---
+router.get('/admin/store/:vendorId', authorize([Role.admin]), staffController.adminListStaffByVendorController);
+router.get('/admin/:staffId', authorize([Role.admin]), staffController.adminGetStaffByIdController);
+
 
 router.get('/store/:vendorId', /* validate(validateId('vendorId')), */ staffController.listStaffByVendorController);
 router.get('/:staffId', /* validate(validateId('staffId')), */ staffController.getStaffByIdController);

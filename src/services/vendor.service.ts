@@ -1,6 +1,7 @@
 // services/vendor.service.ts
 import * as vendorModel from '../models/vendor.model';
-import { Vendor } from '@prisma/client';
+import * as userModel from '../models/user.model';
+import { Vendor, User, Role } from '@prisma/client';
 import { uploadMedia } from './media.service';
 import { getAggregateRatingService, getAggregateRatingsForVendorsService } from './rating.service';
 import { prisma } from '../config/prisma';
@@ -31,6 +32,16 @@ const calculateDistance = (
       Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
+};
+
+/**
+ * Sanitizes a user object by removing sensitive fields.
+ * @param user The user object to sanitize.
+ * @returns A user object without the rememberToken.
+ */
+const sanitizeUser = (user: User): Omit<User, 'rememberToken'> => {
+  const { rememberToken, ...sanitized } = user;
+  return sanitized;
 };
 
 export const createVendor = async (payload: vendorModel.CreateVendorPayload): Promise<Vendor> => {
@@ -130,7 +141,7 @@ export const getVendorById = async (id: string, latitude?: string, longitude?: s
 };
 
 
-export const getAllVendors = async (filters: vendorModel.getVendorsFilters, pagination: {page: string, take: string}) => {
+export const getAllVendors = async (filters: vendorModel.getVendorsFilters, pagination: {page: string, take: string}) => { // Updated signature
   const vendorsResult = await vendorModel.getAllVendors(filters, pagination); // This already handles filtering by userId if present in filters
 
   if (vendorsResult.data.length === 0) {
@@ -259,4 +270,46 @@ export const approveVendor = async (vendorId: string): Promise<Vendor> => {
   return vendorModel.updateVendor(vendorId, {
     isVerified: true,
   });
+};
+
+/**
+ * (Admin) Retrieves a single user by their ID, ensuring they have the 'vendor' role.
+ * @param userId The ID of the vendor user to retrieve.
+ * @returns The sanitized user object if found and is a vendor.
+ * @throws Error if the user is not found or is not a vendor.
+ */
+export const getVendorUserByIdService = async (userId: string): Promise<Omit<User, 'rememberToken'>> => {
+  const user = await userModel.getVendorUserById(userId);
+
+  if (!user) {
+    throw new Error('Vendor user not found or user is not a vendor.');
+  }
+
+  return sanitizeUser(user);
+};
+
+/**
+ * (Admin) Retrieves overview data for the platform.
+ * @returns An object containing total counts for vendor users, stores, and staff.
+ */
+export const getOverviewDataService = async (): Promise<{
+  totalVendorUsers: number;
+  totalStores: number;
+  totalStaff: number;
+}> => {
+  const [totalVendorUsers, totalStores, totalStaff] = await prisma.$transaction([
+    prisma.user.count({
+      where: { role: Role.vendor },
+    }),
+    prisma.vendor.count(),
+    prisma.user.count({
+      where: {
+        role: {
+          in: [Role.store_admin, Role.store_shopper],
+        },
+      },
+    }),
+  ]);
+
+  return { totalVendorUsers, totalStores, totalStaff };
 };

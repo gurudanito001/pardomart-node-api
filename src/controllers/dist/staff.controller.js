@@ -47,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteStaffController = exports.updateStaffController = exports.getStaffByIdController = exports.listStaffByVendorController = exports.listStaffForVendorOrAdminController = exports.listStaffTransactionsController = exports.createStaffController = void 0;
+exports.deleteStaffController = exports.updateStaffController = exports.getStaffByIdController = exports.adminGetStaffByIdController = exports.adminListStaffByVendorController = exports.listStaffByVendorController = exports.listStaffForVendorOrAdminController = exports.listStaffTransactionsController = exports.createStaffController = void 0;
 var staffService = require("../services/staff.service");
 /**
  * @swagger
@@ -262,6 +262,89 @@ exports.listStaffByVendorController = function (req, res) { return __awaiter(voi
 }); };
 /**
  * @swagger
+ * /staff/admin/store/{vendorId}:
+ *   get:
+ *     summary: List all staff for a specific store (Admin)
+ *     tags: [Staff, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Retrieves a list of all staff members (store_admin, store_shopper) for a given store ID. Only accessible by admins.
+ *     parameters:
+ *       - in: path
+ *         name: vendorId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: The ID of the store.
+ *     responses:
+ *       200:
+ *         description: A list of staff members for the specified store.
+ *       404:
+ *         description: Vendor not found.
+ *       403:
+ *         description: Forbidden.
+ */
+exports.adminListStaffByVendorController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var vendorId, staffList, error_5;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                vendorId = req.params.vendorId;
+                return [4 /*yield*/, staffService.adminListStaffByVendorIdService(vendorId)];
+            case 1:
+                staffList = _a.sent();
+                res.status(200).json(staffList);
+                return [3 /*break*/, 3];
+            case 2:
+                error_5 = _a.sent();
+                if (error_5.message.includes('not found')) {
+                    return [2 /*return*/, res.status(404).json({ error: error_5.message })];
+                }
+                res.status(500).json({ error: error_5.message || 'Internal server error' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /staff/admin/{staffId}:
+ *   get:
+ *     summary: Get a single staff member by ID (Admin)
+ *     tags: [Staff, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Retrieves the details of a specific staff member by their user ID. Only accessible by admins.
+ *     parameters:
+ *       - in: path
+ *         name: staffId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: The user ID of the staff member.
+ *     responses:
+ *       200:
+ *         description: The requested staff member.
+ *       404:
+ *         description: Staff member not found.
+ */
+exports.adminGetStaffByIdController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var staffId, staff;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                staffId = req.params.staffId;
+                return [4 /*yield*/, staffService.adminGetStaffByIdService(staffId)];
+            case 1:
+                staff = _a.sent();
+                if (!staff)
+                    return [2 /*return*/, res.status(404).json({ error: 'Staff member not found.' })];
+                res.status(200).json(staff);
+                return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
  * /staff/{staffId}:
  *   get:
  *     summary: Get a single staff member by ID
@@ -282,7 +365,7 @@ exports.listStaffByVendorController = function (req, res) { return __awaiter(voi
  *         description: Forbidden.
  */
 exports.getStaffByIdController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var ownerId, staffId, staff, error_5;
+    var ownerId, staffId, staff, error_6;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -298,9 +381,9 @@ exports.getStaffByIdController = function (req, res) { return __awaiter(void 0, 
                 res.status(200).json(staff);
                 return [3 /*break*/, 3];
             case 2:
-                error_5 = _a.sent();
-                console.error('Error getting staff by ID:', error_5);
-                res.status(500).json({ error: error_5.message || 'Internal server error' });
+                error_6 = _a.sent();
+                console.error('Error getting staff by ID:', error_6);
+                res.status(500).json({ error: error_6.message || 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
@@ -335,7 +418,7 @@ exports.getStaffByIdController = function (req, res) { return __awaiter(void 0, 
  *         description: The updated staff member.
  */
 exports.updateStaffController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var ownerId, staffId, updatedStaff, error_6;
+    var ownerId, staffId, updatedStaff, error_7;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -348,9 +431,9 @@ exports.updateStaffController = function (req, res) { return __awaiter(void 0, v
                 res.status(200).json(updatedStaff);
                 return [3 /*break*/, 3];
             case 2:
-                error_6 = _a.sent();
-                console.error('Error updating staff:', error_6);
-                res.status(500).json({ error: error_6.message || 'Internal server error' });
+                error_7 = _a.sent();
+                console.error('Error updating staff:', error_7);
+                res.status(500).json({ error: error_7.message || 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
@@ -374,7 +457,7 @@ exports.updateStaffController = function (req, res) { return __awaiter(void 0, v
  *         description: Staff member deleted successfully.
  */
 exports.deleteStaffController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var ownerId, staffId, error_7;
+    var ownerId, staffId, error_8;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -387,9 +470,9 @@ exports.deleteStaffController = function (req, res) { return __awaiter(void 0, v
                 res.status(204).send();
                 return [3 /*break*/, 3];
             case 2:
-                error_7 = _a.sent();
-                console.error('Error deleting staff:', error_7);
-                res.status(500).json({ error: error_7.message || 'Internal server error' });
+                error_8 = _a.sent();
+                console.error('Error deleting staff:', error_8);
+                res.status(500).json({ error: error_8.message || 'Internal server error' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }

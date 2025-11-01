@@ -58,9 +58,11 @@ var __rest = (this && this.__rest) || function (s, e) {
     return t;
 };
 exports.__esModule = true;
-exports.approveVendor = exports.publishVendor = exports.getVendorDocumentCounts = exports.getVendorsByUserIdWithProductCount = exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
+exports.getOverviewDataService = exports.getVendorUserByIdService = exports.approveVendor = exports.publishVendor = exports.getVendorDocumentCounts = exports.getVendorsByUserIdWithProductCount = exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
 // services/vendor.service.ts
 var vendorModel = require("../models/vendor.model");
+var userModel = require("../models/user.model");
+var client_1 = require("@prisma/client");
 var media_service_1 = require("./media.service");
 var rating_service_1 = require("./rating.service");
 var prisma_1 = require("../config/prisma");
@@ -78,6 +80,15 @@ var calculateDistance = function (lat1, lon1, lat2, lon2) {
             Math.sin(dLon / 2);
     var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
+};
+/**
+ * Sanitizes a user object by removing sensitive fields.
+ * @param user The user object to sanitize.
+ * @returns A user object without the rememberToken.
+ */
+var sanitizeUser = function (user) {
+    var rememberToken = user.rememberToken, sanitized = __rest(user, ["rememberToken"]);
+    return sanitized;
 };
 exports.createVendor = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
     var image, vendorData, newVendor, imageBuffer, mockFile, uploadResult, error_1;
@@ -308,6 +319,53 @@ exports.approveVendor = function (vendorId) { return __awaiter(void 0, void 0, P
                 return [2 /*return*/, vendorModel.updateVendor(vendorId, {
                         isVerified: true
                     })];
+        }
+    });
+}); };
+/**
+ * (Admin) Retrieves a single user by their ID, ensuring they have the 'vendor' role.
+ * @param userId The ID of the vendor user to retrieve.
+ * @returns The sanitized user object if found and is a vendor.
+ * @throws Error if the user is not found or is not a vendor.
+ */
+exports.getVendorUserByIdService = function (userId) { return __awaiter(void 0, void 0, Promise, function () {
+    var user;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, userModel.getVendorUserById(userId)];
+            case 1:
+                user = _a.sent();
+                if (!user) {
+                    throw new Error('Vendor user not found or user is not a vendor.');
+                }
+                return [2 /*return*/, sanitizeUser(user)];
+        }
+    });
+}); };
+/**
+ * (Admin) Retrieves overview data for the platform.
+ * @returns An object containing total counts for vendor users, stores, and staff.
+ */
+exports.getOverviewDataService = function () { return __awaiter(void 0, void 0, Promise, function () {
+    var _a, totalVendorUsers, totalStores, totalStaff;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0: return [4 /*yield*/, prisma_1.prisma.$transaction([
+                    prisma_1.prisma.user.count({
+                        where: { role: client_1.Role.vendor }
+                    }),
+                    prisma_1.prisma.vendor.count(),
+                    prisma_1.prisma.user.count({
+                        where: {
+                            role: {
+                                "in": [client_1.Role.store_admin, client_1.Role.store_shopper]
+                            }
+                        }
+                    }),
+                ])];
+            case 1:
+                _a = _b.sent(), totalVendorUsers = _a[0], totalStores = _a[1], totalStaff = _a[2];
+                return [2 /*return*/, { totalVendorUsers: totalVendorUsers, totalStores: totalStores, totalStaff: totalStaff }];
         }
     });
 }); };

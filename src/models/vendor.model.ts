@@ -85,6 +85,10 @@ export interface getVendorsFilters {
   longitude?: string,
   latitude?: string,
   userId?: string;
+  isVerified?: boolean; // New filter
+  isPublished?: boolean; // New filter
+  createdAtStart?: string; // New filter for date range start
+  createdAtEnd?: string; // New filter for date range end
 }
 
 export const getAllVendors = async (filters: getVendorsFilters, pagination: {page: string, take: string}) => {
@@ -104,15 +108,25 @@ export const getAllVendors = async (filters: getVendorsFilters, pagination: {pag
   if (filters?.userId) {
     where.userId = filters.userId;
   }
-
-  /* const include = filters.userId ? {
-    carts: {
-      where: { userId: filters.userId },
-      select: {
-        _count: { select: { items: true } }
-      }
+  // Apply new status filters
+  if (filters?.isVerified !== undefined) {
+    where.isVerified = filters.isVerified;
+  }
+  if (filters?.isPublished !== undefined) {
+    where.isPublished = filters.isPublished;
+  }
+  // Apply new date created filters
+  if (filters?.createdAtStart || filters?.createdAtEnd) {
+    where.createdAt = {};
+    if (filters.createdAtStart) {
+      (where.createdAt as any).gte = new Date(filters.createdAtStart);
     }
-  } : undefined; */
+    if (filters.createdAtEnd) {
+      (where.createdAt as any).lte = new Date(filters.createdAtEnd);
+    }
+  }
+
+
 
   const vendors = await prisma.vendor.findMany({
     where,

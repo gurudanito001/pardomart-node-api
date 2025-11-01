@@ -125,6 +125,23 @@ exports.getAllVendors = function (filters, pagination) { return __awaiter(void 0
                 if (filters === null || filters === void 0 ? void 0 : filters.userId) {
                     where.userId = filters.userId;
                 }
+                // Apply new status filters
+                if ((filters === null || filters === void 0 ? void 0 : filters.isVerified) !== undefined) {
+                    where.isVerified = filters.isVerified;
+                }
+                if ((filters === null || filters === void 0 ? void 0 : filters.isPublished) !== undefined) {
+                    where.isPublished = filters.isPublished;
+                }
+                // Apply new date created filters
+                if ((filters === null || filters === void 0 ? void 0 : filters.createdAtStart) || (filters === null || filters === void 0 ? void 0 : filters.createdAtEnd)) {
+                    where.createdAt = {};
+                    if (filters.createdAtStart) {
+                        where.createdAt.gte = new Date(filters.createdAtStart);
+                    }
+                    if (filters.createdAtEnd) {
+                        where.createdAt.lte = new Date(filters.createdAtEnd);
+                    }
+                }
                 return [4 /*yield*/, prisma.vendor.findMany({
                         where: where,
                         //include,
