@@ -139,6 +139,29 @@ export const getMessagesForOrderService = async (orderId: string, userId: string
 };
 
 /**
+ * (Admin) Retrieves all messages for a specific order without participation checks.
+ * @param {string} orderId - The ID of the order.
+ * @returns {Promise<Message[]>} A list of messages for the order.
+ * @throws Error if the order is not found.
+ */
+export const adminGetMessagesForOrderService = async (orderId: string): Promise<Message[]> => {
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!order) {
+    throw new Error('Order not found.');
+  }
+
+  return prisma.message.findMany({
+    where: { orderId },
+    orderBy: { createdAt: 'asc' },
+    include: {
+      sender: {
+        select: { id: true, name: true },
+      },
+    },
+  });
+};
+
+/**
  * Marks all unread messages in an order for a specific user as read.
  * Notifies the senders of these messages in real-time.
  * @param {string} orderId - The ID of the order.

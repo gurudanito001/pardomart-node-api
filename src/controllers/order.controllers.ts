@@ -19,6 +19,9 @@ import {
   RespondToReplacementPayload,
   getOrdersForVendorUserService,
   verifyPickupOtpService,
+  getOrderOverviewDataService,
+  adminGetAllOrdersService,
+  adminUpdateOrderService
 } from '../services/order.service'; // Adjust the path if needed
 import { Role, OrderStatus, DeliveryMethod, } from '@prisma/client';
 import { AuthenticatedRequest } from './vendor.controller';
@@ -922,5 +925,140 @@ export const verifyPickupOtp = async (req: AuthenticatedRequest, res: Response) 
       return res.status(error.statusCode).json({ error: error.message });
     }
     res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
+ * /order/admin/overview:
+ *   get:
+ *     summary: Get platform-wide order overview data (Admin)
+ *     tags: [Order, Admin]
+ *     description: Retrieves aggregate data about all orders on the platform, such as total orders, total products ordered, and total cancelled orders. Only accessible by admins.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: An object containing the order overview data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalOrders: { type: integer }
+ *                 totalProductsOrdered: { type: integer }
+ *                 totalCancelledOrders: { type: integer }
+ *       500:
+ *         description: Internal server error.
+ */
+export const getOrderOverviewDataController = async (req: Request, res: Response) => {
+  try {
+    const overviewData = await getOrderOverviewDataService();
+    res.status(200).json(overviewData);
+  } catch (error: any) {
+    console.error('Error getting order overview data:', error);
+    res.status(500).json({ error: 'An unexpected error occurred.' });
+  }
+};
+
+/**
+ * @swagger
+ * /order/admin/{orderId}:
+ *   patch:
+ *     summary: Update an order's details (Admin)
+ *     tags: [Order, Admin]
+ *     description: >
+ *       Allows an admin to update specific fields of an order to resolve issues or "un-stuck" it.
+ *       Fields that can be updated include `orderStatus`, `paymentStatus`, `shopperId`, `deliveryPersonId`, etc.
+ *       **Warning**: Changing `orderStatus` to `delivered` will trigger payout logic.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: The ID of the order to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateOrderPayload'
+ *     responses:
+ *       200:
+ *         description: The updated order.
+ *       404:
+ *         description: Order not found.
+ *       500:
+ *         description: Internal server error.
+ */
+export const adminUpdateOrderController = async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+    const updates = req.body;
+
+    const updatedOrder = await adminUpdateOrderService(orderId, updates);
+    res.status(200).json(updatedOrder);
+  } catch (error: any) {
+    if (error instanceof OrderCreationError) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'An unexpected error occurred while updating the order.' });
+  }
+};
+
+/**
+ * @swagger
+ * /order/admin/all:
+ *   get:
+ *     summary: Get a paginated list of all orders (Admin)
+ *     tags: [Order, Admin]
+ *     description: Retrieves a paginated list of all orders on the platform. Allows filtering by orderCode, status, creation date, and customer name. Only accessible by admins.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - { in: query, name: orderCode, schema: { type: string }, description: "Filter by order code." }
+ *       - { in: query, name: status, schema: { $ref: '#/components/schemas/OrderStatus' }, description: "Filter by order status." }
+ *       - { in: query, name: customerName, schema: { type: string }, description: "Filter by customer's name (case-insensitive)." }
+ *       - { in: query, name: createdAtStart, schema: { type: string, format: date-time }, description: "Filter orders created on or after this date." }
+ *       - { in: query, name: createdAtEnd, schema: { type: string, format: date-time }, description: "Filter orders created on or before this date." }
+ *       - { in: query, name: page, schema: { type: integer, default: 1 }, description: "Page number for pagination." }
+ *       - { in: query, name: size, schema: { type: integer, default: 20 }, description: "Number of items per page." }
+ *     responses:
+ *       200:
+ *         description: A paginated list of orders.
+ *       500:
+ *         description: Internal server error.
+ */
+export const adminGetAllOrdersController = async (req: Request, res: Response) => {
+  try {
+    const {
+      orderCode,
+      status,
+      customerName,
+      createdAtStart,
+      createdAtEnd,
+    } = req.query;
+
+    const page = parseInt(req.query.page as string) || 1;
+    const take = parseInt(req.query.size as string) || 20;
+
+    const filters = {
+      orderCode: orderCode as string | undefined,
+      status: status as OrderStatus | undefined,
+      customerName: customerName as string | undefined,
+      createdAtStart: createdAtStart as string | undefined,
+      createdAtEnd: createdAtEnd as string | undefined,
+    };
+
+    const pagination = { page, take };
+
+    const result = await adminGetAllOrdersService(filters, pagination);
+
+    res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in adminGetAllOrdersController:', error);
+    res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };

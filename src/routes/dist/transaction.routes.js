@@ -9,6 +9,11 @@ var router = express_1.Router();
 // The webhook needs to receive the raw request body for signature verification
 router.post('/stripe-webhook', express_1.raw({ type: 'application/json' }), transactionController.stripeWebhookController);
 router.use(auth_middleware_1.authenticate);
+// --- Admin-only Transaction Routes ---
+router.get('/admin/overview', auth_middleware_1.authorize([client_1.Role.admin]), transactionController.getTransactionOverviewController);
+router.get('/admin/all', auth_middleware_1.authorize([client_1.Role.admin]), transactionController.adminListAllTransactionsController);
+router.post('/admin/:transactionId/send-receipt', auth_middleware_1.authorize([client_1.Role.admin]), transactionController.sendReceiptController);
+router.get('/admin/:transactionId', auth_middleware_1.authorize([client_1.Role.admin]), transactionController.adminGetTransactionByIdController);
 router.get('/', auth_middleware_1.authorize([client_1.Role.vendor, client_1.Role.store_admin, client_1.Role.store_shopper]), transactionController.listTransactionsController);
 router.post('/create-payment-intent', transactionController.createPaymentIntentController);
 router.get('/me', transactionController.listMyTransactionsController);

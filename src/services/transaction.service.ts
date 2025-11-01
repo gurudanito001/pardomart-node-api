@@ -1,8 +1,9 @@
-import { PrismaClient, User, SavedPaymentMethod, Transaction, TransactionStatus, TransactionType, TransactionSource, PaymentStatus, Prisma, Role } from '@prisma/client';
+import { PrismaClient, User, SavedPaymentMethod, Transaction, TransactionStatus, TransactionType, TransactionSource, PaymentStatus, Prisma, Role, OrderStatus } from '@prisma/client';
 import Stripe from 'stripe';
 import { OrderCreationError } from './order.service';
 import * as transactionModel from '../models/transaction.model';
 
+import { sendEmail } from '../utils/email.util';
 const prisma = new PrismaClient();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-08-27.basil',
@@ -353,4 +354,174 @@ export const listTransactionsService = async (filters: ListTransactionsFilters):
   }
 
   return transactionModel.listTransactions(modelFilters);
+};
+
+/**
+ * (Admin) Retrieves an overview of platform-wide financial transactions.
+ * - Income is the sum of service and shopping fees from completed orders.
+ * - Expense is the sum of all refunded amounts.
+ * - Revenue is Income - Expense.
+ * @returns An object containing the financial overview data.
+ */
+export const getTransactionOverviewService = async () => {
+  const [
+    totalTransactions,
+    incomeAggregation,
+    expenseAggregation,
+  ] = await prisma.$transaction([
+    // 1. Total number of all transactions
+    prisma.transaction.count(),
+
+    // 2. Total income (sum of service and shopping fees from completed orders)
+    prisma.order.aggregate({
+      where: {
+        orderStatus: { in: [OrderStatus.delivered, OrderStatus.picked_up_by_customer] },
+      },
+      _sum: {
+        serviceFee: true,
+        shoppingFee: true,
+      },
+    }),
+
+    // 3. Total expense (sum of all refunds)
+    prisma.transaction.aggregate({
+      where: { type: TransactionType.REFUND },
+      _sum: {
+        amount: true, // Refunds are stored as positive values
+      },
+    }),
+  ]);
+
+  const totalIncome = (incomeAggregation._sum.serviceFee || 0) + (incomeAggregation._sum.shoppingFee || 0);
+  const totalExpense = expenseAggregation._sum.amount || 0;
+  const revenue = totalIncome - totalExpense;
+
+  return { totalTransactions, totalIncome, totalExpense, revenue };
+};
+
+/**
+ * (Admin) Retrieves a paginated list of all transactions with filtering.
+ * @param filters - The filtering criteria.
+ * @param pagination - The pagination options.
+ * @returns A paginated list of transactions.
+ */
+export const adminListAllTransactionsService = async (
+  filters: transactionModel.AdminListTransactionsFilters,
+  pagination: { page: number; take: number }
+) => {
+  return transactionModel.adminListAllTransactions(filters, pagination);
+};
+
+/**
+ * (Admin) Retrieves a single transaction by its ID without any ownership checks.
+ * @param transactionId The ID of the transaction to retrieve.
+ * @returns The transaction object with its relations.
+ * @throws OrderCreationError if the transaction is not found.
+ */
+export const adminGetTransactionByIdService = async (transactionId: string) => {
+  const transaction = await transactionModel.adminGetTransactionById(transactionId);
+  if (!transaction) {
+    throw new OrderCreationError('Transaction not found.', 404);
+  }
+  return transaction;
+};
+
+/**
+ * (Admin) Generates and sends a receipt for a given transaction to the customer.
+ * @param transactionId The ID of the transaction.
+ * @returns A success message.
+ * @throws OrderCreationError if the transaction or associated order/user is not found.
+ */
+export const sendReceiptService = async (transactionId: string): Promise<{ message: string }> => {
+  // 1. Fetch the transaction with all necessary relations for the receipt.
+  const transaction = await prisma.transaction.findUnique({
+    where: { id: transactionId },
+    include: {
+      user: true,
+      order: {
+        include: {
+          orderItems: {
+            include: {
+              vendorProduct: {
+                include: {
+                  product: true,
+                },
+              },
+            },
+          },
+          vendor: true,
+        },
+      },
+    },
+  });
+
+  if (!transaction) {
+    throw new OrderCreationError('Transaction not found.', 404);
+  }
+  if (!transaction.order) {
+    throw new OrderCreationError('This transaction is not associated with an order.', 400);
+  }
+  if (!transaction.user) {
+    throw new OrderCreationError('Customer details not found for this transaction.', 404);
+  }
+
+  const { order, user } = transaction;
+
+  // 2. Format the receipt data into an HTML string.
+  const itemsHtml = order.orderItems
+    .map(
+      (item) => `
+    <tr>
+      <td>${item.vendorProduct.name}</td>
+      <td>${item.quantity}</td>
+      <td>$${item.vendorProduct.price.toFixed(2)}</td>
+      <td>$${(item.quantity * item.vendorProduct.price).toFixed(2)}</td>
+    </tr>
+  `
+    )
+    .join('');
+
+  const receiptHtml = `
+    <html>
+      <head><style>body { font-family: sans-serif; } table { width: 100%; border-collapse: collapse; } th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }</style></head>
+      <body>
+        <h2>Receipt for Order #${order.orderCode}</h2>
+        <p>Hi ${user.name}, here is your receipt.</p>
+        <p><strong>Transaction ID:</strong> ${transaction.id}</p>
+        <p><strong>Date:</strong> ${new Date(transaction.createdAt).toLocaleString()}</p>
+        <p><strong>Store:</strong> ${order.vendor.name}</p>
+        <hr/>
+        <h3>Order Items</h3>
+        <table>
+          <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
+          <tbody>${itemsHtml}</tbody>
+        </table>
+        <hr/>
+        <h3>Summary</h3>
+        <p>Subtotal: $${order.subtotal.toFixed(2)}</p>
+        <p>Delivery Fee: $${(order.deliveryFee || 0).toFixed(2)}</p>
+        <p>Service Fee: $${(order.serviceFee || 0).toFixed(2)}</p>
+        <p><strong>Total Paid: $${order.totalAmount.toFixed(2)}</strong></p>
+        <br/>
+        <p>Thank you for your purchase!</p>
+      </body>
+    </html>
+  `;
+
+  // 3. Send the email.
+  await sendEmail({
+    to: user.email,
+    subject: `Your Receipt for Order #${order.orderCode}`,
+    html: receiptHtml,
+  });
+
+  // 4. Update the transaction meta to log that a receipt was sent.
+  await prisma.transaction.update({
+    where: { id: transactionId },
+    data: {
+      meta: { ...(transaction.meta as object), receiptSentAt: new Date().toISOString() },
+    },
+  });
+
+  return { message: `Receipt successfully sent to ${user.email}.` };
 };

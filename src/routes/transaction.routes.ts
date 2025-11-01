@@ -14,6 +14,12 @@ router.post(
 );
 
 router.use(authenticate);
+
+// --- Admin-only Transaction Routes ---
+router.get('/admin/overview', authorize([Role.admin]), transactionController.getTransactionOverviewController);
+router.get('/admin/all', authorize([Role.admin]), transactionController.adminListAllTransactionsController);
+router.post('/admin/:transactionId/send-receipt', authorize([Role.admin]), transactionController.sendReceiptController);
+router.get('/admin/:transactionId', authorize([Role.admin]), transactionController.adminGetTransactionByIdController);
 router.get('/', authorize([Role.vendor, Role.store_admin, Role.store_shopper]), transactionController.listTransactionsController);
 
 router.post('/create-payment-intent', transactionController.createPaymentIntentController);

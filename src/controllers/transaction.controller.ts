@@ -8,10 +8,14 @@ import {
     listSavedPaymentMethodsService,
     detachPaymentMethodService,
     listTransactionsForVendorService,
+    getTransactionOverviewService,
+    adminListAllTransactionsService,
+    adminGetTransactionByIdService,
+    sendReceiptService,
 } from '../services/transaction.service';
 import { OrderCreationError } from '../services/order.service';
 import Stripe from 'stripe';
-import { Role } from '@prisma/client';
+import { Role, TransactionStatus } from '@prisma/client';
 import * as transactionService from '../services/transaction.service';
 
 
@@ -377,5 +381,165 @@ export const listTransactionsController = async (req: AuthenticatedRequest, res:
       return res.status(403).json({ error: error.message });
     }
     res.status(500).json({ error: 'An unexpected error occurred while listing transactions.' });
+  }
+};
+
+/**
+ * @swagger
+ * /transactions/admin/overview:
+ *   get:
+ *     summary: Get platform-wide transaction overview (Admin)
+ *     tags: [Transaction, Admin]
+ *     description: Retrieves aggregate financial data for the platform, including total transactions, income (fees), expenses (refunds), and revenue. Only accessible by admins.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: An object containing the financial overview data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalTransactions: { type: integer }
+ *                 totalIncome: { type: number, format: float }
+ *                 totalExpense: { type: number, format: float }
+ *                 revenue: { type: number, format: float }
+ *       500:
+ *         description: Internal server error.
+ */
+export const getTransactionOverviewController = async (req: Request, res: Response) => {
+  try {
+    const overviewData = await transactionService.getTransactionOverviewService();
+    res.status(200).json(overviewData);
+  } catch (error: any) {
+    console.error('Error getting transaction overview:', error);
+    res.status(500).json({ error: 'An unexpected error occurred.' });
+  }
+};
+
+/**
+ * @swagger
+ * /transactions/admin/{transactionId}:
+ *   get:
+ *     summary: Get a single transaction by ID (Admin)
+ *     tags: [Transaction, Admin]
+ *     description: Retrieves the full details of a specific transaction by its ID. Only accessible by admins.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: transactionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the transaction to retrieve.
+ *     responses:
+ *       200:
+ *         description: The requested transaction details.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/TransactionWithRelations' }
+ *       404:
+ *         description: Transaction not found.
+ */
+export const adminGetTransactionByIdController = async (req: Request, res: Response) => {
+  try {
+    const { transactionId } = req.params;
+    const transaction = await transactionService.adminGetTransactionByIdService(transactionId);
+    res.status(200).json(transaction);
+  } catch (error: any) {
+    res.status(error.statusCode || 500).json({ error: error.message || 'An unexpected error occurred.' });
+  }
+};
+
+/**
+ * @swagger
+ * /transactions/admin/{transactionId}/send-receipt:
+ *   post:
+ *     summary: Generate and send a receipt for a transaction (Admin)
+ *     tags: [Transaction, Admin]
+ *     description: Retrieves the details for a transaction, generates an HTML receipt, and sends it to the customer's email address. Only accessible by admins.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: transactionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the transaction to send a receipt for.
+ *     responses:
+ *       200:
+ *         description: Receipt sent successfully.
+ *       404:
+ *         description: Transaction or related data not found.
+ *       400:
+ *         description: Bad request (e.g., transaction not linked to an order).
+ */
+export const sendReceiptController = async (req: Request, res: Response) => {
+  try {
+    const { transactionId } = req.params;
+    const result = await transactionService.sendReceiptService(transactionId);
+    res.status(200).json(result);
+  } catch (error: any) {
+    res.status(error.statusCode || 500).json({ error: error.message || 'An unexpected error occurred.' });
+  }
+};
+
+/**
+ * @swagger
+ * /transactions/admin/all:
+ *   get:
+ *     summary: Get a paginated list of all transactions (Admin)
+ *     tags: [Transaction, Admin]
+ *     description: Retrieves a paginated list of all transactions on the platform. Allows filtering by orderCode, customer name, status, and creation date. Only accessible by admins.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - { in: query, name: orderCode, schema: { type: string }, description: "Filter by order code." }
+ *       - { in: query, name: customerName, schema: { type: string }, description: "Filter by customer's name (case-insensitive)." }
+ *       - { in: query, name: status, schema: { $ref: '#/components/schemas/TransactionStatus' }, description: "Filter by transaction status." }
+ *       - { in: query, name: createdAtStart, schema: { type: string, format: date-time }, description: "Filter transactions created on or after this date." }
+ *       - { in: query, name: createdAtEnd, schema: { type: string, format: date-time }, description: "Filter transactions created on or before this date." }
+ *       - { in: query, name: page, schema: { type: integer, default: 1 }, description: "Page number for pagination." }
+ *       - { in: query, name: size, schema: { type: integer, default: 20 }, description: "Number of items per page." }
+ *     responses:
+ *       200:
+ *         description: A paginated list of transactions.
+ *       500:
+ *         description: Internal server error.
+ */
+export const adminListAllTransactionsController = async (req: Request, res: Response) => {
+  try {
+    const {
+      orderCode,
+      customerName,
+      status,
+      createdAtStart,
+      createdAtEnd,
+    } = req.query;
+
+    const page = parseInt(req.query.page as string) || 1;
+    const take = parseInt(req.query.size as string) || 20;
+
+    const filters = {
+      orderCode: orderCode as string | undefined,
+      customerName: customerName as string | undefined,
+      status: status as TransactionStatus | undefined,
+      createdAtStart: createdAtStart as string | undefined,
+      createdAtEnd: createdAtEnd as string | undefined,
+    };
+
+    const pagination = { page, take };
+
+    const result = await transactionService.adminListAllTransactionsService(filters, pagination);
+
+    res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in adminListAllTransactionsController:', error);
+    res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };

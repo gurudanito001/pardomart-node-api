@@ -47,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.listTransactions = exports.listTransactionsForVendor = exports.listTransactionsForUser = exports.createTransaction = void 0;
+exports.adminGetTransactionById = exports.adminListAllTransactions = exports.listTransactions = exports.listTransactionsForVendor = exports.listTransactionsForUser = exports.createTransaction = void 0;
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
 exports.createTransaction = function (payload, tx) {
@@ -140,5 +140,78 @@ exports.listTransactions = function (filters) { return __awaiter(void 0, void 0,
                 },
                 orderBy: { createdAt: 'desc' }
             })];
+    });
+}); };
+/**
+ * (Admin) Retrieves a paginated list of all transactions with filtering.
+ * @param filters - The filtering criteria.
+ * @param pagination - The pagination options.
+ * @returns A paginated list of transactions.
+ */
+exports.adminListAllTransactions = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+    var orderCode, customerName, status, createdAtStart, createdAtEnd, page, take, skip, where, _a, transactions, totalCount, totalPages;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                orderCode = filters.orderCode, customerName = filters.customerName, status = filters.status, createdAtStart = filters.createdAtStart, createdAtEnd = filters.createdAtEnd;
+                page = pagination.page, take = pagination.take;
+                skip = (page - 1) * take;
+                where = {};
+                if (orderCode) {
+                    where.order = {
+                        orderCode: { contains: orderCode, mode: 'insensitive' }
+                    };
+                }
+                if (customerName) {
+                    where.user = {
+                        name: { contains: customerName, mode: 'insensitive' }
+                    };
+                }
+                if (status) {
+                    where.status = status;
+                }
+                if (createdAtStart || createdAtEnd) {
+                    where.createdAt = {};
+                    if (createdAtStart) {
+                        where.createdAt.gte = new Date(createdAtStart);
+                    }
+                    if (createdAtEnd) {
+                        where.createdAt.lte = new Date(createdAtEnd);
+                    }
+                }
+                return [4 /*yield*/, prisma.$transaction([
+                        prisma.transaction.findMany({
+                            where: where,
+                            include: {
+                                user: { select: { id: true, name: true, email: true } },
+                                order: { select: { id: true, orderCode: true } }
+                            },
+                            skip: skip,
+                            take: take,
+                            orderBy: { createdAt: 'desc' }
+                        }),
+                        prisma.transaction.count({ where: where }),
+                    ])];
+            case 1:
+                _a = _b.sent(), transactions = _a[0], totalCount = _a[1];
+                totalPages = Math.ceil(totalCount / take);
+                return [2 /*return*/, {
+                        data: transactions,
+                        page: page,
+                        totalPages: totalPages,
+                        pageSize: take,
+                        totalCount: totalCount
+                    }];
+        }
+    });
+}); };
+/**
+ * (Admin) Retrieves a single transaction by its ID, including its relations.
+ * @param transactionId The ID of the transaction to retrieve.
+ * @returns A transaction object with relations or null if not found.
+ */
+exports.adminGetTransactionById = function (transactionId) { return __awaiter(void 0, void 0, Promise, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, prisma.transaction.findUnique(__assign({ where: { id: transactionId } }, transactionWithRelations))];
     });
 }); };

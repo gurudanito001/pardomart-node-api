@@ -11,6 +11,11 @@ var messageController = require("../controllers/message.controller");
 var router = express_1.Router();
 // All routes below require a logged-in user
 router.use(auth_middleware_1.authenticate);
+// --- Admin-only Order Routes ---
+router.get('/admin/overview', auth_middleware_1.authorize([client_1.Role.admin]), orderController.getOrderOverviewDataController);
+router.get('/admin/all', auth_middleware_1.authorize([client_1.Role.admin]), orderController.adminGetAllOrdersController);
+router.patch('/admin/:orderId', auth_middleware_1.authorize([client_1.Role.admin]), orderController.adminUpdateOrderController);
+router.get('/admin/:orderId/messages', auth_middleware_1.authorize([client_1.Role.admin]), messageController.adminGetMessagesForOrderController);
 // --- Vendor-facing routes ---
 //router.get('/vendorOrders', authorize([Role.store_admin, Role.store_shopper]), validate(validateGetVendorOrders), orderController.getVendorOrdersController);
 router.patch('/:orderId/accept', auth_middleware_1.authorizeVendorAccess, validation_middleware_1.validate(validation_middleware_1.validateVendorOrderAction), orderController.acceptOrderController);

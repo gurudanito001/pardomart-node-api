@@ -187,3 +187,90 @@ export const findOrdersForVendors = async (filters: GetOrdersForVendorFilters): 
     orderBy: { createdAt: 'desc' },
   });
 };
+
+export interface AdminGetOrdersFilters {
+  orderCode?: string;
+  status?: OrderStatus;
+  customerName?: string;
+  createdAtStart?: string;
+  createdAtEnd?: string;
+}
+
+export interface Pagination {
+  page: number;
+  take: number;
+}
+
+
+
+/**
+ * (Admin) Retrieves a paginated list of all orders with filtering.
+ * @param filters - The filtering criteria.
+ * @param pagination - The pagination options.
+ * @returns A paginated list of orders.
+ */
+export const adminGetAllOrders = async (filters: AdminGetOrdersFilters, pagination: Pagination) => {
+  const { orderCode, status, customerName, createdAtStart, createdAtEnd } = filters;
+  const { page, take } = pagination;
+
+  const skip = (page - 1) * take;
+
+  const where: Prisma.OrderWhereInput = {};
+
+  if (orderCode) {
+    where.orderCode = {
+      contains: orderCode,
+      mode: 'insensitive',
+    };
+  }
+
+  if (status) {
+    where.orderStatus = status;
+  }
+
+  if (customerName) {
+    where.user = {
+      name: {
+        contains: customerName,
+        mode: 'insensitive',
+      },
+    };
+  }
+
+  if (createdAtStart || createdAtEnd) {
+    where.createdAt = {};
+    if (createdAtStart) {
+      (where.createdAt as any).gte = new Date(createdAtStart);
+    }
+    if (createdAtEnd) {
+      (where.createdAt as any).lte = new Date(createdAtEnd);
+    }
+  }
+
+  const [orders, totalCount] = await prisma.$transaction([
+    prisma.order.findMany({
+      where,
+      include: {
+        user: { select: { id: true, name: true, email: true } }, // Include customer details
+        vendor: { select: { id: true, name: true } }, // Include store details
+      },
+      skip,
+      take,
+      orderBy: {
+        createdAt: 'desc',
+      },
+    }),
+    prisma.order.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / take);
+
+  return {
+    data: orders,
+    page,
+    totalPages,
+    pageSize: take,
+    totalCount,
+  };
+};
+

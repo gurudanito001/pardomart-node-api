@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.listTransactionsController = exports.stripeWebhookController = exports.listVendorTransactionsController = exports.listMyTransactionsController = exports.detachPaymentMethodController = exports.listMySavedPaymentMethodsController = exports.createSetupIntentController = exports.createPaymentIntentController = void 0;
+exports.adminListAllTransactionsController = exports.sendReceiptController = exports.adminGetTransactionByIdController = exports.getTransactionOverviewController = exports.listTransactionsController = exports.stripeWebhookController = exports.listVendorTransactionsController = exports.listMyTransactionsController = exports.detachPaymentMethodController = exports.listMySavedPaymentMethodsController = exports.createSetupIntentController = exports.createPaymentIntentController = void 0;
 var transaction_service_1 = require("../services/transaction.service");
 var order_service_1 = require("../services/order.service");
 var stripe_1 = require("stripe");
@@ -467,6 +467,195 @@ exports.listTransactionsController = function (req, res) { return __awaiter(void
                     return [2 /*return*/, res.status(403).json({ error: error_8.message })];
                 }
                 res.status(500).json({ error: 'An unexpected error occurred while listing transactions.' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /transactions/admin/overview:
+ *   get:
+ *     summary: Get platform-wide transaction overview (Admin)
+ *     tags: [Transaction, Admin]
+ *     description: Retrieves aggregate financial data for the platform, including total transactions, income (fees), expenses (refunds), and revenue. Only accessible by admins.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: An object containing the financial overview data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalTransactions: { type: integer }
+ *                 totalIncome: { type: number, format: float }
+ *                 totalExpense: { type: number, format: float }
+ *                 revenue: { type: number, format: float }
+ *       500:
+ *         description: Internal server error.
+ */
+exports.getTransactionOverviewController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var overviewData, error_9;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                return [4 /*yield*/, transactionService.getTransactionOverviewService()];
+            case 1:
+                overviewData = _a.sent();
+                res.status(200).json(overviewData);
+                return [3 /*break*/, 3];
+            case 2:
+                error_9 = _a.sent();
+                console.error('Error getting transaction overview:', error_9);
+                res.status(500).json({ error: 'An unexpected error occurred.' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /transactions/admin/{transactionId}:
+ *   get:
+ *     summary: Get a single transaction by ID (Admin)
+ *     tags: [Transaction, Admin]
+ *     description: Retrieves the full details of a specific transaction by its ID. Only accessible by admins.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: transactionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the transaction to retrieve.
+ *     responses:
+ *       200:
+ *         description: The requested transaction details.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/TransactionWithRelations' }
+ *       404:
+ *         description: Transaction not found.
+ */
+exports.adminGetTransactionByIdController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var transactionId, transaction, error_10;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                transactionId = req.params.transactionId;
+                return [4 /*yield*/, transactionService.adminGetTransactionByIdService(transactionId)];
+            case 1:
+                transaction = _a.sent();
+                res.status(200).json(transaction);
+                return [3 /*break*/, 3];
+            case 2:
+                error_10 = _a.sent();
+                res.status(error_10.statusCode || 500).json({ error: error_10.message || 'An unexpected error occurred.' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /transactions/admin/{transactionId}/send-receipt:
+ *   post:
+ *     summary: Generate and send a receipt for a transaction (Admin)
+ *     tags: [Transaction, Admin]
+ *     description: Retrieves the details for a transaction, generates an HTML receipt, and sends it to the customer's email address. Only accessible by admins.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: transactionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the transaction to send a receipt for.
+ *     responses:
+ *       200:
+ *         description: Receipt sent successfully.
+ *       404:
+ *         description: Transaction or related data not found.
+ *       400:
+ *         description: Bad request (e.g., transaction not linked to an order).
+ */
+exports.sendReceiptController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var transactionId, result, error_11;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                transactionId = req.params.transactionId;
+                return [4 /*yield*/, transactionService.sendReceiptService(transactionId)];
+            case 1:
+                result = _a.sent();
+                res.status(200).json(result);
+                return [3 /*break*/, 3];
+            case 2:
+                error_11 = _a.sent();
+                res.status(error_11.statusCode || 500).json({ error: error_11.message || 'An unexpected error occurred.' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /transactions/admin/all:
+ *   get:
+ *     summary: Get a paginated list of all transactions (Admin)
+ *     tags: [Transaction, Admin]
+ *     description: Retrieves a paginated list of all transactions on the platform. Allows filtering by orderCode, customer name, status, and creation date. Only accessible by admins.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - { in: query, name: orderCode, schema: { type: string }, description: "Filter by order code." }
+ *       - { in: query, name: customerName, schema: { type: string }, description: "Filter by customer's name (case-insensitive)." }
+ *       - { in: query, name: status, schema: { $ref: '#/components/schemas/TransactionStatus' }, description: "Filter by transaction status." }
+ *       - { in: query, name: createdAtStart, schema: { type: string, format: date-time }, description: "Filter transactions created on or after this date." }
+ *       - { in: query, name: createdAtEnd, schema: { type: string, format: date-time }, description: "Filter transactions created on or before this date." }
+ *       - { in: query, name: page, schema: { type: integer, default: 1 }, description: "Page number for pagination." }
+ *       - { in: query, name: size, schema: { type: integer, default: 20 }, description: "Number of items per page." }
+ *     responses:
+ *       200:
+ *         description: A paginated list of transactions.
+ *       500:
+ *         description: Internal server error.
+ */
+exports.adminListAllTransactionsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, orderCode, customerName, status, createdAtStart, createdAtEnd, page, take, filters, pagination, result, error_12;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _b.trys.push([0, 2, , 3]);
+                _a = req.query, orderCode = _a.orderCode, customerName = _a.customerName, status = _a.status, createdAtStart = _a.createdAtStart, createdAtEnd = _a.createdAtEnd;
+                page = parseInt(req.query.page) || 1;
+                take = parseInt(req.query.size) || 20;
+                filters = {
+                    orderCode: orderCode,
+                    customerName: customerName,
+                    status: status,
+                    createdAtStart: createdAtStart,
+                    createdAtEnd: createdAtEnd
+                };
+                pagination = { page: page, take: take };
+                return [4 /*yield*/, transactionService.adminListAllTransactionsService(filters, pagination)];
+            case 1:
+                result = _b.sent();
+                res.status(200).json(result);
+                return [3 /*break*/, 3];
+            case 2:
+                error_12 = _b.sent();
+                console.error('Error in adminListAllTransactionsController:', error_12);
+                res.status(500).json({ error: 'An unexpected error occurred.' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }

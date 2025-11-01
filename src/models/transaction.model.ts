@@ -10,6 +10,7 @@ export interface CreateTransactionPayload {
   status?: TransactionStatus;
   description?: string;
   orderId?: string;
+  vendorId?: string;
   externalId?: string;
   meta?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput | undefined;
   walletId?: string;
@@ -141,5 +142,92 @@ export const listTransactions = async (filters: ListTransactionsModelFilters): P
       order: { select: { id: true, orderCode: true } },
     },
     orderBy: { createdAt: 'desc' },
+  });
+};
+
+export interface AdminListTransactionsFilters {
+  orderCode?: string;
+  customerName?: string;
+  status?: TransactionStatus;
+  createdAtStart?: string;
+  createdAtEnd?: string;
+}
+
+/**
+ * (Admin) Retrieves a paginated list of all transactions with filtering.
+ * @param filters - The filtering criteria.
+ * @param pagination - The pagination options.
+ * @returns A paginated list of transactions.
+ */
+export const adminListAllTransactions = async (
+  filters: AdminListTransactionsFilters,
+  pagination: { page: number; take: number }
+) => {
+  const { orderCode, customerName, status, createdAtStart, createdAtEnd } = filters;
+  const { page, take } = pagination;
+  const skip = (page - 1) * take;
+
+  const where: Prisma.TransactionWhereInput = {};
+
+  if (orderCode) {
+    where.order = {
+      orderCode: { contains: orderCode, mode: 'insensitive' },
+    };
+  }
+
+  if (customerName) {
+    where.user = {
+      name: { contains: customerName, mode: 'insensitive' },
+    };
+  }
+
+  if (status) {
+    where.status = status;
+  }
+
+  if (createdAtStart || createdAtEnd) {
+    where.createdAt = {};
+    if (createdAtStart) {
+      (where.createdAt as any).gte = new Date(createdAtStart);
+    }
+    if (createdAtEnd) {
+      (where.createdAt as any).lte = new Date(createdAtEnd);
+    }
+  }
+
+  const [transactions, totalCount] = await prisma.$transaction([
+    prisma.transaction.findMany({
+      where,
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        order: { select: { id: true, orderCode: true } },
+      },
+      skip,
+      take,
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.transaction.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / take);
+
+  return {
+    data: transactions,
+    page,
+    totalPages,
+    pageSize: take,
+    totalCount,
+  };
+};
+
+/**
+ * (Admin) Retrieves a single transaction by its ID, including its relations.
+ * @param transactionId The ID of the transaction to retrieve.
+ * @returns A transaction object with relations or null if not found.
+ */
+export const adminGetTransactionById = async (transactionId: string): Promise<TransactionWithRelations | null> => {
+  return prisma.transaction.findUnique({
+    where: { id: transactionId },
+    ...transactionWithRelations, // Reuse the existing validator for includes
   });
 };

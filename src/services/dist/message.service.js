@@ -43,7 +43,7 @@ var __spreadArrays = (this && this.__spreadArrays) || function () {
     return r;
 };
 exports.__esModule = true;
-exports.markMessagesAsReadService = exports.getMessagesForOrderService = exports.sendMessageService = void 0;
+exports.markMessagesAsReadService = exports.adminGetMessagesForOrderService = exports.getMessagesForOrderService = exports.sendMessageService = void 0;
 var client_1 = require("@prisma/client");
 var socket_1 = require("../socket");
 var notificationService = require("./notification.service");
@@ -168,6 +168,34 @@ exports.getMessagesForOrderService = function (orderId, userId) { return __await
             case 2:
                 messages = _a.sent();
                 return [2 /*return*/, messages];
+        }
+    });
+}); };
+/**
+ * (Admin) Retrieves all messages for a specific order without participation checks.
+ * @param {string} orderId - The ID of the order.
+ * @returns {Promise<Message[]>} A list of messages for the order.
+ * @throws Error if the order is not found.
+ */
+exports.adminGetMessagesForOrderService = function (orderId) { return __awaiter(void 0, void 0, Promise, function () {
+    var order;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, prisma.order.findUnique({ where: { id: orderId } })];
+            case 1:
+                order = _a.sent();
+                if (!order) {
+                    throw new Error('Order not found.');
+                }
+                return [2 /*return*/, prisma.message.findMany({
+                        where: { orderId: orderId },
+                        orderBy: { createdAt: 'asc' },
+                        include: {
+                            sender: {
+                                select: { id: true, name: true }
+                            }
+                        }
+                    })];
         }
     });
 }); };

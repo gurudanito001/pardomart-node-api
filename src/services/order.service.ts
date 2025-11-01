@@ -1315,3 +1315,109 @@ export const verifyPickupOtpService = async (
     return updatedOrder;
   });
 };
+
+
+/**
+ * (Admin) Retrieves overview data for all orders on the platform.
+ * @returns An object containing total counts for orders, products ordered, and cancelled orders.
+ */
+export const getOrderOverviewDataService = async (): Promise<{
+  totalOrders: number;
+  totalProductsOrdered: number;
+  totalCancelledOrders: number;
+}> => {
+  const [totalOrders, productsOrderedAggregation, totalCancelledOrders] = await prisma.$transaction([
+    prisma.order.count(),
+    prisma.orderItem.aggregate({
+      _sum: {
+        quantity: true,
+      },
+    }),
+    prisma.order.count({
+      where: { orderStatus: { in: [OrderStatus.cancelled_by_customer, OrderStatus.declined_by_vendor] } },
+    }),
+  ]);
+
+  const totalProductsOrdered = productsOrderedAggregation._sum.quantity || 0;
+
+  return { totalOrders, totalProductsOrdered, totalCancelledOrders };
+};
+
+/**
+ * (Admin) Retrieves a paginated list of all orders with filtering.
+ * @param filters - The filtering criteria.
+ * @param pagination - The pagination options.
+ * @returns A paginated list of orders.
+ */
+export const adminGetAllOrdersService = async (
+  filters: orderModel.AdminGetOrdersFilters,
+  pagination: orderModel.Pagination
+) => {
+  return orderModel.adminGetAllOrders(filters, pagination);
+};
+
+/**
+ * (Admin) Updates specific fields of an order. This provides a powerful way for an admin
+ * to "un-stuck" an order by changing its status, re-assigning staff, etc.
+ *
+ * @param orderId The ID of the order to update.
+ * @param updates The payload containing fields to update.
+ * @returns The updated order.
+ */
+export const adminUpdateOrderService = async (
+  orderId: string,
+  updates: orderModel.UpdateOrderPayload
+): Promise<Order> => {
+  // If the only update is the status, we can reuse the existing service to ensure all side effects are handled.
+  // However, for more complex admin edits, we need a dedicated transaction.
+  
+  const order = await orderModel.getOrderById(orderId);
+  if (!order) {
+    throw new OrderCreationError('Order not found.', 404);
+  }
+
+  // Special handling for 'delivered' status to trigger payouts
+  if (updates.orderStatus === OrderStatus.delivered && order.orderStatus !== OrderStatus.delivered) {
+    updates.actualDeliveryTime = new Date(); // Set delivery time
+
+    return prisma.$transaction(async (tx) => {
+      // 1. Pay Vendor
+      const vendorAmount = order.subtotal;
+      if (vendorAmount > 0 && order.vendor.userId) {
+        await tx.wallet.updateMany({
+          where: { vendorId: order.vendorId },
+          data: { balance: { increment: vendorAmount } },
+        });
+        await transactionModel.createTransaction({
+          vendorId: order.vendorId,
+          userId: order.vendor.userId,
+          amount: vendorAmount,
+          type: TransactionType.VENDOR_PAYOUT,
+          source: TransactionSource.SYSTEM,
+          status: 'COMPLETED',
+          description: `Payout for order #${order.orderCode}`,
+          orderId: order.id,
+        }, tx);
+      }
+
+      // TODO: Add logic for Shopper and Delivery Person tip payouts if applicable, similar to updateOrderStatusService
+
+      // 2. Update the order with all the admin's changes
+      return orderModel.updateOrder(orderId, updates, tx);
+    });
+  }
+
+  // For any other status change or field update, perform a direct update.
+  // Note: If cancelling, you might need to add refund logic here as well.
+  if (
+    (updates.orderStatus === OrderStatus.cancelled_by_customer || updates.orderStatus === OrderStatus.declined_by_vendor) &&
+    order.paymentStatus === PaymentStatus.paid
+  ) {
+    // TODO: Implement refund logic here. For now, we just update the status.
+    // This would involve crediting the user's wallet or initiating a Stripe refund.
+    updates.paymentStatus = PaymentStatus.refunded;
+  }
+
+
+  return orderModel.updateOrder(orderId, updates);
+};

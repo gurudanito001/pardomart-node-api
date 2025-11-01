@@ -47,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.findOrdersForVendors = exports.deleteOrder = exports.updateOrder = exports.getOrdersByUserId = exports.getOrderById = exports.createOrder = void 0;
+exports.adminGetAllOrders = exports.findOrdersForVendors = exports.deleteOrder = exports.updateOrder = exports.getOrdersByUserId = exports.getOrderById = exports.createOrder = void 0;
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
 exports.createOrder = function (payload, tx) { return __awaiter(void 0, void 0, Promise, function () {
@@ -176,5 +176,74 @@ exports.findOrdersForVendors = function (filters) { return __awaiter(void 0, voi
             where.shopperId = filters.shopperId;
         }
         return [2 /*return*/, prisma.order.findMany(__assign(__assign({ where: where }, orderWithRelations), { orderBy: { createdAt: 'desc' } }))];
+    });
+}); };
+/**
+ * (Admin) Retrieves a paginated list of all orders with filtering.
+ * @param filters - The filtering criteria.
+ * @param pagination - The pagination options.
+ * @returns A paginated list of orders.
+ */
+exports.adminGetAllOrders = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+    var orderCode, status, customerName, createdAtStart, createdAtEnd, page, take, skip, where, _a, orders, totalCount, totalPages;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                orderCode = filters.orderCode, status = filters.status, customerName = filters.customerName, createdAtStart = filters.createdAtStart, createdAtEnd = filters.createdAtEnd;
+                page = pagination.page, take = pagination.take;
+                skip = (page - 1) * take;
+                where = {};
+                if (orderCode) {
+                    where.orderCode = {
+                        contains: orderCode,
+                        mode: 'insensitive'
+                    };
+                }
+                if (status) {
+                    where.orderStatus = status;
+                }
+                if (customerName) {
+                    where.user = {
+                        name: {
+                            contains: customerName,
+                            mode: 'insensitive'
+                        }
+                    };
+                }
+                if (createdAtStart || createdAtEnd) {
+                    where.createdAt = {};
+                    if (createdAtStart) {
+                        where.createdAt.gte = new Date(createdAtStart);
+                    }
+                    if (createdAtEnd) {
+                        where.createdAt.lte = new Date(createdAtEnd);
+                    }
+                }
+                return [4 /*yield*/, prisma.$transaction([
+                        prisma.order.findMany({
+                            where: where,
+                            include: {
+                                user: { select: { id: true, name: true, email: true } },
+                                vendor: { select: { id: true, name: true } }
+                            },
+                            skip: skip,
+                            take: take,
+                            orderBy: {
+                                createdAt: 'desc'
+                            }
+                        }),
+                        prisma.order.count({ where: where }),
+                    ])];
+            case 1:
+                _a = _b.sent(), orders = _a[0], totalCount = _a[1];
+                totalPages = Math.ceil(totalCount / take);
+                return [2 /*return*/, {
+                        data: orders,
+                        page: page,
+                        totalPages: totalPages,
+                        pageSize: take,
+                        totalCount: totalCount
+                    }];
+        }
     });
 }); };

@@ -28,6 +28,12 @@ const router = Router();
 router.use(authenticate);
 
 
+// --- Admin-only Order Routes ---
+router.get('/admin/overview', authorize([Role.admin]), orderController.getOrderOverviewDataController);
+router.get('/admin/all', authorize([Role.admin]), orderController.adminGetAllOrdersController);
+router.patch('/admin/:orderId', authorize([Role.admin]), orderController.adminUpdateOrderController);
+router.get('/admin/:orderId/messages', authorize([Role.admin]), messageController.adminGetMessagesForOrderController);
+
 // --- Vendor-facing routes ---
 //router.get('/vendorOrders', authorize([Role.store_admin, Role.store_shopper]), validate(validateGetVendorOrders), orderController.getVendorOrdersController);
 router.patch('/:orderId/accept', authorizeVendorAccess, validate(validateVendorOrderAction), orderController.acceptOrderController);

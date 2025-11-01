@@ -1,4 +1,15 @@
 "use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -36,11 +47,12 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.listTransactionsService = exports.detachPaymentMethodService = exports.listSavedPaymentMethodsService = exports.listTransactionsForVendorService = exports.listTransactionsForUserService = exports.handleStripeWebhook = exports.createSetupIntentService = exports.createPaymentIntentService = void 0;
+exports.sendReceiptService = exports.adminGetTransactionByIdService = exports.adminListAllTransactionsService = exports.getTransactionOverviewService = exports.listTransactionsService = exports.detachPaymentMethodService = exports.listSavedPaymentMethodsService = exports.listTransactionsForVendorService = exports.listTransactionsForUserService = exports.handleStripeWebhook = exports.createSetupIntentService = exports.createPaymentIntentService = void 0;
 var client_1 = require("@prisma/client");
 var stripe_1 = require("stripe");
 var order_service_1 = require("./order.service");
 var transactionModel = require("../models/transaction.model");
+var email_util_1 = require("../utils/email.util");
 var prisma = new client_1.PrismaClient();
 var stripe = new stripe_1["default"](process.env.STRIPE_SECRET_KEY, {
     apiVersion: '2025-08-27.basil'
@@ -438,6 +450,147 @@ exports.listTransactionsService = function (filters) { return __awaiter(void 0, 
                 return [3 /*break*/, 7];
             case 6: throw new Error('Forbidden: You do not have permission to view transactions.');
             case 7: return [2 /*return*/, transactionModel.listTransactions(modelFilters)];
+        }
+    });
+}); };
+/**
+ * (Admin) Retrieves an overview of platform-wide financial transactions.
+ * - Income is the sum of service and shopping fees from completed orders.
+ * - Expense is the sum of all refunded amounts.
+ * - Revenue is Income - Expense.
+ * @returns An object containing the financial overview data.
+ */
+exports.getTransactionOverviewService = function () { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, totalTransactions, incomeAggregation, expenseAggregation, totalIncome, totalExpense, revenue;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0: return [4 /*yield*/, prisma.$transaction([
+                    // 1. Total number of all transactions
+                    prisma.transaction.count(),
+                    // 2. Total income (sum of service and shopping fees from completed orders)
+                    prisma.order.aggregate({
+                        where: {
+                            orderStatus: { "in": [client_1.OrderStatus.delivered, client_1.OrderStatus.picked_up_by_customer] }
+                        },
+                        _sum: {
+                            serviceFee: true,
+                            shoppingFee: true
+                        }
+                    }),
+                    // 3. Total expense (sum of all refunds)
+                    prisma.transaction.aggregate({
+                        where: { type: client_1.TransactionType.REFUND },
+                        _sum: {
+                            amount: true
+                        }
+                    }),
+                ])];
+            case 1:
+                _a = _b.sent(), totalTransactions = _a[0], incomeAggregation = _a[1], expenseAggregation = _a[2];
+                totalIncome = (incomeAggregation._sum.serviceFee || 0) + (incomeAggregation._sum.shoppingFee || 0);
+                totalExpense = expenseAggregation._sum.amount || 0;
+                revenue = totalIncome - totalExpense;
+                return [2 /*return*/, { totalTransactions: totalTransactions, totalIncome: totalIncome, totalExpense: totalExpense, revenue: revenue }];
+        }
+    });
+}); };
+/**
+ * (Admin) Retrieves a paginated list of all transactions with filtering.
+ * @param filters - The filtering criteria.
+ * @param pagination - The pagination options.
+ * @returns A paginated list of transactions.
+ */
+exports.adminListAllTransactionsService = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, transactionModel.adminListAllTransactions(filters, pagination)];
+    });
+}); };
+/**
+ * (Admin) Retrieves a single transaction by its ID without any ownership checks.
+ * @param transactionId The ID of the transaction to retrieve.
+ * @returns The transaction object with its relations.
+ * @throws OrderCreationError if the transaction is not found.
+ */
+exports.adminGetTransactionByIdService = function (transactionId) { return __awaiter(void 0, void 0, void 0, function () {
+    var transaction;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, transactionModel.adminGetTransactionById(transactionId)];
+            case 1:
+                transaction = _a.sent();
+                if (!transaction) {
+                    throw new order_service_1.OrderCreationError('Transaction not found.', 404);
+                }
+                return [2 /*return*/, transaction];
+        }
+    });
+}); };
+/**
+ * (Admin) Generates and sends a receipt for a given transaction to the customer.
+ * @param transactionId The ID of the transaction.
+ * @returns A success message.
+ * @throws OrderCreationError if the transaction or associated order/user is not found.
+ */
+exports.sendReceiptService = function (transactionId) { return __awaiter(void 0, void 0, Promise, function () {
+    var transaction, order, user, itemsHtml, receiptHtml;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, prisma.transaction.findUnique({
+                    where: { id: transactionId },
+                    include: {
+                        user: true,
+                        order: {
+                            include: {
+                                orderItems: {
+                                    include: {
+                                        vendorProduct: {
+                                            include: {
+                                                product: true
+                                            }
+                                        }
+                                    }
+                                },
+                                vendor: true
+                            }
+                        }
+                    }
+                })];
+            case 1:
+                transaction = _a.sent();
+                if (!transaction) {
+                    throw new order_service_1.OrderCreationError('Transaction not found.', 404);
+                }
+                if (!transaction.order) {
+                    throw new order_service_1.OrderCreationError('This transaction is not associated with an order.', 400);
+                }
+                if (!transaction.user) {
+                    throw new order_service_1.OrderCreationError('Customer details not found for this transaction.', 404);
+                }
+                order = transaction.order, user = transaction.user;
+                itemsHtml = order.orderItems
+                    .map(function (item) { return "\n    <tr>\n      <td>" + item.vendorProduct.name + "</td>\n      <td>" + item.quantity + "</td>\n      <td>$" + item.vendorProduct.price.toFixed(2) + "</td>\n      <td>$" + (item.quantity * item.vendorProduct.price).toFixed(2) + "</td>\n    </tr>\n  "; })
+                    .join('');
+                receiptHtml = "\n    <html>\n      <head><style>body { font-family: sans-serif; } table { width: 100%; border-collapse: collapse; } th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }</style></head>\n      <body>\n        <h2>Receipt for Order #" + order.orderCode + "</h2>\n        <p>Hi " + user.name + ", here is your receipt.</p>\n        <p><strong>Transaction ID:</strong> " + transaction.id + "</p>\n        <p><strong>Date:</strong> " + new Date(transaction.createdAt).toLocaleString() + "</p>\n        <p><strong>Store:</strong> " + order.vendor.name + "</p>\n        <hr/>\n        <h3>Order Items</h3>\n        <table>\n          <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>\n          <tbody>" + itemsHtml + "</tbody>\n        </table>\n        <hr/>\n        <h3>Summary</h3>\n        <p>Subtotal: $" + order.subtotal.toFixed(2) + "</p>\n        <p>Delivery Fee: $" + (order.deliveryFee || 0).toFixed(2) + "</p>\n        <p>Service Fee: $" + (order.serviceFee || 0).toFixed(2) + "</p>\n        <p><strong>Total Paid: $" + order.totalAmount.toFixed(2) + "</strong></p>\n        <br/>\n        <p>Thank you for your purchase!</p>\n      </body>\n    </html>\n  ";
+                // 3. Send the email.
+                return [4 /*yield*/, email_util_1.sendEmail({
+                        to: user.email,
+                        subject: "Your Receipt for Order #" + order.orderCode,
+                        html: receiptHtml
+                    })];
+            case 2:
+                // 3. Send the email.
+                _a.sent();
+                // 4. Update the transaction meta to log that a receipt was sent.
+                return [4 /*yield*/, prisma.transaction.update({
+                        where: { id: transactionId },
+                        data: {
+                            meta: __assign(__assign({}, transaction.meta), { receiptSentAt: new Date().toISOString() })
+                        }
+                    })];
+            case 3:
+                // 4. Update the transaction meta to log that a receipt was sent.
+                _a.sent();
+                return [2 /*return*/, { message: "Receipt successfully sent to " + user.email + "." }];
         }
     });
 }); };

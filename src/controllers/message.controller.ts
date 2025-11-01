@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from './vendor.controller';
-import { sendMessageService, getMessagesForOrderService, markMessagesAsReadService } from '../services/message.service';
+import { sendMessageService, getMessagesForOrderService, markMessagesAsReadService, adminGetMessagesForOrderService } from '../services/message.service';
 
 /**
  * @swagger
@@ -224,5 +224,43 @@ export const markMessagesAsReadController = async (req: AuthenticatedRequest, re
       return res.status(403).json({ error: error.message });
     }
     res.status(500).json({ error: 'Failed to mark messages as read.' });
+  }
+};
+
+/**
+ * @swagger
+ * /api/v1/order/admin/{orderId}/messages:
+ *   get:
+ *     summary: Get all messages for an order (Admin)
+ *     tags: [Order, Messaging, Admin]
+ *     description: Retrieves the complete conversation history for a specific order. Only accessible by admins.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the order.
+ *     responses:
+ *       200:
+ *         description: A list of messages for the order.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items: { $ref: '#/components/schemas/MessageWithRelations' }
+ *       404:
+ *         description: Order not found.
+ */
+export const adminGetMessagesForOrderController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { orderId } = req.params;
+    const messages = await adminGetMessagesForOrderService(orderId);
+    res.status(200).json(messages);
+  } catch (error: any) {
+    res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message });
   }
 };

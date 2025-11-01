@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.verifyPickupOtp = exports.getOrdersForVendor = exports.updateOrderTipController = exports.startShoppingController = exports.declineOrderController = exports.getAvailableDeliverySlotsController = exports.acceptOrderController = exports.respondToReplacementController = exports.updateOrderItemShoppingStatusController = exports.getVendorOrdersController = exports.updateOrderController = exports.updateOrderStatusController = exports.getOrdersByUserController = exports.getOrderByIdController = exports.createOrderController = void 0;
+exports.adminGetAllOrdersController = exports.adminUpdateOrderController = exports.getOrderOverviewDataController = exports.verifyPickupOtp = exports.getOrdersForVendor = exports.updateOrderTipController = exports.startShoppingController = exports.declineOrderController = exports.getAvailableDeliverySlotsController = exports.acceptOrderController = exports.respondToReplacementController = exports.updateOrderItemShoppingStatusController = exports.getVendorOrdersController = exports.updateOrderController = exports.updateOrderStatusController = exports.getOrdersByUserController = exports.getOrderByIdController = exports.createOrderController = void 0;
 var order_service_1 = require("../services/order.service"); // Adjust the path if needed
 // --- Order Controllers ---
 /**
@@ -1058,6 +1058,159 @@ exports.verifyPickupOtp = function (req, res) { return __awaiter(void 0, void 0,
                 res.status(500).json({ error: 'Internal server error' });
                 return [3 /*break*/, 4];
             case 4: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /order/admin/overview:
+ *   get:
+ *     summary: Get platform-wide order overview data (Admin)
+ *     tags: [Order, Admin]
+ *     description: Retrieves aggregate data about all orders on the platform, such as total orders, total products ordered, and total cancelled orders. Only accessible by admins.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: An object containing the order overview data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalOrders: { type: integer }
+ *                 totalProductsOrdered: { type: integer }
+ *                 totalCancelledOrders: { type: integer }
+ *       500:
+ *         description: Internal server error.
+ */
+exports.getOrderOverviewDataController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var overviewData, error_16;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                return [4 /*yield*/, order_service_1.getOrderOverviewDataService()];
+            case 1:
+                overviewData = _a.sent();
+                res.status(200).json(overviewData);
+                return [3 /*break*/, 3];
+            case 2:
+                error_16 = _a.sent();
+                console.error('Error getting order overview data:', error_16);
+                res.status(500).json({ error: 'An unexpected error occurred.' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /order/admin/{orderId}:
+ *   patch:
+ *     summary: Update an order's details (Admin)
+ *     tags: [Order, Admin]
+ *     description: >
+ *       Allows an admin to update specific fields of an order to resolve issues or "un-stuck" it.
+ *       Fields that can be updated include `orderStatus`, `paymentStatus`, `shopperId`, `deliveryPersonId`, etc.
+ *       **Warning**: Changing `orderStatus` to `delivered` will trigger payout logic.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: The ID of the order to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateOrderPayload'
+ *     responses:
+ *       200:
+ *         description: The updated order.
+ *       404:
+ *         description: Order not found.
+ *       500:
+ *         description: Internal server error.
+ */
+exports.adminUpdateOrderController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var orderId, updates, updatedOrder, error_17;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                orderId = req.params.orderId;
+                updates = req.body;
+                return [4 /*yield*/, order_service_1.adminUpdateOrderService(orderId, updates)];
+            case 1:
+                updatedOrder = _a.sent();
+                res.status(200).json(updatedOrder);
+                return [3 /*break*/, 3];
+            case 2:
+                error_17 = _a.sent();
+                if (error_17 instanceof order_service_1.OrderCreationError) {
+                    return [2 /*return*/, res.status(error_17.statusCode).json({ error: error_17.message })];
+                }
+                res.status(500).json({ error: 'An unexpected error occurred while updating the order.' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /order/admin/all:
+ *   get:
+ *     summary: Get a paginated list of all orders (Admin)
+ *     tags: [Order, Admin]
+ *     description: Retrieves a paginated list of all orders on the platform. Allows filtering by orderCode, status, creation date, and customer name. Only accessible by admins.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - { in: query, name: orderCode, schema: { type: string }, description: "Filter by order code." }
+ *       - { in: query, name: status, schema: { $ref: '#/components/schemas/OrderStatus' }, description: "Filter by order status." }
+ *       - { in: query, name: customerName, schema: { type: string }, description: "Filter by customer's name (case-insensitive)." }
+ *       - { in: query, name: createdAtStart, schema: { type: string, format: date-time }, description: "Filter orders created on or after this date." }
+ *       - { in: query, name: createdAtEnd, schema: { type: string, format: date-time }, description: "Filter orders created on or before this date." }
+ *       - { in: query, name: page, schema: { type: integer, default: 1 }, description: "Page number for pagination." }
+ *       - { in: query, name: size, schema: { type: integer, default: 20 }, description: "Number of items per page." }
+ *     responses:
+ *       200:
+ *         description: A paginated list of orders.
+ *       500:
+ *         description: Internal server error.
+ */
+exports.adminGetAllOrdersController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, orderCode, status, customerName, createdAtStart, createdAtEnd, page, take, filters, pagination, result, error_18;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _b.trys.push([0, 2, , 3]);
+                _a = req.query, orderCode = _a.orderCode, status = _a.status, customerName = _a.customerName, createdAtStart = _a.createdAtStart, createdAtEnd = _a.createdAtEnd;
+                page = parseInt(req.query.page) || 1;
+                take = parseInt(req.query.size) || 20;
+                filters = {
+                    orderCode: orderCode,
+                    status: status,
+                    customerName: customerName,
+                    createdAtStart: createdAtStart,
+                    createdAtEnd: createdAtEnd
+                };
+                pagination = { page: page, take: take };
+                return [4 /*yield*/, order_service_1.adminGetAllOrdersService(filters, pagination)];
+            case 1:
+                result = _b.sent();
+                res.status(200).json(result);
+                return [3 /*break*/, 3];
+            case 2:
+                error_18 = _b.sent();
+                console.error('Error in adminGetAllOrdersController:', error_18);
+                res.status(500).json({ error: 'An unexpected error occurred.' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
         }
     });
 }); };

@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.markMessagesAsReadController = exports.getMessagesForOrderController = exports.sendMessageController = void 0;
+exports.adminGetMessagesForOrderController = exports.markMessagesAsReadController = exports.getMessagesForOrderController = exports.sendMessageController = void 0;
 var message_service_1 = require("../services/message.service");
 /**
  * @swagger
@@ -279,6 +279,54 @@ exports.markMessagesAsReadController = function (req, res) { return __awaiter(vo
                     return [2 /*return*/, res.status(403).json({ error: error_3.message })];
                 }
                 res.status(500).json({ error: 'Failed to mark messages as read.' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /api/v1/order/admin/{orderId}/messages:
+ *   get:
+ *     summary: Get all messages for an order (Admin)
+ *     tags: [Order, Messaging, Admin]
+ *     description: Retrieves the complete conversation history for a specific order. Only accessible by admins.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the order.
+ *     responses:
+ *       200:
+ *         description: A list of messages for the order.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items: { $ref: '#/components/schemas/MessageWithRelations' }
+ *       404:
+ *         description: Order not found.
+ */
+exports.adminGetMessagesForOrderController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var orderId, messages, error_4;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                orderId = req.params.orderId;
+                return [4 /*yield*/, message_service_1.adminGetMessagesForOrderService(orderId)];
+            case 1:
+                messages = _a.sent();
+                res.status(200).json(messages);
+                return [3 /*break*/, 3];
+            case 2:
+                error_4 = _a.sent();
+                res.status(error_4.message.includes('not found') ? 404 : 500).json({ error: error_4.message });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }

@@ -60,7 +60,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.verifyPickupOtpService = exports.getOrdersForVendorUserService = exports.respondToReplacementService = exports.updateOrderItemShoppingStatusService = exports.startShoppingService = exports.declineOrderService = exports.acceptOrderService = exports.getOrdersForVendorDashboard = exports.getAvailableDeliverySlots = exports.updateOrderStatusService = exports.updateOrderService = exports.updateOrderTipService = exports.createOrderFromClient = exports.getOrdersByUserIdService = exports.OrderCreationError = exports.getOrderByIdService = exports.createOrderService = void 0;
+exports.adminUpdateOrderService = exports.adminGetAllOrdersService = exports.getOrderOverviewDataService = exports.verifyPickupOtpService = exports.getOrdersForVendorUserService = exports.respondToReplacementService = exports.updateOrderItemShoppingStatusService = exports.startShoppingService = exports.declineOrderService = exports.acceptOrderService = exports.getOrdersForVendorDashboard = exports.getAvailableDeliverySlots = exports.updateOrderStatusService = exports.updateOrderService = exports.updateOrderTipService = exports.createOrderFromClient = exports.getOrdersByUserIdService = exports.OrderCreationError = exports.getOrderByIdService = exports.createOrderService = void 0;
 var orderModel = require("../models/order.model"); // Adjust the path if needed
 var vendorModel = require("../models/vendor.model"); // Add this import for vendorModel
 var client_1 = require("@prisma/client");
@@ -73,6 +73,7 @@ var customParseFormat_1 = require("dayjs/plugin/customParseFormat");
 var socket_1 = require("../socket");
 var rating_service_1 = require("./rating.service");
 var notificationService = require("./notification.service");
+var transactionModel = require("../models/transaction.model");
 dayjs_1["default"].extend(utc_1["default"]);
 dayjs_1["default"].extend(timezone_1["default"]);
 dayjs_1["default"].extend(customParseFormat_1["default"]);
@@ -1243,5 +1244,109 @@ exports.verifyPickupOtpService = function (orderId, otp, requestingUserId, reque
                     }
                 });
             }); })];
+    });
+}); };
+/**
+ * (Admin) Retrieves overview data for all orders on the platform.
+ * @returns An object containing total counts for orders, products ordered, and cancelled orders.
+ */
+exports.getOrderOverviewDataService = function () { return __awaiter(void 0, void 0, Promise, function () {
+    var _a, totalOrders, productsOrderedAggregation, totalCancelledOrders, totalProductsOrdered;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0: return [4 /*yield*/, prisma.$transaction([
+                    prisma.order.count(),
+                    prisma.orderItem.aggregate({
+                        _sum: {
+                            quantity: true
+                        }
+                    }),
+                    prisma.order.count({
+                        where: { orderStatus: { "in": [client_1.OrderStatus.cancelled_by_customer, client_1.OrderStatus.declined_by_vendor] } }
+                    }),
+                ])];
+            case 1:
+                _a = _b.sent(), totalOrders = _a[0], productsOrderedAggregation = _a[1], totalCancelledOrders = _a[2];
+                totalProductsOrdered = productsOrderedAggregation._sum.quantity || 0;
+                return [2 /*return*/, { totalOrders: totalOrders, totalProductsOrdered: totalProductsOrdered, totalCancelledOrders: totalCancelledOrders }];
+        }
+    });
+}); };
+/**
+ * (Admin) Retrieves a paginated list of all orders with filtering.
+ * @param filters - The filtering criteria.
+ * @param pagination - The pagination options.
+ * @returns A paginated list of orders.
+ */
+exports.adminGetAllOrdersService = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, orderModel.adminGetAllOrders(filters, pagination)];
+    });
+}); };
+/**
+ * (Admin) Updates specific fields of an order. This provides a powerful way for an admin
+ * to "un-stuck" an order by changing its status, re-assigning staff, etc.
+ *
+ * @param orderId The ID of the order to update.
+ * @param updates The payload containing fields to update.
+ * @returns The updated order.
+ */
+exports.adminUpdateOrderService = function (orderId, updates) { return __awaiter(void 0, void 0, Promise, function () {
+    var order;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, orderModel.getOrderById(orderId)];
+            case 1:
+                order = _a.sent();
+                if (!order) {
+                    throw new OrderCreationError('Order not found.', 404);
+                }
+                // Special handling for 'delivered' status to trigger payouts
+                if (updates.orderStatus === client_1.OrderStatus.delivered && order.orderStatus !== client_1.OrderStatus.delivered) {
+                    updates.actualDeliveryTime = new Date(); // Set delivery time
+                    return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
+                            var vendorAmount;
+                            return __generator(this, function (_a) {
+                                switch (_a.label) {
+                                    case 0:
+                                        vendorAmount = order.subtotal;
+                                        if (!(vendorAmount > 0 && order.vendor.userId)) return [3 /*break*/, 3];
+                                        return [4 /*yield*/, tx.wallet.updateMany({
+                                                where: { vendorId: order.vendorId },
+                                                data: { balance: { increment: vendorAmount } }
+                                            })];
+                                    case 1:
+                                        _a.sent();
+                                        return [4 /*yield*/, transactionModel.createTransaction({
+                                                vendorId: order.vendorId,
+                                                userId: order.vendor.userId,
+                                                amount: vendorAmount,
+                                                type: client_1.TransactionType.VENDOR_PAYOUT,
+                                                source: client_1.TransactionSource.SYSTEM,
+                                                status: 'COMPLETED',
+                                                description: "Payout for order #" + order.orderCode,
+                                                orderId: order.id
+                                            }, tx)];
+                                    case 2:
+                                        _a.sent();
+                                        _a.label = 3;
+                                    case 3: 
+                                    // TODO: Add logic for Shopper and Delivery Person tip payouts if applicable, similar to updateOrderStatusService
+                                    // 2. Update the order with all the admin's changes
+                                    return [2 /*return*/, orderModel.updateOrder(orderId, updates, tx)];
+                                }
+                            });
+                        }); })];
+                }
+                // For any other status change or field update, perform a direct update.
+                // Note: If cancelling, you might need to add refund logic here as well.
+                if ((updates.orderStatus === client_1.OrderStatus.cancelled_by_customer || updates.orderStatus === client_1.OrderStatus.declined_by_vendor) &&
+                    order.paymentStatus === client_1.PaymentStatus.paid) {
+                    // TODO: Implement refund logic here. For now, we just update the status.
+                    // This would involve crediting the user's wallet or initiating a Stripe refund.
+                    updates.paymentStatus = client_1.PaymentStatus.refunded;
+                }
+                return [2 /*return*/, orderModel.updateOrder(orderId, updates)];
+        }
     });
 }); };
