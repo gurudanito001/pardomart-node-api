@@ -116,23 +116,10 @@ export interface UpdateUserPayload {
   referralCode?: string;
 }
 
-export const updateUser = async (id: string, payload: UpdateUserPayload): Promise<User> => {
+export const updateUser = async (id: string, payload: Prisma.UserUpdateInput): Promise<User> => {
   return prisma.user.update({
-    where: {
-      id: id,
-    },
-    data: {
-      name: payload.name,
-      image: payload.image,
-      email: payload.email,
-      mobileNumber: payload.mobileNumber,
-      role: payload.role,
-      mobileVerified: payload.mobileVerified,
-      active: payload.active,
-      language: payload.language,
-      notification: payload.notification,
-      referralCode: payload.referralCode,
-    },
+    where: { id },
+    data: payload,
   });
 };
 

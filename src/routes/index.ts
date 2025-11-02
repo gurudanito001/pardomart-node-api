@@ -26,6 +26,7 @@ import mediaRouter from './media.routes';
 import staffRoutes from './staff.routes';
 import customerRoutes from './customer.routes'; // This line was already present
 import earningsRoutes from './earnings.routes';
+import deliveryPersonRoutes from './delivery-person.routes';
 
 // Create a new Router instance
 const router = Router();
@@ -59,6 +60,7 @@ router.use('/api/v1/media', mediaRouter);
 router.use('/api/v1/staff', staffRoutes);
 router.use('/api/v1/customers', customerRoutes);
 router.use('/api/v1/earnings', earningsRoutes);
+router.use('/api/v1/delivery-persons', deliveryPersonRoutes);
 
 
 

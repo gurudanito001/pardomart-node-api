@@ -1,4 +1,15 @@
 "use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -36,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.listCustomerTransactions = exports.listCustomers = void 0;
+exports.adminListCustomerTransactions = exports.adminGetCustomerDetailsById = exports.adminListAllCustomers = exports.listCustomerTransactions = exports.listCustomers = void 0;
 // models/customer.model.ts
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
@@ -120,5 +131,202 @@ exports.listCustomerTransactions = function (filters) { return __awaiter(void 0,
                 },
                 orderBy: { createdAt: 'desc' }
             })];
+    });
+}); };
+/**
+ * (Admin) Retrieves a paginated list of all customers with advanced filtering.
+ * @param filters - The filtering criteria.
+ * @param pagination - The pagination options.
+ * @returns A paginated list of customers with their total spent amount.
+ */
+exports.adminListAllCustomers = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+    var name, status, minAmountSpent, maxAmountSpent, createdAtStart, createdAtEnd, page, take, skip, where, having, userSpendings, userIdsWithMatchingSpend, _a, users, totalCount, userIds, userAggregations, totalSpentMap, usersWithTotalSpent, totalPages;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                name = filters.name, status = filters.status, minAmountSpent = filters.minAmountSpent, maxAmountSpent = filters.maxAmountSpent, createdAtStart = filters.createdAtStart, createdAtEnd = filters.createdAtEnd;
+                page = pagination.page, take = pagination.take;
+                skip = (page - 1) * take;
+                where = {
+                    role: client_1.Role.customer
+                };
+                if (name) {
+                    where.name = { contains: name, mode: 'insensitive' };
+                }
+                if (status !== undefined) {
+                    where.active = status;
+                }
+                if (createdAtStart || createdAtEnd) {
+                    where.createdAt = {};
+                    if (createdAtStart) {
+                        where.createdAt.gte = new Date(createdAtStart);
+                    }
+                    if (createdAtEnd) {
+                        where.createdAt.lte = new Date(createdAtEnd);
+                    }
+                }
+                if (!(minAmountSpent !== undefined || maxAmountSpent !== undefined)) return [3 /*break*/, 2];
+                having = {};
+                if (minAmountSpent !== undefined) {
+                    having.totalAmount = { _sum: { gte: minAmountSpent } };
+                }
+                if (maxAmountSpent !== undefined) {
+                    // If there's already a 'gte', we need to use AND
+                    if (having.totalAmount) {
+                        having.totalAmount._sum.lte = maxAmountSpent;
+                    }
+                    else {
+                        having.totalAmount = { _sum: { lte: maxAmountSpent } };
+                    }
+                }
+                return [4 /*yield*/, prisma.order.groupBy({
+                        by: ['userId'],
+                        where: {
+                            orderStatus: { "in": [client_1.OrderStatus.delivered, client_1.OrderStatus.picked_up_by_customer] }
+                        },
+                        _sum: {
+                            totalAmount: true
+                        },
+                        having: having
+                    })];
+            case 1:
+                userSpendings = _b.sent();
+                userIdsWithMatchingSpend = userSpendings.map(function (u) { return u.userId; });
+                // Add the list of user IDs to the main `where` clause.
+                // If no users match the spending criteria, the query will correctly return no results.
+                where.id = { "in": userIdsWithMatchingSpend };
+                _b.label = 2;
+            case 2: return [4 /*yield*/, prisma.$transaction([
+                    prisma.user.findMany({
+                        where: where,
+                        skip: skip,
+                        take: take,
+                        orderBy: { createdAt: 'desc' }
+                    }),
+                    prisma.user.count({ where: where }),
+                ])];
+            case 3:
+                _a = _b.sent(), users = _a[0], totalCount = _a[1];
+                userIds = users.map(function (u) { return u.id; });
+                return [4 /*yield*/, prisma.order.groupBy({
+                        by: ['userId'],
+                        where: {
+                            userId: { "in": userIds },
+                            orderStatus: { "in": [client_1.OrderStatus.delivered, client_1.OrderStatus.picked_up_by_customer] }
+                        },
+                        _sum: { totalAmount: true }
+                    })];
+            case 4:
+                userAggregations = _b.sent();
+                totalSpentMap = new Map(userAggregations.map(function (agg) { return [agg.userId, agg._sum.totalAmount || 0]; }));
+                usersWithTotalSpent = users.map(function (user) { return (__assign(__assign({}, user), { totalSpent: totalSpentMap.get(user.id) || 0 })); });
+                totalPages = Math.ceil(totalCount / take);
+                return [2 /*return*/, {
+                        data: usersWithTotalSpent,
+                        page: page,
+                        totalPages: totalPages,
+                        pageSize: take,
+                        totalCount: totalCount
+                    }];
+        }
+    });
+}); };
+/**
+ * (Admin) Retrieves detailed information for a single customer, including order statistics.
+ * @param customerId The ID of the customer to retrieve.
+ * @returns A customer object with their order stats, or null if not found.
+ */
+exports.adminGetCustomerDetailsById = function (customerId) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, customer, orderAggregations, totalOrders, totalCompleted, totalCancelled, _i, orderAggregations_1, group, count;
+    var _b;
+    return __generator(this, function (_c) {
+        switch (_c.label) {
+            case 0: return [4 /*yield*/, prisma.$transaction([
+                    prisma.user.findFirst({
+                        where: {
+                            id: customerId,
+                            role: client_1.Role.customer
+                        }
+                    }),
+                    prisma.order.groupBy({
+                        by: ['orderStatus'],
+                        where: {
+                            userId: customerId
+                        },
+                        _count: {
+                            orderStatus: true
+                        },
+                        orderBy: { orderStatus: 'asc' }
+                    }),
+                ])];
+            case 1:
+                _a = _c.sent(), customer = _a[0], orderAggregations = _a[1];
+                if (!customer) {
+                    return [2 /*return*/, null];
+                }
+                totalOrders = 0;
+                totalCompleted = 0;
+                totalCancelled = 0;
+                for (_i = 0, orderAggregations_1 = orderAggregations; _i < orderAggregations_1.length; _i++) {
+                    group = orderAggregations_1[_i];
+                    count = typeof group._count === 'object' ? ((_b = group._count.orderStatus) !== null && _b !== void 0 ? _b : 0) : 0;
+                    totalOrders += count;
+                    if ([client_1.OrderStatus.delivered, client_1.OrderStatus.picked_up_by_customer].includes(group.orderStatus)) {
+                        totalCompleted += count;
+                    }
+                    if ([client_1.OrderStatus.cancelled_by_customer, client_1.OrderStatus.declined_by_vendor].includes(group.orderStatus)) {
+                        totalCancelled += count;
+                    }
+                }
+                return [2 /*return*/, __assign(__assign({}, customer), { orderStats: {
+                            totalOrders: totalOrders,
+                            totalCompleted: totalCompleted,
+                            totalCancelled: totalCancelled
+                        } })];
+        }
+    });
+}); };
+/**
+ * (Admin) Retrieves a paginated list of all transactions for a specific customer.
+ * @param customerId The ID of the customer.
+ * @param pagination The pagination options (page, take).
+ * @returns A paginated list of the customer's transactions.
+ */
+exports.adminListCustomerTransactions = function (customerId, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+    var page, take, skip, where, _a, transactions, totalCount, totalPages;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                page = pagination.page, take = pagination.take;
+                skip = (page - 1) * take;
+                where = {
+                    userId: customerId
+                };
+                return [4 /*yield*/, prisma.$transaction([
+                        prisma.transaction.findMany({
+                            where: where,
+                            include: {
+                                order: { select: { id: true, orderCode: true } },
+                                vendor: { select: { id: true, name: true } }
+                            },
+                            skip: skip,
+                            take: take,
+                            orderBy: {
+                                createdAt: 'desc'
+                            }
+                        }),
+                        prisma.transaction.count({ where: where }),
+                    ])];
+            case 1:
+                _a = _b.sent(), transactions = _a[0], totalCount = _a[1];
+                totalPages = Math.ceil(totalCount / take);
+                return [2 /*return*/, {
+                        data: transactions,
+                        page: page,
+                        totalPages: totalPages,
+                        pageSize: take,
+                        totalCount: totalCount
+                    }];
+        }
     });
 }); };

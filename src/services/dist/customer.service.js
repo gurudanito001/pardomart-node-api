@@ -36,11 +36,12 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.listCustomerTransactionsService = exports.listCustomersService = void 0;
+exports.adminListCustomerTransactionsService = exports.adminUpdateCustomerProfileService = exports.adminGetCustomerDetailsService = exports.adminListAllCustomersService = exports.getAdminCustomerOverviewService = exports.listCustomerTransactionsService = exports.listCustomersService = void 0;
 // services/customer.service.ts
 var client_1 = require("@prisma/client");
 var customerModel = require("../models/customer.model");
 var prisma = new client_1.PrismaClient();
+var dayjs_1 = require("dayjs");
 /**
  * Retrieves a list of customers for a vendor or a specific store.
  * @param options - The filtering options.
@@ -105,6 +106,124 @@ exports.listCustomerTransactionsService = function (requestingUserId, requesting
             // 2. Retrieve transactions using the constructed filters.
             // The model will handle validation of whether the customer has history.
             return [2 /*return*/, customerModel.listCustomerTransactions(modelFilters)];
+        }
+    });
+}); };
+/**
+ * (Admin) Retrieves an overview of customer data for the platform.
+ * @param days The number of days to look back for new customers. Defaults to 30.
+ * @returns An object containing total customers, total completed orders, and new customers.
+ */
+exports.getAdminCustomerOverviewService = function (days) {
+    if (days === void 0) { days = 30; }
+    return __awaiter(void 0, void 0, void 0, function () {
+        var startDate, _a, totalCustomers, totalCompletedOrders, newCustomers;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    startDate = dayjs_1["default"]().subtract(days, 'day').toDate();
+                    return [4 /*yield*/, prisma.$transaction([
+                            // 1. Total number of users with the 'customer' role
+                            prisma.user.count({
+                                where: { role: client_1.Role.customer }
+                            }),
+                            // 2. Total number of completed orders (invoices)
+                            prisma.order.count({
+                                where: {
+                                    orderStatus: { "in": ['delivered', 'picked_up_by_customer'] }
+                                }
+                            }),
+                            // 3. Total new customers in the last X days
+                            prisma.user.count({
+                                where: {
+                                    role: client_1.Role.customer,
+                                    createdAt: { gte: startDate }
+                                }
+                            }),
+                        ])];
+                case 1:
+                    _a = _b.sent(), totalCustomers = _a[0], totalCompletedOrders = _a[1], newCustomers = _a[2];
+                    return [2 /*return*/, { totalCustomers: totalCustomers, totalCompletedOrders: totalCompletedOrders, newCustomers: newCustomers }];
+            }
+        });
+    });
+};
+/**
+ * (Admin) Retrieves a paginated list of all customers with advanced filtering.
+ * @param filters - The filtering criteria.
+ * @param pagination - The pagination options.
+ * @returns A paginated list of customers.
+ */
+exports.adminListAllCustomersService = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, customerModel.adminListAllCustomers(filters, pagination)];
+    });
+}); };
+/**
+ * (Admin) Retrieves detailed information for a single customer.
+ * @param customerId The ID of the customer.
+ * @returns The customer's details along with order statistics.
+ * @throws Error if the customer is not found.
+ */
+exports.adminGetCustomerDetailsService = function (customerId) { return __awaiter(void 0, void 0, void 0, function () {
+    var customerDetails;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, customerModel.adminGetCustomerDetailsById(customerId)];
+            case 1:
+                customerDetails = _a.sent();
+                if (!customerDetails) {
+                    throw new Error('Customer not found or user is not a customer.');
+                }
+                return [2 /*return*/, customerDetails];
+        }
+    });
+}); };
+/**
+ * (Admin) Updates a customer's profile information.
+ * This allows an admin to modify details or suspend/deactivate a customer's account.
+ * @param customerId The ID of the customer to update.
+ * @param payload The data to update on the customer's profile.
+ * @returns The updated customer user object.
+ * @throws Error if the user is not found or is not a customer.
+ */
+exports.adminUpdateCustomerProfileService = function (customerId, payload) { return __awaiter(void 0, void 0, void 0, function () {
+    var customer;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, customerModel.adminGetCustomerDetailsById(customerId)];
+            case 1:
+                customer = _a.sent();
+                if (!customer) {
+                    throw new Error('Customer not found or user is not a customer.');
+                }
+                return [2 /*return*/, prisma.user.update({
+                        where: { id: customerId },
+                        data: payload
+                    })];
+        }
+    });
+}); };
+/**
+ * (Admin) Retrieves a paginated list of all transactions for a specific customer.
+ * @param customerId The ID of the customer.
+ * @param pagination The pagination options.
+ * @returns A paginated list of transactions.
+ * @throws Error if the customer is not found.
+ */
+exports.adminListCustomerTransactionsService = function (customerId, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+    var customer;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, prisma.user.findFirst({
+                    where: { id: customerId, role: client_1.Role.customer }
+                })];
+            case 1:
+                customer = _a.sent();
+                if (!customer) {
+                    throw new Error('Customer not found or user is not a customer.');
+                }
+                return [2 /*return*/, customerModel.adminListCustomerTransactions(customerId, pagination)];
         }
     });
 }); };

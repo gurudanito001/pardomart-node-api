@@ -126,21 +126,8 @@ exports.createUser = function (payload) { return __awaiter(void 0, void 0, Promi
 exports.updateUser = function (id, payload) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
         return [2 /*return*/, prisma_1.prisma.user.update({
-                where: {
-                    id: id
-                },
-                data: {
-                    name: payload.name,
-                    image: payload.image,
-                    email: payload.email,
-                    mobileNumber: payload.mobileNumber,
-                    role: payload.role,
-                    mobileVerified: payload.mobileVerified,
-                    active: payload.active,
-                    language: payload.language,
-                    notification: payload.notification,
-                    referralCode: payload.referralCode
-                }
+                where: { id: id },
+                data: payload
             })];
     });
 }); };

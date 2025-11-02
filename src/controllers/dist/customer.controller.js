@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.listCustomerTransactionsController = exports.listCustomersController = void 0;
+exports.adminListCustomerTransactionsController = exports.adminUpdateCustomerProfileController = exports.adminGetCustomerDetailsController = exports.adminListAllCustomersController = exports.getAdminCustomerOverviewController = exports.listCustomerTransactionsController = exports.listCustomersController = void 0;
 var customerService = require("../services/customer.service");
 var client_1 = require("@prisma/client");
 /**
@@ -185,6 +185,273 @@ exports.listCustomerTransactionsController = function (req, res) { return __awai
                     return [2 /*return*/, res.status(404).json({ error: error_2.message })];
                 }
                 res.status(500).json({ error: error_2.message || 'Internal server error' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /customers/admin/overview:
+ *   get:
+ *     summary: Get platform-wide customer overview data (Admin)
+ *     tags: [Customers, Admin]
+ *     description: Retrieves aggregate data about customers, such as total customers, total completed orders (invoices), and new customers in a given period. Only accessible by admins.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: days
+ *         schema:
+ *           type: integer
+ *           default: 30
+ *         description: The number of past days to count for "new customers".
+ *     responses:
+ *       200:
+ *         description: An object containing the customer overview data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalCustomers: { type: integer }
+ *                 totalCompletedOrders: { type: integer }
+ *                 newCustomers: { type: integer }
+ *       500:
+ *         description: Internal server error.
+ */
+exports.getAdminCustomerOverviewController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var days, overviewData, error_3;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                days = req.query.days ? parseInt(req.query.days, 10) : 30;
+                return [4 /*yield*/, customerService.getAdminCustomerOverviewService(days)];
+            case 1:
+                overviewData = _a.sent();
+                res.status(200).json(overviewData);
+                return [3 /*break*/, 3];
+            case 2:
+                error_3 = _a.sent();
+                console.error('Error getting customer overview data:', error_3);
+                res.status(500).json({ error: 'An unexpected error occurred.' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /customers/admin/all:
+ *   get:
+ *     summary: Get a paginated list of all customers (Admin)
+ *     tags: [Customers, Admin]
+ *     description: Retrieves a paginated list of all users with the 'customer' role. Allows filtering by name, status, amount spent, and creation date. Only accessible by admins.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - { in: query, name: name, schema: { type: string }, description: "Filter by customer name (case-insensitive)." }
+ *       - { in: query, name: status, schema: { type: boolean }, description: "Filter by active status (true/false)." }
+ *       - { in: query, name: minAmountSpent, schema: { type: number }, description: "Filter by minimum total amount spent." }
+ *       - { in: query, name: maxAmountSpent, schema: { type: number }, description: "Filter by maximum total amount spent." }
+ *       - { in: query, name: createdAtStart, schema: { type: string, format: date-time }, description: "Filter customers created on or after this date." }
+ *       - { in: query, name: createdAtEnd, schema: { type: string, format: date-time }, description: "Filter customers created on or before this date." }
+ *       - { in: query, name: page, schema: { type: integer, default: 1 }, description: "Page number for pagination." }
+ *       - { in: query, name: size, schema: { type: integer, default: 20 }, description: "Number of items per page." }
+ *     responses:
+ *       200:
+ *         description: A paginated list of customers.
+ *       500:
+ *         description: Internal server error.
+ */
+exports.adminListAllCustomersController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, name, status, minAmountSpent, maxAmountSpent, createdAtStart, createdAtEnd, parseBoolean, filters, page, take, result, error_4;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _b.trys.push([0, 2, , 3]);
+                _a = req.query, name = _a.name, status = _a.status, minAmountSpent = _a.minAmountSpent, maxAmountSpent = _a.maxAmountSpent, createdAtStart = _a.createdAtStart, createdAtEnd = _a.createdAtEnd;
+                parseBoolean = function (value) {
+                    if (value === 'true')
+                        return true;
+                    if (value === 'false')
+                        return false;
+                    return undefined;
+                };
+                filters = {
+                    name: name,
+                    status: parseBoolean(status),
+                    minAmountSpent: minAmountSpent ? parseFloat(minAmountSpent) : undefined,
+                    maxAmountSpent: maxAmountSpent ? parseFloat(maxAmountSpent) : undefined,
+                    createdAtStart: createdAtStart,
+                    createdAtEnd: createdAtEnd
+                };
+                page = parseInt(req.query.page) || 1;
+                take = parseInt(req.query.size) || 20;
+                return [4 /*yield*/, customerService.adminListAllCustomersService(filters, { page: page, take: take })];
+            case 1:
+                result = _b.sent();
+                res.status(200).json(result);
+                return [3 /*break*/, 3];
+            case 2:
+                error_4 = _b.sent();
+                console.error('Error in adminListAllCustomersController:', error_4);
+                res.status(500).json({ error: 'An unexpected error occurred.' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /customers/admin/{customerId}:
+ *   get:
+ *     summary: Get a single customer's details (Admin)
+ *     tags: [Customers, Admin]
+ *     description: Retrieves detailed information for a specific customer, including their profile and order statistics (total, completed, cancelled). Only accessible by admins.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: customerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the customer to retrieve.
+ *     responses:
+ *       200:
+ *         description: The customer's detailed information.
+ *       404:
+ *         description: Customer not found.
+ *       500:
+ *         description: Internal server error.
+ */
+exports.adminGetCustomerDetailsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var customerId, customerDetails, error_5;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                customerId = req.params.customerId;
+                return [4 /*yield*/, customerService.adminGetCustomerDetailsService(customerId)];
+            case 1:
+                customerDetails = _a.sent();
+                res.status(200).json(customerDetails);
+                return [3 /*break*/, 3];
+            case 2:
+                error_5 = _a.sent();
+                if (error_5.message.includes('not found')) {
+                    return [2 /*return*/, res.status(404).json({ error: error_5.message })];
+                }
+                console.error('Error in adminGetCustomerDetailsController:', error_5);
+                res.status(500).json({ error: 'An unexpected error occurred.' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /customers/admin/{customerId}:
+ *   patch:
+ *     summary: Update a customer's profile (Admin)
+ *     tags: [Customers, Admin]
+ *     description: >
+ *       Allows an admin to update a customer's profile details.
+ *       This is primarily used to suspend or reactivate an account by setting the `active` field to `false` or `true`.
+ *       Other fields like `name`, `email`, etc., can also be updated.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: customerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the customer to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateUserPayload'
+ *     responses:
+ *       200:
+ *         description: The updated customer profile.
+ *       404:
+ *         description: Customer not found.
+ *       500:
+ *         description: Internal server error.
+ */
+exports.adminUpdateCustomerProfileController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var customerId, updates, updatedCustomer, error_6;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                customerId = req.params.customerId;
+                updates = req.body;
+                return [4 /*yield*/, customerService.adminUpdateCustomerProfileService(customerId, updates)];
+            case 1:
+                updatedCustomer = _a.sent();
+                res.status(200).json(updatedCustomer);
+                return [3 /*break*/, 3];
+            case 2:
+                error_6 = _a.sent();
+                res.status(error_6.message.includes('not found') ? 404 : 500).json({ error: error_6.message });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /customers/admin/{customerId}/transactions:
+ *   get:
+ *     summary: Get a paginated list of a customer's transactions (Admin)
+ *     tags: [Customers, Admin, Transactions]
+ *     description: Retrieves a paginated list of all transactions for a specific customer. Only accessible by admins.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: customerId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: The ID of the customer.
+ *       - { in: query, name: page, schema: { type: integer, default: 1 }, description: "Page number for pagination." }
+ *       - { in: query, name: size, schema: { type: integer, default: 20 }, description: "Number of items per page." }
+ *     responses:
+ *       200:
+ *         description: A paginated list of the customer's transactions.
+ *       404:
+ *         description: Customer not found.
+ *       500:
+ *         description: Internal server error.
+ */
+exports.adminListCustomerTransactionsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var customerId, page, take, result, error_7;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                customerId = req.params.customerId;
+                page = parseInt(req.query.page) || 1;
+                take = parseInt(req.query.size) || 20;
+                return [4 /*yield*/, customerService.adminListCustomerTransactionsService(customerId, { page: page, take: take })];
+            case 1:
+                result = _a.sent();
+                res.status(200).json(result);
+                return [3 /*break*/, 3];
+            case 2:
+                error_7 = _a.sent();
+                if (error_7.message.includes('not found')) {
+                    return [2 /*return*/, res.status(404).json({ error: error_7.message })];
+                }
+                res.status(500).json({ error: 'An unexpected error occurred.' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
