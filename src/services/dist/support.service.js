@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.updateSupportTicketStatusService = exports.getAllSupportTicketsService = exports.getSupportTicketsByUserService = exports.createSupportTicketService = void 0;
+exports.getSupportTicketOverviewService = exports.updateSupportTicketStatusService = exports.getSupportTicketByIdService = exports.getAllSupportTicketsService = exports.getSupportTicketsByUserService = exports.createSupportTicketService = void 0;
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
 /**
@@ -82,16 +82,42 @@ exports.getSupportTicketsByUserService = function (userId) { return __awaiter(vo
 }); };
 /**
  * Retrieves all support tickets with pagination (for admin use).
+ * @param filters - The filtering criteria.
+ * @param page - The page number for pagination.
+ * @param take - The number of items per page.
  * @returns A paginated list of all support tickets.
  */
-exports.getAllSupportTicketsService = function (page, take) { return __awaiter(void 0, void 0, Promise, function () {
-    var skip, _a, tickets, totalCount, totalPages;
+exports.getAllSupportTicketsService = function (filters, page, take) { return __awaiter(void 0, void 0, Promise, function () {
+    var skip, customerName, status, createdAtStart, createdAtEnd, where, _a, tickets, totalCount, totalPages;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
                 skip = (page - 1) * take;
+                customerName = filters.customerName, status = filters.status, createdAtStart = filters.createdAtStart, createdAtEnd = filters.createdAtEnd;
+                where = {};
+                if (customerName) {
+                    where.user = {
+                        name: {
+                            contains: customerName,
+                            mode: 'insensitive'
+                        }
+                    };
+                }
+                if (status) {
+                    where.status = status;
+                }
+                if (createdAtStart || createdAtEnd) {
+                    where.createdAt = {};
+                    if (createdAtStart) {
+                        where.createdAt.gte = new Date(createdAtStart);
+                    }
+                    if (createdAtEnd) {
+                        where.createdAt.lte = new Date(createdAtEnd);
+                    }
+                }
                 return [4 /*yield*/, prisma.$transaction([
                         prisma.supportTicket.findMany({
+                            where: where,
                             orderBy: { createdAt: 'desc' },
                             include: {
                                 user: {
@@ -105,12 +131,44 @@ exports.getAllSupportTicketsService = function (page, take) { return __awaiter(v
                             skip: skip,
                             take: take
                         }),
-                        prisma.supportTicket.count(),
+                        prisma.supportTicket.count({ where: where }),
                     ])];
             case 1:
                 _a = _b.sent(), tickets = _a[0], totalCount = _a[1];
                 totalPages = Math.ceil(totalCount / take);
                 return [2 /*return*/, { data: tickets, totalCount: totalCount, totalPages: totalPages }];
+        }
+    });
+}); };
+/**
+ * Retrieves a single support ticket by its ID.
+ * Performs authorization to ensure only the ticket owner or an admin can view it.
+ * @param ticketId The ID of the ticket to retrieve.
+ * @param requestingUserId The ID of the user making the request.
+ * @param requestingUserRole The role of the user making the request.
+ * @returns The support ticket object with user details, or null if not found.
+ * @throws Error if the user is not authorized.
+ */
+exports.getSupportTicketByIdService = function (ticketId, requestingUserId, requestingUserRole) { return __awaiter(void 0, void 0, Promise, function () {
+    var ticket;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, prisma.supportTicket.findUnique({
+                    where: { id: ticketId },
+                    include: {
+                        user: { select: { id: true, name: true, email: true } }
+                    }
+                })];
+            case 1:
+                ticket = _a.sent();
+                if (!ticket) {
+                    return [2 /*return*/, null];
+                }
+                // Authorization check: Allow if the requester is the owner or an admin.
+                if (ticket.userId !== requestingUserId && requestingUserRole !== client_1.Role.admin) {
+                    throw new Error('You are not authorized to view this ticket.');
+                }
+                return [2 /*return*/, ticket];
         }
     });
 }); };
@@ -138,6 +196,33 @@ exports.updateSupportTicketStatusService = function (ticketId, status) { return 
                 // Optional: Notify the user that their ticket status has been updated.
                 // e.g., createAndSendNotification({ userId: updatedTicket.userId, ... })
                 return [2 /*return*/, updatedTicket];
+        }
+    });
+}); };
+/**
+ * (Admin) Retrieves an overview of support ticket data for the platform.
+ * @returns An object containing total, open, and closed ticket counts.
+ */
+exports.getSupportTicketOverviewService = function () { return __awaiter(void 0, void 0, Promise, function () {
+    var _a, totalTickets, openTickets, closedTickets;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0: return [4 /*yield*/, Promise.all([
+                    prisma.supportTicket.count(),
+                    prisma.supportTicket.count({
+                        where: {
+                            status: { "in": [client_1.TicketStatus.OPEN, client_1.TicketStatus.IN_PROGRESS] }
+                        }
+                    }),
+                    prisma.supportTicket.count({
+                        where: {
+                            status: { "in": [client_1.TicketStatus.RESOLVED, client_1.TicketStatus.CLOSED] }
+                        }
+                    }),
+                ])];
+            case 1:
+                _a = _b.sent(), totalTickets = _a[0], openTickets = _a[1], closedTickets = _a[2];
+                return [2 /*return*/, { totalTickets: totalTickets, openTickets: openTickets, closedTickets: closedTickets }];
         }
     });
 }); };

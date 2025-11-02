@@ -1,6 +1,7 @@
 // middlewares/validation.middleware.ts
 import { Request, Response, NextFunction } from 'express';
 import { validationResult, ValidationChain, body, param, query } from 'express-validator';
+import { ContentType } from '@prisma/client';
 import {
   Days,
   Role,
@@ -488,3 +489,24 @@ export const validateUpdateFaq = [
 ];
 
 export const validateFaqId = [param('id').isUUID().withMessage('A valid FAQ ID is required in the URL path.')];
+
+
+
+export const validateContentType: ValidationChain[] = [
+  param('type')
+    .isIn(Object.values(ContentType))
+    .withMessage(`Invalid content type. Must be one of: ${Object.values(ContentType).join(', ')}`),
+];
+
+export const validateUpdateContent: ValidationChain[] = [
+  param('type')
+    .isIn(Object.values(ContentType))
+    .withMessage(`Invalid content type. Must be one of: ${Object.values(ContentType).join(', ')}`),
+  body('content')
+    .isString()
+    .withMessage('Content must be a string.')
+    .notEmpty()
+    .withMessage('Content cannot be empty.')
+    .trim(),
+];
+

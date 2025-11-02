@@ -25,6 +25,7 @@ var bugReport_routes_1 = require("./bugReport.routes");
 var health_routes_1 = require("./health.routes");
 var faq_routes_1 = require("./faq.routes");
 var media_routes_1 = require("./media.routes");
+var content_routes_1 = require("./content.routes");
 var staff_routes_1 = require("./staff.routes");
 var customer_routes_1 = require("./customer.routes"); // This line was already present
 var earnings_routes_1 = require("./earnings.routes");
@@ -55,6 +56,7 @@ router.use('/api/v1/support', support_routes_1["default"]);
 router.use('/api/v1/transactions', transaction_routes_1["default"]); // This path is correct, now pointing to the new routes file
 router.use('/api/v1/bug-reports', bugReport_routes_1["default"]);
 router.use('/api/v1/faqs', faq_routes_1["default"]);
+router.use('/api/v1/content', content_routes_1["default"]);
 router.use('/api/v1/media', media_routes_1["default"]);
 router.use('/api/v1/staff', staff_routes_1["default"]);
 router.use('/api/v1/customers', customer_routes_1["default"]);

@@ -36,55 +36,49 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteFaqService = exports.updateFaqService = exports.createFaqService = exports.getAllFaqsService = void 0;
-var faqModel = require("../models/faq.model");
+exports.upsertContent = exports.getContentByType = exports.ContentType = void 0;
+var client_1 = require("@prisma/client");
+exports.ContentType = client_1.ContentType;
+var prisma = new client_1.PrismaClient();
 /**
- * Service to get all active FAQs.
+ * Retrieves a content entry by its type.
+ * If it doesn't exist, it creates a default empty entry.
+ * @param type The type of content to retrieve (e.g., PRIVACY_POLICY).
+ * @returns The content object.
  */
-exports.getAllFaqsService = function (filters) {
-    return faqModel.getAll(filters);
-};
-/**
- * Service to create a new FAQ.
- * @param payload The data for the new FAQ.
- */
-exports.createFaqService = function (payload) {
-    return faqModel.create(payload);
-};
-/**
- * Service to update an existing FAQ.
- * @param id The ID of the FAQ to update.
- * @param payload The data to update the FAQ with.
- */
-exports.updateFaqService = function (id, payload) { return __awaiter(void 0, void 0, void 0, function () {
-    var faq;
+exports.getContentByType = function (type) { return __awaiter(void 0, void 0, Promise, function () {
+    var content;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4 /*yield*/, faqModel.getById(id)];
+            case 0: return [4 /*yield*/, prisma.content.findUnique({
+                    where: { type: type }
+                })];
             case 1:
-                faq = _a.sent();
-                if (!faq) {
-                    throw new Error('FAQ not found');
+                content = _a.sent();
+                if (!content) {
+                    return [2 /*return*/, prisma.content.create({
+                            data: {
+                                type: type,
+                                content: "<p>No " + type.replace('_', ' ').toLowerCase() + " has been set yet.</p>"
+                            }
+                        })];
                 }
-                return [2 /*return*/, faqModel.update(id, payload)];
+                return [2 /*return*/, content];
         }
     });
 }); };
 /**
- * Service to delete an FAQ.
- * @param id The ID of the FAQ to delete.
+ * Creates or updates a content entry.
+ * @param type The type of content to upsert.
+ * @param payload The data to update, containing the content string.
+ * @returns The created or updated content object.
  */
-exports.deleteFaqService = function (id) { return __awaiter(void 0, void 0, void 0, function () {
-    var faq;
+exports.upsertContent = function (type, payload) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0: return [4 /*yield*/, faqModel.getById(id)];
-            case 1:
-                faq = _a.sent();
-                if (!faq) {
-                    throw new Error('FAQ not found');
-                }
-                return [2 /*return*/, faqModel.remove(id)];
-        }
+        return [2 /*return*/, prisma.content.upsert({
+                where: { type: type },
+                update: { content: payload.content },
+                create: { type: type, content: payload.content }
+            })];
     });
 }); };

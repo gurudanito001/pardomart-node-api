@@ -5,9 +5,18 @@ var prisma_1 = require("../config/prisma");
 /**
  * Retrieves all active FAQs, ordered by sortOrder.
  */
-exports.getAll = function () {
+exports.getAll = function (filters) {
+    var where = {
+        isActive: true
+    };
+    if (filters.question) {
+        where.question = { contains: filters.question, mode: 'insensitive' };
+    }
+    if (filters.answer) {
+        where.answer = { contains: filters.answer, mode: 'insensitive' };
+    }
     return prisma_1.prisma.faq.findMany({
-        where: { isActive: true },
+        where: where,
         orderBy: { sortOrder: 'asc' }
     });
 };

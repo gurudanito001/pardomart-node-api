@@ -1,4 +1,4 @@
-import { PrismaClient, SupportTicket, TicketCategory, Prisma, TicketStatus } from '@prisma/client';
+import { PrismaClient, SupportTicket, TicketCategory, Prisma, TicketStatus, Role } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -46,18 +46,56 @@ export const getSupportTicketsByUserService = async (userId: string): Promise<Su
   });
 };
 
+export interface GetAllTicketsFilters {
+  customerName?: string;
+  status?: TicketStatus;
+  createdAtStart?: string;
+  createdAtEnd?: string;
+}
+
 /**
  * Retrieves all support tickets with pagination (for admin use).
+ * @param filters - The filtering criteria.
+ * @param page - The page number for pagination.
+ * @param take - The number of items per page.
  * @returns A paginated list of all support tickets.
  */
 export const getAllSupportTicketsService = async (
+  filters: GetAllTicketsFilters,
   page: number,
   take: number
 ): Promise<{ data: SupportTicket[]; totalCount: number; totalPages: number }> => {
   const skip = (page - 1) * take;
+  const { customerName, status, createdAtStart, createdAtEnd } = filters;
+
+  const where: Prisma.SupportTicketWhereInput = {};
+
+  if (customerName) {
+    where.user = {
+      name: {
+        contains: customerName,
+        mode: 'insensitive',
+      },
+    };
+  }
+
+  if (status) {
+    where.status = status;
+  }
+
+  if (createdAtStart || createdAtEnd) {
+    where.createdAt = {};
+    if (createdAtStart) {
+      (where.createdAt as Prisma.DateTimeFilter).gte = new Date(createdAtStart);
+    }
+    if (createdAtEnd) {
+      (where.createdAt as Prisma.DateTimeFilter).lte = new Date(createdAtEnd);
+    }
+  }
 
   const [tickets, totalCount] = await prisma.$transaction([
     prisma.supportTicket.findMany({
+      where,
       orderBy: { createdAt: 'desc' },
       include: {
         user: {
@@ -71,12 +109,45 @@ export const getAllSupportTicketsService = async (
       skip,
       take,
     }),
-    prisma.supportTicket.count(),
+    prisma.supportTicket.count({ where }),
   ]);
 
   const totalPages = Math.ceil(totalCount / take);
 
   return { data: tickets, totalCount, totalPages };
+};
+
+/**
+ * Retrieves a single support ticket by its ID.
+ * Performs authorization to ensure only the ticket owner or an admin can view it.
+ * @param ticketId The ID of the ticket to retrieve.
+ * @param requestingUserId The ID of the user making the request.
+ * @param requestingUserRole The role of the user making the request.
+ * @returns The support ticket object with user details, or null if not found.
+ * @throws Error if the user is not authorized.
+ */
+export const getSupportTicketByIdService = async (
+  ticketId: string,
+  requestingUserId: string,
+  requestingUserRole: Role
+): Promise<SupportTicket | null> => {
+  const ticket = await prisma.supportTicket.findUnique({
+    where: { id: ticketId },
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+    },
+  });
+
+  if (!ticket) {
+    return null;
+  }
+
+  // Authorization check: Allow if the requester is the owner or an admin.
+  if (ticket.userId !== requestingUserId && requestingUserRole !== Role.admin) {
+    throw new Error('You are not authorized to view this ticket.');
+  }
+
+  return ticket;
 };
 
 /**
@@ -103,4 +174,30 @@ export const updateSupportTicketStatusService = async (
   // e.g., createAndSendNotification({ userId: updatedTicket.userId, ... })
 
   return updatedTicket;
+};
+
+/**
+ * (Admin) Retrieves an overview of support ticket data for the platform.
+ * @returns An object containing total, open, and closed ticket counts.
+ */
+export const getSupportTicketOverviewService = async (): Promise<{
+  totalTickets: number;
+  openTickets: number;
+  closedTickets: number;
+}> => {
+  const [totalTickets, openTickets, closedTickets] = await Promise.all([
+    prisma.supportTicket.count(),
+    prisma.supportTicket.count({
+      where: {
+        status: { in: [TicketStatus.OPEN, TicketStatus.IN_PROGRESS] },
+      },
+    }),
+    prisma.supportTicket.count({
+      where: {
+        status: { in: [TicketStatus.RESOLVED, TicketStatus.CLOSED] },
+      },
+    }),
+  ]);
+
+  return { totalTickets, openTickets, closedTickets };
 };

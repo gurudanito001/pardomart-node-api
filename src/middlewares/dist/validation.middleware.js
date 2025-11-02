@@ -43,9 +43,10 @@ var __spreadArrays = (this && this.__spreadArrays) || function () {
     return r;
 };
 exports.__esModule = true;
-exports.validateFaqId = exports.validateUpdateFaq = exports.validateCreateFaq = exports.validateUpdateBugReportStatus = exports.validateNotificationId = exports.validateGetNotifications = exports.validateUnregisterDevice = exports.validateRegisterDevice = exports.validateDetachPaymentMethod = exports.validateUpdateSupportTicketStatus = exports.validateCreateSupportTicket = exports.validateRespondToReplacement = exports.validateUpdateOrderItemShoppingStatus = exports.validateMarkMessagesAsRead = exports.validateSendMessage = exports.validateGetPath = exports.validateAddLocation = exports.validateUpdateUser = exports.validateUserId = exports.validateGetAllUsers = exports.validateSearchByCategoryId = exports.validateSearchStoreProducts = exports.validateGeneralSearch = exports.validateCalculateFees = exports.validateFeeType = exports.validateFeeId = exports.validateUpdateFee = exports.validateCreateFee = exports.validateRemoveFromWishlist = exports.validateAddToWishlist = exports.validateUpdateTip = exports.validateGetDeliverySlots = exports.validateDeclineOrder = exports.validateVendorOrderAction = exports.validateGetVendorOrders = exports.validateUpdateOrder = exports.validateUpdateOrderStatus = exports.validateGetOrDeleteOrder = exports.validateCreateOrder = exports.validateGetOrDeleteDeliveryAddress = exports.validateUpdateDeliveryAddress = exports.validateCreateDeliveryAddress = exports.validateGetAllCategories = exports.validateGetOrDeleteCategory = exports.validateUpdateCategory = exports.validateCreateCategoriesBulk = exports.validateCreateCategory = exports.validateCreateOrUpdateVendorOpeningHours = exports.validateUpdateVendor = exports.validateGetAllVendors = exports.validateGetVendorById = exports.validateVendorId = exports.validateCreateVendor = exports.validateVerifyAndLogin = exports.validateLogin = exports.validateRegisterUser = exports.validate = void 0;
+exports.validateUpdateContent = exports.validateContentType = exports.validateFaqId = exports.validateUpdateFaq = exports.validateCreateFaq = exports.validateUpdateBugReportStatus = exports.validateNotificationId = exports.validateGetNotifications = exports.validateUnregisterDevice = exports.validateRegisterDevice = exports.validateDetachPaymentMethod = exports.validateUpdateSupportTicketStatus = exports.validateCreateSupportTicket = exports.validateRespondToReplacement = exports.validateUpdateOrderItemShoppingStatus = exports.validateMarkMessagesAsRead = exports.validateSendMessage = exports.validateGetPath = exports.validateAddLocation = exports.validateUpdateUser = exports.validateUserId = exports.validateGetAllUsers = exports.validateSearchByCategoryId = exports.validateSearchStoreProducts = exports.validateGeneralSearch = exports.validateCalculateFees = exports.validateFeeType = exports.validateFeeId = exports.validateUpdateFee = exports.validateCreateFee = exports.validateRemoveFromWishlist = exports.validateAddToWishlist = exports.validateUpdateTip = exports.validateGetDeliverySlots = exports.validateDeclineOrder = exports.validateVendorOrderAction = exports.validateGetVendorOrders = exports.validateUpdateOrder = exports.validateUpdateOrderStatus = exports.validateGetOrDeleteOrder = exports.validateCreateOrder = exports.validateGetOrDeleteDeliveryAddress = exports.validateUpdateDeliveryAddress = exports.validateCreateDeliveryAddress = exports.validateGetAllCategories = exports.validateGetOrDeleteCategory = exports.validateUpdateCategory = exports.validateCreateCategoriesBulk = exports.validateCreateCategory = exports.validateCreateOrUpdateVendorOpeningHours = exports.validateUpdateVendor = exports.validateGetAllVendors = exports.validateGetVendorById = exports.validateVendorId = exports.validateCreateVendor = exports.validateVerifyAndLogin = exports.validateLogin = exports.validateRegisterUser = exports.validate = void 0;
 var express_validator_1 = require("express-validator");
 var client_1 = require("@prisma/client");
+var client_2 = require("@prisma/client");
 // Generic validation middleware
 exports.validate = function (validations) {
     return function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
@@ -73,9 +74,9 @@ exports.validateRegisterUser = [
     express_validator_1.body('role')
         .notEmpty()
         .withMessage('Role is required')
-        .isIn(Object.values(client_1.Role))
-        .withMessage("Role must be one of: " + Object.values(client_1.Role).join(', ')),
-    express_validator_1.body('vendorId')["if"](express_validator_1.body('role').equals(client_1.Role.store_shopper))
+        .isIn(Object.values(client_2.Role))
+        .withMessage("Role must be one of: " + Object.values(client_2.Role).join(', ')),
+    express_validator_1.body('vendorId')["if"](express_validator_1.body('role').equals(client_2.Role.store_shopper))
         .isUUID(4).withMessage('A valid vendorId is required for store_shopper role.'),
 ];
 exports.validateLogin = [
@@ -83,8 +84,8 @@ exports.validateLogin = [
     express_validator_1.body('role')
         .notEmpty()
         .withMessage('Role is required')
-        .isIn(Object.values(client_1.Role))
-        .withMessage("Role must be one of: " + Object.values(client_1.Role).join(', ')),
+        .isIn(Object.values(client_2.Role))
+        .withMessage("Role must be one of: " + Object.values(client_2.Role).join(', ')),
 ];
 exports.validateVerifyAndLogin = [
     express_validator_1.body('mobileNumber').isMobilePhone('any', { strictMode: true }).withMessage('A valid E.164 mobile number is required (e.g., +1234567890).'),
@@ -92,8 +93,8 @@ exports.validateVerifyAndLogin = [
     express_validator_1.body('role')
         .notEmpty()
         .withMessage('Role is required')
-        .isIn(Object.values(client_1.Role))
-        .withMessage("Role must be one of: " + Object.values(client_1.Role).join(', ')),
+        .isIn(Object.values(client_2.Role))
+        .withMessage("Role must be one of: " + Object.values(client_2.Role).join(', ')),
 ];
 exports.validateCreateVendor = [
     //body('userId').notEmpty().withMessage('User ID is required'),
@@ -152,8 +153,8 @@ exports.validateCreateOrUpdateVendorOpeningHours = [
     express_validator_1.body('day')
         .notEmpty()
         .withMessage('Day is required')
-        .isIn(Object.values(client_1.Days))
-        .withMessage("Day must be one of: " + Object.values(client_1.Days).join(', ')),
+        .isIn(Object.values(client_2.Days))
+        .withMessage("Day must be one of: " + Object.values(client_2.Days).join(', ')),
     express_validator_1.body('open')
         .optional()
         .custom(function (value) {
@@ -223,8 +224,8 @@ exports.validateGetOrDeleteDeliveryAddress = [
 ];
 exports.validateCreateOrder = [
     express_validator_1.body('vendorId').isUUID(4).withMessage('A valid vendorId is required.'),
-    express_validator_1.body('paymentMethod').isIn(Object.values(client_1.PaymentMethods)).withMessage("paymentMethod must be one of: " + Object.values(client_1.PaymentMethods).join(', ')),
-    express_validator_1.body('shippingAddressId')["if"](express_validator_1.body('deliveryMethod').equals(client_1.DeliveryMethod.delivery_person))
+    express_validator_1.body('paymentMethod').isIn(Object.values(client_2.PaymentMethods)).withMessage("paymentMethod must be one of: " + Object.values(client_2.PaymentMethods).join(', ')),
+    express_validator_1.body('shippingAddressId')["if"](express_validator_1.body('deliveryMethod').equals(client_2.DeliveryMethod.delivery_person))
         .notEmpty().withMessage('shippingAddressId is required for delivery orders.')
         .isUUID(4).withMessage('shippingAddressId must be a valid UUID.'),
     express_validator_1.body('deliveryInstructions').optional().isString().isLength({ max: 500 }).withMessage('Delivery instructions cannot exceed 500 characters.'),
@@ -234,8 +235,8 @@ exports.validateCreateOrder = [
     express_validator_1.body('orderItems.*.instructions').optional().isString().isLength({ max: 500 }).withMessage('Item instructions cannot exceed 500 characters.'),
     express_validator_1.body('orderItems.*.replacementIds').optional().isArray({ max: 10 }).withMessage('A maximum of 10 replacement IDs are allowed.'),
     express_validator_1.body('orderItems.*.replacementIds.*').isUUID(4).withMessage('Each replacementId must be a valid UUID.'),
-    express_validator_1.body('shoppingMethod').isIn(Object.values(client_1.ShoppingMethod)).withMessage("shoppingMethod must be one of: " + Object.values(client_1.ShoppingMethod).join(', ')),
-    express_validator_1.body('deliveryMethod').isIn(Object.values(client_1.DeliveryMethod)).withMessage("deliveryMethod must be one of: " + Object.values(client_1.DeliveryMethod).join(', ')),
+    express_validator_1.body('shoppingMethod').isIn(Object.values(client_2.ShoppingMethod)).withMessage("shoppingMethod must be one of: " + Object.values(client_2.ShoppingMethod).join(', ')),
+    express_validator_1.body('deliveryMethod').isIn(Object.values(client_2.DeliveryMethod)).withMessage("deliveryMethod must be one of: " + Object.values(client_2.DeliveryMethod).join(', ')),
     express_validator_1.body('scheduledDeliveryTime').optional({ nullable: true }).isISO8601().withMessage('scheduledDeliveryTime must be a valid ISO 8601 date.'),
     express_validator_1.body('shopperTip').optional().isFloat({ min: 0 }).withMessage('shopperTip must be a non-negative number.'),
     express_validator_1.body('deliveryPersonTip').optional().isFloat({ min: 0 }).withMessage('deliveryPersonTip must be a non-negative number.'),
@@ -245,7 +246,7 @@ exports.validateGetOrDeleteOrder = [
 ];
 exports.validateUpdateOrderStatus = [
     express_validator_1.param('id').isUUID(4).withMessage('A valid order ID is required in the URL.'),
-    express_validator_1.body('status').isIn(Object.values(client_1.OrderStatus)).withMessage("Status must be one of: " + Object.values(client_1.OrderStatus).join(', ')),
+    express_validator_1.body('status').isIn(Object.values(client_2.OrderStatus)).withMessage("Status must be one of: " + Object.values(client_2.OrderStatus).join(', ')),
 ];
 exports.validateUpdateOrder = [
     express_validator_1.param('id').isUUID(4).withMessage('A valid order ID is required in the URL.'),
@@ -256,13 +257,13 @@ exports.validateUpdateOrder = [
         }
         return true;
     }),
-    express_validator_1.body('paymentMethod').optional().isIn(Object.values(client_1.PaymentMethods)).withMessage("paymentMethod must be one of: " + Object.values(client_1.PaymentMethods).join(', ')),
-    express_validator_1.body('paymentStatus').optional().isIn(Object.values(client_1.PaymentStatus)).withMessage("paymentStatus must be one of: " + Object.values(client_1.PaymentStatus).join(', ')),
-    express_validator_1.body('orderStatus').optional().isIn(Object.values(client_1.OrderStatus)).withMessage("orderStatus must be one of: " + Object.values(client_1.OrderStatus).join(', ')),
+    express_validator_1.body('paymentMethod').optional().isIn(Object.values(client_2.PaymentMethods)).withMessage("paymentMethod must be one of: " + Object.values(client_2.PaymentMethods).join(', ')),
+    express_validator_1.body('paymentStatus').optional().isIn(Object.values(client_2.PaymentStatus)).withMessage("paymentStatus must be one of: " + Object.values(client_2.PaymentStatus).join(', ')),
+    express_validator_1.body('orderStatus').optional().isIn(Object.values(client_2.OrderStatus)).withMessage("orderStatus must be one of: " + Object.values(client_2.OrderStatus).join(', ')),
     express_validator_1.body('deliveryAddressId').optional({ nullable: true }).isUUID(4).withMessage('deliveryAddressId must be a valid UUID.'),
 ];
 exports.validateGetVendorOrders = [
-    express_validator_1.query('status').optional().isIn(Object.values(client_1.OrderStatus)).withMessage("Status must be one of: " + Object.values(client_1.OrderStatus).join(', ')),
+    express_validator_1.query('status').optional().isIn(Object.values(client_2.OrderStatus)).withMessage("Status must be one of: " + Object.values(client_2.OrderStatus).join(', ')),
 ];
 exports.validateVendorOrderAction = [
     express_validator_1.param('orderId').isUUID(4).withMessage('A valid orderId is required in the URL.'),
@@ -273,7 +274,7 @@ exports.validateDeclineOrder = [
 ];
 exports.validateGetDeliverySlots = [
     express_validator_1.query('vendorId').notEmpty().withMessage('vendorId is required.').isUUID(4).withMessage('vendorId must be a valid UUID.'),
-    express_validator_1.query('deliveryMethod').notEmpty().withMessage('deliveryMethod is required.').isIn(Object.values(client_1.DeliveryMethod)).withMessage("deliveryMethod must be one of: " + Object.values(client_1.DeliveryMethod).join(', ')),
+    express_validator_1.query('deliveryMethod').notEmpty().withMessage('deliveryMethod is required.').isIn(Object.values(client_2.DeliveryMethod)).withMessage("deliveryMethod must be one of: " + Object.values(client_2.DeliveryMethod).join(', ')),
 ];
 exports.validateUpdateTip = [
     express_validator_1.param('orderId').isUUID(4).withMessage('A valid orderId is required in the URL.'),
@@ -298,15 +299,15 @@ exports.validateCreateFee = [
         .trim()
         .notEmpty()
         .withMessage('Fee type is required.')
-        .isIn(Object.values(client_1.FeeType))
-        .withMessage("type must be one of: " + Object.values(client_1.FeeType).join(', ')),
+        .isIn(Object.values(client_2.FeeType))
+        .withMessage("type must be one of: " + Object.values(client_2.FeeType).join(', ')),
     express_validator_1.body('amount').isFloat({ min: 0 }).withMessage('Amount must be a non-negative number.'),
     express_validator_1.body('method')
         .trim()
         .notEmpty()
         .withMessage('Fee calculation method is required.')
-        .isIn(Object.values(client_1.FeeCalculationMethod))
-        .withMessage("method must be one of: " + Object.values(client_1.FeeCalculationMethod).join(', ')),
+        .isIn(Object.values(client_2.FeeCalculationMethod))
+        .withMessage("method must be one of: " + Object.values(client_2.FeeCalculationMethod).join(', ')),
     express_validator_1.body('unit').optional({ nullable: true }).isString().withMessage('unit must be a string.'),
     express_validator_1.body('minThreshold').optional({ nullable: true }).isFloat().withMessage('minThreshold must be a number.'),
     express_validator_1.body('maxThreshold').optional({ nullable: true }).isFloat().withMessage('maxThreshold must be a number.'),
@@ -319,8 +320,8 @@ exports.validateUpdateFee = [
     express_validator_1.body('method')
         .optional()
         .trim()
-        .isIn(Object.values(client_1.FeeCalculationMethod))
-        .withMessage("method must be one of: " + Object.values(client_1.FeeCalculationMethod).join(', ')),
+        .isIn(Object.values(client_2.FeeCalculationMethod))
+        .withMessage("method must be one of: " + Object.values(client_2.FeeCalculationMethod).join(', ')),
     express_validator_1.body('unit').optional({ nullable: true }).isString().withMessage('unit must be a string.'),
     express_validator_1.body('minThreshold').optional({ nullable: true }).isFloat().withMessage('minThreshold must be a number.'),
     express_validator_1.body('maxThreshold').optional({ nullable: true }).isFloat().withMessage('maxThreshold must be a number.'),
@@ -333,8 +334,8 @@ exports.validateFeeType = [
         .trim()
         .notEmpty()
         .withMessage('Fee type is required in the URL.')
-        .isIn(Object.values(client_1.FeeType))
-        .withMessage("type must be one of: " + Object.values(client_1.FeeType).join(', ')),
+        .isIn(Object.values(client_2.FeeType))
+        .withMessage("type must be one of: " + Object.values(client_2.FeeType).join(', ')),
 ];
 exports.validateCalculateFees = [
     express_validator_1.body('orderItems').isArray({ min: 1 }).withMessage('orderItems array is required and cannot be empty.'),
@@ -361,7 +362,7 @@ exports.validateSearchByCategoryId = [
 exports.validateGetAllUsers = [
     express_validator_1.query('mobileVerified').optional().isBoolean().toBoolean().withMessage('mobileVerified must be a boolean.'),
     express_validator_1.query('active').optional().isBoolean().toBoolean().withMessage('active must be a boolean.'),
-    express_validator_1.query('role').optional().isIn(Object.values(client_1.Role)).withMessage("Role must be one of: " + Object.values(client_1.Role).join(', ')),
+    express_validator_1.query('role').optional().isIn(Object.values(client_2.Role)).withMessage("Role must be one of: " + Object.values(client_2.Role).join(', ')),
     express_validator_1.query('language').optional().isString().withMessage('language must be a string.'),
     express_validator_1.query('page').optional().isInt({ min: 1 }).toInt().withMessage('page must be a positive integer.'),
     express_validator_1.query('size').optional().isInt({ min: 1, max: 100 }).toInt().withMessage('size must be an integer between 1 and 100.'),
@@ -375,7 +376,7 @@ exports.validateUpdateUser = [
         .optional()
         .isMobilePhone('any', { strictMode: true })
         .withMessage('A valid E.164 mobile number is required if provided (e.g., +1234567890).'),
-    express_validator_1.body('role').optional().isIn(Object.values(client_1.Role)).withMessage("Role must be one of: " + Object.values(client_1.Role).join(', ')),
+    express_validator_1.body('role').optional().isIn(Object.values(client_2.Role)).withMessage("Role must be one of: " + Object.values(client_2.Role).join(', ')),
     express_validator_1.body('mobileVerified').optional().isBoolean().withMessage('mobileVerified must be a boolean if provided.'),
     express_validator_1.body('active').optional().isBoolean().withMessage('active must be a boolean if provided.'),
     express_validator_1.body('language').optional().isString().withMessage('language must be a string if provided.'),
@@ -400,7 +401,7 @@ exports.validateMarkMessagesAsRead = [
 exports.validateUpdateOrderItemShoppingStatus = [
     express_validator_1.param('orderId').isUUID(4).withMessage('A valid orderId is required.'),
     express_validator_1.param('itemId').isUUID(4).withMessage('A valid itemId is required.'),
-    express_validator_1.body('status').isIn(Object.values(client_1.OrderItemStatus)).withMessage("Status must be one of: " + Object.values(client_1.OrderItemStatus).join(', ')),
+    express_validator_1.body('status').isIn(Object.values(client_2.OrderItemStatus)).withMessage("Status must be one of: " + Object.values(client_2.OrderItemStatus).join(', ')),
     express_validator_1.body('quantityFound').optional().isInt({ min: 0 }).withMessage('quantityFound must be a non-negative integer.'),
     express_validator_1.body('chosenReplacementId').optional({ nullable: true }).isUUID(4).withMessage('chosenReplacementId must be a valid UUID.'),
     express_validator_1.body().custom(function (value, _a) {
@@ -420,12 +421,12 @@ exports.validateRespondToReplacement = [
 exports.validateCreateSupportTicket = [
     express_validator_1.body('title').trim().notEmpty().withMessage('Title is required.'),
     express_validator_1.body('description').trim().notEmpty().withMessage('Description is required.'),
-    express_validator_1.body('category').isIn(Object.values(client_1.TicketCategory)).withMessage("Category must be one of: " + Object.values(client_1.TicketCategory).join(', ')),
+    express_validator_1.body('category').isIn(Object.values(client_2.TicketCategory)).withMessage("Category must be one of: " + Object.values(client_2.TicketCategory).join(', ')),
     express_validator_1.body('meta').optional({ nullable: true }).isObject().withMessage('Meta must be an object.'),
 ];
 exports.validateUpdateSupportTicketStatus = [
     express_validator_1.param('ticketId').isUUID(4).withMessage('A valid ticketId is required in the URL.'),
-    express_validator_1.body('status').isIn(Object.values(client_1.TicketStatus)).withMessage("Status must be one of: " + Object.values(client_1.TicketStatus).join(', ')),
+    express_validator_1.body('status').isIn(Object.values(client_2.TicketStatus)).withMessage("Status must be one of: " + Object.values(client_2.TicketStatus).join(', ')),
 ];
 // --- Payment Validation ---
 exports.validateDetachPaymentMethod = [
@@ -464,3 +465,19 @@ exports.validateUpdateFaq = [
     express_validator_1.body('sortOrder').optional().isInt().withMessage('sortOrder must be an integer.'),
 ];
 exports.validateFaqId = [express_validator_1.param('id').isUUID().withMessage('A valid FAQ ID is required in the URL path.')];
+exports.validateContentType = [
+    express_validator_1.param('type')
+        .isIn(Object.values(client_1.ContentType))
+        .withMessage("Invalid content type. Must be one of: " + Object.values(client_1.ContentType).join(', ')),
+];
+exports.validateUpdateContent = [
+    express_validator_1.param('type')
+        .isIn(Object.values(client_1.ContentType))
+        .withMessage("Invalid content type. Must be one of: " + Object.values(client_1.ContentType).join(', ')),
+    express_validator_1.body('content')
+        .isString()
+        .withMessage('Content must be a string.')
+        .notEmpty()
+        .withMessage('Content cannot be empty.')
+        .trim(),
+];

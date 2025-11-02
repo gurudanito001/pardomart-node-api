@@ -1,11 +1,11 @@
 import * as faqModel from '../models/faq.model';
-import { CreateFaqPayload, UpdateFaqPayload } from '../models/faq.model';
+import { CreateFaqPayload, UpdateFaqPayload, FaqFilters } from '../models/faq.model';
 
 /**
  * Service to get all active FAQs.
  */
-export const getAllFaqsService = () => {
-  return faqModel.getAll();
+export const getAllFaqsService = (filters: FaqFilters) => {
+  return faqModel.getAll(filters);
 };
 
 /**

@@ -5,8 +5,11 @@ import {
   getSupportTicketsByUserService,
   getAllSupportTicketsService,
   updateSupportTicketStatusService,
+  getSupportTicketOverviewService,
+  getSupportTicketByIdService,
+  GetAllTicketsFilters,
 } from '../services/support.service';
-import { TicketCategory, TicketStatus } from '@prisma/client';
+import { Role, TicketCategory, TicketStatus } from '@prisma/client';
 
 /**
  * @swagger
@@ -149,6 +152,50 @@ export const getMySupportTicketsController = async (req: AuthenticatedRequest, r
 
 /**
  * @swagger
+ * /api/v1/support/tickets/{ticketId}:
+ *   get:
+ *     summary: Get a single support ticket by ID
+ *     tags: [Support]
+ *     description: Retrieves the details of a specific support ticket. Accessible by the user who created the ticket or an admin.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: ticketId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: The ID of the support ticket to retrieve.
+ *     responses:
+ *       200:
+ *         description: The support ticket details.
+ *         content: { "application/json": { "schema": { "$ref": "#/components/schemas/SupportTicket" } } }
+ *       403:
+ *         description: Forbidden (user is not authorized to view this ticket).
+ *       404:
+ *         description: Ticket not found.
+ *       500:
+ *         description: Internal server error.
+ */
+export const getSupportTicketByIdController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { ticketId } = req.params;
+    const userId = req.userId as string;
+    const userRole = req.userRole as Role;
+
+    const ticket = await getSupportTicketByIdService(ticketId, userId, userRole);
+
+    if (!ticket) {
+      return res.status(404).json({ error: 'Support ticket not found.' });
+    }
+
+    res.status(200).json(ticket);
+  } catch (error: any) {
+    res.status(error.message.includes('authorized') ? 403 : 500).json({ error: error.message });
+  }
+};
+
+/**
+ * @swagger
  * /api/v1/support/tickets:
  *   get:
  *     summary: Get all support tickets (Admin)
@@ -157,12 +204,12 @@ export const getMySupportTicketsController = async (req: AuthenticatedRequest, r
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: query
- *         name: page
- *         schema: { type: integer, default: 1 }
- *       - in: query
- *         name: size
- *         schema: { type: integer, default: 20 }
+ *       - { in: query, name: customerName, schema: { type: string }, description: "Filter by customer name (case-insensitive)." }
+ *       - { in: query, name: status, schema: { $ref: '#/components/schemas/TicketStatus' }, description: "Filter by ticket status." }
+ *       - { in: query, name: createdAtStart, schema: { type: string, format: date-time }, description: "Filter tickets created on or after this date." }
+ *       - { in: query, name: createdAtEnd, schema: { type: string, format: date-time }, description: "Filter tickets created on or before this date." }
+ *       - { in: query, name: page, schema: { type: integer, default: 1 }, description: "Page number for pagination." }
+ *       - { in: query, name: size, schema: { type: integer, default: 20 }, description: "Number of items per page." }
  *     responses:
  *       200:
  *         description: A paginated list of support tickets.
@@ -177,9 +224,19 @@ export const getMySupportTicketsController = async (req: AuthenticatedRequest, r
  */
 export const getAllSupportTicketsController = async (req: Request, res: Response) => {
   try {
+    const { customerName, status, createdAtStart, createdAtEnd } = req.query;
     const page = parseInt(req.query.page as string) || 1;
     const size = parseInt(req.query.size as string) || 20;
-    const tickets = await getAllSupportTicketsService(page, size);
+
+    const filters: GetAllTicketsFilters = {
+      customerName: customerName as string | undefined,
+      status: status as TicketStatus | undefined,
+      createdAtStart: createdAtStart as string | undefined,
+      createdAtEnd: createdAtEnd as string | undefined,
+    };
+
+    const tickets = await getAllSupportTicketsService(filters, page, size);
+
     res.status(200).json(tickets);
   } catch (error: any) {
     console.error('Error getting all support tickets:', error);
@@ -234,5 +291,38 @@ export const updateSupportTicketStatusController = async (req: Request, res: Res
       return res.status(404).json({ error: 'Support ticket not found.' });
     }
     res.status(500).json({ error: 'Failed to update support ticket status.' });
+  }
+};
+
+/**
+ * @swagger
+ * /api/v1/support/admin/overview:
+ *   get:
+ *     summary: Get platform-wide support ticket overview (Admin)
+ *     tags: [Support, Admin]
+ *     description: Retrieves aggregate data about support tickets, such as total count, open tickets, and closed tickets. Only accessible by admins.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: An object containing the support ticket overview data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalTickets: { type: integer }
+ *                 openTickets: { type: integer }
+ *                 closedTickets: { type: integer }
+ *       500:
+ *         description: Internal server error.
+ */
+export const getSupportTicketOverviewController = async (req: Request, res: Response) => {
+  try {
+    const overviewData = await getSupportTicketOverviewService();
+    res.status(200).json(overviewData);
+  } catch (error: any) {
+    console.error('Error getting support ticket overview:', error);
+    res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };

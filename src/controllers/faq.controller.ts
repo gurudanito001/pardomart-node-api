@@ -60,6 +60,17 @@ import { StatusCodes } from 'http-status-codes';
  *   get:
  *     summary: Get all active FAQs
  *     tags: [FAQ]
+ *     parameters:
+ *       - in: query
+ *         name: question
+ *         schema:
+ *           type: string
+ *         description: "Filter FAQs by a search term in the question (case-insensitive)."
+ *       - in: query
+ *         name: answer
+ *         schema:
+ *           type: string
+ *         description: "Filter FAQs by a search term in the answer (case-insensitive)."
  *     responses:
  *       200:
  *         description: A list of active FAQs, ordered by sortOrder.
@@ -67,14 +78,18 @@ import { StatusCodes } from 'http-status-codes';
  *           application/json:
  *             schema:
  *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Faq'
+ *               items: { $ref: '#/components/schemas/Faq' }
  *       500:
  *         description: Internal server error.
  */
 export const getAllFaqsController = async (req: Request, res: Response) => {
   try {
-    const faqs = await faqService.getAllFaqsService();
+    const { question, answer } = req.query;
+    const filters = {
+      question: question as string | undefined,
+      answer: answer as string | undefined,
+    };
+    const faqs = await faqService.getAllFaqsService(filters);
     res.status(StatusCodes.OK).json(faqs);
   } catch (error) {
     res

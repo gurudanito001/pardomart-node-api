@@ -94,6 +94,17 @@ var http_status_codes_1 = require("http-status-codes");
  *   get:
  *     summary: Get all active FAQs
  *     tags: [FAQ]
+ *     parameters:
+ *       - in: query
+ *         name: question
+ *         schema:
+ *           type: string
+ *         description: "Filter FAQs by a search term in the question (case-insensitive)."
+ *       - in: query
+ *         name: answer
+ *         schema:
+ *           type: string
+ *         description: "Filter FAQs by a search term in the answer (case-insensitive)."
  *     responses:
  *       200:
  *         description: A list of active FAQs, ordered by sortOrder.
@@ -101,24 +112,28 @@ var http_status_codes_1 = require("http-status-codes");
  *           application/json:
  *             schema:
  *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Faq'
+ *               items: { $ref: '#/components/schemas/Faq' }
  *       500:
  *         description: Internal server error.
  */
 exports.getAllFaqsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var faqs, error_1;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
+    var _a, question, answer, filters, faqs, error_1;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
             case 0:
-                _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, faqService.getAllFaqsService()];
+                _b.trys.push([0, 2, , 3]);
+                _a = req.query, question = _a.question, answer = _a.answer;
+                filters = {
+                    question: question,
+                    answer: answer
+                };
+                return [4 /*yield*/, faqService.getAllFaqsService(filters)];
             case 1:
-                faqs = _a.sent();
+                faqs = _b.sent();
                 res.status(http_status_codes_1.StatusCodes.OK).json(faqs);
                 return [3 /*break*/, 3];
             case 2:
-                error_1 = _a.sent();
+                error_1 = _b.sent();
                 res
                     .status(http_status_codes_1.StatusCodes.INTERNAL_SERVER_ERROR)
                     .json({ message: 'Error fetching FAQs' });

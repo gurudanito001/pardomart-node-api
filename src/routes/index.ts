@@ -23,6 +23,7 @@ import bugReportRoutes from './bugReport.routes';
 import healthRouter from './health.routes';
 import faqRouter from './faq.routes';
 import mediaRouter from './media.routes';
+import contentRouter from './content.routes';
 import staffRoutes from './staff.routes';
 import customerRoutes from './customer.routes'; // This line was already present
 import earningsRoutes from './earnings.routes';
@@ -56,6 +57,7 @@ router.use('/api/v1/support', supportRoutes);
 router.use('/api/v1/transactions', transactionRoutes); // This path is correct, now pointing to the new routes file
 router.use('/api/v1/bug-reports', bugReportRoutes);
 router.use('/api/v1/faqs', faqRouter);
+router.use('/api/v1/content', contentRouter);
 router.use('/api/v1/media', mediaRouter);
 router.use('/api/v1/staff', staffRoutes);
 router.use('/api/v1/customers', customerRoutes);
