@@ -36,9 +36,36 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteCategory = exports.updateCategory = exports.getAllCategories = exports.getCategoryById = exports.createCategory = exports.createCategoriesBulk = void 0;
+exports.deleteCategory = exports.updateCategory = exports.getAllCategories = exports.getCategoryById = exports.createCategory = exports.createCategoriesBulk = exports.getAllSubCategoriesService = exports.getAllParentCategoriesService = exports.getCategoryOverviewService = void 0;
 // services/category.service.ts
 var categoryModel = require("../models/category.model");
+/**
+ * Retrieves an overview of category counts.
+ * @returns An object with total parent and sub-category counts.
+ */
+exports.getCategoryOverviewService = function () { return __awaiter(void 0, void 0, void 0, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, categoryModel.getCategoryOverview()];
+    });
+}); };
+/**
+ * Retrieves all parent categories.
+ * @returns A list of top-level categories.
+ */
+exports.getAllParentCategoriesService = function () { return __awaiter(void 0, void 0, void 0, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, categoryModel.getAllParentCategories()];
+    });
+}); };
+/**
+ * Retrieves all sub-categories.
+ * @returns A list of all child categories.
+ */
+exports.getAllSubCategoriesService = function () { return __awaiter(void 0, void 0, void 0, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, categoryModel.getAllSubCategories()];
+    });
+}); };
 exports.createCategoriesBulk = function (categories) { return __awaiter(void 0, void 0, Promise, function () {
     return __generator(this, function (_a) {
         return [2 /*return*/, categoryModel.createCategoriesBulk(categories)];

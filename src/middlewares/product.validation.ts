@@ -30,6 +30,11 @@ export const validateUpdateProductBase = [
   body('tagIds.*').isUUID(4).withMessage('Each tagId must be a valid UUID.'),
 ];
 
+export const validateUpdateProductStatus = [
+  param('id').isUUID(4).withMessage('A valid product ID is required in the URL.'),
+  body('isActive').isBoolean().withMessage('isActive must be a boolean value (true or false).'),
+];
+
 export const validateCreateVendorProduct = [
   body('vendorId').isUUID(4).withMessage('A valid vendorId is required.'),
   body('productId').isUUID(4).withMessage('A valid productId is required.'),
@@ -127,4 +132,19 @@ export const validateTransferProducts = [
   body('targetVendorIds.*')
     .isUUID(4)
     .withMessage('Each target vendor ID must be a valid UUID.'),
+];
+
+export const validateAdminGetAllProducts = [
+  query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer.'),
+  query('size').optional().isInt({ min: 1, max: 100 }).withMessage('Size must be between 1 and 100.'),
+  query('categoryId').optional().isUUID(4).withMessage('Category ID must be a valid UUID.'),
+  query('isAlcohol').optional().isBoolean().withMessage('isAlcohol must be a boolean value (true/false).'),
+  query('isAgeRestricted').optional().isBoolean().withMessage('isAgeRestricted must be a boolean value (true/false).'),
+  query('name').optional().isString().withMessage('Name must be a string.'),
+];
+
+export const validateGetVendorProductsForProduct = [
+  param('productId').isUUID(4).withMessage('Product ID must be a valid UUID.'),
+  query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer.'),
+  query('size').optional().isInt({ min: 1, max: 100 }).withMessage('Size must be between 1 and 100.'),
 ];

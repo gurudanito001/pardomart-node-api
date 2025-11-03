@@ -1,14 +1,39 @@
 // routes/tag.routes.ts
 import express from 'express';
 import * as tagController from '../controllers/tag.controllers';
+import { authenticate, authorize } from '../middlewares/auth.middleware';
+import { Role } from '@prisma/client';
 
 const router = express.Router();
 
-router.post('/', tagController.createTag);
-router.post('/bulk', tagController.createTagsBulk);
+// --- Public Tag Routes ---
 router.get('/:id', tagController.getTagById);
 router.get('/', tagController.getAllTags);
-router.patch('/:id', tagController.updateTag);
-router.delete('/:id', tagController.deleteTag);
+
+// --- Admin-only Tag Routes ---
+router.post(
+  '/',
+  authenticate,
+  authorize([Role.admin]),
+  tagController.createTag
+);
+router.post(
+  '/bulk',
+  authenticate,
+  authorize([Role.admin]),
+  tagController.createTagsBulk
+);
+router.patch(
+  '/:id',
+  authenticate,
+  authorize([Role.admin]),
+  tagController.updateTag
+);
+router.delete(
+  '/:id',
+  authenticate,
+  authorize([Role.admin]),
+  tagController.deleteTag
+);
 
 export default router;

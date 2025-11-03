@@ -54,6 +54,14 @@ export interface UpdateProductBasePayload {
   meta?: any;
   categoryIds?: string[];
   tagIds?: string[];
+  isActive?: boolean;
+}
+
+export interface AdminGetAllProductsFilters {
+  name?: string;
+  categoryId?: string;
+  isAlcohol?: boolean;
+  isAgeRestricted?: boolean;
 }
 
 
@@ -119,6 +127,131 @@ export const getVendorProductByBarcode = async (barcode: string, vendorId: strin
   });
 };
 
+/**
+ * Retrieves an overview of product counts from the database.
+ * @returns An object containing the total number of products and vendor products.
+ */
+export const getProductOverview = async () => {
+  const [totalProducts, totalVendorProducts] = await prisma.$transaction([
+    prisma.product.count(),
+    prisma.vendorProduct.count(),
+  ]);
+
+  return {
+    totalProducts,
+    totalVendorProducts,
+  };
+};
+
+/**
+ * (Admin) Retrieves a paginated list of all base products with filtering.
+ * @param filters - The filtering criteria.
+ * @param pagination - The pagination options.
+ * @returns A paginated list of products.
+ */
+export const adminGetAllProducts = async (
+  filters: AdminGetAllProductsFilters,
+  pagination: { page: string; take: string }
+) => {
+  const page = parseInt(pagination.page, 10);
+  const take = parseInt(pagination.take, 10);
+  const skip = (page - 1) * take;
+
+  const where: Prisma.ProductWhereInput = {};
+
+  if (filters.name) {
+    where.name = {
+      contains: filters.name,
+      mode: 'insensitive',
+    };
+  }
+
+  if (filters.categoryId) {
+    where.categories = {
+      some: {
+        id: filters.categoryId,
+      },
+    };
+  }
+
+  if (filters.isAlcohol !== undefined) {
+    where.isAlcohol = filters.isAlcohol;
+  }
+
+  if (filters.isAgeRestricted !== undefined) {
+    where.isAgeRestricted = filters.isAgeRestricted;
+  }
+
+  const [products, totalCount] = await prisma.$transaction([
+    prisma.product.findMany({
+      where,
+      include: {
+        categories: { select: { id: true, name: true } },
+        _count: {
+          select: { vendorProducts: true },
+        },
+      },
+      skip,
+      take,
+      orderBy: { name: 'asc' },
+    }),
+    prisma.product.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / take);
+
+  return { page, totalPages, pageSize: take, totalCount, data: products };
+};
+
+/**
+ * (Admin) Retrieves a paginated list of all vendor products for a specific base product.
+ * @param productId - The ID of the base product.
+ * @param pagination - The pagination options.
+ * @returns A paginated list of vendor products.
+ */
+export const getVendorProductsForProduct = async (
+  productId: string,
+  pagination: { page: string; size: string }
+) => {
+  const page = parseInt(pagination.page, 10);
+  const take = parseInt(pagination.size, 10);
+  const skip = (page - 1) * take;
+
+  // First, check if the base product exists
+  const product = await prisma.product.findUnique({ where: { id: productId } });
+  if (!product) {
+    throw new Error('Base product not found.');
+  }
+
+  const where: Prisma.VendorProductWhereInput = {
+    productId: productId,
+  };
+
+  const [vendorProducts, totalCount] = await prisma.$transaction([
+    prisma.vendorProduct.findMany({
+      where,
+      include: {
+        vendor: {
+          select: { id: true, name: true, isVerified: true, isPublished: true },
+        },
+      },
+      skip,
+      take,
+      orderBy: { vendor: { name: 'asc' } },
+    }),
+    prisma.vendorProduct.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / take);
+
+  return {
+    data: vendorProducts,
+    page,
+    totalPages,
+    pageSize: take,
+    totalCount,
+  };
+};
 
 export interface getVendorProductsFilters {
   vendorId?: string,

@@ -152,6 +152,51 @@ export const createVendorProductWithBarcode = async (payload: any, ownerId: stri
 };
 
 /**
+ * Retrieves an overview of product counts.
+ * @returns An object with total products and total vendor products.
+ */
+export const getProductOverviewService = async () => {
+  return productModel.getProductOverview();
+};
+
+/**
+ * (Admin) Retrieves a paginated list of all base products with filtering.
+ * @param filters - The filtering criteria.
+ * @param pagination - The pagination options.
+ * @returns A paginated list of products.
+ */
+export const adminGetAllProductsService = async (
+  filters: productModel.AdminGetAllProductsFilters,
+  pagination: { page: string; take: string }
+) => {
+  return productModel.adminGetAllProducts(filters, pagination);
+};
+
+/**
+ * (Admin) Retrieves a paginated list of all vendor products for a specific base product.
+ * @param productId - The ID of the base product.
+ * @param pagination - The pagination options.
+ * @returns A paginated list of vendor products.
+ */
+export const getVendorProductsForProductService = async (
+  productId: string,
+  pagination: { page: string; size: string }
+) => {
+  return productModel.getVendorProductsForProduct(productId, pagination);
+};
+
+/**
+ * (Admin) Updates the active status of a base product.
+ * @param productId The ID of the product to update.
+ * @param isActive The new active status.
+ * @returns The updated product.
+ */
+export const updateProductStatusService = async (productId: string, isActive: boolean) => {
+  // The model's updateProductBase can handle this simple update.
+  return productModel.updateProductBase({ id: productId, isActive });
+};
+
+/**
  * Retrieves all vendor products across all stores owned by a specific vendor user.
  * @param ownerId - The ID of the vendor owner.
  * @param vendorId - Optional. The ID of a specific store to filter by.

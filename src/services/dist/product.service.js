@@ -58,7 +58,7 @@ var __rest = (this && this.__rest) || function (s, e) {
     return t;
 };
 exports.__esModule = true;
-exports.transferVendorProductsService = exports.deleteVendorProduct = exports.getTrendingVendorProductsService = exports.deleteProduct = exports.getVendorProductsByUser = exports.getVendorProductsByCategory = exports.getAllVendorProducts = exports.getAllProducts = exports.updateVendorProduct = exports.updateProductBase = exports.getVendorProductsByTagIds = exports.getProductsByTagIds = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.getMyVendorProductsService = exports.createVendorProductWithBarcode = exports.getVendorProductById = exports.createProduct = exports.createVendorProduct = void 0;
+exports.transferVendorProductsService = exports.deleteVendorProduct = exports.getTrendingVendorProductsService = exports.deleteProduct = exports.getVendorProductsByUser = exports.getVendorProductsByCategory = exports.getAllVendorProducts = exports.getAllProducts = exports.updateVendorProduct = exports.updateProductBase = exports.getVendorProductsByTagIds = exports.getProductsByTagIds = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.getMyVendorProductsService = exports.updateProductStatusService = exports.getVendorProductsForProductService = exports.adminGetAllProductsService = exports.getProductOverviewService = exports.createVendorProductWithBarcode = exports.getVendorProductById = exports.createProduct = exports.createVendorProduct = void 0;
 // services/product.service.ts
 var client_1 = require("@prisma/client");
 var productModel = require("../models/product.model");
@@ -216,6 +216,49 @@ exports.createVendorProductWithBarcode = function (payload, ownerId) { return __
                 vendorProductPayload = __assign(__assign({}, productData), { id: vendorProductId, productId: productId, images: processedImageUrls });
                 return [2 /*return*/, productModel.createVendorProduct(vendorProductPayload)];
         }
+    });
+}); };
+/**
+ * Retrieves an overview of product counts.
+ * @returns An object with total products and total vendor products.
+ */
+exports.getProductOverviewService = function () { return __awaiter(void 0, void 0, void 0, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, productModel.getProductOverview()];
+    });
+}); };
+/**
+ * (Admin) Retrieves a paginated list of all base products with filtering.
+ * @param filters - The filtering criteria.
+ * @param pagination - The pagination options.
+ * @returns A paginated list of products.
+ */
+exports.adminGetAllProductsService = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, productModel.adminGetAllProducts(filters, pagination)];
+    });
+}); };
+/**
+ * (Admin) Retrieves a paginated list of all vendor products for a specific base product.
+ * @param productId - The ID of the base product.
+ * @param pagination - The pagination options.
+ * @returns A paginated list of vendor products.
+ */
+exports.getVendorProductsForProductService = function (productId, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, productModel.getVendorProductsForProduct(productId, pagination)];
+    });
+}); };
+/**
+ * (Admin) Updates the active status of a base product.
+ * @param productId The ID of the product to update.
+ * @param isActive The new active status.
+ * @returns The updated product.
+ */
+exports.updateProductStatusService = function (productId, isActive) { return __awaiter(void 0, void 0, void 0, function () {
+    return __generator(this, function (_a) {
+        // The model's updateProductBase can handle this simple update.
+        return [2 /*return*/, productModel.updateProductBase({ id: productId, isActive: isActive })];
     });
 }); };
 /**

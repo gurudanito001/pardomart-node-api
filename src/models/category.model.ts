@@ -12,6 +12,53 @@ interface UpdateCategoryPayload {
   name?: string;
 }
 
+/**
+ * Retrieves an overview of category counts from the database.
+ * @returns An object containing the total number of parent and sub-categories.
+ */
+export const getCategoryOverview = async () => {
+  const [totalParentCategories, totalSubCategories] = await prisma.$transaction([
+    prisma.category.count({
+      where: { parentId: null },
+    }),
+    prisma.category.count({
+      where: { parentId: { not: null } },
+    }),
+  ]);
+
+  return {
+    totalParentCategories,
+    totalSubCategories,
+  };
+};
+
+/**
+ * Retrieves all parent categories (those with no parentId).
+ * @returns A list of top-level categories.
+ */
+export const getAllParentCategories = async (): Promise<Category[]> => {
+  return prisma.category.findMany({
+    where: {
+      parentId: null,
+    },
+    orderBy: { name: 'asc' },
+  });
+};
+
+/**
+ * Retrieves all sub-categories (those with a parentId).
+ * @returns A list of all child categories.
+ */
+export const getAllSubCategories = async (): Promise<Category[]> => {
+  return prisma.category.findMany({
+    where: {
+      parentId: {
+        not: null,
+      },
+    },
+    orderBy: { name: 'asc' },
+  });
+};
 export const createCategoriesBulk = async (categories: { name: string; description?: string, parentId?: string, imageUrl: string  }[]): Promise<Category[]> => {
   const categoryData = categories.map((cat) => ({
     name: cat.name, // Use 'category' from the input

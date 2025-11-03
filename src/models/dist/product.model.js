@@ -58,7 +58,7 @@ var __rest = (this && this.__rest) || function (s, e) {
     return t;
 };
 exports.__esModule = true;
-exports.deleteVendorProduct = exports.transferVendorProducts = exports.deleteProduct = exports.updateVendorProduct = exports.updateProductBase = exports.getTrendingVendorProducts = exports.getVendorProductsByUserId = exports.getVendorProductsByIds = exports.getVendorProductById = exports.getVendorProductsByCategory = exports.getAllProducts = exports.getVendorProductsByTagIds = exports.getProductsByTagIds = exports.getVendorProductsByOwnerId = exports.getAllVendorProducts = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.createVendorProduct = exports.createProduct = void 0;
+exports.deleteVendorProduct = exports.transferVendorProducts = exports.deleteProduct = exports.updateVendorProduct = exports.updateProductBase = exports.getTrendingVendorProducts = exports.getVendorProductsByUserId = exports.getVendorProductsByIds = exports.getVendorProductById = exports.getVendorProductsByCategory = exports.getAllProducts = exports.getVendorProductsByTagIds = exports.getProductsByTagIds = exports.getVendorProductsByOwnerId = exports.getAllVendorProducts = exports.getVendorProductsForProduct = exports.adminGetAllProducts = exports.getProductOverview = exports.getVendorProductByBarcode = exports.getProductByBarcode = exports.createVendorProduct = exports.createProduct = void 0;
 // models/product.model.ts
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
@@ -117,6 +117,133 @@ exports.getVendorProductByBarcode = function (barcode, vendorId) { return __awai
                 },
                 include: { product: true, categories: true, tags: true }
             })];
+    });
+}); };
+/**
+ * Retrieves an overview of product counts from the database.
+ * @returns An object containing the total number of products and vendor products.
+ */
+exports.getProductOverview = function () { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, totalProducts, totalVendorProducts;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0: return [4 /*yield*/, prisma.$transaction([
+                    prisma.product.count(),
+                    prisma.vendorProduct.count(),
+                ])];
+            case 1:
+                _a = _b.sent(), totalProducts = _a[0], totalVendorProducts = _a[1];
+                return [2 /*return*/, {
+                        totalProducts: totalProducts,
+                        totalVendorProducts: totalVendorProducts
+                    }];
+        }
+    });
+}); };
+/**
+ * (Admin) Retrieves a paginated list of all base products with filtering.
+ * @param filters - The filtering criteria.
+ * @param pagination - The pagination options.
+ * @returns A paginated list of products.
+ */
+exports.adminGetAllProducts = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+    var page, take, skip, where, _a, products, totalCount, totalPages;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                page = parseInt(pagination.page, 10);
+                take = parseInt(pagination.take, 10);
+                skip = (page - 1) * take;
+                where = {};
+                if (filters.name) {
+                    where.name = {
+                        contains: filters.name,
+                        mode: 'insensitive'
+                    };
+                }
+                if (filters.categoryId) {
+                    where.categories = {
+                        some: {
+                            id: filters.categoryId
+                        }
+                    };
+                }
+                if (filters.isAlcohol !== undefined) {
+                    where.isAlcohol = filters.isAlcohol;
+                }
+                if (filters.isAgeRestricted !== undefined) {
+                    where.isAgeRestricted = filters.isAgeRestricted;
+                }
+                return [4 /*yield*/, prisma.$transaction([
+                        prisma.product.findMany({
+                            where: where,
+                            include: {
+                                categories: { select: { id: true, name: true } },
+                                _count: {
+                                    select: { vendorProducts: true }
+                                }
+                            },
+                            skip: skip,
+                            take: take,
+                            orderBy: { name: 'asc' }
+                        }),
+                        prisma.product.count({ where: where }),
+                    ])];
+            case 1:
+                _a = _b.sent(), products = _a[0], totalCount = _a[1];
+                totalPages = Math.ceil(totalCount / take);
+                return [2 /*return*/, { page: page, totalPages: totalPages, pageSize: take, totalCount: totalCount, data: products }];
+        }
+    });
+}); };
+/**
+ * (Admin) Retrieves a paginated list of all vendor products for a specific base product.
+ * @param productId - The ID of the base product.
+ * @param pagination - The pagination options.
+ * @returns A paginated list of vendor products.
+ */
+exports.getVendorProductsForProduct = function (productId, pagination) { return __awaiter(void 0, void 0, void 0, function () {
+    var page, take, skip, product, where, _a, vendorProducts, totalCount, totalPages;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                page = parseInt(pagination.page, 10);
+                take = parseInt(pagination.size, 10);
+                skip = (page - 1) * take;
+                return [4 /*yield*/, prisma.product.findUnique({ where: { id: productId } })];
+            case 1:
+                product = _b.sent();
+                if (!product) {
+                    throw new Error('Base product not found.');
+                }
+                where = {
+                    productId: productId
+                };
+                return [4 /*yield*/, prisma.$transaction([
+                        prisma.vendorProduct.findMany({
+                            where: where,
+                            include: {
+                                vendor: {
+                                    select: { id: true, name: true, isVerified: true, isPublished: true }
+                                }
+                            },
+                            skip: skip,
+                            take: take,
+                            orderBy: { vendor: { name: 'asc' } }
+                        }),
+                        prisma.vendorProduct.count({ where: where }),
+                    ])];
+            case 2:
+                _a = _b.sent(), vendorProducts = _a[0], totalCount = _a[1];
+                totalPages = Math.ceil(totalCount / take);
+                return [2 /*return*/, {
+                        data: vendorProducts,
+                        page: page,
+                        totalPages: totalPages,
+                        pageSize: take,
+                        totalCount: totalCount
+                    }];
+        }
     });
 }); };
 exports.getAllVendorProducts = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {

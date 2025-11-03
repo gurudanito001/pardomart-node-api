@@ -153,6 +153,33 @@ import { AuthenticatedRequest } from './vendor.controller';
  *             orderCount:
  *               type: integer
  *               description: "The number of times this product has been ordered."
+ *     ProductOverview:
+ *       type: object
+ *       properties:
+ *         totalProducts:
+ *           type: integer
+ *           description: "The total number of base products in the system."
+ *         totalVendorProducts:
+ *           type: integer
+ *           description: "The total number of unique product listings across all vendors."
+ */
+
+/**
+ * @swagger
+ * /product/admin/overview:
+ *   get:
+ *     summary: Get an overview of product data (Admin)
+ *     tags: [Product, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Retrieves aggregate data about products, such as the total number of base products and vendor product listings.
+ *     responses:
+ *       200:
+ *         description: The product overview data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ProductOverview'
  */
 export const createProduct = async (req: Request, res: Response) => {
   try {
@@ -167,6 +194,15 @@ export const createProduct = async (req: Request, res: Response) => {
   }
 };
 
+export const getProductOverviewController = async (req: Request, res: Response) => {
+    try {
+      const overview = await productService.getProductOverviewService();
+      res.status(200).json(overview);
+    } catch (error: any) {
+      console.error('Error getting product overview:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  };
 /**
  * @swagger
  * /product/vendor:
@@ -204,6 +240,51 @@ export const createVendorProduct = async (req: AuthenticatedRequest, res: Respon
   }
 };
 
+/**
+ * @swagger
+ * /product/admin/{productId}/vendor-products:
+ *   get:
+ *     summary: Get all vendor products for a specific base product (Admin)
+ *     tags: [Product, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Retrieves a paginated list of all vendor-specific listings for a given base product ID.
+ *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: The ID of the base product.
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *         description: Page number for pagination.
+ *       - in: query
+ *         name: size
+ *         schema: { type: integer, default: 20 }
+ *         description: Number of items per page.
+ *     responses:
+ *       200:
+ *         description: A paginated list of vendor products.
+ *       404:
+ *         description: Base product not found.
+ */
+export const getVendorProductsForProductController = async (req: Request, res: Response) => {
+    try {
+        const { productId } = req.params;
+        const page = req.query.page?.toString() || "1";
+        const size = req.query.size?.toString() || "20";
+
+        const result = await productService.getVendorProductsForProductService(productId, { page, size });
+        res.status(200).json(result);
+    } catch (error: any) {
+        if (error.message.includes('not found')) {
+            return res.status(404).json({ error: error.message });
+        }
+        console.error('Error in getVendorProductsForProductController:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
 /**
  * @swagger
  * /product/vendor/{id}:
@@ -572,6 +653,70 @@ export const getAllProducts = async (req: Request, res: Response) => {
 
 /**
  * @swagger
+ * /product/admin/all:
+ *   get:
+ *     summary: Get all base products with filtering and pagination (Admin)
+ *     tags: [Product, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Retrieves a paginated list of all base products in the system. Each product includes a count of how many vendors are selling it.
+ *     parameters:
+ *       - in: query
+ *         name: name
+ *         schema: { type: string }
+ *         description: Filter by product name (case-insensitive contains).
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string, format: uuid }
+ *         description: Filter by a specific category ID.
+ *       - in: query
+ *         name: isAlcohol
+ *         schema: { type: boolean }
+ *         description: Filter for products that are alcoholic.
+ *       - in: query
+ *         name: isAgeRestricted
+ *         schema: { type: boolean }
+ *         description: Filter for products that are age-restricted.
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *         description: Page number for pagination.
+ *       - in: query
+ *         name: size
+ *         schema: { type: integer, default: 20 }
+ *         description: Number of items per page.
+ *     responses:
+ *       200:
+ *         description: A paginated list of base products.
+ */
+export const adminGetAllProductsController = async (req: Request, res: Response) => {
+    try {
+        const { name, categoryId, isAlcohol, isAgeRestricted } = req.query;
+        const page = req.query.page?.toString() || "1";
+        const size = req.query.size?.toString() || "20";
+
+        const parseBoolean = (value: any): boolean | undefined => {
+            if (value === 'true') return true;
+            if (value === 'false') return false;
+            return undefined;
+        };
+
+        const filters = {
+            name: name as string | undefined,
+            categoryId: categoryId as string | undefined,
+            isAlcohol: parseBoolean(isAlcohol),
+            isAgeRestricted: parseBoolean(isAgeRestricted),
+        };
+
+        const result = await productService.adminGetAllProductsService(filters, { page, take: size });
+        res.status(200).json(result);
+    } catch (error) {
+        console.error('Error in adminGetAllProductsController:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+/**
+ * @swagger
  * /product/vendor:
  *   get:
  *     summary: Get all vendor products with filtering and pagination
@@ -753,6 +898,47 @@ export const deleteProduct = async (req: Request, res: Response) => {
     console.error('Error deleting product:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
+};
+
+/**
+ * @swagger
+ * /product/{id}/status:
+ *   patch:
+ *     summary: Update a base product's active status (Admin)
+ *     tags: [Product, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Allows an admin to enable or disable a base product by setting its `isActive` flag.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the base product to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [isActive]
+ *             properties:
+ *               isActive:
+ *                 type: boolean
+ *                 description: Set to `false` to disable the product, `true` to enable it.
+ *     responses:
+ *       200:
+ *         description: The updated product with the new status.
+ *       404:
+ *         description: Product not found.
+ */
+export const updateProductStatusController = async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { isActive } = req.body;
+    const product = await productService.updateProductStatusService(id, isActive);
+    res.json(product);
 };
 
 /**

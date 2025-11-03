@@ -47,9 +47,140 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteCategory = exports.updateCategory = exports.getAllCategories = exports.getCategoryById = exports.createCategory = exports.createCategoriesBulk = void 0;
+exports.deleteCategory = exports.updateCategory = exports.getAllCategories = exports.getCategoryById = exports.createCategory = exports.createCategoriesBulk = exports.getAllSubCategoriesController = exports.getAllParentCategoriesController = exports.getCategoryOverviewController = void 0;
 var categoryService = require("../services/category.service");
 var client_1 = require("@prisma/client");
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     CategoryOverview:
+ *       type: object
+ *       properties:
+ *         totalParentCategories:
+ *           type: integer
+ *           description: "The total number of top-level categories."
+ *         totalSubCategories:
+ *           type: integer
+ *           description: "The total number of categories that are children of another category."
+ */
+/**
+ * @swagger
+ * /category/admin/overview:
+ *   get:
+ *     summary: Get an overview of category data (Admin)
+ *     tags: [Category, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Retrieves aggregate data about categories, such as the total number of parent and sub-categories.
+ *     responses:
+ *       200:
+ *         description: The category overview data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CategoryOverview'
+ *       500:
+ *         description: Internal server error.
+ */
+exports.getCategoryOverviewController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var overview, error_1;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                return [4 /*yield*/, categoryService.getCategoryOverviewService()];
+            case 1:
+                overview = _a.sent();
+                res.status(200).json(overview);
+                return [3 /*break*/, 3];
+            case 2:
+                error_1 = _a.sent();
+                console.error('Error getting category overview:', error_1);
+                res.status(500).json({ error: 'Internal server error' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /category/parents:
+ *   get:
+ *     summary: Get all parent categories
+ *     tags: [Category]
+ *     description: Retrieves a list of all top-level categories (those without a parent).
+ *     responses:
+ *       200:
+ *         description: A list of parent categories.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Category'
+ *       500:
+ *         description: Internal server error.
+ */
+exports.getAllParentCategoriesController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var parentCategories, error_2;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                return [4 /*yield*/, categoryService.getAllParentCategoriesService()];
+            case 1:
+                parentCategories = _a.sent();
+                res.status(200).json(parentCategories);
+                return [3 /*break*/, 3];
+            case 2:
+                error_2 = _a.sent();
+                console.error('Error getting parent categories:', error_2);
+                res.status(500).json({ error: 'Internal server error' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
+ * /category/sub-categories:
+ *   get:
+ *     summary: Get all sub-categories
+ *     tags: [Category]
+ *     description: Retrieves a list of all categories that are children of another category (i.e., their parentId is not null).
+ *     responses:
+ *       200:
+ *         description: A list of all sub-categories.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Category'
+ *       500:
+ *         description: Internal server error.
+ */
+exports.getAllSubCategoriesController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var subCategories, error_3;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                return [4 /*yield*/, categoryService.getAllSubCategoriesService()];
+            case 1:
+                subCategories = _a.sent();
+                res.status(200).json(subCategories);
+                return [3 /*break*/, 3];
+            case 2:
+                error_3 = _a.sent();
+                console.error('Error getting sub-categories:', error_3);
+                res.status(500).json({ error: 'Internal server error' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
 /**
  * @swagger
  * /category/bulk:
@@ -79,7 +210,7 @@ var client_1 = require("@prisma/client");
  *         description: Internal server error.
  */
 exports.createCategoriesBulk = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var categories, createdCategories, error_1, errorMessage;
+    var categories, createdCategories, error_4, errorMessage;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -91,9 +222,9 @@ exports.createCategoriesBulk = function (req, res) { return __awaiter(void 0, vo
                 res.status(201).json(createdCategories);
                 return [3 /*break*/, 3];
             case 2:
-                error_1 = _a.sent();
-                errorMessage = error_1 instanceof Error ? error_1.message : 'Internal server error';
-                console.error('Error creating categories in bulk:', error_1);
+                error_4 = _a.sent();
+                errorMessage = error_4 instanceof Error ? error_4.message : 'Internal server error';
+                console.error('Error creating categories in bulk:', error_4);
                 res.status(500).json({ error: errorMessage });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -104,10 +235,11 @@ exports.createCategoriesBulk = function (req, res) { return __awaiter(void 0, vo
  * @swagger
  * /category:
  *   post:
- *     summary: Create a new category
+ *     summary: Create a new category (Admin)
  *     tags: [Category]
  *     security:
  *       - bearerAuth: []
+ *     description: Creates a new category. To create a parent category, omit the `parentId`. To create a sub-category, provide the `parentId` of an existing category.
  *     requestBody:
  *       required: true
  *       content:
@@ -121,11 +253,15 @@ exports.createCategoriesBulk = function (req, res) { return __awaiter(void 0, vo
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Category'
+ *       404:
+ *         description: Not Found - The provided parentId does not exist.
+ *       409:
+ *         description: Conflict - A category with this name already exists.
  *       500:
  *         description: Internal server error.
  */
 exports.createCategory = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var category, error_2, errorMessage;
+    var category, error_5, errorMessage;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -136,15 +272,18 @@ exports.createCategory = function (req, res) { return __awaiter(void 0, void 0, 
                 res.status(201).json(category);
                 return [3 /*break*/, 3];
             case 2:
-                error_2 = _a.sent();
-                if (error_2 instanceof client_1.Prisma.PrismaClientKnownRequestError) {
+                error_5 = _a.sent();
+                if (error_5 instanceof client_1.Prisma.PrismaClientKnownRequestError) {
                     // Handle unique constraint violation (e.g., duplicate category name)
-                    if (error_2.code === 'P2002') {
+                    if (error_5.code === 'P2002') {
                         return [2 /*return*/, res.status(409).json({ error: 'A category with this name already exists.' })];
                     }
+                    if (error_5.code === 'P2003') {
+                        return [2 /*return*/, res.status(404).json({ error: 'The specified parent category does not exist.' })];
+                    }
                 }
-                errorMessage = error_2.message || 'Internal server error';
-                console.error('Error creating category:', error_2);
+                errorMessage = error_5.message || 'Internal server error';
+                console.error('Error creating category:', error_5);
                 res.status(500).json({ error: errorMessage });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -176,7 +315,7 @@ exports.createCategory = function (req, res) { return __awaiter(void 0, void 0, 
  *         description: Category not found.
  */
 exports.getCategoryById = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var category, error_3, errorMessage;
+    var category, error_6, errorMessage;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -190,9 +329,9 @@ exports.getCategoryById = function (req, res) { return __awaiter(void 0, void 0,
                 res.json(category);
                 return [3 /*break*/, 3];
             case 2:
-                error_3 = _a.sent();
-                errorMessage = error_3 instanceof Error ? error_3.message : 'Internal server error';
-                console.error('Error getting category by ID:', error_3);
+                error_6 = _a.sent();
+                errorMessage = error_6 instanceof Error ? error_6.message : 'Internal server error';
+                console.error('Error getting category by ID:', error_6);
                 res.status(500).json({ error: errorMessage });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -234,7 +373,7 @@ exports.getCategoryById = function (req, res) { return __awaiter(void 0, void 0,
  *                 $ref: '#/components/schemas/Category'
  */
 exports.getAllCategories = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, parentId, type, name, categories, error_4, errorMessage;
+    var _a, parentId, type, name, categories, error_7, errorMessage;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -248,9 +387,9 @@ exports.getAllCategories = function (req, res) { return __awaiter(void 0, void 0
                 res.json(categories);
                 return [3 /*break*/, 4];
             case 3:
-                error_4 = _b.sent();
-                errorMessage = error_4 instanceof Error ? error_4.message : 'Internal server error';
-                console.error('Error getting all categories:', error_4);
+                error_7 = _b.sent();
+                errorMessage = error_7 instanceof Error ? error_7.message : 'Internal server error';
+                console.error('Error getting all categories:', error_7);
                 res.status(500).json({ error: errorMessage });
                 return [3 /*break*/, 4];
             case 4: return [2 /*return*/];
@@ -261,10 +400,14 @@ exports.getAllCategories = function (req, res) { return __awaiter(void 0, void 0
  * @swagger
  * /category/{id}:
  *   put:
- *     summary: Update a category
+ *     summary: Update a category (Admin)
  *     tags: [Category]
  *     security:
  *       - bearerAuth: []
+ *     description: >
+ *       Updates a category's details. This can be used to change its name, description, or move it within the hierarchy.
+ *       - To change a sub-category's parent, provide a new `parentId`.
+ *       - To promote a sub-category to a parent category, set `parentId` to `null`.
  *     parameters:
  *       - in: path
  *         name: id
@@ -290,7 +433,7 @@ exports.getAllCategories = function (req, res) { return __awaiter(void 0, void 0
  *         description: Category not found.
  */
 exports.updateCategory = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var category, error_5;
+    var category, error_8;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -301,13 +444,13 @@ exports.updateCategory = function (req, res) { return __awaiter(void 0, void 0, 
                 res.json(category);
                 return [3 /*break*/, 3];
             case 2:
-                error_5 = _a.sent();
-                if (error_5 instanceof client_1.Prisma.PrismaClientKnownRequestError) {
-                    if (error_5.code === 'P2025') {
+                error_8 = _a.sent();
+                if (error_8 instanceof client_1.Prisma.PrismaClientKnownRequestError) {
+                    if (error_8.code === 'P2025') {
                         return [2 /*return*/, res.status(404).json({ error: 'Category not found.' })];
                     }
                     // Handle unique constraint violation on update
-                    if (error_5.code === 'P2002') {
+                    if (error_8.code === 'P2002') {
                         return [2 /*return*/, res.status(409).json({ error: 'A category with this name already exists.' })];
                     }
                 }
@@ -340,7 +483,7 @@ exports.updateCategory = function (req, res) { return __awaiter(void 0, void 0, 
  *         description: Category not found.
  */
 exports.deleteCategory = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var category, error_6;
+    var category, error_9;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -351,8 +494,8 @@ exports.deleteCategory = function (req, res) { return __awaiter(void 0, void 0, 
                 res.json(category);
                 return [3 /*break*/, 3];
             case 2:
-                error_6 = _a.sent();
-                if (error_6 instanceof client_1.Prisma.PrismaClientKnownRequestError && error_6.code === 'P2025') {
+                error_9 = _a.sent();
+                if (error_9 instanceof client_1.Prisma.PrismaClientKnownRequestError && error_9.code === 'P2025') {
                     return [2 /*return*/, res.status(404).json({ error: 'Category not found.' })];
                 }
                 res.status(500).json({ error: 'Internal server error' });

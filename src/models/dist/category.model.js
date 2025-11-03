@@ -47,10 +47,65 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.deleteCategory = exports.updateCategory = exports.getAllCategories = exports.getCategoryById = exports.createCategory = exports.createCategoriesBulk = void 0;
+exports.deleteCategory = exports.updateCategory = exports.getAllCategories = exports.getCategoryById = exports.createCategory = exports.createCategoriesBulk = exports.getAllSubCategories = exports.getAllParentCategories = exports.getCategoryOverview = void 0;
 // models/category.model.ts
 var client_1 = require("@prisma/client");
 var prisma = new client_1.PrismaClient();
+/**
+ * Retrieves an overview of category counts from the database.
+ * @returns An object containing the total number of parent and sub-categories.
+ */
+exports.getCategoryOverview = function () { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, totalParentCategories, totalSubCategories;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0: return [4 /*yield*/, prisma.$transaction([
+                    prisma.category.count({
+                        where: { parentId: null }
+                    }),
+                    prisma.category.count({
+                        where: { parentId: { not: null } }
+                    }),
+                ])];
+            case 1:
+                _a = _b.sent(), totalParentCategories = _a[0], totalSubCategories = _a[1];
+                return [2 /*return*/, {
+                        totalParentCategories: totalParentCategories,
+                        totalSubCategories: totalSubCategories
+                    }];
+        }
+    });
+}); };
+/**
+ * Retrieves all parent categories (those with no parentId).
+ * @returns A list of top-level categories.
+ */
+exports.getAllParentCategories = function () { return __awaiter(void 0, void 0, Promise, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, prisma.category.findMany({
+                where: {
+                    parentId: null
+                },
+                orderBy: { name: 'asc' }
+            })];
+    });
+}); };
+/**
+ * Retrieves all sub-categories (those with a parentId).
+ * @returns A list of all child categories.
+ */
+exports.getAllSubCategories = function () { return __awaiter(void 0, void 0, Promise, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, prisma.category.findMany({
+                where: {
+                    parentId: {
+                        not: null
+                    }
+                },
+                orderBy: { name: 'asc' }
+            })];
+    });
+}); };
 exports.createCategoriesBulk = function (categories) { return __awaiter(void 0, void 0, Promise, function () {
     var categoryData, createdCategories;
     return __generator(this, function (_a) {

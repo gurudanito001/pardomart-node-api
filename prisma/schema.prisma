@@ -79,6 +79,7 @@ model Product {
   isAlcohol       Boolean         @default(false)
   isAgeRestricted Boolean         @default(false)
   tags            Tag[]
+  isActive        Boolean         @default(true)
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 }
@@ -183,21 +184,6 @@ model Device {
   updatedAt DateTime @updatedAt
 
   @@index([userId])
-}
-
-model Notification {
-  id        String           @id @default(cuid())
-  userId    String
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      NotificationType
-  title     String
-  body      String
-  isRead    Boolean          @default(false)
-  meta      Json? // To store related IDs like orderId, etc. for deep linking
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-
-  @@index([userId, isRead, createdAt])
 }
 
 model Order {
@@ -398,6 +384,21 @@ model WishlistItem {
 
   // A user can only have a specific product in their wishlist once
   @@unique([userId, vendorProductId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String
+  isRead    Boolean          @default(false)
+  meta      Json? // To store related IDs like orderId, etc. for deep linking
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([userId, isRead, createdAt])
 }
 
 model Message {

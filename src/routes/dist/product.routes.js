@@ -7,9 +7,14 @@ var validation_middleware_1 = require("../middlewares/validation.middleware"); /
 var product_validation_1 = require("../middlewares/product.validation");
 var client_1 = require("@prisma/client");
 var router = express_1.Router();
+// --- Admin Product Overview ---
+router.get('/admin/overview', auth_middleware_1.authenticate, auth_middleware_1.authorize(['admin']), productController.getProductOverviewController);
+router.get('/admin/all', auth_middleware_1.authenticate, auth_middleware_1.authorize(['admin']), validation_middleware_1.validate(product_validation_1.validateAdminGetAllProducts), productController.adminGetAllProductsController);
+router.get('/admin/:productId/vendor-products', auth_middleware_1.authenticate, auth_middleware_1.authorize(['admin']), validation_middleware_1.validate(product_validation_1.validateGetVendorProductsForProduct), productController.getVendorProductsForProductController);
 // --- Base Product Routes (Admin Only) ---
 router.post('/', auth_middleware_1.authenticate, auth_middleware_1.authorize(['admin']), validation_middleware_1.validate(product_validation_1.validateCreateProduct), productController.createProduct);
 router.patch('/:id', auth_middleware_1.authenticate, auth_middleware_1.authorize(['admin']), validation_middleware_1.validate(product_validation_1.validateUpdateProductBase), productController.updateProductBase);
+router.patch('/:id/status', auth_middleware_1.authenticate, auth_middleware_1.authorize(['admin']), validation_middleware_1.validate(product_validation_1.validateUpdateProductStatus), productController.updateProductStatusController);
 router["delete"]('/:id', auth_middleware_1.authenticate, auth_middleware_1.authorize(['admin']), validation_middleware_1.validate(product_validation_1.validateId), productController.deleteProduct);
 // --- Vendor Product Routes (Vendor Owner & Store Admin) ---
 router.post('/vendor', auth_middleware_1.authenticate, auth_middleware_1.authorize(['vendor', 'store_admin']), validation_middleware_1.validate(product_validation_1.validateCreateVendorProduct), productController.createVendorProduct);

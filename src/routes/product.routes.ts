@@ -19,10 +19,38 @@ import {
     validateGetVendorProductsByCategory,
     validateGetVendorProductsByUser,
     validateTransferProducts,
+    validateAdminGetAllProducts,
+    validateUpdateProductStatus,
+    validateGetVendorProductsForProduct,
 } from '../middlewares/product.validation';
 import { Role } from '@prisma/client';
 
 const router = Router();
+
+// --- Admin Product Overview ---
+router.get(
+    '/admin/overview',
+    authenticate,
+    authorize(['admin']),
+    productController.getProductOverviewController
+);
+
+router.get(
+    '/admin/all',
+    authenticate,
+    authorize(['admin']),
+    validate(validateAdminGetAllProducts),
+    productController.adminGetAllProductsController
+);
+
+router.get(
+    '/admin/:productId/vendor-products',
+    authenticate,
+    authorize(['admin']),
+    validate(validateGetVendorProductsForProduct),
+    productController.getVendorProductsForProductController
+);
+
 
 // --- Base Product Routes (Admin Only) ---
 router.post(
@@ -38,6 +66,13 @@ router.patch(
     authorize(['admin']),
     validate(validateUpdateProductBase),
     productController.updateProductBase
+);
+router.patch(
+    '/:id/status',
+    authenticate,
+    authorize(['admin']),
+    validate(validateUpdateProductStatus),
+    productController.updateProductStatusController
 );
 router.delete(
     '/:id',
