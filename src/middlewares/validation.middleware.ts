@@ -123,6 +123,11 @@ export const validateUpdateVendor = [
   body('meta').optional({ checkFalsy: true }).isJSON().withMessage('Meta must be a valid JSON string.'),
 ];
 
+export const validateSetVendorAvailability = [
+  param('id').isUUID(4).withMessage('A valid vendor ID is required in the URL.'),
+  body('available').isBoolean().withMessage('The "available" field must be a boolean.'),
+];
+
 export const validateCreateOrUpdateVendorOpeningHours = [
   body('vendorId').notEmpty().withMessage('Vendor ID is required'),
   body('day')
@@ -509,4 +514,3 @@ export const validateUpdateContent: ValidationChain[] = [
     .withMessage('Content cannot be empty.')
     .trim(),
 ];
-

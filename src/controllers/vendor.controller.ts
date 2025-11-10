@@ -72,6 +72,8 @@ export interface AuthenticatedRequest extends Request {
  *         latitude: { type: number, format: float, nullable: true }
  *         timezone: { type: string, nullable: true, example: "America/New_York" }
  *         isVerified: { type: boolean }
+ *         isPublished: { type: boolean }
+ *         availableForShopping: { type: boolean }
  *         meta: { type: object, nullable: true }
  *         createdAt: { type: string, format: date-time }
  *         updatedAt: { type: string, format: date-time }
@@ -171,6 +173,7 @@ export interface AuthenticatedRequest extends Request {
  *         longitude: { type: number, format: float }
  *         latitude: { type: number, format: float }
  *         isVerified: { type: boolean }
+ *         availableForShopping: { type: boolean }
  *         meta: { type: object }
  */
 export const createVendor = async (req: AuthenticatedRequest, res: Response) => {
@@ -660,6 +663,63 @@ export const approveVendor = async (req: Request, res: Response) => {
     res.status(200).json(vendor);
   } catch (error: any) {
     res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message });
+  }
+};
+
+/**
+ * @swagger
+ * /vendors/{id}/availability:
+ *   patch:
+ *     summary: Set a vendor's shopping availability
+ *     tags: [Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     description: >
+ *       Marks a vendor's store as available or unavailable for shopping by setting `availableForShopping`.
+ *       Only the user who owns the vendor can perform this action.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the vendor to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [available]
+ *             properties:
+ *               available:
+ *                 type: boolean
+ *                 description: Set to `true` to make the store available for shopping, `false` to make it unavailable.
+ *     responses:
+ *       200:
+ *         description: The updated vendor with the new availability status.
+ *       403:
+ *         description: Forbidden. User does not own this vendor.
+ *       404:
+ *         description: Vendor not found.
+ */
+export const setVendorAvailabilityController = async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const userId = req.userId as string;
+  const { available } = req.body;
+
+  try {
+    const vendor = await vendorService.setVendorAvailability(id, userId, available);
+    res.status(200).json(vendor);
+  } catch (error: any) {
+    if (error.message.includes('not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    if (error.message.includes('Forbidden')) {
+      return res.status(403).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 

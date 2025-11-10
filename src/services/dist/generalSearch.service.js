@@ -63,7 +63,7 @@ var attachRatingsToStores = function (stores) { return __awaiter(void 0, void 0,
                 return [4 /*yield*/, rating_service_1.getAggregateRatingsForVendorsService(vendorIds)];
             case 1:
                 ratingsMap = _a.sent();
-                return [2 /*return*/, stores.map(function (store) { return (__assign(__assign({}, store), { vendor: __assign(__assign({}, store.vendor), { rating: ratingsMap.get(store.vendor.id) || { average: 0, count: 0 } }) })); })];
+                return [2 /*return*/, stores.map(function (store) { return (__assign(__assign({}, store), { vendor: __assign(__assign({}, store.vendor), { rating: ratingsMap.get(store.vendor.id) || { average: 5, count: 0 } }) })); })];
         }
     });
 }); };

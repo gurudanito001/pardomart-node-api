@@ -97,7 +97,7 @@ export const getOrderByIdService = async (
   // 1. Get aggregate rating for the vendor.
   const rating = await getAggregateRatingService({ ratedVendorId: order.vendorId });
 
-  // 2. Calculate distance using the order's delivery address.
+  // 2. Calculate distance using the order's delivery address. 
   let distance: number | undefined;
   if (order.deliveryAddress && order.deliveryAddress.latitude && order.deliveryAddress.longitude && order.vendor.latitude && order.vendor.longitude) {
     if (!isNaN(order.deliveryAddress.latitude) && !isNaN(order.deliveryAddress.longitude)) {
@@ -115,7 +115,7 @@ export const getOrderByIdService = async (
   const orderWithExtras = {
     ...order,
     vendor: {
-      ...order.vendor,
+      ...order.vendor, 
       rating: rating || { average: 0, count: 0 },
       distance: distance,
     },

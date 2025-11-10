@@ -18,8 +18,8 @@ const attachRatingsToStores = async (stores: ModelStoreWithProducts[]): Promise<
   return stores.map(store => ({
     ...store,
     vendor: {
-      ...store.vendor,
-      rating: ratingsMap.get(store.vendor.id) || { average: 0, count: 0 },
+      ...store.vendor, 
+      rating: ratingsMap.get(store.vendor.id) || { average: 5, count: 0 },
     },
   }));
 };

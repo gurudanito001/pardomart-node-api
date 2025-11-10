@@ -29,6 +29,7 @@ export interface UpdateVendorPayload {
   latitude?: number;
   isVerified?: boolean;
   isPublished?: boolean;
+  availableForShopping?: boolean;
   meta?: any;
 }
 

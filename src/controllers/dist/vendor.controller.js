@@ -47,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.getOverviewDataController = exports.getVendorUserByIdController = exports.approveVendor = exports.publishVendor = exports.getIncompleteSetups = exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
+exports.getOverviewDataController = exports.getVendorUserByIdController = exports.setVendorAvailabilityController = exports.approveVendor = exports.publishVendor = exports.getIncompleteSetups = exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
 var vendorService = require("../services/vendor.service");
 /**
  * @swagger
@@ -112,6 +112,8 @@ var vendorService = require("../services/vendor.service");
  *         latitude: { type: number, format: float, nullable: true }
  *         timezone: { type: string, nullable: true, example: "America/New_York" }
  *         isVerified: { type: boolean }
+ *         isPublished: { type: boolean }
+ *         availableForShopping: { type: boolean }
  *         meta: { type: object, nullable: true }
  *         createdAt: { type: string, format: date-time }
  *         updatedAt: { type: string, format: date-time }
@@ -211,6 +213,7 @@ var vendorService = require("../services/vendor.service");
  *         longitude: { type: number, format: float }
  *         latitude: { type: number, format: float }
  *         isVerified: { type: boolean }
+ *         availableForShopping: { type: boolean }
  *         meta: { type: object }
  */
 exports.createVendor = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
@@ -784,6 +787,74 @@ exports.approveVendor = function (req, res) { return __awaiter(void 0, void 0, v
 }); };
 /**
  * @swagger
+ * /vendors/{id}/availability:
+ *   patch:
+ *     summary: Set a vendor's shopping availability
+ *     tags: [Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     description: >
+ *       Marks a vendor's store as available or unavailable for shopping by setting `availableForShopping`.
+ *       Only the user who owns the vendor can perform this action.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the vendor to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [available]
+ *             properties:
+ *               available:
+ *                 type: boolean
+ *                 description: Set to `true` to make the store available for shopping, `false` to make it unavailable.
+ *     responses:
+ *       200:
+ *         description: The updated vendor with the new availability status.
+ *       403:
+ *         description: Forbidden. User does not own this vendor.
+ *       404:
+ *         description: Vendor not found.
+ */
+exports.setVendorAvailabilityController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var id, userId, available, vendor, error_10;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                id = req.params.id;
+                userId = req.userId;
+                available = req.body.available;
+                _a.label = 1;
+            case 1:
+                _a.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, vendorService.setVendorAvailability(id, userId, available)];
+            case 2:
+                vendor = _a.sent();
+                res.status(200).json(vendor);
+                return [3 /*break*/, 4];
+            case 3:
+                error_10 = _a.sent();
+                if (error_10.message.includes('not found')) {
+                    return [2 /*return*/, res.status(404).json({ error: error_10.message })];
+                }
+                if (error_10.message.includes('Forbidden')) {
+                    return [2 /*return*/, res.status(403).json({ error: error_10.message })];
+                }
+                res.status(500).json({ error: 'Internal server error' });
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
  * /vendors/users/{userId}:
  *   get:
  *     summary: Get a single vendor user by their User ID (Admin)
@@ -808,7 +879,7 @@ exports.approveVendor = function (req, res) { return __awaiter(void 0, void 0, v
  *         description: Internal server error.
  */
 exports.getVendorUserByIdController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var userId, vendorUser, error_10;
+    var userId, vendorUser, error_11;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -820,8 +891,8 @@ exports.getVendorUserByIdController = function (req, res) { return __awaiter(voi
                 res.status(200).json(vendorUser);
                 return [3 /*break*/, 3];
             case 2:
-                error_10 = _a.sent();
-                res.status(error_10.message.includes('not found') ? 404 : 500).json({ error: error_10.message });
+                error_11 = _a.sent();
+                res.status(error_11.message.includes('not found') ? 404 : 500).json({ error: error_11.message });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
@@ -851,7 +922,7 @@ exports.getVendorUserByIdController = function (req, res) { return __awaiter(voi
  *         description: Internal server error.
  */
 exports.getOverviewDataController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var overviewData, error_11;
+    var overviewData, error_12;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -862,8 +933,8 @@ exports.getOverviewDataController = function (req, res) { return __awaiter(void 
                 res.status(200).json(overviewData);
                 return [3 /*break*/, 3];
             case 2:
-                error_11 = _a.sent();
-                console.error('Error getting overview data:', error_11);
+                error_12 = _a.sent();
+                console.error('Error getting overview data:', error_12);
                 res.status(500).json({ error: 'An unexpected error occurred.' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];

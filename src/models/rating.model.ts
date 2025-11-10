@@ -101,7 +101,10 @@ export const getAggregateRating = async (filters: { ratedVendorId?: string; rate
     _count: { _all: true },
   });
 
-  return { average: _avg.rating || 0, count: _count._all };
+  const count = _count._all;
+  const average = count > 0 ? (_avg.rating || 0) : 5; // Default to 5 if no ratings
+
+  return { average, count };
 };
 
 

@@ -58,7 +58,7 @@ var __rest = (this && this.__rest) || function (s, e) {
     return t;
 };
 exports.__esModule = true;
-exports.getOverviewDataService = exports.getVendorUserByIdService = exports.approveVendor = exports.publishVendor = exports.getVendorDocumentCounts = exports.getVendorsByUserIdWithProductCount = exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
+exports.setVendorAvailability = exports.getOverviewDataService = exports.getVendorUserByIdService = exports.approveVendor = exports.publishVendor = exports.getVendorDocumentCounts = exports.getVendorsByUserIdWithProductCount = exports.getVendorsByUserId = exports.deleteVendor = exports.updateVendor = exports.getAllVendors = exports.getVendorById = exports.createVendor = void 0;
 // services/vendor.service.ts
 var vendorModel = require("../models/vendor.model");
 var userModel = require("../models/user.model");
@@ -171,7 +171,7 @@ exports.getVendorById = function (id, latitude, longitude) { return __awaiter(vo
                 _a = _d.sent(), rating = _a[0], documentCount = _a[1];
                 productCount = (_c = (_b = vendor._count) === null || _b === void 0 ? void 0 : _b.vendorProducts) !== null && _c !== void 0 ? _c : 0;
                 _count = vendor._count, vendorData = __rest(vendor, ["_count"]);
-                result = __assign(__assign({}, vendorData), { rating: rating || { average: 0, count: 0 }, productCount: productCount,
+                result = __assign(__assign({}, vendorData), { rating: rating || { average: 5, count: 0 }, productCount: productCount,
                     documentCount: documentCount });
                 // Now, calculate distance if coordinates are provided
                 if (latitude && longitude && result.latitude && result.longitude) {
@@ -248,7 +248,7 @@ exports.getVendorsByUserId = function (userId) { return __awaiter(void 0, void 0
                 return [4 /*yield*/, rating_service_1.getAggregateRatingsForVendorsService(vendorIds)];
             case 2:
                 ratingsMap = _a.sent();
-                vendorsWithRatings = vendors.map(function (vendor) { return (__assign(__assign({}, vendor), { rating: ratingsMap.get(vendor.id) || { average: 0, count: 0 } })); });
+                vendorsWithRatings = vendors.map(function (vendor) { return (__assign(__assign({}, vendor), { rating: ratingsMap.get(vendor.id) || { average: 5, count: 0 } })); });
                 return [2 /*return*/, vendorsWithRatings];
         }
     });
@@ -366,6 +366,33 @@ exports.getOverviewDataService = function () { return __awaiter(void 0, void 0, 
             case 1:
                 _a = _b.sent(), totalVendorUsers = _a[0], totalStores = _a[1], totalStaff = _a[2];
                 return [2 /*return*/, { totalVendorUsers: totalVendorUsers, totalStores: totalStores, totalStaff: totalStaff }];
+        }
+    });
+}); };
+/**
+ * Sets the shopping availability for a vendor's store.
+ *
+ * @param vendorId The ID of the vendor to update.
+ * @param userId The ID of the user attempting to update the store.
+ * @param available The new availability status.
+ * @returns The updated vendor object.
+ * @throws Error if the vendor is not found or if the user is not authorized.
+ */
+exports.setVendorAvailability = function (vendorId, userId, available) { return __awaiter(void 0, void 0, Promise, function () {
+    var vendor;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, vendorModel.getVendorById(vendorId)];
+            case 1:
+                vendor = _a.sent();
+                if (!vendor) {
+                    throw new Error('Vendor not found');
+                }
+                if (vendor.userId !== userId) {
+                    throw new Error('Forbidden: You do not have permission to update this store.');
+                }
+                // 2. Perform the update.
+                return [2 /*return*/, vendorModel.updateVendor(vendorId, { availableForShopping: available })];
         }
     });
 }); };

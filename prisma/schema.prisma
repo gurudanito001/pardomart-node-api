@@ -299,6 +299,7 @@ model Vendor {
   timezone       String?              @default("America/New_York")
   isVerified     Boolean              @default(false)
   isPublished    Boolean              @default(false)
+  availableForShopping Boolean         @default(true)
   meta           Json?
   openingHours   VendorOpeningHours[]
   carts          Cart[]
@@ -306,6 +307,7 @@ model Vendor {
   transactions    Transaction[]
   orders         Order[]
   staff          User[]               @relation("VendorStaff")
+  ads            Ad[]
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
   wallet         Wallet?
@@ -485,6 +487,24 @@ model Media {
   @@index([referenceId, referenceType])
 }
 
+model Ad {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  imageUrl    String
+  isActive    Boolean   @default(true)
+  startDate   DateTime  @default(now())
+  endDate     DateTime?
+
+  vendorId    String
+  vendor      Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([vendorId])
+}
+
 model Transaction {
   id          String            @id @default(uuid())
   userId      String
@@ -527,6 +547,7 @@ model SavedPaymentMethod {
 
 enum ReferenceType {
   bug_report_image
+  ad_image
   user_image
   store_image
   product_image

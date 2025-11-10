@@ -115,7 +115,7 @@ exports.deleteRating = function (id) { return __awaiter(void 0, void 0, Promise,
  * @returns An object with the average rating and total number of ratings.
  */
 exports.getAggregateRating = function (filters) { return __awaiter(void 0, void 0, Promise, function () {
-    var _a, _avg, _count;
+    var _a, _avg, _count, count, average;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0: return [4 /*yield*/, prisma.rating.aggregate({
@@ -125,7 +125,9 @@ exports.getAggregateRating = function (filters) { return __awaiter(void 0, void 
                 })];
             case 1:
                 _a = _b.sent(), _avg = _a._avg, _count = _a._count;
-                return [2 /*return*/, { average: _avg.rating || 0, count: _count._all }];
+                count = _count._all;
+                average = count > 0 ? (_avg.rating || 0) : 5;
+                return [2 /*return*/, { average: average, count: count }];
         }
     });
 }); };

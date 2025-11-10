@@ -116,7 +116,7 @@ export const getVendorById = async (id: string, latitude?: string, longitude?: s
   // Start with the vendor data (which includes relations like user, openingHours)
   const result: any = {
     ...vendorData,
-    rating: rating || { average: 0, count: 0 },
+    rating: rating || { average: 5, count: 0 },
     productCount,
     documentCount,
   };
@@ -154,7 +154,7 @@ export const getAllVendors = async (filters: vendorModel.getVendorsFilters, pagi
   let vendorsWithExtras = vendorsResult.data.map((vendor: any) => {
     const cartItemCount = vendor.carts?.[0]?._count?.items || 0;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { carts, ...vendorWithoutCarts } = vendor;
+    const { carts, ...vendorWithoutCarts } = vendor; 
     const rating = ratingsMap.get(vendor.id) || { average: 0, count: 0 };
     return { ...vendorWithoutCarts, cartItemCount, rating };
   });
@@ -202,7 +202,7 @@ export const getVendorsByUserId = async (userId: string): Promise<Vendor[]> => {
 
   const vendorsWithRatings = vendors.map(vendor => ({
     ...vendor,
-    rating: ratingsMap.get(vendor.id) || { average: 0, count: 0 },
+    rating: ratingsMap.get(vendor.id) || { average: 5, count: 0 },
   }));
 
   return vendorsWithRatings;
@@ -312,4 +312,28 @@ export const getOverviewDataService = async (): Promise<{
   ]);
 
   return { totalVendorUsers, totalStores, totalStaff };
+};
+
+/**
+ * Sets the shopping availability for a vendor's store.
+ *
+ * @param vendorId The ID of the vendor to update.
+ * @param userId The ID of the user attempting to update the store.
+ * @param available The new availability status.
+ * @returns The updated vendor object.
+ * @throws Error if the vendor is not found or if the user is not authorized.
+ */
+export const setVendorAvailability = async (vendorId: string, userId: string, available: boolean): Promise<Vendor> => {
+  // 1. Authorization: Verify the user owns the vendor.
+  const vendor = await vendorModel.getVendorById(vendorId);
+  if (!vendor) {
+    throw new Error('Vendor not found');
+  }
+
+  if (vendor.userId !== userId) {
+    throw new Error('Forbidden: You do not have permission to update this store.');
+  }
+
+  // 2. Perform the update.
+  return vendorModel.updateVendor(vendorId, { availableForShopping: available });
 };
