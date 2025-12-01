@@ -47,7 +47,7 @@ var http_status_codes_1 = require("http-status-codes");
  */
 /**
  * @swagger
- * /api/v1/content/{type}:
+ * /content/{type}:
  *   get:
  *     summary: Get static content by type
  *     tags: [Content]
@@ -91,7 +91,7 @@ exports.getContentController = function (req, res) { return __awaiter(void 0, vo
 }); };
 /**
  * @swagger
- * /api/v1/content/{type}:
+ * /content/{type}:
  *   patch:
  *     summary: Update static content by type (Admin)
  *     tags: [Content, Admin]

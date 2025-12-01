@@ -20,7 +20,7 @@ import { Role, TicketCategory, TicketStatus } from '@prisma/client';
 
 /**
  * @swagger
- * /api/v1/support/tickets:
+ * /support/tickets:
  *   post:
  *     summary: Create a new support ticket
  *     tags: [Support]
@@ -118,7 +118,7 @@ export const createSupportTicketController = async (req: AuthenticatedRequest, r
 
 /**
  * @swagger
- * /api/v1/support/tickets/me:
+ * /support/tickets/me:
  *   get:
  *     summary: Get my support tickets
  *     tags: [Support]
@@ -152,7 +152,7 @@ export const getMySupportTicketsController = async (req: AuthenticatedRequest, r
 
 /**
  * @swagger
- * /api/v1/support/tickets/{ticketId}:
+ * /support/tickets/{ticketId}:
  *   get:
  *     summary: Get a single support ticket by ID
  *     tags: [Support]
@@ -196,7 +196,7 @@ export const getSupportTicketByIdController = async (req: AuthenticatedRequest, 
 
 /**
  * @swagger
- * /api/v1/support/tickets:
+ * /support/tickets:
  *   get:
  *     summary: Get all support tickets (Admin)
  *     tags: [Support, Admin]
@@ -246,7 +246,7 @@ export const getAllSupportTicketsController = async (req: Request, res: Response
 
 /**
  * @swagger
- * /api/v1/support/tickets/{ticketId}/status:
+ * /support/tickets/{ticketId}/status:
  *   patch:
  *     summary: Update a support ticket's status (Admin)
  *     tags: [Support, Admin]
@@ -296,7 +296,7 @@ export const updateSupportTicketStatusController = async (req: Request, res: Res
 
 /**
  * @swagger
- * /api/v1/support/admin/overview:
+ * /support/admin/overview:
  *   get:
  *     summary: Get platform-wide support ticket overview (Admin)
  *     tags: [Support, Admin]

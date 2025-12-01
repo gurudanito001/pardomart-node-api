@@ -11,7 +11,7 @@ import { sendMessageService, getMessagesForOrderService, markMessagesAsReadServi
 
 /**
  * @swagger
- * /api/v1/order/{orderId}/messages:
+ * /order/{orderId}/messages:
  *   post:
  *     summary: Send a message related to an order
  *     tags: [Order, Messaging]
@@ -117,7 +117,7 @@ export const sendMessageController = async (req: AuthenticatedRequest, res: Resp
 
 /**
  * @swagger
- * /api/v1/order/{orderId}/messages:
+ * /order/{orderId}/messages:
  *   get:
  *     summary: Get messages for an order
  *     tags: [Order, Messaging]
@@ -172,7 +172,7 @@ export const getMessagesForOrderController = async (req: AuthenticatedRequest, r
 
 /**
  * @swagger
- * /api/v1/order/{orderId}/messages/read:
+ * /order/{orderId}/messages/read:
  *   patch:
  *     summary: Mark messages as read
  *     tags: [Order, Messaging]
@@ -229,7 +229,7 @@ export const markMessagesAsReadController = async (req: AuthenticatedRequest, re
 
 /**
  * @swagger
- * /api/v1/order/admin/{orderId}/messages:
+ * /order/admin/{orderId}/messages:
  *   get:
  *     summary: Get all messages for an order (Admin)
  *     tags: [Order, Messaging, Admin]

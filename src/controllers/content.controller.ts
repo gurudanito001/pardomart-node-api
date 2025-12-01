@@ -12,7 +12,7 @@ import { StatusCodes } from 'http-status-codes';
 
 /**
  * @swagger
- * /api/v1/content/{type}:
+ * /content/{type}:
  *   get:
  *     summary: Get static content by type
  *     tags: [Content]
@@ -46,7 +46,7 @@ export const getContentController = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /api/v1/content/{type}:
+ * /content/{type}:
  *   patch:
  *     summary: Update static content by type (Admin)
  *     tags: [Content, Admin]

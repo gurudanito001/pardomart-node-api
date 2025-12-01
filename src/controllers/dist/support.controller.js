@@ -46,7 +46,7 @@ var support_service_1 = require("../services/support.service");
  */
 /**
  * @swagger
- * /api/v1/support/tickets:
+ * /support/tickets:
  *   post:
  *     summary: Create a new support ticket
  *     tags: [Support]
@@ -152,7 +152,7 @@ exports.createSupportTicketController = function (req, res) { return __awaiter(v
 }); };
 /**
  * @swagger
- * /api/v1/support/tickets/me:
+ * /support/tickets/me:
  *   get:
  *     summary: Get my support tickets
  *     tags: [Support]
@@ -196,7 +196,7 @@ exports.getMySupportTicketsController = function (req, res) { return __awaiter(v
 }); };
 /**
  * @swagger
- * /api/v1/support/tickets/{ticketId}:
+ * /support/tickets/{ticketId}:
  *   get:
  *     summary: Get a single support ticket by ID
  *     tags: [Support]
@@ -247,7 +247,7 @@ exports.getSupportTicketByIdController = function (req, res) { return __awaiter(
 }); };
 /**
  * @swagger
- * /api/v1/support/tickets:
+ * /support/tickets:
  *   get:
  *     summary: Get all support tickets (Admin)
  *     tags: [Support, Admin]
@@ -304,7 +304,7 @@ exports.getAllSupportTicketsController = function (req, res) { return __awaiter(
 }); };
 /**
  * @swagger
- * /api/v1/support/tickets/{ticketId}/status:
+ * /support/tickets/{ticketId}/status:
  *   patch:
  *     summary: Update a support ticket's status (Admin)
  *     tags: [Support, Admin]
@@ -363,7 +363,7 @@ exports.updateSupportTicketStatusController = function (req, res) { return __awa
 }); };
 /**
  * @swagger
- * /api/v1/support/admin/overview:
+ * /support/admin/overview:
  *   get:
  *     summary: Get platform-wide support ticket overview (Admin)
  *     tags: [Support, Admin]

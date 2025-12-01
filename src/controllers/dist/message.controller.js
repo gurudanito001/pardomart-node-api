@@ -46,7 +46,7 @@ var message_service_1 = require("../services/message.service");
  */
 /**
  * @swagger
- * /api/v1/order/{orderId}/messages:
+ * /order/{orderId}/messages:
  *   post:
  *     summary: Send a message related to an order
  *     tags: [Order, Messaging]
@@ -159,7 +159,7 @@ exports.sendMessageController = function (req, res) { return __awaiter(void 0, v
 }); };
 /**
  * @swagger
- * /api/v1/order/{orderId}/messages:
+ * /order/{orderId}/messages:
  *   get:
  *     summary: Get messages for an order
  *     tags: [Order, Messaging]
@@ -221,7 +221,7 @@ exports.getMessagesForOrderController = function (req, res) { return __awaiter(v
 }); };
 /**
  * @swagger
- * /api/v1/order/{orderId}/messages/read:
+ * /order/{orderId}/messages/read:
  *   patch:
  *     summary: Mark messages as read
  *     tags: [Order, Messaging]
@@ -286,7 +286,7 @@ exports.markMessagesAsReadController = function (req, res) { return __awaiter(vo
 }); };
 /**
  * @swagger
- * /api/v1/order/admin/{orderId}/messages:
+ * /order/admin/{orderId}/messages:
  *   get:
  *     summary: Get all messages for an order (Admin)
  *     tags: [Order, Messaging, Admin]
