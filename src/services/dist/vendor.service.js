@@ -66,11 +66,12 @@ var client_1 = require("@prisma/client");
 var media_service_1 = require("./media.service");
 var rating_service_1 = require("./rating.service");
 var prisma_1 = require("../config/prisma");
+var VENDOR_SEARCH_RADIUS_MILES = 15;
 var toRadians = function (degrees) {
     return degrees * (Math.PI / 180);
 };
 var calculateDistance = function (lat1, lon1, lat2, lon2) {
-    var R = 6371; // Radius of the Earth in km
+    var R = 3959; // Radius of the Earth in miles
     var dLat = toRadians(lat2 - lat1);
     var dLon = toRadians(lon2 - lon1);
     var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
@@ -187,10 +188,14 @@ exports.getVendorById = function (id, latitude, longitude) { return __awaiter(vo
     });
 }); };
 exports.getAllVendors = function (filters, pagination) { return __awaiter(void 0, void 0, void 0, function () {
-    var vendorsResult, vendorIds, ratingsMap, vendorsWithExtras, customerLatitude_1, customerLongitude_1;
+    var latitude, longitude, modelFilters, isLocationSearch, modelPagination, vendorsResult, vendorIds, ratingsMap, vendorsWithExtras, customerLatitude_1, customerLongitude_1, nearbyVendors, page, take, skip, totalCount, totalPages, paginatedData;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4 /*yield*/, vendorModel.getAllVendors(filters, pagination)];
+            case 0:
+                latitude = filters.latitude, longitude = filters.longitude, modelFilters = __rest(filters, ["latitude", "longitude"]);
+                isLocationSearch = latitude && longitude;
+                modelPagination = isLocationSearch ? { page: '1', take: '1000' } : pagination;
+                return [4 /*yield*/, vendorModel.getAllVendors(modelFilters, modelPagination)];
             case 1:
                 vendorsResult = _a.sent();
                 if (vendorsResult.data.length === 0) {
@@ -208,18 +213,31 @@ exports.getAllVendors = function (filters, pagination) { return __awaiter(void 0
                     var rating = ratingsMap.get(vendor.id) || { average: 0, count: 0 };
                     return __assign(__assign({}, vendorWithoutCarts), { cartItemCount: cartItemCount, rating: rating });
                 });
-                if (filters.latitude && filters.longitude) {
-                    customerLatitude_1 = parseFloat(filters.latitude);
-                    customerLongitude_1 = parseFloat(filters.longitude);
+                if (isLocationSearch) {
+                    customerLatitude_1 = parseFloat(latitude);
+                    customerLongitude_1 = parseFloat(longitude);
                     if (!isNaN(customerLatitude_1) && !isNaN(customerLongitude_1)) {
-                        vendorsWithExtras = vendorsWithExtras.map(function (vendor) {
-                            var distance = calculateDistance(customerLatitude_1, customerLongitude_1, vendor.latitude, vendor.longitude);
-                            return __assign(__assign({}, vendor), { distance: distance });
-                        });
-                        // Sort vendors by distance in ascending order
-                        vendorsWithExtras.sort(function (a, b) { return a.distance - b.distance; });
+                        nearbyVendors = vendorsWithExtras
+                            .map(function (vendor) {
+                            if (vendor.latitude && vendor.longitude) {
+                                var distance = calculateDistance(customerLatitude_1, customerLongitude_1, vendor.latitude, vendor.longitude);
+                                return __assign(__assign({}, vendor), { distance: distance });
+                            }
+                            return __assign(__assign({}, vendor), { distance: Infinity }); // Vendors without location are excluded
+                        })
+                            .filter(function (vendor) { return vendor.distance <= VENDOR_SEARCH_RADIUS_MILES; });
+                        // Sort the nearby vendors by distance
+                        nearbyVendors.sort(function (a, b) { return a.distance - b.distance; });
+                        page = parseInt(pagination.page) || 1;
+                        take = parseInt(pagination.take) || 20;
+                        skip = (page - 1) * take;
+                        totalCount = nearbyVendors.length;
+                        totalPages = Math.ceil(totalCount / take);
+                        paginatedData = nearbyVendors.slice(skip, skip + take);
+                        return [2 /*return*/, { page: page, totalPages: totalPages, pageSize: take, totalCount: totalCount, data: paginatedData }];
                     }
                 }
+                // For non-location searches, return the paginated result from the model
                 return [2 /*return*/, __assign(__assign({}, vendorsResult), { data: vendorsWithExtras })];
         }
     });

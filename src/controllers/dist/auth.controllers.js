@@ -121,7 +121,7 @@ exports.registerUser = function (req, res) { return __awaiter(void 0, void 0, vo
                     if (error_1.code === 'P2002') {
                         // This is the Prisma error code for a unique constraint violation
                         return [2 /*return*/, res.status(409).json({
-                                error: 'A user with this mobile number and role already exists.'
+                                message: 'A user with this mobile number and role already exists.'
                             })];
                     }
                 }

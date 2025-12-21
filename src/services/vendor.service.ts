@@ -6,6 +6,8 @@ import { uploadMedia } from './media.service';
 import { getAggregateRatingService, getAggregateRatingsForVendorsService } from './rating.service';
 import { prisma } from '../config/prisma';
 
+const VENDOR_SEARCH_RADIUS_MILES = 15;
+
 
 interface VendorWithDistance extends Vendor {
   distance: number;
@@ -21,7 +23,7 @@ const calculateDistance = (
   lat2: number,
   lon2: number
 ): number => {
-  const R = 6371; // Radius of the Earth in km
+  const R = 3959; // Radius of the Earth in miles
   const dLat = toRadians(lat2 - lat1);
   const dLon = toRadians(lon2 - lon1);
   const a =
@@ -142,7 +144,14 @@ export const getVendorById = async (id: string, latitude?: string, longitude?: s
 
 
 export const getAllVendors = async (filters: vendorModel.getVendorsFilters, pagination: {page: string, take: string}) => { // Updated signature
-  const vendorsResult = await vendorModel.getAllVendors(filters, pagination); // This already handles filtering by userId if present in filters
+  const { latitude, longitude, ...modelFilters } = filters;
+  const isLocationSearch = latitude && longitude;
+
+  // If filtering by location, we must fetch all vendors matching other criteria first,
+  // then filter by distance and paginate in memory. This is because distance calculation
+  // happens outside the database.
+  const modelPagination = isLocationSearch ? { page: '1', take: '1000' } : pagination;
+  const vendorsResult = await vendorModel.getAllVendors(modelFilters, modelPagination);
 
   if (vendorsResult.data.length === 0) {
     return vendorsResult;
@@ -151,34 +160,51 @@ export const getAllVendors = async (filters: vendorModel.getVendorsFilters, pagi
   const vendorIds = vendorsResult.data.map((v: any) => v.id);
   const ratingsMap = await getAggregateRatingsForVendorsService(vendorIds);
 
-  let vendorsWithExtras = vendorsResult.data.map((vendor: any) => {
+  const vendorsWithExtras = vendorsResult.data.map((vendor: any) => {
     const cartItemCount = vendor.carts?.[0]?._count?.items || 0;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { carts, ...vendorWithoutCarts } = vendor; 
+    const { carts, ...vendorWithoutCarts } = vendor;
     const rating = ratingsMap.get(vendor.id) || { average: 0, count: 0 };
     return { ...vendorWithoutCarts, cartItemCount, rating };
   });
 
-  if(filters.latitude && filters.longitude){
-    const customerLatitude = parseFloat(filters.latitude);
-    const customerLongitude = parseFloat(filters.longitude);
+  if (isLocationSearch) {
+    const customerLatitude = parseFloat(latitude!);
+    const customerLongitude = parseFloat(longitude!);
 
     if (!isNaN(customerLatitude) && !isNaN(customerLongitude)) {
-      vendorsWithExtras = vendorsWithExtras.map((vendor: any) => {
-        const distance = calculateDistance(
-          customerLatitude,
-          customerLongitude,
-          vendor.latitude!,
-          vendor.longitude!
-        );
-        return { ...vendor, distance };
-      });
+      // Calculate distance and filter vendors within the radius
+      let nearbyVendors = vendorsWithExtras
+        .map((vendor: any) => {
+          if (vendor.latitude && vendor.longitude) {
+            const distance = calculateDistance(
+              customerLatitude,
+              customerLongitude,
+              vendor.latitude,
+              vendor.longitude
+            );
+            return { ...vendor, distance };
+          }
+          return { ...vendor, distance: Infinity }; // Vendors without location are excluded
+        })
+        .filter((vendor: any) => vendor.distance <= VENDOR_SEARCH_RADIUS_MILES);
 
-      // Sort vendors by distance in ascending order
-      vendorsWithExtras.sort((a: any, b: any) => a.distance - b.distance);
+      // Sort the nearby vendors by distance
+      nearbyVendors.sort((a: any, b: any) => a.distance - b.distance);
+
+      // Manually paginate the filtered and sorted results
+      const page = parseInt(pagination.page) || 1;
+      const take = parseInt(pagination.take) || 20;
+      const skip = (page - 1) * take;
+      const totalCount = nearbyVendors.length;
+      const totalPages = Math.ceil(totalCount / take);
+      const paginatedData = nearbyVendors.slice(skip, skip + take);
+
+      return { page, totalPages, pageSize: take, totalCount, data: paginatedData };
     }
   }
-  
+
+  // For non-location searches, return the paginated result from the model
   return { ...vendorsResult, data: vendorsWithExtras };
 };
 
