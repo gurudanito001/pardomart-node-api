@@ -149,9 +149,26 @@ exports.verifyCodeAndLogin = function (mobileNumber, verificationCode, role) { r
                 if (!user) {
                     throw new AuthError('User not found for the specified role.');
                 }
-                // Invalidate the code after successful verification
-                return [4 /*yield*/, prisma.verification["delete"]({ where: { mobileNumber: mobileNumber } })];
+                if (!!user.mobileVerified) return [3 /*break*/, 4];
+                return [4 /*yield*/, prisma.user.update({
+                        where: { id: user.id },
+                        data: { mobileVerified: true },
+                        include: {
+                            vendor: {
+                                select: {
+                                    id: true,
+                                    name: true
+                                }
+                            }
+                        }
+                    })];
             case 3:
+                user = _a.sent();
+                _a.label = 4;
+            case 4: 
+            // Invalidate the code after successful verification
+            return [4 /*yield*/, prisma.verification["delete"]({ where: { mobileNumber: mobileNumber } })];
+            case 5:
                 // Invalidate the code after successful verification
                 _a.sent();
                 token = jsonwebtoken_1["default"].sign({

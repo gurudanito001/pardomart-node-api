@@ -70,7 +70,7 @@ export const verifyCodeAndLogin = async (mobileNumber: string, verificationCode:
     throw new AuthError('Verification code has expired.');
   }
 
-  const user = await prisma.user.findUnique({
+  let user = await prisma.user.findUnique({
     where: { mobileNumber_role: { mobileNumber, role } },
     include: {
       vendor: {
@@ -84,6 +84,22 @@ export const verifyCodeAndLogin = async (mobileNumber: string, verificationCode:
 
   if (!user) {
     throw new AuthError('User not found for the specified role.');
+  }
+
+  // If mobile is not yet verified, update the user record.
+  if (!user.mobileVerified) {
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data: { mobileVerified: true },
+      include: {
+        vendor: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
   }
 
   // Invalidate the code after successful verification
