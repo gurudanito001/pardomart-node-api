@@ -784,7 +784,7 @@ export const getOrdersForVendorDashboard = async (
       },
       orderBy: {
         shoppingStartTime: 'asc', // Sort upcoming orders by when they need to be prepared
-        createdAt: 'asc', // Fallback sort
+        createdAt: 'desc', // As a fallback, show most recent orders first
       },
     });
 

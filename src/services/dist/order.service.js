@@ -741,7 +741,7 @@ exports.getOrdersForVendorDashboard = function (vendorId, options) { return __aw
                         },
                         orderBy: {
                             shoppingStartTime: 'asc',
-                            createdAt: 'asc'
+                            createdAt: 'desc'
                         }
                     })];
             case 2:
