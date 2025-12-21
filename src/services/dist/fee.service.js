@@ -335,6 +335,7 @@ exports.calculateOrderFeesService = function (payload, tx) { return __awaiter(vo
                     })];
             case 5:
                 activeFees = _a.sent();
+                console.log('Active Fees:', activeFees);
                 feeConfigMap_1 = new Map();
                 activeFees.forEach(function (fee) { return feeConfigMap_1.set(fee.type, fee); });
                 subtotal = 0;

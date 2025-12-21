@@ -322,6 +322,8 @@ export const calculateOrderFeesService = async (
       },
     });
 
+    console.log('Active Fees:', activeFees);
+
     const feeConfigMap = new Map<FeeType, Fee>();
     activeFees.forEach((fee) => feeConfigMap.set(fee.type, fee));
 
