@@ -314,6 +314,7 @@ export const validateCreateFee = [
   body('minThreshold').optional({ nullable: true }).isFloat().withMessage('minThreshold must be a number.'),
   body('maxThreshold').optional({ nullable: true }).isFloat().withMessage('maxThreshold must be a number.'),
   body('thresholdAppliesTo').optional({ nullable: true }).isString().withMessage('thresholdAppliesTo must be a string.'),
+  body('isActive').isBoolean().withMessage('isActive must be a boolean.'),
 ];
 
 export const validateUpdateFee = [

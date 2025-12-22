@@ -66,6 +66,9 @@ var fee_service_1 = require("../services/fee.service"); // Adjust the path to yo
  *         description: Internal server error.
  * components:
  *   schemas:
+ *     DeliveryMethod:
+ *       type: string
+ *       enum: [delivery_person, customer_pickup]
  *     FeeType:
  *       type: string
  *       enum: [delivery, service, shopping]
@@ -110,7 +113,7 @@ var fee_service_1 = require("../services/fee.service"); // Adjust the path to yo
  *         isActive: { type: boolean }
  *     CalculateFeesPayload:
  *       type: object
- *       required: [orderItems, vendorId, deliveryAddressId]
+ *       required: [orderItems, vendorId]
  *       properties:
  *         orderItems:
  *           type: array
@@ -121,7 +124,8 @@ var fee_service_1 = require("../services/fee.service"); // Adjust the path to yo
  *               vendorProductId: { type: string, format: uuid }
  *               quantity: { type: integer, minimum: 1 }
  *         vendorId: { type: string, format: uuid }
- *         deliveryAddressId: { type: string, format: uuid }
+ *         deliveryAddressId: { type: string, format: uuid, nullable: true, description: "Required if deliveryType is not 'customer_pickup'." }
+ *         deliveryType: { $ref: '#/components/schemas/DeliveryMethod', description: "Defaults to delivery if not provided." }
  *     CalculateFeesResponse:
  *       type: object
  *       properties:
@@ -433,16 +437,17 @@ exports.getCurrentFeesController = function (req, res) { return __awaiter(void 0
  *         description: Internal server error.
  */
 exports.calculateFeesController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, orderItems, vendorId, deliveryAddressId, feesResult, error_6;
+    var _a, orderItems, vendorId, deliveryAddressId, deliveryType, feesResult, error_6;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
                 _b.trys.push([0, 2, , 3]);
-                _a = req.body, orderItems = _a.orderItems, vendorId = _a.vendorId, deliveryAddressId = _a.deliveryAddressId;
+                _a = req.body, orderItems = _a.orderItems, vendorId = _a.vendorId, deliveryAddressId = _a.deliveryAddressId, deliveryType = _a.deliveryType;
                 return [4 /*yield*/, fee_service_1.calculateOrderFeesService({
                         orderItems: orderItems,
                         vendorId: vendorId,
-                        deliveryAddressId: deliveryAddressId
+                        deliveryAddressId: deliveryAddressId,
+                        deliveryType: deliveryType
                     })];
             case 1:
                 feesResult = _b.sent();

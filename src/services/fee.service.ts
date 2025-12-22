@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma, Fee, FeeType, FeeCalculationMethod } from '@prisma/client';
+import { PrismaClient, Prisma, Fee, FeeType, FeeCalculationMethod, DeliveryMethod } from '@prisma/client';
 import { getDistance } from 'geolib';
 
 const prisma = new PrismaClient();
@@ -215,7 +215,8 @@ interface OrderItemInput {
 interface CalculateFeesPayload {
   orderItems: OrderItemInput[];
   vendorId: string;
-  deliveryAddressId: string;
+  deliveryAddressId?: string;
+  deliveryType?: DeliveryMethod;
 }
 
 // Interface for the returned fees calculation
@@ -259,7 +260,7 @@ export const calculateOrderFeesService = async (
 ): Promise<FeeCalculationResult> => {
   const prismaClient = tx || prisma;
   try {
-    const { orderItems, vendorId, deliveryAddressId } = payload;
+    const { orderItems, vendorId, deliveryAddressId, deliveryType } = payload;
 
     // --- 1. Input Validation ---
     if (!orderItems || orderItems.length === 0) {
@@ -268,12 +269,12 @@ export const calculateOrderFeesService = async (
     if (!vendorId) {
       throw new Error('Vendor ID is required.');
     }
-    if (!deliveryAddressId) {
-      throw new Error('Delivery address ID is required.');
+    if (deliveryType !== 'customer_pickup' && !deliveryAddressId) {
+      throw new Error('Delivery address ID is required for delivery orders.');
     }
 
     // --- 2. Fetch Necessary Data ---
-    // Fetch vendor details
+    // Fetch vendor location
     const vendor = await prismaClient.vendor.findUnique({
       where: { id: vendorId },
       select: { latitude: true, longitude: true },
@@ -282,15 +283,18 @@ export const calculateOrderFeesService = async (
       throw new Error('Vendor location not found or invalid.');
     }
 
-    // Fetch delivery address details
-    const deliveryAddress = await prismaClient.deliveryAddress.findUnique({
-      where: { id: deliveryAddressId },
-      select: { latitude: true, longitude: true },
-    });
-    if (!deliveryAddress || deliveryAddress.latitude === null || deliveryAddress.longitude === null) {
-      throw new Error('Delivery address location not found or invalid.');
+    // Fetch delivery address details only if needed for delivery
+    let deliveryAddress = null;
+    if (deliveryType !== 'customer_pickup' && deliveryAddressId) {
+      deliveryAddress = await prismaClient.deliveryAddress.findUnique({
+        where: { id: deliveryAddressId },
+        select: { latitude: true, longitude: true },
+      });
+      if (!deliveryAddress || deliveryAddress.latitude === null || deliveryAddress.longitude === null) {
+        throw new Error('Delivery address location not found or invalid.');
+      }
     }
-
+    
     // Get all unique vendor product IDs from the order items
     const uniqueVendorProductIds = orderItems.map((item) => item.vendorProductId);
 
@@ -357,34 +361,35 @@ export const calculateOrderFeesService = async (
 
     // Delivery Fee (based on distance)
     const deliveryFeeConfig = feeConfigMap.get(FeeType.delivery);
-    if (deliveryFeeConfig && deliveryFeeConfig.method === FeeCalculationMethod.per_distance) {
-      // Calculate distance in meters using geolib's getDistance
-      const distanceMeters = getDistance(
-        { latitude: vendor.latitude!, longitude: vendor.longitude! },
-        { latitude: deliveryAddress.latitude!, longitude: deliveryAddress.longitude! }
-      );
+    // Only calculate delivery fee if it's not customer pickup and the necessary data is available
+    if (deliveryType !== 'customer_pickup' && deliveryFeeConfig && deliveryFeeConfig.method === FeeCalculationMethod.per_distance && deliveryAddress) {
+        // Calculate distance in meters using geolib's getDistance
+        const distanceMeters = getDistance(
+          { latitude: vendor.latitude!, longitude: vendor.longitude! },
+          { latitude: deliveryAddress.latitude!, longitude: deliveryAddress.longitude! }
+        );
 
-      let distanceInConfigUnit: number;
-      if (deliveryFeeConfig.unit === 'km') {
-        distanceInConfigUnit = distanceMeters / 1000; // Convert meters to kilometers
-      } else if (deliveryFeeConfig.unit === 'miles') {
-        distanceInConfigUnit = distanceMeters / 1609.34; // Convert meters to miles
-      } else {
-        // Fallback or error if unit is not recognized; defaulting to km
-        console.warn(`Unknown unit for delivery fee: ${deliveryFeeConfig.unit}. Defaulting to kilometers.`);
-        distanceInConfigUnit = distanceMeters / 1000;
+        let distanceInConfigUnit: number;
+        if (deliveryFeeConfig.unit === 'km') {
+          distanceInConfigUnit = distanceMeters / 1000; // Convert meters to kilometers
+        } else if (deliveryFeeConfig.unit === 'miles') {
+          distanceInConfigUnit = distanceMeters / 1609.34; // Convert meters to miles
+        } else {
+          // Fallback or error if unit is not recognized; defaulting to km
+          console.warn(`Unknown unit for delivery fee: ${deliveryFeeConfig.unit}. Defaulting to kilometers.`);
+          distanceInConfigUnit = distanceMeters / 1000;
+        }
+
+        deliveryFee = distanceInConfigUnit * deliveryFeeConfig.amount;
+
+        // Apply minThreshold if set
+        if (deliveryFeeConfig.minThreshold !== null && deliveryFee < deliveryFeeConfig.minThreshold) {
+          deliveryFee = deliveryFeeConfig.minThreshold;
+        }
       }
 
-      deliveryFee = distanceInConfigUnit * deliveryFeeConfig.amount;
 
-      // Apply minThreshold if set
-      if (deliveryFeeConfig.minThreshold !== null && deliveryFee < deliveryFeeConfig.minThreshold) {
-        deliveryFee = deliveryFeeConfig.minThreshold;
-      }
-    }
-
-
-    // Service Fee (based on total cost of items purchased - subtotal)
+       // Service Fee (based on total cost of items purchased - subtotal)
     const serviceFeeConfig = feeConfigMap.get(FeeType.service);
     if (serviceFeeConfig && serviceFeeConfig.method === FeeCalculationMethod.percentage) {
       // Check if subtotal meets the minThreshold for service fee
@@ -418,3 +423,4 @@ export const calculateOrderFeesService = async (
     throw new Error(`Failed to calculate fees: ${error.message}`);
   }
 };
+

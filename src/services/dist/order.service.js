@@ -74,10 +74,14 @@ var socket_1 = require("../socket");
 var rating_service_1 = require("./rating.service");
 var notificationService = require("./notification.service");
 var transactionModel = require("../models/transaction.model");
+var stripe_1 = require("stripe");
 dayjs_1["default"].extend(utc_1["default"]);
 dayjs_1["default"].extend(timezone_1["default"]);
 dayjs_1["default"].extend(customParseFormat_1["default"]);
 var prisma = new client_1.PrismaClient();
+var stripe = new stripe_1["default"](process.env.STRIPE_SECRET_KEY || '', {
+    apiVersion: '2025-08-27.basil'
+});
 var toRadians = function (degrees) {
     return degrees * (Math.PI / 180);
 };
@@ -209,11 +213,11 @@ var getDayEnumFromDayjs = function (dayjsDayIndex) {
     return days[dayjsDayIndex];
 };
 exports.createOrderFromClient = function (userId, payload) { return __awaiter(void 0, void 0, void 0, function () {
-    var vendorId, paymentMethod, shippingAddressId, deliveryInstructions, orderItems, shoppingMethod, deliveryMethod, scheduledDeliveryTime, shopperTip, deliveryPersonTip, shoppingStartTime, parsedScheduledDeliveryTime, vendor, deliveryLocalDayjs, dayOfWeek_1, openingHoursToday, _a, openHours, openMinutes, _b, closeHours, closeMinutes, vendorOpenTimeUTC, vendorCloseTimeUTC, lastDeliveryTimeUTC;
+    var vendorId, paymentMethod, shippingAddressId, stripePaymentMethodId, deliveryInstructions, orderItems, shoppingMethod, deliveryMethod, scheduledDeliveryTime, shopperTip, deliveryPersonTip, shoppingStartTime, parsedScheduledDeliveryTime, vendor, deliveryLocalDayjs, dayOfWeek_1, openingHoursToday, _a, openHours, openMinutes, _b, closeHours, closeMinutes, vendorOpenTimeUTC, vendorCloseTimeUTC, lastDeliveryTimeUTC, fees, subtotal, deliveryFee, serviceFee, shoppingFee, finalTotalAmount, clientSecret, paymentIntentId, paymentIntent;
     return __generator(this, function (_c) {
         switch (_c.label) {
             case 0:
-                vendorId = payload.vendorId, paymentMethod = payload.paymentMethod, shippingAddressId = payload.shippingAddressId, deliveryInstructions = payload.deliveryInstructions, orderItems = payload.orderItems, shoppingMethod = payload.shoppingMethod, deliveryMethod = payload.deliveryMethod, scheduledDeliveryTime = payload.scheduledDeliveryTime, shopperTip = payload.shopperTip, deliveryPersonTip = payload.deliveryPersonTip;
+                vendorId = payload.vendorId, paymentMethod = payload.paymentMethod, shippingAddressId = payload.shippingAddressId, stripePaymentMethodId = payload.stripePaymentMethodId, deliveryInstructions = payload.deliveryInstructions, orderItems = payload.orderItems, shoppingMethod = payload.shoppingMethod, deliveryMethod = payload.deliveryMethod, scheduledDeliveryTime = payload.scheduledDeliveryTime, shopperTip = payload.shopperTip, deliveryPersonTip = payload.deliveryPersonTip;
                 if (!scheduledDeliveryTime) return [3 /*break*/, 2];
                 parsedScheduledDeliveryTime = dayjs_1["default"].utc(scheduledDeliveryTime);
                 if (!parsedScheduledDeliveryTime.isValid()) {
@@ -248,28 +252,49 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                 }
                 lastDeliveryTimeUTC = vendorCloseTimeUTC.subtract(30, 'minutes');
                 _c.label = 2;
-            case 2: 
+            case 2: return [4 /*yield*/, fee_service_1.calculateOrderFeesService({
+                    orderItems: orderItems,
+                    vendorId: vendorId,
+                    deliveryAddressId: shippingAddressId,
+                    deliveryType: deliveryMethod
+                })];
+            case 3:
+                fees = _c.sent();
+                subtotal = fees.subtotal, deliveryFee = fees.deliveryFee, serviceFee = fees.serviceFee, shoppingFee = fees.shoppingFee;
+                finalTotalAmount = subtotal +
+                    (deliveryFee || 0) +
+                    (serviceFee || 0) +
+                    (shoppingFee || 0) +
+                    (shopperTip || 0) +
+                    (deliveryPersonTip || 0);
+                if (!(paymentMethod === client_1.PaymentMethods.credit_card)) return [3 /*break*/, 5];
+                if (!stripePaymentMethodId) {
+                    throw new OrderCreationError('Stripe Payment Method ID is required for credit card payments.');
+                }
+                return [4 /*yield*/, stripe.paymentIntents.create({
+                        amount: Math.round(finalTotalAmount * 100),
+                        currency: 'usd',
+                        payment_method: stripePaymentMethodId,
+                        confirm: true,
+                        automatic_payment_methods: {
+                            enabled: true,
+                            allow_redirects: 'never'
+                        },
+                        metadata: { vendorId: vendorId, userId: userId }
+                    })];
+            case 4:
+                paymentIntent = _c.sent();
+                clientSecret = paymentIntent.client_secret || undefined;
+                paymentIntentId = paymentIntent.id;
+                _c.label = 5;
+            case 5: 
             // --- Transactional Block ---
             return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
-                    var fees, subtotal, deliveryFee, serviceFee, shoppingFee, finalTotalAmount, orderCode, pickupOtp, newOrder, _i, orderItems_1, item, finalOrder;
+                    var orderCode, pickupOtp, newOrder, _i, orderItems_1, item, finalOrder;
                     return __generator(this, function (_a) {
                         switch (_a.label) {
-                            case 0: return [4 /*yield*/, fee_service_1.calculateOrderFeesService({
-                                    orderItems: orderItems,
-                                    vendorId: vendorId,
-                                    deliveryAddressId: shippingAddressId
-                                }, tx)];
+                            case 0: return [4 /*yield*/, generateUniqueOrderCode(tx)];
                             case 1:
-                                fees = _a.sent();
-                                subtotal = fees.subtotal, deliveryFee = fees.deliveryFee, serviceFee = fees.serviceFee, shoppingFee = fees.shoppingFee;
-                                finalTotalAmount = subtotal +
-                                    (deliveryFee || 0) +
-                                    (serviceFee || 0) +
-                                    (shoppingFee || 0) +
-                                    (shopperTip || 0) +
-                                    (deliveryPersonTip || 0);
-                                return [4 /*yield*/, generateUniqueOrderCode(tx)];
-                            case 2:
                                 orderCode = _a.sent();
                                 pickupOtp = generatePickupOtp();
                                 return [4 /*yield*/, orderModel.createOrder({
@@ -286,12 +311,12 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                         deliveryAddressId: shippingAddressId,
                                         deliveryInstructions: deliveryInstructions
                                     }, tx)];
-                            case 3:
+                            case 2:
                                 newOrder = _a.sent();
                                 _i = 0, orderItems_1 = orderItems;
-                                _a.label = 4;
-                            case 4:
-                                if (!(_i < orderItems_1.length)) return [3 /*break*/, 7];
+                                _a.label = 3;
+                            case 3:
+                                if (!(_i < orderItems_1.length)) return [3 /*break*/, 6];
                                 item = orderItems_1[_i];
                                 if (item.quantity <= 0) {
                                     throw new OrderCreationError("Quantity for product " + item.vendorProductId + " must be positive.");
@@ -309,14 +334,32 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                                 : undefined
                                         }
                                     })];
-                            case 5:
+                            case 4:
                                 _a.sent();
-                                _a.label = 6;
-                            case 6:
+                                _a.label = 5;
+                            case 5:
                                 _i++;
-                                return [3 /*break*/, 4];
-                            case 7: return [4 /*yield*/, orderModel.getOrderById(newOrder.id, tx)];
-                            case 8:
+                                return [3 /*break*/, 3];
+                            case 6:
+                                if (!(paymentMethod === client_1.PaymentMethods.credit_card && paymentIntentId)) return [3 /*break*/, 8];
+                                return [4 /*yield*/, tx.transaction.create({
+                                        data: {
+                                            userId: userId,
+                                            vendorId: vendorId,
+                                            orderId: newOrder.id,
+                                            amount: finalTotalAmount,
+                                            type: client_1.TransactionType.ORDER_PAYMENT,
+                                            source: client_1.TransactionSource.STRIPE,
+                                            status: client_1.TransactionStatus.PENDING,
+                                            externalId: paymentIntentId,
+                                            description: "Payment for Order #" + orderCode
+                                        }
+                                    })];
+                            case 7:
+                                _a.sent();
+                                _a.label = 8;
+                            case 8: return [4 /*yield*/, orderModel.getOrderById(newOrder.id, tx)];
+                            case 9:
                                 finalOrder = _a.sent();
                                 if (!finalOrder) {
                                     throw new OrderCreationError("Failed to retrieve the created order.", 500);
@@ -330,7 +373,7 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                         body: "You have a new order #" + finalOrder.orderCode + " from " + finalOrder.user.name + ".",
                                         meta: { orderId: finalOrder.id }
                                     })];
-                            case 9:
+                            case 10:
                                 // --- Add Notification Logic Here ---
                                 // --- Add Notification Logic Here ---
                                 _a.sent();
@@ -342,7 +385,7 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                         body: "Your order #" + finalOrder.orderCode + " has been placed.",
                                         meta: { orderId: finalOrder.id }
                                     })];
-                            case 10:
+                            case 11:
                                 // I will remove it later
                                 _a.sent();
                                 // TODO: In a real application, you would send the `pickupOtp` to the customer
@@ -350,7 +393,8 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                 // For now, it's available on the order object returned to the creating user.
                                 // --- End Notification Logic ---
                                 // --- End Notification Logic ---
-                                return [2 /*return*/, finalOrder];
+                                // Return the order along with the clientSecret so the frontend can complete the payment flow
+                                return [2 /*return*/, __assign(__assign({}, finalOrder), { clientSecret: clientSecret })];
                         }
                     });
                 }); })];

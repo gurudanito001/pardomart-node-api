@@ -3,7 +3,7 @@
 import { Request, Response, Router } from 'express';
 import * as orderModel from '../models/order.model'; // Adjust the path if needed
 import * as vendorModel from '../models/vendor.model'; // Add this import for vendorModel
-import { PrismaClient, Order, OrderItem, Role, ShoppingMethod, OrderStatus, DeliveryMethod, VendorProduct, Product, DeliveryAddress, Prisma, PaymentMethods, OrderItemStatus, PaymentStatus, TransactionType, TransactionSource } from '@prisma/client';
+import { PrismaClient, Order, OrderItem, Role, ShoppingMethod, OrderStatus, DeliveryMethod, VendorProduct, Product, DeliveryAddress, Prisma, PaymentMethods, OrderItemStatus, PaymentStatus, TransactionType, TransactionSource, TransactionStatus } from '@prisma/client';
 import dayjs from 'dayjs';
 import { calculateOrderFeesService } from './fee.service';
 import { getVendorById } from './vendor.service';
@@ -14,12 +14,17 @@ import { getIO } from '../socket';
 import { getAggregateRatingService } from './rating.service';
 import * as notificationService from './notification.service';
 import * as transactionModel from '../models/transaction.model';
+import Stripe from 'stripe';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(customParseFormat);
 
 const prisma = new PrismaClient();
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+  apiVersion: '2025-08-27.basil',
+});
 
 const toRadians = (degrees: number): number => {
   return degrees * (Math.PI / 180);
@@ -186,6 +191,7 @@ interface CreateOrderFromClientPayload {
   vendorId: string;
   paymentMethod: PaymentMethods; // Consider using an enum if you have fixed payment methods
   shippingAddressId?: string | null;
+  stripePaymentMethodId?: string; // Added for Stripe integration
   deliveryInstructions?: string;
   orderItems: {
     vendorProductId: string;
@@ -206,6 +212,7 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
     vendorId,
     paymentMethod,
     shippingAddressId,
+    stripePaymentMethodId,
     deliveryInstructions,
     orderItems,
     shoppingMethod,
@@ -268,27 +275,53 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
     } */
   }
 
+  // --- 3. Calculate Fees (Moved outside transaction to support Stripe call) ---
+  // We calculate fees before the transaction to get the total amount for the PaymentIntent.
+  const fees = await calculateOrderFeesService({
+    orderItems,
+    vendorId,
+    deliveryAddressId: shippingAddressId!,
+    deliveryType: deliveryMethod,
+  });
+
+  const { subtotal, deliveryFee, serviceFee, shoppingFee } = fees;
+
+  const finalTotalAmount =
+    subtotal +
+    (deliveryFee || 0) +
+    (serviceFee || 0) +
+    (shoppingFee || 0) +
+    (shopperTip || 0) +
+    (deliveryPersonTip || 0);
+
+  // --- 4. Handle Stripe Payment Intent ---
+  let clientSecret: string | undefined;
+  let paymentIntentId: string | undefined;
+
+  if (paymentMethod === PaymentMethods.credit_card) {
+    if (!stripePaymentMethodId) {
+      throw new OrderCreationError('Stripe Payment Method ID is required for credit card payments.');
+    }
+
+    // Create a PaymentIntent with the order amount and currency
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(finalTotalAmount * 100), // Stripe expects amount in cents
+      currency: 'usd', // Adjust currency as needed (e.g., 'ngn')
+      payment_method: stripePaymentMethodId,
+      confirm: true, // Attempt to confirm the payment immediately
+      automatic_payment_methods: {
+        enabled: true,
+        allow_redirects: 'never', // For this flow, we assume no redirects or client handles 'requires_action'
+      },
+      metadata: { vendorId, userId },
+    });
+
+    clientSecret = paymentIntent.client_secret || undefined;
+    paymentIntentId = paymentIntent.id;
+  }
+
   // --- Transactional Block ---
   return prisma.$transaction(async (tx) => {
-    // --- 3. Handle Delivery Address ---
-    // --- 4. Calculate Fees & Validate Items ---
-    const fees = await calculateOrderFeesService({
-      orderItems,
-      vendorId,
-      deliveryAddressId: shippingAddressId!,
-    }, tx);
-
-    const { subtotal, deliveryFee, serviceFee, shoppingFee } = fees;
-
-    // The total amount is the subtotal + all fees + any tips.
-    const finalTotalAmount =
-      subtotal +
-      (deliveryFee || 0) +
-      (serviceFee || 0) +
-      (shoppingFee || 0) +
-      (shopperTip || 0) +
-      (deliveryPersonTip || 0);
-
     const orderCode = await generateUniqueOrderCode(tx);
     const pickupOtp = generatePickupOtp();
 
@@ -326,6 +359,23 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
       });
     }
 
+    // --- 7. Create Transaction Record for Stripe ---
+    if (paymentMethod === PaymentMethods.credit_card && paymentIntentId) {
+      await tx.transaction.create({
+        data: {
+          userId,
+          vendorId,
+          orderId: newOrder.id,
+          amount: finalTotalAmount,
+          type: TransactionType.ORDER_PAYMENT,
+          source: TransactionSource.STRIPE,
+          status: TransactionStatus.PENDING, // Status is pending until webhook confirms or client finishes 3DS
+          externalId: paymentIntentId,
+          description: `Payment for Order #${orderCode}`,
+        },
+      });
+    }
+
     // --- 7. Return the complete order with all relations ---
     const finalOrder = await orderModel.getOrderById(newOrder.id, tx);
     if (!finalOrder) {
@@ -358,7 +408,8 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
     // --- End Notification Logic ---
 
 
-    return finalOrder;
+    // Return the order along with the clientSecret so the frontend can complete the payment flow
+    return { ...finalOrder, clientSecret };
   });
 };
 

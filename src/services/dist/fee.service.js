@@ -271,15 +271,15 @@ var toRadians = function (degrees) {
  * @throws Error if data is invalid, not found, or calculations fail.
  */
 exports.calculateOrderFeesService = function (payload, tx) { return __awaiter(void 0, void 0, Promise, function () {
-    var prismaClient, orderItems, vendorId, deliveryAddressId, vendor, deliveryAddress, uniqueVendorProductIds, vendorProducts, productDetailsMap_1, activeFees, feeConfigMap_1, subtotal, totalItemCount, _i, orderItems_1, item, productDetails, shoppingFee, deliveryFee, serviceFee, shoppingFeeConfig, deliveryFeeConfig, distanceMeters, distanceInConfigUnit, serviceFeeConfig, totalEstimatedCost, error_4;
+    var prismaClient, orderItems, vendorId, deliveryAddressId, deliveryType, vendor, deliveryAddress, uniqueVendorProductIds, vendorProducts, productDetailsMap_1, activeFees, feeConfigMap_1, subtotal, totalItemCount, _i, orderItems_1, item, productDetails, shoppingFee, deliveryFee, serviceFee, shoppingFeeConfig, deliveryFeeConfig, distanceMeters, distanceInConfigUnit, serviceFeeConfig, totalEstimatedCost, error_4;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 prismaClient = tx || prisma;
                 _a.label = 1;
             case 1:
-                _a.trys.push([1, 6, , 7]);
-                orderItems = payload.orderItems, vendorId = payload.vendorId, deliveryAddressId = payload.deliveryAddressId;
+                _a.trys.push([1, 7, , 8]);
+                orderItems = payload.orderItems, vendorId = payload.vendorId, deliveryAddressId = payload.deliveryAddressId, deliveryType = payload.deliveryType;
                 // --- 1. Input Validation ---
                 if (!orderItems || orderItems.length === 0) {
                     throw new Error('Order items cannot be empty.');
@@ -287,8 +287,8 @@ exports.calculateOrderFeesService = function (payload, tx) { return __awaiter(vo
                 if (!vendorId) {
                     throw new Error('Vendor ID is required.');
                 }
-                if (!deliveryAddressId) {
-                    throw new Error('Delivery address ID is required.');
+                if (deliveryType !== 'customer_pickup' && !deliveryAddressId) {
+                    throw new Error('Delivery address ID is required for delivery orders.');
                 }
                 return [4 /*yield*/, prismaClient.vendor.findUnique({
                         where: { id: vendorId },
@@ -299,6 +299,8 @@ exports.calculateOrderFeesService = function (payload, tx) { return __awaiter(vo
                 if (!vendor || vendor.latitude === null || vendor.longitude === null) {
                     throw new Error('Vendor location not found or invalid.');
                 }
+                deliveryAddress = null;
+                if (!(deliveryType !== 'customer_pickup' && deliveryAddressId)) return [3 /*break*/, 4];
                 return [4 /*yield*/, prismaClient.deliveryAddress.findUnique({
                         where: { id: deliveryAddressId },
                         select: { latitude: true, longitude: true }
@@ -308,6 +310,8 @@ exports.calculateOrderFeesService = function (payload, tx) { return __awaiter(vo
                 if (!deliveryAddress || deliveryAddress.latitude === null || deliveryAddress.longitude === null) {
                     throw new Error('Delivery address location not found or invalid.');
                 }
+                _a.label = 4;
+            case 4:
                 uniqueVendorProductIds = orderItems.map(function (item) { return item.vendorProductId; });
                 return [4 /*yield*/, prismaClient.vendorProduct.findMany({
                         where: {
@@ -321,7 +325,7 @@ exports.calculateOrderFeesService = function (payload, tx) { return __awaiter(vo
                             isAvailable: true
                         }
                     })];
-            case 4:
+            case 5:
                 vendorProducts = _a.sent();
                 productDetailsMap_1 = new Map();
                 vendorProducts.forEach(function (vp) { return productDetailsMap_1.set(vp.id, { price: vp.price, isAvailable: vp.isAvailable }); });
@@ -333,7 +337,7 @@ exports.calculateOrderFeesService = function (payload, tx) { return __awaiter(vo
                             }
                         }
                     })];
-            case 5:
+            case 6:
                 activeFees = _a.sent();
                 console.log('Active Fees:', activeFees);
                 feeConfigMap_1 = new Map();
@@ -360,7 +364,8 @@ exports.calculateOrderFeesService = function (payload, tx) { return __awaiter(vo
                     shoppingFee = totalItemCount * shoppingFeeConfig.amount;
                 }
                 deliveryFeeConfig = feeConfigMap_1.get(client_1.FeeType.delivery);
-                if (deliveryFeeConfig && deliveryFeeConfig.method === client_1.FeeCalculationMethod.per_distance) {
+                // Only calculate delivery fee if it's not customer pickup and the necessary data is available
+                if (deliveryType !== 'customer_pickup' && deliveryFeeConfig && deliveryFeeConfig.method === client_1.FeeCalculationMethod.per_distance && deliveryAddress) {
                     distanceMeters = geolib_1.getDistance({ latitude: vendor.latitude, longitude: vendor.longitude }, { latitude: deliveryAddress.latitude, longitude: deliveryAddress.longitude });
                     distanceInConfigUnit = void 0;
                     if (deliveryFeeConfig.unit === 'km') {
@@ -404,11 +409,11 @@ exports.calculateOrderFeesService = function (payload, tx) { return __awaiter(vo
                         serviceFee: serviceFee,
                         totalEstimatedCost: parseFloat(totalEstimatedCost.toFixed(2))
                     }];
-            case 6:
+            case 7:
                 error_4 = _a.sent();
                 console.error('Error calculating order fees:', error_4);
                 throw new Error("Failed to calculate fees: " + error_4.message);
-            case 7: return [2 /*return*/];
+            case 8: return [2 /*return*/];
         }
     });
 }); };

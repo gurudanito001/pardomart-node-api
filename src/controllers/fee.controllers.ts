@@ -9,7 +9,7 @@ import {
   UpdateFeePayload,
   calculateOrderFeesService
 } from '../services/fee.service'; // Adjust the path to your fee service file
-import { FeeType } from '@prisma/client'; // Assuming FeeType enum is exported from Prisma client
+import { FeeType, DeliveryMethod } from '@prisma/client'; // Assuming FeeType enum is exported from Prisma client
 
 // --- Fee Controllers ---
 
@@ -40,6 +40,9 @@ import { FeeType } from '@prisma/client'; // Assuming FeeType enum is exported f
  *         description: Internal server error.
  * components:
  *   schemas:
+ *     DeliveryMethod:
+ *       type: string
+ *       enum: [delivery_person, customer_pickup]
  *     FeeType:
  *       type: string
  *       enum: [delivery, service, shopping]
@@ -84,7 +87,7 @@ import { FeeType } from '@prisma/client'; // Assuming FeeType enum is exported f
  *         isActive: { type: boolean }
  *     CalculateFeesPayload:
  *       type: object
- *       required: [orderItems, vendorId, deliveryAddressId]
+ *       required: [orderItems, vendorId]
  *       properties:
  *         orderItems:
  *           type: array
@@ -95,7 +98,8 @@ import { FeeType } from '@prisma/client'; // Assuming FeeType enum is exported f
  *               vendorProductId: { type: string, format: uuid }
  *               quantity: { type: integer, minimum: 1 }
  *         vendorId: { type: string, format: uuid }
- *         deliveryAddressId: { type: string, format: uuid }
+ *         deliveryAddressId: { type: string, format: uuid, nullable: true, description: "Required if deliveryType is not 'customer_pickup'." }
+ *         deliveryType: { $ref: '#/components/schemas/DeliveryMethod', description: "Defaults to delivery if not provided." }
  *     CalculateFeesResponse:
  *       type: object
  *       properties:
@@ -360,13 +364,14 @@ export const getCurrentFeesController = async (req: Request, res: Response) => {
  */
 export const calculateFeesController = async (req: Request, res: Response) => {
   try {
-    const { orderItems, vendorId, deliveryAddressId } = req.body;
+    const { orderItems, vendorId, deliveryAddressId, deliveryType } = req.body;
 
     // Call the service to calculate fees
     const feesResult = await calculateOrderFeesService({
       orderItems,
       vendorId,
       deliveryAddressId,
+      deliveryType,
     });
 
     res.status(200).json(feesResult);
