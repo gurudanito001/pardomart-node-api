@@ -460,6 +460,18 @@ model Faq {
   updatedAt DateTime @updatedAt
 }
 
+model Announcement {
+  id             String    @id @default(uuid())
+  title          String
+  description    String    @db.Text
+  imageUrl       String?
+  targetAudience Role[]    // Uses PostgreSQL arrays to store multiple roles (e.g. [customer, vendor])
+  isActive       Boolean   @default(true)
+  sentAt         DateTime? // Null means draft; value means it has been broadcasted
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
 model Content {
   id        String      @id @default(uuid())
   type      ContentType @unique
