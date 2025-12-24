@@ -15,7 +15,7 @@ var upload = multer_1["default"]({ storage: multer_1["default"].memoryStorage() 
  *     Ad:
  *       type: object
  *       properties:
- *         id: { type: string, format: cuid }
+ *         id: { type: string, format: uuid }
  *         title: { type: string }
  *         description: { type: string, nullable: true }
  *         imageUrl: { type: string, format: uri }

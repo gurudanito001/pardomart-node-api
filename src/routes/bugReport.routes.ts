@@ -57,7 +57,7 @@ router.post('/', authenticate, upload.single('image'), createBugReportController
  *         required: true
  *         schema:
  *           type: string
- *           format: cuid
+ *           format: uuid
  *         description: The ID of the bug report to update.
  *     requestBody:
  *       required: true

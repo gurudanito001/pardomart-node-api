@@ -54,7 +54,7 @@ var http_status_codes_1 = require("http-status-codes");
  *       properties:
  *         id:
  *           type: string
- *           format: cuid
+ *           format: uuid
  *         question:
  *           type: string
  *         answer:
@@ -206,7 +206,7 @@ exports.createFaqController = function (req, res) { return __awaiter(void 0, voi
  *         required: true
  *         schema:
  *           type: string
- *           format: cuid
+ *           format: uuid
  *         description: The ID of the FAQ to update.
  *     requestBody:
  *       required: true
@@ -274,7 +274,7 @@ exports.updateFaqController = function (req, res) { return __awaiter(void 0, voi
  *         required: true
  *         schema:
  *           type: string
- *           format: cuid
+ *           format: uuid
  *         description: The ID of the FAQ to delete.
  *     responses:
  *       204:

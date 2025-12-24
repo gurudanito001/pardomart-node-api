@@ -56,7 +56,7 @@ import * as deliveryPersonLocationService from '../services/deliveryPersonLocati
  *     DeliveryPersonLocation:
  *       type: object
  *       properties:
- *         id: { type: string, description: "CUID" }
+ *         id: { type: string, description: "UUID" }
  *         latitude: { type: number, format: float }
  *         longitude: { type: number, format: float }
  *         createdAt: { type: string, format: date-time }

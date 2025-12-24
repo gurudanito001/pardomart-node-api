@@ -1,11 +1,19 @@
 "use strict";
+
 exports.__esModule = true;
+
 var express_1 = require("express");
+
 var bugReport_controller_1 = require("../controllers/bugReport.controller");
+
 var auth_middleware_1 = require("../middlewares/auth.middleware");
+
 var upload_middleware_1 = require("../middlewares/upload.middleware");
+
 var client_1 = require("@prisma/client");
+
 var validation_middleware_1 = require("../middlewares/validation.middleware");
+
 var router = express_1.Router();
 /**
  * @swagger
@@ -13,6 +21,7 @@ var router = express_1.Router();
  *   name: BugReport
  *   description: Bug reporting
  */
+
 /**
  * @swagger
  * /bug-reports:
@@ -40,6 +49,7 @@ var router = express_1.Router();
  *       201:
  *         description: Bug report created successfully.
  */
+
 router.post('/', auth_middleware_1.authenticate, upload_middleware_1.upload.single('image'), bugReport_controller_1.createBugReportController);
 /**
  * @swagger
@@ -72,5 +82,6 @@ router.post('/', auth_middleware_1.authenticate, upload_middleware_1.upload.sing
  *       200:
  *         description: Bug report status updated successfully.
  */
+
 router.patch('/:id/status', auth_middleware_1.authenticate, auth_middleware_1.authorize([client_1.Role.admin]), validation_middleware_1.validate(validation_middleware_1.validateUpdateBugReportStatus), bugReport_controller_1.updateBugReportStatusController);
 exports["default"] = router;

@@ -38,7 +38,7 @@ import * as deviceService from '../services/device.service';
  *     Device:
  *       type: object
  *       properties:
- *         id: { type: string, description: "CUID" }
+ *         id: { type: string, description: "UUID" }
  *         userId: { type: string, format: uuid }
  *         fcmToken: { type: string }
  *         platform: { type: string, enum: [ios, android, web] }

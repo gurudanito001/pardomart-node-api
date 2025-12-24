@@ -163,7 +163,7 @@ model OrderItem {
 }
 
 model DeliveryPersonLocation {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
   latitude  Float
   longitude Float
   createdAt DateTime @default(now())
@@ -175,7 +175,7 @@ model DeliveryPersonLocation {
 }
 
 model Device {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   fcmToken  String   @unique // A token should be unique across all devices
@@ -389,7 +389,7 @@ model WishlistItem {
 }
 
 model Notification {
-  id        String           @id @default(cuid())
+  id        String           @id @default(uuid())
   userId    String
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   type      NotificationType
@@ -436,7 +436,7 @@ model Wallet {
 }
 
 model BugReport {
-  id          String   @id @default(cuid())
+  id          String   @id @default(uuid())
   description String   @db.Text
   imageUrl    String?
   isResolved  Boolean  @default(false)
@@ -451,7 +451,7 @@ model BugReport {
 }
 
 model Faq {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
   question  String
   answer    String   @db.Text
   isActive  Boolean  @default(true)
@@ -461,7 +461,7 @@ model Faq {
 }
 
 model Content {
-  id        String      @id @default(cuid())
+  id        String      @id @default(uuid())
   type      ContentType @unique
   content   String      @db.Text
   createdAt DateTime    @default(now())
@@ -489,7 +489,7 @@ model Media {
 }
 
 model Ad {
-  id          String    @id @default(cuid())
+  id          String    @id @default(uuid())
   title       String
   description String?
   imageUrl    String

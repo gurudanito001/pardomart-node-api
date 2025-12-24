@@ -91,7 +91,7 @@ var notificationService = require("../services/notification.service");
  *     Notification:
  *       type: object
  *       properties:
- *         id: { type: string, description: "CUID" }
+ *         id: { type: string, description: "UUID" }
  *         userId: { type: string, format: uuid }
  *         type: { $ref: '#/components/schemas/NotificationType' }
  *         title: { type: string }

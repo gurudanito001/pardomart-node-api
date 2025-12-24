@@ -91,7 +91,7 @@ var deliveryPersonLocationService = require("../services/deliveryPersonLocation.
  *     DeliveryPersonLocation:
  *       type: object
  *       properties:
- *         id: { type: string, description: "CUID" }
+ *         id: { type: string, description: "UUID" }
  *         latitude: { type: number, format: float }
  *         longitude: { type: number, format: float }
  *         createdAt: { type: string, format: date-time }

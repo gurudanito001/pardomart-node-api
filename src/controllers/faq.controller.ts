@@ -19,7 +19,7 @@ import { StatusCodes } from 'http-status-codes';
  *       properties:
  *         id:
  *           type: string
- *           format: cuid
+ *           format: uuid
  *         question:
  *           type: string
  *         answer:
@@ -152,7 +152,7 @@ export const createFaqController = async (req: Request, res: Response) => {
  *         required: true
  *         schema:
  *           type: string
- *           format: cuid
+ *           format: uuid
  *         description: The ID of the FAQ to update.
  *     requestBody:
  *       required: true
@@ -208,7 +208,7 @@ export const updateFaqController = async (req: Request, res: Response) => {
  *         required: true
  *         schema:
  *           type: string
- *           format: cuid
+ *           format: uuid
  *         description: The ID of the FAQ to delete.
  *     responses:
  *       204:
