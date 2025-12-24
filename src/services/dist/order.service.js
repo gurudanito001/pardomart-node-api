@@ -368,7 +368,8 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                 // --- Add Notification Logic Here ---
                                 return [4 /*yield*/, notificationService.createNotification({
                                         userId: finalOrder.vendor.userId,
-                                        type: 'NEW_ORDER_PLACED',
+                                        type: client_1.NotificationType.NEW_ORDER_PLACED,
+                                        category: client_1.NotificationCategory.ORDER,
                                         title: 'New Order Received!',
                                         body: "You have a new order #" + finalOrder.orderCode + " from " + finalOrder.user.name + ".",
                                         meta: { orderId: finalOrder.id }
@@ -380,7 +381,8 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                                 // I will remove it later
                                 return [4 /*yield*/, notificationService.createNotification({
                                         userId: finalOrder.userId,
-                                        type: 'ORDER_PLACED_CUSTOMER',
+                                        type: client_1.NotificationType.ORDER_PLACED_CUSTOMER,
+                                        category: client_1.NotificationCategory.ORDER,
                                         title: 'Order Placed Successfully!',
                                         body: "Your order #" + finalOrder.orderCode + " has been placed.",
                                         meta: { orderId: finalOrder.id }
@@ -623,7 +625,8 @@ exports.updateOrderStatusService = function (orderId, status, requestingUserId, 
                 return [3 /*break*/, 7];
             case 3: return [4 /*yield*/, notificationService.createNotification({
                     userId: orderDetails.userId,
-                    type: 'ORDER_READY_FOR_PICKUP',
+                    type: client_1.NotificationType.ORDER_READY_FOR_PICKUP,
+                    category: client_1.NotificationCategory.ORDER,
                     title: 'Your order is ready for pickup!',
                     body: "Order #" + orderDetails.orderCode + " is now ready for pickup at " + orderDetails.vendor.name + ".",
                     meta: { orderId: orderId }
@@ -633,7 +636,8 @@ exports.updateOrderStatusService = function (orderId, status, requestingUserId, 
                 return [3 /*break*/, 7];
             case 5: return [4 /*yield*/, notificationService.createNotification({
                     userId: orderDetails.userId,
-                    type: 'EN_ROUTE',
+                    type: client_1.NotificationType.EN_ROUTE,
+                    category: client_1.NotificationCategory.ORDER,
                     title: 'Your order is on the way!',
                     body: "Your delivery person is en route with order #" + orderDetails.orderCode + ".",
                     meta: { orderId: orderId }
@@ -854,7 +858,8 @@ exports.acceptOrderService = function (orderId, shoppingHandlerUserId, vendorId 
                 // --- Add Notification Logic Here ---
                 return [4 /*yield*/, notificationService.createNotification({
                         userId: acceptedOrder.userId,
-                        type: 'ORDER_ACCEPTED',
+                        type: client_1.NotificationType.ORDER_ACCEPTED,
+                        category: client_1.NotificationCategory.ORDER,
                         title: 'Your order has been accepted!',
                         body: "Your order with code #" + acceptedOrder.orderCode + " has been accepted  and will begin preparing it shortly.",
                         meta: { orderId: acceptedOrder.id }
@@ -941,7 +946,8 @@ reason) { return __awaiter(void 0, void 0, Promise, function () {
                             // --- Replace TODO with Notification Logic Here ---
                             return [4 /*yield*/, notificationService.createNotification({
                                     userId: orderToDecline.userId,
-                                    type: 'ORDER_DECLINED',
+                                    type: client_1.NotificationType.ORDER_DECLINED,
+                                    category: client_1.NotificationCategory.ORDER,
                                     title: 'Your order has been declined',
                                     body: "Unfortunately, your order #" + orderToDecline.orderCode + " was declined. You have been refunded " + orderToDecline.totalAmount + " in your wallet.",
                                     meta: { orderId: orderToDecline.id }

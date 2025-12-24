@@ -58,16 +58,17 @@ var fcm_util_1 = require("../utils/fcm.util");
  * A generic function to create a notification record and send a push notification.
  */
 exports.createNotification = function (args) { return __awaiter(void 0, void 0, void 0, function () {
-    var userId, title, body, type, meta, notification, devices, tokens;
+    var userId, title, body, type, category, meta, notification, devices, tokens;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                userId = args.userId, title = args.title, body = args.body, type = args.type, meta = args.meta;
+                userId = args.userId, title = args.title, body = args.body, type = args.type, category = args.category, meta = args.meta;
                 return [4 /*yield*/, notificationModel.createNotification({
                         userId: userId,
                         title: title,
                         body: body,
                         type: type,
+                        category: category,
                         meta: meta || {}
                     })];
             case 1:
@@ -117,7 +118,7 @@ exports.notifyVendorOfNewOrder = function (vendorId, orderId) { return __awaiter
                 title = 'New Order Received!';
                 body = "A new order has been placed. Tap to view.";
                 notificationPromises = vendorUsers.map(function (user) {
-                    return exports.createNotification({ userId: user.id, title: title, body: body, type: client_1.NotificationType.NEW_ORDER_PLACED, meta: { orderId: orderId } });
+                    return exports.createNotification({ userId: user.id, title: title, body: body, type: client_1.NotificationType.NEW_ORDER_PLACED, category: client_1.NotificationCategory.ORDER, meta: { orderId: orderId } });
                 });
                 return [4 /*yield*/, Promise.all(notificationPromises)];
             case 2:

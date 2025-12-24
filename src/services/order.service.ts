@@ -3,7 +3,7 @@
 import { Request, Response, Router } from 'express';
 import * as orderModel from '../models/order.model'; // Adjust the path if needed
 import * as vendorModel from '../models/vendor.model'; // Add this import for vendorModel
-import { PrismaClient, Order, OrderItem, Role, ShoppingMethod, OrderStatus, DeliveryMethod, VendorProduct, Product, DeliveryAddress, Prisma, PaymentMethods, OrderItemStatus, PaymentStatus, TransactionType, TransactionSource, TransactionStatus } from '@prisma/client';
+import { PrismaClient, Order, OrderItem, Role, ShoppingMethod, OrderStatus, DeliveryMethod, VendorProduct, Product, DeliveryAddress, Prisma, PaymentMethods, OrderItemStatus, PaymentStatus, TransactionType, TransactionSource, TransactionStatus, NotificationCategory, NotificationType } from '@prisma/client';
 import dayjs from 'dayjs';
 import { calculateOrderFeesService } from './fee.service';
 import { getVendorById } from './vendor.service';
@@ -386,7 +386,8 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
     // --- Add Notification Logic Here ---
     await notificationService.createNotification({
       userId: finalOrder.vendor.userId, // The vendor's user ID
-      type: 'NEW_ORDER_PLACED',
+      type: NotificationType.NEW_ORDER_PLACED,
+      category: NotificationCategory.ORDER,
       title: 'New Order Received!',
       body: `You have a new order #${finalOrder.orderCode} from ${finalOrder.user.name}.`,
       meta: { orderId: finalOrder.id }
@@ -395,7 +396,8 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
     // I will remove it later
     await notificationService.createNotification({
       userId: finalOrder.userId, // The customer's user ID
-      type: 'ORDER_PLACED_CUSTOMER',
+      type: NotificationType.ORDER_PLACED_CUSTOMER,
+      category: NotificationCategory.ORDER,
       title: 'Order Placed Successfully!',
       body: `Your order #${finalOrder.orderCode} has been placed.`,
       meta: { orderId: finalOrder.id },
@@ -632,7 +634,8 @@ export const updateOrderStatusService = async (
       case 'ready_for_pickup':
         await notificationService.createNotification({
           userId: orderDetails.userId,
-          type: 'ORDER_READY_FOR_PICKUP',
+          type: NotificationType.ORDER_READY_FOR_PICKUP,
+          category: NotificationCategory.ORDER,
           title: 'Your order is ready for pickup!',
           body: `Order #${orderDetails.orderCode} is now ready for pickup at ${orderDetails.vendor.name}.`,
           meta: { orderId: orderId }
@@ -642,7 +645,8 @@ export const updateOrderStatusService = async (
       case 'en_route':
         await notificationService.createNotification({
           userId: orderDetails.userId,
-          type: 'EN_ROUTE',
+          type: NotificationType.EN_ROUTE,
+          category: NotificationCategory.ORDER,
           title: 'Your order is on the way!',
           body: `Your delivery person is en route with order #${orderDetails.orderCode}.`,
           meta: { orderId: orderId }
@@ -908,7 +912,8 @@ export const acceptOrderService = async (
     // --- Add Notification Logic Here ---
     await notificationService.createNotification({
       userId: acceptedOrder.userId,
-      type: 'ORDER_ACCEPTED',
+      type: NotificationType.ORDER_ACCEPTED,
+      category: NotificationCategory.ORDER,
       title: 'Your order has been accepted!',
       body: `Your order with code #${acceptedOrder.orderCode} has been accepted  and will begin preparing it shortly.`,
       meta: { orderId: acceptedOrder.id }
@@ -993,7 +998,8 @@ export const declineOrderService = async (
      // --- Replace TODO with Notification Logic Here ---
     await notificationService.createNotification({
       userId: orderToDecline.userId,
-      type: 'ORDER_DECLINED',
+      type: NotificationType.ORDER_DECLINED,
+      category: NotificationCategory.ORDER,
       title: 'Your order has been declined',
       body: `Unfortunately, your order #${orderToDecline.orderCode} was declined. You have been refunded ${orderToDecline.totalAmount} in your wallet.`,
       meta: { orderId: orderToDecline.id }
