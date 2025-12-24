@@ -99,8 +99,9 @@ exports.sendMessageService = function (_a) {
                     // --- Add Notification Logic Here ---
                     return [4 /*yield*/, notificationService.createNotification({
                             userId: recipientId,
-                            type: 'NEW_MESSAGE',
+                            type: client_1.NotificationType.NEW_MESSAGE,
                             title: "New message from " + message.sender.name,
+                            category: client_1.NotificationCategory.ORDER,
                             body: content,
                             meta: { orderId: orderId, senderId: senderId }
                         })];

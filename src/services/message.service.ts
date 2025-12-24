@@ -1,4 +1,4 @@
-import { PrismaClient, Message } from '@prisma/client';
+import { PrismaClient, Message, NotificationCategory, NotificationType } from '@prisma/client';
 import { getIO, userSocketMap } from '../socket';
 import * as notificationService from './notification.service';
 
@@ -68,8 +68,9 @@ export const sendMessageService = async ({
   // --- Add Notification Logic Here ---
   await notificationService.createNotification({
     userId: recipientId,
-    type: 'NEW_MESSAGE',
+    type: NotificationType.NEW_MESSAGE,
     title: `New message from ${message.sender.name}`,
+    category: NotificationCategory.ORDER,
     body: content,
     meta: { orderId: orderId, senderId: senderId }
   });
