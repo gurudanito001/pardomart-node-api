@@ -105,21 +105,6 @@ export const registerUser = async (req: Request, res: Response) => {
  */
 export const getTimeZones = async (req: Request, res: Response) => {
   try {
-    // DeliveryPersonLocation
-    //Device
-    //Notification
-    //BugReport
-    //Faq
-    //Content
-    //Ad
-    await prisma.deliveryPersonLocation.deleteMany(); // Test to ensure Prisma is working
-    await prisma.device.deleteMany();
-    await prisma.notification.deleteMany();
-    await prisma.bugReport.deleteMany();
-    await prisma.faq.deleteMany();
-    await prisma.content.deleteMany();
-    await prisma.ad.deleteMany();
-
     const timezones = Timezones;
     let utcs: string[] = [];
     timezones.forEach( zone =>{
