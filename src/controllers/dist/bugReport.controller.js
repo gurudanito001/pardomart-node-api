@@ -126,6 +126,7 @@ exports.updateBugReportStatusController = function (req, res) { return __awaiter
                 return [4 /*yield*/, notificationService.createNotification({
                         userId: updatedBugReport.userId,
                         type: 'BUG_REPORT_RESOLVED',
+                        category: client_1.NotificationCategory.SUPPORT,
                         title: 'Bug Report Resolved',
                         body: "Your bug report has been marked as resolved.",
                         meta: { bugReportId: updatedBugReport.id }

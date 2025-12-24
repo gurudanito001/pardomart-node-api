@@ -68,6 +68,7 @@ export const updateBugReportStatusController = async (req: AuthenticatedRequest,
       await notificationService.createNotification({
         userId: updatedBugReport.userId,
         type: 'BUG_REPORT_RESOLVED',
+        category: NotificationCategory.SUPPORT,
         title: 'Bug Report Resolved',
         body: `Your bug report has been marked as resolved.`,
         meta: { bugReportId: updatedBugReport.id },
