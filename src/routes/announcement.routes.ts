@@ -15,7 +15,7 @@ router.get('/', announcementController.getAnnouncementsController);
 // Admin routes
 router.post(
   '/',
-  authorize([Role.admin]),
+  //authorize([Role.admin]),
   upload.single('image'),
   announcementController.createAnnouncementController
 );

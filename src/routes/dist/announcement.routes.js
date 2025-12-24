@@ -11,7 +11,9 @@ router.use(auth_middleware_1.authenticate);
 // Public/User routes
 router.get('/', announcementController.getAnnouncementsController);
 // Admin routes
-router.post('/', auth_middleware_1.authorize([client_1.Role.admin]), upload_middleware_1.upload.single('image'), announcementController.createAnnouncementController);
+router.post('/', 
+//authorize([Role.admin]),
+upload_middleware_1.upload.single('image'), announcementController.createAnnouncementController);
 router.patch('/:id', auth_middleware_1.authorize([client_1.Role.admin]), upload_middleware_1.upload.single('image'), announcementController.updateAnnouncementController);
 router["delete"]('/:id', auth_middleware_1.authorize([client_1.Role.admin]), announcementController.deleteAnnouncementController);
 router.post('/:id/broadcast', auth_middleware_1.authorize([client_1.Role.admin]), announcementController.broadcastAnnouncementController);

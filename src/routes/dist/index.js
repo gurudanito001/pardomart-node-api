@@ -31,6 +31,7 @@ var customer_routes_1 = require("./customer.routes"); // This line was already p
 var earnings_routes_1 = require("./earnings.routes");
 var delivery_person_routes_1 = require("./delivery-person.routes");
 var ad_routes_1 = require("./ad.routes");
+var announcement_routes_1 = require("./announcement.routes");
 // Create a new Router instance
 var router = express_1.Router();
 // Mount the routers
@@ -64,4 +65,5 @@ router.use('/api/v1/customers', customer_routes_1["default"]);
 router.use('/api/v1/earnings', earnings_routes_1["default"]);
 router.use('/api/v1/delivery-persons', delivery_person_routes_1["default"]);
 router.use('/api/v1/ads', ad_routes_1["default"]);
+router.use('/api/v1/announcements', announcement_routes_1["default"]);
 exports["default"] = router;
