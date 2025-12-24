@@ -15,12 +15,12 @@ export const getNotificationsByUserId = async (
 
   const [notifications, totalCount] = await prisma.$transaction([
     prisma.notification.findMany({
-      where: { userId },
+      where: { userId, isRead: false },
       orderBy: { createdAt: 'desc' },
       skip,
       take,
     }),
-    prisma.notification.count({ where: { userId } }),
+    prisma.notification.count({ where: { userId, isRead: false } }),
   ]);
 
   return { data: notifications, totalCount };

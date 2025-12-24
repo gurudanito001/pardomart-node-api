@@ -12,6 +12,7 @@ import {
     adminListAllTransactionsService,
     adminGetTransactionByIdService,
     sendReceiptService,
+    simulatePaymentService,
 } from '../services/transaction.service';
 import { OrderCreationError } from '../services/order.service';
 import Stripe from 'stripe';
@@ -415,6 +416,49 @@ export const getTransactionOverviewController = async (req: Request, res: Respon
   } catch (error: any) {
     console.error('Error getting transaction overview:', error);
     res.status(500).json({ error: 'An unexpected error occurred.' });
+  }
+};
+
+/**
+ * @swagger
+ * /transactions/simulate-payment:
+ *   post:
+ *     summary: Simulate a payment (Dev/Test)
+ *     tags: [Transaction]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [orderId]
+ *             properties:
+ *               orderId:
+ *                 type: string
+ *                 format: uuid
+ *     responses:
+ *       200:
+ *         description: Payment simulated successfully.
+ *       400:
+ *         description: Bad request.
+ *       404:
+ *         description: Order not found.
+ */
+export const simulatePaymentController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.userId as string;
+    const { orderId } = req.body;
+
+    const transaction = await simulatePaymentService(userId, orderId);
+    res.status(200).json(transaction);
+  } catch (error: any) {
+    if (error instanceof OrderCreationError) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+    console.error('Error simulating payment:', error);
+    res.status(500).json({ error: 'Failed to simulate payment.' });
   }
 };
 

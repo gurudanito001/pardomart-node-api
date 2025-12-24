@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.adminListAllTransactionsController = exports.sendReceiptController = exports.adminGetTransactionByIdController = exports.getTransactionOverviewController = exports.listTransactionsController = exports.stripeWebhookController = exports.listVendorTransactionsController = exports.listMyTransactionsController = exports.detachPaymentMethodController = exports.listMySavedPaymentMethodsController = exports.createSetupIntentController = exports.createPaymentIntentController = void 0;
+exports.adminListAllTransactionsController = exports.sendReceiptController = exports.adminGetTransactionByIdController = exports.simulatePaymentController = exports.getTransactionOverviewController = exports.listTransactionsController = exports.stripeWebhookController = exports.listVendorTransactionsController = exports.listMyTransactionsController = exports.detachPaymentMethodController = exports.listMySavedPaymentMethodsController = exports.createSetupIntentController = exports.createPaymentIntentController = void 0;
 var transaction_service_1 = require("../services/transaction.service");
 var order_service_1 = require("../services/order.service");
 var stripe_1 = require("stripe");
@@ -518,6 +518,58 @@ exports.getTransactionOverviewController = function (req, res) { return __awaite
 }); };
 /**
  * @swagger
+ * /transactions/simulate-payment:
+ *   post:
+ *     summary: Simulate a payment (Dev/Test)
+ *     tags: [Transaction]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [orderId]
+ *             properties:
+ *               orderId:
+ *                 type: string
+ *                 format: uuid
+ *     responses:
+ *       200:
+ *         description: Payment simulated successfully.
+ *       400:
+ *         description: Bad request.
+ *       404:
+ *         description: Order not found.
+ */
+exports.simulatePaymentController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var userId, orderId, transaction, error_10;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                userId = req.userId;
+                orderId = req.body.orderId;
+                return [4 /*yield*/, transaction_service_1.simulatePaymentService(userId, orderId)];
+            case 1:
+                transaction = _a.sent();
+                res.status(200).json(transaction);
+                return [3 /*break*/, 3];
+            case 2:
+                error_10 = _a.sent();
+                if (error_10 instanceof order_service_1.OrderCreationError) {
+                    return [2 /*return*/, res.status(error_10.statusCode).json({ error: error_10.message })];
+                }
+                console.error('Error simulating payment:', error_10);
+                res.status(500).json({ error: 'Failed to simulate payment.' });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); };
+/**
+ * @swagger
  * /transactions/admin/{transactionId}:
  *   get:
  *     summary: Get a single transaction by ID (Admin)
@@ -543,7 +595,7 @@ exports.getTransactionOverviewController = function (req, res) { return __awaite
  *         description: Transaction not found.
  */
 exports.adminGetTransactionByIdController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var transactionId, transaction, error_10;
+    var transactionId, transaction, error_11;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -555,8 +607,8 @@ exports.adminGetTransactionByIdController = function (req, res) { return __await
                 res.status(200).json(transaction);
                 return [3 /*break*/, 3];
             case 2:
-                error_10 = _a.sent();
-                res.status(error_10.statusCode || 500).json({ error: error_10.message || 'An unexpected error occurred.' });
+                error_11 = _a.sent();
+                res.status(error_11.statusCode || 500).json({ error: error_11.message || 'An unexpected error occurred.' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
@@ -588,7 +640,7 @@ exports.adminGetTransactionByIdController = function (req, res) { return __await
  *         description: Bad request (e.g., transaction not linked to an order).
  */
 exports.sendReceiptController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var transactionId, result, error_11;
+    var transactionId, result, error_12;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -600,8 +652,8 @@ exports.sendReceiptController = function (req, res) { return __awaiter(void 0, v
                 res.status(200).json(result);
                 return [3 /*break*/, 3];
             case 2:
-                error_11 = _a.sent();
-                res.status(error_11.statusCode || 500).json({ error: error_11.message || 'An unexpected error occurred.' });
+                error_12 = _a.sent();
+                res.status(error_12.statusCode || 500).json({ error: error_12.message || 'An unexpected error occurred.' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
@@ -631,7 +683,7 @@ exports.sendReceiptController = function (req, res) { return __awaiter(void 0, v
  *         description: Internal server error.
  */
 exports.adminListAllTransactionsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, orderCode, customerName, status, createdAtStart, createdAtEnd, page, take, filters, pagination, result, error_12;
+    var _a, orderCode, customerName, status, createdAtStart, createdAtEnd, page, take, filters, pagination, result, error_13;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -653,8 +705,8 @@ exports.adminListAllTransactionsController = function (req, res) { return __awai
                 res.status(200).json(result);
                 return [3 /*break*/, 3];
             case 2:
-                error_12 = _b.sent();
-                console.error('Error in adminListAllTransactionsController:', error_12);
+                error_13 = _b.sent();
+                console.error('Error in adminListAllTransactionsController:', error_13);
                 res.status(500).json({ error: 'An unexpected error occurred.' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];

@@ -393,6 +393,7 @@ model Notification {
   userId    String
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   type      NotificationType
+  category  NotificationCategory @default(ORDER)
   title     String
   body      String
   isRead    Boolean          @default(false)
@@ -720,6 +721,13 @@ enum NotificationType {
   BUG_REPORT_RECEIVED
   BUG_REPORT_RESOLVED
   
+}
+
+enum NotificationCategory {
+  ORDER
+  SUPPORT
+  SYSTEM
+  PROMOTION
 }
 
 enum MediaType {

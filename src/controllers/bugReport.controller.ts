@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import * as bugReportService from '../services/bugReport.service';
-import { Prisma, PrismaClient, Role } from '@prisma/client';
+import { Prisma, PrismaClient, Role, NotificationCategory } from '@prisma/client';
 import * as notificationService from '../services/notification.service';
 
 const prisma = new PrismaClient();
@@ -32,6 +32,7 @@ export const createBugReportController = async (req: AuthenticatedRequest, res: 
       await notificationService.createNotification({
         userId: admin.id,
         type: 'BUG_REPORT_RECEIVED',
+        category: NotificationCategory.SUPPORT,
         title: 'New Bug Report',
         body: `A new bug has been reported by ${user?.name || 'a user'}.`,
         meta: { bugReportId: bugReport.id },
@@ -41,8 +42,9 @@ export const createBugReportController = async (req: AuthenticatedRequest, res: 
     await notificationService.createNotification({
         userId: userId,
         type: 'BUG_REPORT_RECEIVED',
+        category: NotificationCategory.SUPPORT,
         title: 'New Bug Report',
-        body: `Your bug report has been received'}.`,
+        body: `Your bug report has been received.`,
         meta: { bugReportId: bugReport.id },
       });
     // --- End Notification Logic ---

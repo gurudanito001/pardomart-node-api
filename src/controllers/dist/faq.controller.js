@@ -86,9 +86,6 @@ var http_status_codes_1 = require("http-status-codes");
  *         sortOrder: { type: integer }
  */
 /**
- * @desc Get all active FAQs
- * @route GET /api/v1/faqs
- * @access Public
  * @swagger
  * /api/v1/faqs:
  *   get:
@@ -112,7 +109,8 @@ var http_status_codes_1 = require("http-status-codes");
  *           application/json:
  *             schema:
  *               type: array
- *               items: { $ref: '#/components/schemas/Faq' }
+ *               items:
+ *                 $ref: '#/components/schemas/Faq'
  *       500:
  *         description: Internal server error.
  */
@@ -143,9 +141,6 @@ exports.getAllFaqsController = function (req, res) { return __awaiter(void 0, vo
     });
 }); };
 /**
- * @desc Create a new FAQ
- * @route POST /api/v1/faqs
- * @access Admin
  * @swagger
  * /api/v1/faqs:
  *   post:
@@ -198,9 +193,6 @@ exports.createFaqController = function (req, res) { return __awaiter(void 0, voi
     });
 }); };
 /**
- * @desc Update an FAQ
- * @route PATCH /api/v1/faqs/:id
- * @access Admin
  * @swagger
  * /api/v1/faqs/{id}:
  *   patch:
@@ -269,9 +261,6 @@ exports.updateFaqController = function (req, res) { return __awaiter(void 0, voi
     });
 }); };
 /**
- * @desc Delete an FAQ
- * @route DELETE /api/v1/faqs/:id
- * @access Admin
  * @swagger
  * /api/v1/faqs/{id}:
  *   delete:

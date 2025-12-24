@@ -75,6 +75,7 @@ exports.createBugReportController = function (req, res) { return __awaiter(void 
                 return [4 /*yield*/, notificationService.createNotification({
                         userId: admin.id,
                         type: 'BUG_REPORT_RECEIVED',
+                        category: client_1.NotificationCategory.SUPPORT,
                         title: 'New Bug Report',
                         body: "A new bug has been reported by " + ((user === null || user === void 0 ? void 0 : user.name) || 'a user') + ".",
                         meta: { bugReportId: bugReport.id }
@@ -90,8 +91,9 @@ exports.createBugReportController = function (req, res) { return __awaiter(void 
             return [4 /*yield*/, notificationService.createNotification({
                     userId: userId,
                     type: 'BUG_REPORT_RECEIVED',
+                    category: client_1.NotificationCategory.SUPPORT,
                     title: 'New Bug Report',
-                    body: "Your bug report has been received'}.",
+                    body: "Your bug report has been received.",
                     meta: { bugReportId: bugReport.id }
                 })];
             case 8:

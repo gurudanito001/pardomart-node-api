@@ -525,3 +525,57 @@ export const sendReceiptService = async (transactionId: string): Promise<{ messa
 
   return { message: `Receipt successfully sent to ${user.email}.` };
 };
+
+/**
+ * Simulates a successful payment for an order (For testing/dev purposes).
+ * @param userId The ID of the user making the payment.
+ * @param orderId The ID of the order to pay.
+ * @returns The created transaction.
+ */
+export const simulatePaymentService = async (userId: string, orderId: string) => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    throw new OrderCreationError('User not found.', 404);
+  }
+
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!order) {
+    throw new OrderCreationError('Order not found.', 404);
+  }
+
+  if (order.userId !== userId) {
+    throw new OrderCreationError('You are not authorized to pay for this order.', 403);
+  }
+
+  if (order.paymentStatus === PaymentStatus.paid) {
+    throw new OrderCreationError('This order has already been paid for.', 409);
+  }
+
+  // Create completed transaction
+  const transaction = await transactionModel.createTransaction({
+    userId: user.id,
+    amount: -order.totalAmount,
+    type: TransactionType.ORDER_PAYMENT,
+    source: TransactionSource.SYSTEM, // Using SYSTEM to indicate internal/mock
+    status: TransactionStatus.COMPLETED,
+    description: `Mock Payment for order #${order.orderCode}`,
+    orderId: order.id,
+    externalId: `mock_${Date.now()}`,
+    meta: { simulated: true },
+  });
+
+  // Update order status
+  await prisma.order.update({
+    where: { id: orderId },
+    data: { paymentStatus: PaymentStatus.paid },
+  });
+
+  // Send receipt notification
+  try {
+    await sendReceiptService(transaction.id);
+  } catch (error) {
+    console.warn('Failed to send receipt for simulated payment:', error);
+  }
+
+  return transaction;
+};

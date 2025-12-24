@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.createNotification = void 0;
+exports.getUnreadNotificationCount = exports.markAllNotificationsAsRead = exports.markNotificationAsRead = exports.getNotificationsByUserId = exports.createNotification = void 0;
 // src/models/notification.model.ts
 var prisma_1 = require("../config/prisma");
 exports.createNotification = function (data) { return __awaiter(void 0, void 0, Promise, function () {
@@ -44,5 +44,62 @@ exports.createNotification = function (data) { return __awaiter(void 0, void 0, 
         return [2 /*return*/, prisma_1.prisma.notification.create({ data: data })];
     });
 }); };
-// Add other functions as needed for getting/updating notifications
-// e.g., getNotificationsByUserId, markAsRead, etc.
+exports.getNotificationsByUserId = function (userId, pagination) { return __awaiter(void 0, void 0, Promise, function () {
+    var skip, take, _a, notifications, totalCount;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                skip = (pagination.page - 1) * pagination.take;
+                take = pagination.take;
+                return [4 /*yield*/, prisma_1.prisma.$transaction([
+                        prisma_1.prisma.notification.findMany({
+                            where: { userId: userId, isRead: false },
+                            orderBy: { createdAt: 'desc' },
+                            skip: skip,
+                            take: take
+                        }),
+                        prisma_1.prisma.notification.count({ where: { userId: userId, isRead: false } }),
+                    ])];
+            case 1:
+                _a = _b.sent(), notifications = _a[0], totalCount = _a[1];
+                return [2 /*return*/, { data: notifications, totalCount: totalCount }];
+        }
+    });
+}); };
+exports.markNotificationAsRead = function (notificationId, userId) { return __awaiter(void 0, void 0, Promise, function () {
+    var notification;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, prisma_1.prisma.notification.findFirst({
+                    where: { id: notificationId, userId: userId }
+                })];
+            case 1:
+                notification = _a.sent();
+                if (!notification) {
+                    return [2 /*return*/, null]; // Let service layer handle not found
+                }
+                return [2 /*return*/, prisma_1.prisma.notification.update({
+                        where: { id: notificationId },
+                        data: { isRead: true }
+                    })];
+        }
+    });
+}); };
+exports.markAllNotificationsAsRead = function (userId) { return __awaiter(void 0, void 0, Promise, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, prisma_1.prisma.notification.updateMany({
+                where: { userId: userId, isRead: false },
+                data: { isRead: true }
+            })];
+    });
+}); };
+exports.getUnreadNotificationCount = function (userId) { return __awaiter(void 0, void 0, Promise, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, prisma_1.prisma.notification.count({
+                where: {
+                    userId: userId,
+                    isRead: false
+                }
+            })];
+    });
+}); };

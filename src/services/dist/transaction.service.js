@@ -47,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.sendReceiptService = exports.adminGetTransactionByIdService = exports.adminListAllTransactionsService = exports.getTransactionOverviewService = exports.listTransactionsService = exports.detachPaymentMethodService = exports.listSavedPaymentMethodsService = exports.listTransactionsForVendorService = exports.listTransactionsForUserService = exports.handleStripeWebhook = exports.createSetupIntentService = exports.createPaymentIntentService = void 0;
+exports.simulatePaymentService = exports.sendReceiptService = exports.adminGetTransactionByIdService = exports.adminListAllTransactionsService = exports.getTransactionOverviewService = exports.listTransactionsService = exports.detachPaymentMethodService = exports.listSavedPaymentMethodsService = exports.listTransactionsForVendorService = exports.listTransactionsForUserService = exports.handleStripeWebhook = exports.createSetupIntentService = exports.createPaymentIntentService = void 0;
 var client_1 = require("@prisma/client");
 var stripe_1 = require("stripe");
 var order_service_1 = require("./order.service");
@@ -591,6 +591,70 @@ exports.sendReceiptService = function (transactionId) { return __awaiter(void 0,
                 // 4. Update the transaction meta to log that a receipt was sent.
                 _a.sent();
                 return [2 /*return*/, { message: "Receipt successfully sent to " + user.email + "." }];
+        }
+    });
+}); };
+/**
+ * Simulates a successful payment for an order (For testing/dev purposes).
+ * @param userId The ID of the user making the payment.
+ * @param orderId The ID of the order to pay.
+ * @returns The created transaction.
+ */
+exports.simulatePaymentService = function (userId, orderId) { return __awaiter(void 0, void 0, void 0, function () {
+    var user, order, transaction, error_1;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, prisma.user.findUnique({ where: { id: userId } })];
+            case 1:
+                user = _a.sent();
+                if (!user) {
+                    throw new order_service_1.OrderCreationError('User not found.', 404);
+                }
+                return [4 /*yield*/, prisma.order.findUnique({ where: { id: orderId } })];
+            case 2:
+                order = _a.sent();
+                if (!order) {
+                    throw new order_service_1.OrderCreationError('Order not found.', 404);
+                }
+                if (order.userId !== userId) {
+                    throw new order_service_1.OrderCreationError('You are not authorized to pay for this order.', 403);
+                }
+                if (order.paymentStatus === client_1.PaymentStatus.paid) {
+                    throw new order_service_1.OrderCreationError('This order has already been paid for.', 409);
+                }
+                return [4 /*yield*/, transactionModel.createTransaction({
+                        userId: user.id,
+                        amount: -order.totalAmount,
+                        type: client_1.TransactionType.ORDER_PAYMENT,
+                        source: client_1.TransactionSource.SYSTEM,
+                        status: client_1.TransactionStatus.COMPLETED,
+                        description: "Mock Payment for order #" + order.orderCode,
+                        orderId: order.id,
+                        externalId: "mock_" + Date.now(),
+                        meta: { simulated: true }
+                    })];
+            case 3:
+                transaction = _a.sent();
+                // Update order status
+                return [4 /*yield*/, prisma.order.update({
+                        where: { id: orderId },
+                        data: { paymentStatus: client_1.PaymentStatus.paid }
+                    })];
+            case 4:
+                // Update order status
+                _a.sent();
+                _a.label = 5;
+            case 5:
+                _a.trys.push([5, 7, , 8]);
+                return [4 /*yield*/, exports.sendReceiptService(transaction.id)];
+            case 6:
+                _a.sent();
+                return [3 /*break*/, 8];
+            case 7:
+                error_1 = _a.sent();
+                console.warn('Failed to send receipt for simulated payment:', error_1);
+                return [3 /*break*/, 8];
+            case 8: return [2 /*return*/, transaction];
         }
     });
 }); };

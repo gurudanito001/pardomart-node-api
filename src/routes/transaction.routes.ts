@@ -23,6 +23,7 @@ router.get('/admin/:transactionId', authorize([Role.admin]), transactionControll
 router.get('/', authorize([Role.vendor, Role.store_admin, Role.store_shopper]), transactionController.listTransactionsController);
 
 router.post('/create-payment-intent', transactionController.createPaymentIntentController);
+router.post('/simulate-payment', transactionController.simulatePaymentController);
 router.get('/me', transactionController.listMyTransactionsController);
 router.get('/vendor', transactionController.listVendorTransactionsController);
 router.post('/setup-intent', transactionController.createSetupIntentController);

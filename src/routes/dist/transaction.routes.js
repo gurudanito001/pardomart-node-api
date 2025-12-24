@@ -16,6 +16,7 @@ router.post('/admin/:transactionId/send-receipt', auth_middleware_1.authorize([c
 router.get('/admin/:transactionId', auth_middleware_1.authorize([client_1.Role.admin]), transactionController.adminGetTransactionByIdController);
 router.get('/', auth_middleware_1.authorize([client_1.Role.vendor, client_1.Role.store_admin, client_1.Role.store_shopper]), transactionController.listTransactionsController);
 router.post('/create-payment-intent', transactionController.createPaymentIntentController);
+router.post('/simulate-payment', transactionController.simulatePaymentController);
 router.get('/me', transactionController.listMyTransactionsController);
 router.get('/vendor', transactionController.listVendorTransactionsController);
 router.post('/setup-intent', transactionController.createSetupIntentController);

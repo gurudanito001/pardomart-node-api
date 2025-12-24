@@ -52,9 +52,6 @@ import { StatusCodes } from 'http-status-codes';
  */
 
 /**
- * @desc Get all active FAQs
- * @route GET /api/v1/faqs
- * @access Public
  * @swagger
  * /api/v1/faqs:
  *   get:
@@ -78,7 +75,8 @@ import { StatusCodes } from 'http-status-codes';
  *           application/json:
  *             schema:
  *               type: array
- *               items: { $ref: '#/components/schemas/Faq' }
+ *               items:
+ *                 $ref: '#/components/schemas/Faq'
  *       500:
  *         description: Internal server error.
  */
@@ -99,9 +97,6 @@ export const getAllFaqsController = async (req: Request, res: Response) => {
 };
 
 /**
- * @desc Create a new FAQ
- * @route POST /api/v1/faqs
- * @access Admin
  * @swagger
  * /api/v1/faqs:
  *   post:
@@ -144,9 +139,6 @@ export const createFaqController = async (req: Request, res: Response) => {
 };
 
 /**
- * @desc Update an FAQ
- * @route PATCH /api/v1/faqs/:id
- * @access Admin
  * @swagger
  * /api/v1/faqs/{id}:
  *   patch:
@@ -203,9 +195,6 @@ export const updateFaqController = async (req: Request, res: Response) => {
 };
 
 /**
- * @desc Delete an FAQ
- * @route DELETE /api/v1/faqs/:id
- * @access Admin
  * @swagger
  * /api/v1/faqs/{id}:
  *   delete:

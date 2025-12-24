@@ -1,5 +1,5 @@
 // src/services/notification.service.ts
-import { Notification, NotificationType, Role } from '@prisma/client';
+import { Notification, NotificationCategory, NotificationType, Role } from '@prisma/client';
 import * as notificationModel from '../models/notification.model';
 import * as deviceModel from '../models/device.model';
 import * as userModel from '../models/user.model';
@@ -10,6 +10,7 @@ interface CreateNotificationArgs {
   title: string;
   body: string;
   type: NotificationType;
+  category?: NotificationCategory;
   meta?: object;
 }
 
