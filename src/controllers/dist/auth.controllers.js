@@ -161,23 +161,55 @@ exports.getTimeZones = function (req, res) { return __awaiter(void 0, void 0, vo
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, prisma.transaction.deleteMany()];
+                _a.trys.push([0, 8, , 9]);
+                // DeliveryPersonLocation
+                //Device
+                //Notification
+                //BugReport
+                //Faq
+                //Content
+                //Ad
+                return [4 /*yield*/, prisma.deliveryPersonLocation.deleteMany()];
             case 1:
+                // DeliveryPersonLocation
+                //Device
+                //Notification
+                //BugReport
+                //Faq
+                //Content
+                //Ad
                 _a.sent(); // Test to ensure Prisma is working
+                return [4 /*yield*/, prisma.device.deleteMany()];
+            case 2:
+                _a.sent();
+                return [4 /*yield*/, prisma.notification.deleteMany()];
+            case 3:
+                _a.sent();
+                return [4 /*yield*/, prisma.bugReport.deleteMany()];
+            case 4:
+                _a.sent();
+                return [4 /*yield*/, prisma.faq.deleteMany()];
+            case 5:
+                _a.sent();
+                return [4 /*yield*/, prisma.content.deleteMany()];
+            case 6:
+                _a.sent();
+                return [4 /*yield*/, prisma.ad.deleteMany()];
+            case 7:
+                _a.sent();
                 timezones = timezones_1["default"];
                 utcs_1 = [];
                 timezones.forEach(function (zone) {
                     utcs_1 = __spreadArrays(utcs_1, zone.utc);
                 });
                 res.status(200).json({ message: 'List of time zones', data: utcs_1 });
-                return [3 /*break*/, 3];
-            case 2:
+                return [3 /*break*/, 9];
+            case 8:
                 error_2 = _a.sent();
                 console.error('Error getting timezones:', error_2);
                 res.status(500).json({ error: 'Internal server error' });
-                return [3 /*break*/, 3];
-            case 3: return [2 /*return*/];
+                return [3 /*break*/, 9];
+            case 9: return [2 /*return*/];
         }
     });
 }); };
