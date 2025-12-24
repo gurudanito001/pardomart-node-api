@@ -111,6 +111,9 @@ export const getOrdersByUserId = async (userId: string): Promise<Order[]> => {
         }
       }
     },
+    orderBy: {
+      updatedAt: 'desc',
+    },
   });
 };
 

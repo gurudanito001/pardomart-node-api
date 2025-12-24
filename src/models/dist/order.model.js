@@ -136,6 +136,9 @@ exports.getOrdersByUserId = function (userId) { return __awaiter(void 0, void 0,
                             image: true
                         }
                     }
+                },
+                orderBy: {
+                    updatedAt: 'desc'
                 }
             })];
     });
