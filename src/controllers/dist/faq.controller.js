@@ -87,7 +87,7 @@ var http_status_codes_1 = require("http-status-codes");
  */
 /**
  * @swagger
- * /api/v1/faqs:
+ * /faqs:
  *   get:
  *     summary: Get all active FAQs
  *     tags: [FAQ]
@@ -142,7 +142,7 @@ exports.getAllFaqsController = function (req, res) { return __awaiter(void 0, vo
 }); };
 /**
  * @swagger
- * /api/v1/faqs:
+ * /faqs:
  *   post:
  *     summary: Create a new FAQ (Admin)
  *     tags: [FAQ, Admin]
@@ -194,7 +194,7 @@ exports.createFaqController = function (req, res) { return __awaiter(void 0, voi
 }); };
 /**
  * @swagger
- * /api/v1/faqs/{id}:
+ * /faqs/{id}:
  *   patch:
  *     summary: Update an FAQ (Admin)
  *     tags: [FAQ, Admin]
@@ -262,7 +262,7 @@ exports.updateFaqController = function (req, res) { return __awaiter(void 0, voi
 }); };
 /**
  * @swagger
- * /api/v1/faqs/{id}:
+ * /faqs/{id}:
  *   delete:
  *     summary: Delete an FAQ (Admin)
  *     tags: [FAQ, Admin]

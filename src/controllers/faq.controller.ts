@@ -53,7 +53,7 @@ import { StatusCodes } from 'http-status-codes';
 
 /**
  * @swagger
- * /api/v1/faqs:
+ * /faqs:
  *   get:
  *     summary: Get all active FAQs
  *     tags: [FAQ]
@@ -98,7 +98,7 @@ export const getAllFaqsController = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /api/v1/faqs:
+ * /faqs:
  *   post:
  *     summary: Create a new FAQ (Admin)
  *     tags: [FAQ, Admin]
@@ -140,7 +140,7 @@ export const createFaqController = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /api/v1/faqs/{id}:
+ * /faqs/{id}:
  *   patch:
  *     summary: Update an FAQ (Admin)
  *     tags: [FAQ, Admin]
@@ -196,7 +196,7 @@ export const updateFaqController = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /api/v1/faqs/{id}:
+ * /faqs/{id}:
  *   delete:
  *     summary: Delete an FAQ (Admin)
  *     tags: [FAQ, Admin]
