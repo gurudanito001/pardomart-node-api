@@ -3,7 +3,7 @@ import * as announcementController from '../controllers/announcement.controller'
 import { authenticate, authorize } from '../middlewares/auth.middleware';
 import { Role } from '@prisma/client';
 // Adjust the path below to match where your multer 'upload' middleware is exported
-import { upload } from '../config/multer'; 
+import { upload } from '../middlewares/upload.middleware';
 
 const router = Router();
 
