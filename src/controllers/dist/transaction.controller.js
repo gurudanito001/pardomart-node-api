@@ -39,11 +39,10 @@ exports.__esModule = true;
 exports.adminListAllTransactionsController = exports.sendReceiptController = exports.adminGetTransactionByIdController = exports.simulatePaymentController = exports.getTransactionOverviewController = exports.listTransactionsController = exports.stripeWebhookController = exports.listVendorTransactionsController = exports.listMyTransactionsController = exports.detachPaymentMethodController = exports.listMySavedPaymentMethodsController = exports.createSetupIntentController = exports.createPaymentIntentController = void 0;
 var transaction_service_1 = require("../services/transaction.service");
 var order_service_1 = require("../services/order.service");
-var stripe_1 = require("stripe");
 var transactionService = require("../services/transaction.service");
-var stripe = new stripe_1["default"](process.env.STRIPE_SECRET_KEY, {
-    apiVersion: '2025-08-27.basil'
-});
+/* const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2025-08-27.basil',
+}); */
 /**
  * @swagger
  * tags:
@@ -375,33 +374,26 @@ exports.listVendorTransactionsController = function (req, res) { return __awaite
     });
 }); };
 exports.stripeWebhookController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var sig, event, error_7;
     return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                sig = req.headers['stripe-signature'];
-                try {
-                    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-                }
-                catch (err) {
-                    console.error("\u274C Webhook signature verification failed.", err.message);
-                    return [2 /*return*/, res.status(400).send("Webhook Error: " + err.message)];
-                }
-                _a.label = 1;
-            case 1:
-                _a.trys.push([1, 3, , 4]);
-                return [4 /*yield*/, transaction_service_1.handleStripeWebhook(event)];
-            case 2:
-                _a.sent();
-                return [3 /*break*/, 4];
-            case 3:
-                error_7 = _a.sent();
-                console.error('Error handling webhook event:', error_7);
-                return [3 /*break*/, 4];
-            case 4:
-                res.status(200).json({ received: true });
-                return [2 /*return*/];
+        /* const sig = req.headers['stripe-signature'] as string;
+        let event: Stripe.Event;
+      
+        try {
+          event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET!);
+        } catch (err: any) {
+          console.error(`❌ Webhook signature verification failed.`, err.message);
+          return res.status(400).send(`Webhook Error: ${err.message}`);
         }
+      
+        try {
+          await handleStripeWebhook(event);
+        } catch (error) {
+          console.error('Error handling webhook event:', error);
+          // Return a 200 to Stripe even if our internal processing fails
+          // to prevent Stripe from retrying indefinitely. We should have internal monitoring for this.
+        } */
+        res.status(200).json({ received: true });
+        return [2 /*return*/];
     });
 }); };
 /**
@@ -441,7 +433,7 @@ exports.stripeWebhookController = function (req, res) { return __awaiter(void 0,
  *         description: Internal server error.
  */
 exports.listTransactionsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var userId, userRole, staffVendorId, _a, queryVendorId, queryUserId, filters, transactions, error_8;
+    var userId, userRole, staffVendorId, _a, queryVendorId, queryUserId, filters, transactions, error_7;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -461,10 +453,10 @@ exports.listTransactionsController = function (req, res) { return __awaiter(void
                 res.status(200).json(transactions);
                 return [3 /*break*/, 3];
             case 2:
-                error_8 = _b.sent();
-                console.error('Error listing transactions:', error_8);
-                if (error_8.message.includes('Forbidden') || error_8.message.includes('Unauthorized')) {
-                    return [2 /*return*/, res.status(403).json({ error: error_8.message })];
+                error_7 = _b.sent();
+                console.error('Error listing transactions:', error_7);
+                if (error_7.message.includes('Forbidden') || error_7.message.includes('Unauthorized')) {
+                    return [2 /*return*/, res.status(403).json({ error: error_7.message })];
                 }
                 res.status(500).json({ error: 'An unexpected error occurred while listing transactions.' });
                 return [3 /*break*/, 3];
@@ -497,7 +489,7 @@ exports.listTransactionsController = function (req, res) { return __awaiter(void
  *         description: Internal server error.
  */
 exports.getTransactionOverviewController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var overviewData, error_9;
+    var overviewData, error_8;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -508,8 +500,8 @@ exports.getTransactionOverviewController = function (req, res) { return __awaite
                 res.status(200).json(overviewData);
                 return [3 /*break*/, 3];
             case 2:
-                error_9 = _a.sent();
-                console.error('Error getting transaction overview:', error_9);
+                error_8 = _a.sent();
+                console.error('Error getting transaction overview:', error_8);
                 res.status(500).json({ error: 'An unexpected error occurred.' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -544,7 +536,7 @@ exports.getTransactionOverviewController = function (req, res) { return __awaite
  *         description: Order not found.
  */
 exports.simulatePaymentController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var userId, orderId, transaction, error_10;
+    var userId, orderId, transaction, error_9;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -557,11 +549,11 @@ exports.simulatePaymentController = function (req, res) { return __awaiter(void 
                 res.status(200).json(transaction);
                 return [3 /*break*/, 3];
             case 2:
-                error_10 = _a.sent();
-                if (error_10 instanceof order_service_1.OrderCreationError) {
-                    return [2 /*return*/, res.status(error_10.statusCode).json({ error: error_10.message })];
+                error_9 = _a.sent();
+                if (error_9 instanceof order_service_1.OrderCreationError) {
+                    return [2 /*return*/, res.status(error_9.statusCode).json({ error: error_9.message })];
                 }
-                console.error('Error simulating payment:', error_10);
+                console.error('Error simulating payment:', error_9);
                 res.status(500).json({ error: 'Failed to simulate payment.' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
@@ -595,7 +587,7 @@ exports.simulatePaymentController = function (req, res) { return __awaiter(void 
  *         description: Transaction not found.
  */
 exports.adminGetTransactionByIdController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var transactionId, transaction, error_11;
+    var transactionId, transaction, error_10;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -607,8 +599,8 @@ exports.adminGetTransactionByIdController = function (req, res) { return __await
                 res.status(200).json(transaction);
                 return [3 /*break*/, 3];
             case 2:
-                error_11 = _a.sent();
-                res.status(error_11.statusCode || 500).json({ error: error_11.message || 'An unexpected error occurred.' });
+                error_10 = _a.sent();
+                res.status(error_10.statusCode || 500).json({ error: error_10.message || 'An unexpected error occurred.' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
@@ -640,7 +632,7 @@ exports.adminGetTransactionByIdController = function (req, res) { return __await
  *         description: Bad request (e.g., transaction not linked to an order).
  */
 exports.sendReceiptController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var transactionId, result, error_12;
+    var transactionId, result, error_11;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -652,8 +644,8 @@ exports.sendReceiptController = function (req, res) { return __awaiter(void 0, v
                 res.status(200).json(result);
                 return [3 /*break*/, 3];
             case 2:
-                error_12 = _a.sent();
-                res.status(error_12.statusCode || 500).json({ error: error_12.message || 'An unexpected error occurred.' });
+                error_11 = _a.sent();
+                res.status(error_11.statusCode || 500).json({ error: error_11.message || 'An unexpected error occurred.' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
@@ -683,7 +675,7 @@ exports.sendReceiptController = function (req, res) { return __awaiter(void 0, v
  *         description: Internal server error.
  */
 exports.adminListAllTransactionsController = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, orderCode, customerName, status, createdAtStart, createdAtEnd, page, take, filters, pagination, result, error_13;
+    var _a, orderCode, customerName, status, createdAtStart, createdAtEnd, page, take, filters, pagination, result, error_12;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -705,8 +697,8 @@ exports.adminListAllTransactionsController = function (req, res) { return __awai
                 res.status(200).json(result);
                 return [3 /*break*/, 3];
             case 2:
-                error_13 = _b.sent();
-                console.error('Error in adminListAllTransactionsController:', error_13);
+                error_12 = _b.sent();
+                console.error('Error in adminListAllTransactionsController:', error_12);
                 res.status(500).json({ error: 'An unexpected error occurred.' });
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];

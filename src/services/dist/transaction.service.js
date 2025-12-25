@@ -49,42 +49,36 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 exports.__esModule = true;
 exports.simulatePaymentService = exports.sendReceiptService = exports.adminGetTransactionByIdService = exports.adminListAllTransactionsService = exports.getTransactionOverviewService = exports.listTransactionsService = exports.detachPaymentMethodService = exports.listSavedPaymentMethodsService = exports.listTransactionsForVendorService = exports.listTransactionsForUserService = exports.handleStripeWebhook = exports.createSetupIntentService = exports.createPaymentIntentService = void 0;
 var client_1 = require("@prisma/client");
-var stripe_1 = require("stripe");
 var order_service_1 = require("./order.service");
 var transactionModel = require("../models/transaction.model");
 var email_util_1 = require("../utils/email.util");
 var prisma = new client_1.PrismaClient();
-var stripe = new stripe_1["default"](process.env.STRIPE_SECRET_KEY, {
-    apiVersion: '2025-08-27.basil'
-});
+/* const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2025-08-27.basil',
+}); */
 /**
  * Finds a user's Stripe Customer ID, or creates a new Stripe Customer if one doesn't exist.
  * @param user The user object from the database.
  * @returns The Stripe Customer ID.
  */
 var findOrCreateStripeCustomer = function (user) { return __awaiter(void 0, void 0, Promise, function () {
-    var customer;
     return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                if (user.stripeCustomerId) {
-                    return [2 /*return*/, user.stripeCustomerId];
-                }
-                return [4 /*yield*/, stripe.customers.create({
-                        email: user.email,
-                        name: user.name,
-                        phone: user.mobileNumber
-                    })];
-            case 1:
-                customer = _a.sent();
-                return [4 /*yield*/, prisma.user.update({
-                        where: { id: user.id },
-                        data: { stripeCustomerId: customer.id }
-                    })];
-            case 2:
-                _a.sent();
-                return [2 /*return*/, customer.id];
+        /* if (user.stripeCustomerId) {
+          return user.stripeCustomerId;
         }
+      
+        const customer = await stripe.customers.create({
+          email: user.email,
+          name: user.name,
+          phone: user.mobileNumber,
+        });
+      
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { stripeCustomerId: customer.id },
+        });
+        return customer.id; */
+        return [2 /*return*/, 'mock_stripe_customer_id'];
     });
 }); };
 /**
@@ -94,7 +88,7 @@ var findOrCreateStripeCustomer = function (user) { return __awaiter(void 0, void
  * @returns An object containing the client_secret for the Payment Intent.
  */
 exports.createPaymentIntentService = function (userId, orderId) { return __awaiter(void 0, void 0, void 0, function () {
-    var user, order, stripeCustomerId, amountInCents, paymentIntent;
+    var user, order;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4 /*yield*/, prisma.user.findUnique({ where: { id: userId } })];
@@ -115,46 +109,39 @@ exports.createPaymentIntentService = function (userId, orderId) { return __await
                 if (order.paymentStatus === 'paid') {
                     throw new order_service_1.OrderCreationError('This order has already been paid for.', 409);
                 }
-                return [4 /*yield*/, findOrCreateStripeCustomer(user)];
-            case 3:
-                stripeCustomerId = _a.sent();
-                amountInCents = Math.round(order.totalAmount * 100);
-                return [4 /*yield*/, stripe.paymentIntents.create({
-                        amount: amountInCents,
-                        currency: 'usd',
-                        customer: stripeCustomerId,
-                        automatic_payment_methods: {
-                            enabled: true
-                        },
-                        metadata: {
-                            orderId: order.id,
-                            userId: user.id
-                        }
-                    })];
-            case 4:
-                paymentIntent = _a.sent();
+                /* const stripeCustomerId = await findOrCreateStripeCustomer(user);
+                const amountInCents = Math.round(order.totalAmount * 100);
+              
+                const paymentIntent = await stripe.paymentIntents.create({
+                  amount: amountInCents,
+                  currency: 'usd',
+                  customer: stripeCustomerId,
+                  automatic_payment_methods: {
+                    enabled: true,
+                  },
+                  metadata: {
+                    orderId: order.id,
+                    userId: user.id,
+                  },
+                });
+              
                 // Create a transaction record to track the payment intent
                 // We use upsert to handle cases where a user might try to pay for the same order again
                 // before the first payment is complete. This updates the existing transaction record.
-                return [4 /*yield*/, transactionModel.createTransaction({
-                        userId: user.id,
-                        amount: -order.totalAmount,
-                        type: client_1.TransactionType.ORDER_PAYMENT,
-                        source: client_1.TransactionSource.STRIPE,
-                        status: client_1.TransactionStatus.PENDING,
-                        description: "Payment for order #" + order.orderCode,
-                        orderId: order.id,
-                        externalId: paymentIntent.id,
-                        meta: {
-                            client_secret: paymentIntent.client_secret
-                        }
-                    })];
-            case 5:
-                // Create a transaction record to track the payment intent
-                // We use upsert to handle cases where a user might try to pay for the same order again
-                // before the first payment is complete. This updates the existing transaction record.
-                _a.sent();
-                return [2 /*return*/, { clientSecret: paymentIntent.client_secret }];
+                await transactionModel.createTransaction({
+                  userId: user.id,
+                  amount: -order.totalAmount, // Debiting the customer
+                  type: TransactionType.ORDER_PAYMENT,
+                  source: TransactionSource.STRIPE,
+                  status: TransactionStatus.PENDING,
+                  description: `Payment for order #${order.orderCode}`,
+                  orderId: order.id,
+                  externalId: paymentIntent.id,
+                  meta: {
+                    client_secret: paymentIntent.client_secret,
+                  },
+                }); */
+                return [2 /*return*/, { clientSecret: 'mock_client_secret' }];
         }
     });
 }); };
@@ -164,7 +151,7 @@ exports.createPaymentIntentService = function (userId, orderId) { return __await
  * @returns An object containing the client_secret for the Setup Intent.
  */
 exports.createSetupIntentService = function (userId) { return __awaiter(void 0, void 0, void 0, function () {
-    var user, stripeCustomerId, setupIntent;
+    var user;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4 /*yield*/, prisma.user.findUnique({ where: { id: userId } })];
@@ -173,20 +160,17 @@ exports.createSetupIntentService = function (userId) { return __awaiter(void 0, 
                 if (!user) {
                     throw new order_service_1.OrderCreationError('User not found.', 404);
                 }
-                return [4 /*yield*/, findOrCreateStripeCustomer(user)];
-            case 2:
-                stripeCustomerId = _a.sent();
-                return [4 /*yield*/, stripe.setupIntents.create({
-                        customer: stripeCustomerId,
-                        payment_method_types: ['card'],
-                        usage: 'off_session',
-                        metadata: {
-                            userId: user.id
-                        }
-                    })];
-            case 3:
-                setupIntent = _a.sent();
-                return [2 /*return*/, { clientSecret: setupIntent.client_secret }];
+                /* const stripeCustomerId = await findOrCreateStripeCustomer(user);
+              
+                const setupIntent = await stripe.setupIntents.create({
+                  customer: stripeCustomerId,
+                  payment_method_types: ['card'],
+                  usage: 'off_session',
+                  metadata: {
+                    userId: user.id,
+                  },
+                }); */
+                return [2 /*return*/, { clientSecret: 'mock_setup_secret' }];
         }
     });
 }); };
@@ -195,117 +179,96 @@ exports.createSetupIntentService = function (userId) { return __awaiter(void 0, 
  * @param event The Stripe event object.
  */
 exports.handleStripeWebhook = function (event) { return __awaiter(void 0, void 0, void 0, function () {
-    var _a, paymentIntent, orderId, failedPaymentIntent, failedOrderId, setupIntent, stripeCustomerId, stripePaymentMethodId, user, paymentMethod, existingMethodsCount, isDefault, paymentMethod;
-    var _b, _c;
-    return __generator(this, function (_d) {
-        switch (_d.label) {
-            case 0:
-                _a = event.type;
-                switch (_a) {
-                    case 'payment_intent.succeeded': return [3 /*break*/, 1];
-                    case 'payment_intent.payment_failed': return [3 /*break*/, 5];
-                    case 'setup_intent.succeeded': return [3 /*break*/, 8];
-                    case 'payment_method.detached': return [3 /*break*/, 16];
-                }
-                return [3 /*break*/, 18];
-            case 1:
-                paymentIntent = event.data.object;
-                orderId = paymentIntent.metadata.orderId;
-                if (!orderId) return [3 /*break*/, 4];
-                // Update our internal transaction record
-                return [4 /*yield*/, prisma.transaction.updateMany({
-                        where: { externalId: paymentIntent.id },
-                        data: {
-                            status: client_1.TransactionStatus.COMPLETED,
-                            meta: paymentIntent.payment_method_options ? { payment_method_details: JSON.stringify(paymentIntent.payment_method_options) } : undefined
-                        }
-                    })];
-            case 2:
-                // Update our internal transaction record
-                _d.sent();
-                // Update the order itself
-                return [4 /*yield*/, prisma.order.update({
-                        where: { id: orderId },
-                        data: { paymentStatus: 'paid' }
-                    })];
-            case 3:
-                // Update the order itself
-                _d.sent();
-                console.log("\u2705 Payment for order " + orderId + " succeeded.");
-                _d.label = 4;
-            case 4: return [3 /*break*/, 19];
-            case 5:
-                failedPaymentIntent = event.data.object;
-                failedOrderId = failedPaymentIntent.metadata.orderId;
-                if (!failedOrderId) return [3 /*break*/, 7];
-                return [4 /*yield*/, prisma.transaction.updateMany({
-                        where: { externalId: failedPaymentIntent.id },
-                        data: { status: client_1.TransactionStatus.FAILED }
-                    })];
-            case 6:
-                _d.sent();
-                console.log("\u274C Payment for order " + failedOrderId + " failed.");
-                _d.label = 7;
-            case 7: return [3 /*break*/, 19];
-            case 8:
-                setupIntent = event.data.object;
-                stripeCustomerId = setupIntent.customer;
-                stripePaymentMethodId = setupIntent.payment_method;
-                return [4 /*yield*/, prisma.user.findUnique({ where: { stripeCustomerId: stripeCustomerId } })];
-            case 9:
-                user = _d.sent();
-                if (!user) return [3 /*break*/, 15];
-                return [4 /*yield*/, stripe.paymentMethods.retrieve(stripePaymentMethodId)];
-            case 10:
-                paymentMethod = _d.sent();
-                return [4 /*yield*/, prisma.savedPaymentMethod.count({
-                        where: { userId: user.id }
-                    })];
-            case 11:
-                existingMethodsCount = _d.sent();
-                isDefault = existingMethodsCount === 0;
-                // Save to our local DB
-                return [4 /*yield*/, prisma.savedPaymentMethod.create({
-                        data: {
-                            userId: user.id,
-                            stripePaymentMethodId: paymentMethod.id,
-                            cardBrand: ((_b = paymentMethod.card) === null || _b === void 0 ? void 0 : _b.brand) || 'unknown',
-                            cardLast4: ((_c = paymentMethod.card) === null || _c === void 0 ? void 0 : _c.last4) || '0000',
-                            isDefault: isDefault
-                        }
-                    })];
-            case 12:
-                // Save to our local DB
-                _d.sent();
-                if (!isDefault) return [3 /*break*/, 14];
+    return __generator(this, function (_a) {
+        /* switch (event.type) {
+          case 'payment_intent.succeeded':
+            const paymentIntent = event.data.object as Stripe.PaymentIntent;
+            const orderId = paymentIntent.metadata.orderId;
+            if (orderId) {
+              // Update our internal transaction record
+              await prisma.transaction.updateMany({
+                where: { externalId: paymentIntent.id },
+                data: {
+                  status: TransactionStatus.COMPLETED,
+                  meta: paymentIntent.payment_method_options ? { payment_method_details: JSON.stringify(paymentIntent.payment_method_options) } : undefined,
+                },
+              });
+      
+              // Update the order itself
+              await prisma.order.update({
+                where: { id: orderId },
+                data: { paymentStatus: 'paid' },
+              });
+      
+              console.log(`✅ Payment for order ${orderId} succeeded.`);
+            }
+            break;
+      
+          case 'payment_intent.payment_failed':
+            const failedPaymentIntent = event.data.object as Stripe.PaymentIntent;
+            const failedOrderId = failedPaymentIntent.metadata.orderId;
+      
+            if (failedOrderId) {
+              await prisma.transaction.updateMany({
+                where: { externalId: failedPaymentIntent.id },
+                data: { status: TransactionStatus.FAILED },
+              });
+              console.log(`❌ Payment for order ${failedOrderId} failed.`);
+            }
+            break;
+      
+          case 'setup_intent.succeeded': {
+            const setupIntent = event.data.object as Stripe.SetupIntent;
+            const stripeCustomerId = setupIntent.customer as string;
+            const stripePaymentMethodId = setupIntent.payment_method as string;
+      
+            const user = await prisma.user.findUnique({ where: { stripeCustomerId } });
+            if (user) {
+              const paymentMethod = await stripe.paymentMethods.retrieve(stripePaymentMethodId);
+      
+              // Check if it's the first card for the user
+              const existingMethodsCount = await prisma.savedPaymentMethod.count({
+                where: { userId: user.id },
+              });
+      
+              const isDefault = existingMethodsCount === 0;
+      
+              // Save to our local DB
+              await prisma.savedPaymentMethod.create({
+                data: {
+                  userId: user.id,
+                  stripePaymentMethodId: paymentMethod.id,
+                  cardBrand: paymentMethod.card?.brand || 'unknown',
+                  cardLast4: paymentMethod.card?.last4 || '0000',
+                  isDefault: isDefault,
+                },
+              });
+      
+              if (isDefault) {
                 // Set as default on Stripe
-                return [4 /*yield*/, stripe.customers.update(stripeCustomerId, {
-                        invoice_settings: {
-                            default_payment_method: paymentMethod.id
-                        }
-                    })];
-            case 13:
-                // Set as default on Stripe
-                _d.sent();
-                _d.label = 14;
-            case 14:
-                console.log("\u2705 Saved payment method " + paymentMethod.id + " for user " + user.id + ".");
-                _d.label = 15;
-            case 15: return [3 /*break*/, 19];
-            case 16:
-                paymentMethod = event.data.object;
-                return [4 /*yield*/, prisma.savedPaymentMethod.deleteMany({
-                        where: { stripePaymentMethodId: paymentMethod.id }
-                    })];
-            case 17:
-                _d.sent();
-                console.log("\u2705 Detached and removed payment method " + paymentMethod.id + " from local DB.");
-                return [3 /*break*/, 19];
-            case 18:
-                console.log("Unhandled event type " + event.type);
-                _d.label = 19;
-            case 19: return [2 /*return*/];
-        }
+                await stripe.customers.update(stripeCustomerId, {
+                  invoice_settings: {
+                    default_payment_method: paymentMethod.id,
+                  },
+                });
+              }
+              console.log(`✅ Saved payment method ${paymentMethod.id} for user ${user.id}.`);
+            }
+            break;
+          }
+          case 'payment_method.detached': {
+            const paymentMethod = event.data.object as Stripe.PaymentMethod;
+            await prisma.savedPaymentMethod.deleteMany({
+              where: { stripePaymentMethodId: paymentMethod.id },
+            });
+            console.log(`✅ Detached and removed payment method ${paymentMethod.id} from local DB.`);
+            break;
+          }
+          default:
+            console.log(`Unhandled event type ${event.type}`);
+        } */
+        console.log('Stripe webhook handling is currently disabled.');
+        return [2 /*return*/];
     });
 }); };
 /**
@@ -348,7 +311,7 @@ exports.listSavedPaymentMethodsService = function (userId) { return __awaiter(vo
  * @param stripePaymentMethodId The Stripe PaymentMethod ID to detach.
  */
 exports.detachPaymentMethodService = function (userId, stripePaymentMethodId) { return __awaiter(void 0, void 0, Promise, function () {
-    var user, savedMethod, nextMethod;
+    var user;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4 /*yield*/, prisma.user.findUnique({ where: { id: userId } })];
@@ -357,52 +320,47 @@ exports.detachPaymentMethodService = function (userId, stripePaymentMethodId) { 
                 if (!user || !user.stripeCustomerId) {
                     throw new order_service_1.OrderCreationError('User or Stripe customer not found.', 404);
                 }
-                return [4 /*yield*/, prisma.savedPaymentMethod.findFirst({
-                        where: {
-                            userId: userId,
-                            stripePaymentMethodId: stripePaymentMethodId
-                        }
-                    })];
-            case 2:
-                savedMethod = _a.sent();
+                /* const savedMethod = await prisma.savedPaymentMethod.findFirst({
+                  where: {
+                    userId: userId,
+                    stripePaymentMethodId: stripePaymentMethodId,
+                  },
+                });
+              
                 if (!savedMethod) {
-                    throw new order_service_1.OrderCreationError('Payment method not found for this user.', 404);
+                  throw new OrderCreationError('Payment method not found for this user.', 404);
                 }
+              
                 // Detach from Stripe. This will trigger the 'payment_method.detached' webhook
                 // which will then delete it from our local DB.
-                return [4 /*yield*/, stripe.paymentMethods.detach(stripePaymentMethodId)];
-            case 3:
-                // Detach from Stripe. This will trigger the 'payment_method.detached' webhook
-                // which will then delete it from our local DB.
-                _a.sent();
-                if (!savedMethod.isDefault) return [3 /*break*/, 7];
-                return [4 /*yield*/, prisma.savedPaymentMethod.findFirst({
-                        where: {
-                            userId: userId,
-                            id: { not: savedMethod.id }
-                        },
-                        orderBy: {
-                            createdAt: 'asc'
-                        }
-                    })];
-            case 4:
-                nextMethod = _a.sent();
-                return [4 /*yield*/, stripe.customers.update(user.stripeCustomerId, {
-                        invoice_settings: {
-                            default_payment_method: nextMethod === null || nextMethod === void 0 ? void 0 : nextMethod.stripePaymentMethodId
-                        }
-                    })];
-            case 5:
-                _a.sent();
-                if (!nextMethod) return [3 /*break*/, 7];
-                return [4 /*yield*/, prisma.savedPaymentMethod.update({
-                        where: { id: nextMethod.id },
-                        data: { isDefault: true }
-                    })];
-            case 6:
-                _a.sent();
-                _a.label = 7;
-            case 7: return [2 /*return*/];
+                await stripe.paymentMethods.detach(stripePaymentMethodId);
+              
+                // If the detached card was the default, we need to find a new default.
+                if (savedMethod.isDefault) {
+                  const nextMethod = await prisma.savedPaymentMethod.findFirst({
+                    where: {
+                      userId: userId,
+                      id: { not: savedMethod.id },
+                    },
+                    orderBy: {
+                      createdAt: 'asc',
+                    },
+                  });
+              
+                  await stripe.customers.update(user.stripeCustomerId, {
+                    invoice_settings: {
+                      default_payment_method:  nextMethod?.stripePaymentMethodId
+                    },
+                  });
+                  if (nextMethod) {
+                    await prisma.savedPaymentMethod.update({
+                      where: { id: nextMethod.id },
+                      data: { isDefault: true },
+                    });
+                  }
+                } */
+                console.log('Detach payment method is currently disabled.');
+                return [2 /*return*/];
         }
     });
 }); };
@@ -624,7 +582,7 @@ exports.simulatePaymentService = function (userId, orderId) { return __awaiter(v
                 }
                 return [4 /*yield*/, transactionModel.createTransaction({
                         userId: user.id,
-                        amount: -order.totalAmount,
+                        amount: order.totalAmount,
                         type: client_1.TransactionType.ORDER_PAYMENT,
                         source: client_1.TransactionSource.SYSTEM,
                         status: client_1.TransactionStatus.COMPLETED,

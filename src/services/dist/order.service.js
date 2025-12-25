@@ -74,14 +74,13 @@ var socket_1 = require("../socket");
 var rating_service_1 = require("./rating.service");
 var notificationService = require("./notification.service");
 var transactionModel = require("../models/transaction.model");
-var stripe_1 = require("stripe");
 dayjs_1["default"].extend(utc_1["default"]);
 dayjs_1["default"].extend(timezone_1["default"]);
 dayjs_1["default"].extend(customParseFormat_1["default"]);
 var prisma = new client_1.PrismaClient();
-var stripe = new stripe_1["default"](process.env.STRIPE_SECRET_KEY || '', {
-    apiVersion: '2025-08-27.basil'
-});
+/* const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+  apiVersion: '2025-08-27.basil',
+}); */
 var toRadians = function (degrees) {
     return degrees * (Math.PI / 180);
 };
@@ -213,7 +212,7 @@ var getDayEnumFromDayjs = function (dayjsDayIndex) {
     return days[dayjsDayIndex];
 };
 exports.createOrderFromClient = function (userId, payload) { return __awaiter(void 0, void 0, void 0, function () {
-    var vendorId, paymentMethod, shippingAddressId, stripePaymentMethodId, deliveryInstructions, orderItems, shoppingMethod, deliveryMethod, scheduledDeliveryTime, shopperTip, deliveryPersonTip, shoppingStartTime, parsedScheduledDeliveryTime, vendor, deliveryLocalDayjs, dayOfWeek_1, openingHoursToday, _a, openHours, openMinutes, _b, closeHours, closeMinutes, vendorOpenTimeUTC, vendorCloseTimeUTC, lastDeliveryTimeUTC, fees, subtotal, deliveryFee, serviceFee, shoppingFee, finalTotalAmount, clientSecret, paymentIntentId, paymentIntent;
+    var vendorId, paymentMethod, shippingAddressId, stripePaymentMethodId, deliveryInstructions, orderItems, shoppingMethod, deliveryMethod, scheduledDeliveryTime, shopperTip, deliveryPersonTip, shoppingStartTime, parsedScheduledDeliveryTime, vendor, deliveryLocalDayjs, dayOfWeek_1, openingHoursToday, _a, openHours, openMinutes, _b, closeHours, closeMinutes, vendorOpenTimeUTC, vendorCloseTimeUTC, lastDeliveryTimeUTC, fees, subtotal, deliveryFee, serviceFee, shoppingFee, finalTotalAmount, clientSecret, paymentIntentId;
     return __generator(this, function (_c) {
         switch (_c.label) {
             case 0:
@@ -267,139 +266,143 @@ exports.createOrderFromClient = function (userId, payload) { return __awaiter(vo
                     (shoppingFee || 0) +
                     (shopperTip || 0) +
                     (deliveryPersonTip || 0);
-                if (!(paymentMethod === client_1.PaymentMethods.credit_card)) return [3 /*break*/, 5];
-                if (!stripePaymentMethodId) {
-                    throw new OrderCreationError('Stripe Payment Method ID is required for credit card payments.');
+                if (paymentMethod === client_1.PaymentMethods.credit_card) {
+                    /* // Prepare base PaymentIntent parameters
+                    const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
+                      amount: Math.round(finalTotalAmount * 100), // Stripe expects amount in cents
+                      currency: 'usd', // Adjust currency as needed
+                      metadata: { vendorId, userId },
+                      automatic_payment_methods: {
+                        enabled: true,
+                      },
+                    };
+                
+                    // If a specific payment method ID is provided (e.g. saved card), confirm immediately.
+                    // Otherwise, we just create the intent and let the client confirm it (e.g. using Payment Element).
+                    if (stripePaymentMethodId) {
+                      paymentIntentParams.payment_method = stripePaymentMethodId;
+                      paymentIntentParams.confirm = true;
+                      paymentIntentParams.automatic_payment_methods = { enabled: true, allow_redirects: 'never' };
+                    }
+                
+                    const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
+                
+                    clientSecret = paymentIntent.client_secret || undefined;
+                    paymentIntentId = paymentIntent.id; */
+                    clientSecret = 'mock_client_secret';
                 }
-                return [4 /*yield*/, stripe.paymentIntents.create({
-                        amount: Math.round(finalTotalAmount * 100),
-                        currency: 'usd',
-                        payment_method: stripePaymentMethodId,
-                        confirm: true,
-                        automatic_payment_methods: {
-                            enabled: true,
-                            allow_redirects: 'never'
-                        },
-                        metadata: { vendorId: vendorId, userId: userId }
-                    })];
-            case 4:
-                paymentIntent = _c.sent();
-                clientSecret = paymentIntent.client_secret || undefined;
-                paymentIntentId = paymentIntent.id;
-                _c.label = 5;
-            case 5: 
-            // --- Transactional Block ---
-            return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
-                    var orderCode, pickupOtp, newOrder, _i, orderItems_1, item, finalOrder;
-                    return __generator(this, function (_a) {
-                        switch (_a.label) {
-                            case 0: return [4 /*yield*/, generateUniqueOrderCode(tx)];
-                            case 1:
-                                orderCode = _a.sent();
-                                pickupOtp = generatePickupOtp();
-                                return [4 /*yield*/, orderModel.createOrder({
-                                        userId: userId,
-                                        vendorId: vendorId,
-                                        orderCode: orderCode,
-                                        pickupOtp: pickupOtp,
-                                        subtotal: subtotal,
-                                        totalAmount: finalTotalAmount,
-                                        deliveryFee: deliveryFee, serviceFee: serviceFee, shoppingFee: shoppingFee,
-                                        shopperTip: shopperTip, deliveryPersonTip: deliveryPersonTip,
-                                        paymentMethod: paymentMethod, shoppingMethod: shoppingMethod, deliveryMethod: deliveryMethod, scheduledDeliveryTime: scheduledDeliveryTime,
-                                        shoppingStartTime: shoppingStartTime,
-                                        deliveryAddressId: shippingAddressId,
-                                        deliveryInstructions: deliveryInstructions
-                                    }, tx)];
-                            case 2:
-                                newOrder = _a.sent();
-                                _i = 0, orderItems_1 = orderItems;
-                                _a.label = 3;
-                            case 3:
-                                if (!(_i < orderItems_1.length)) return [3 /*break*/, 6];
-                                item = orderItems_1[_i];
-                                if (item.quantity <= 0) {
-                                    throw new OrderCreationError("Quantity for product " + item.vendorProductId + " must be positive.");
-                                }
-                                return [4 /*yield*/, tx.orderItem.create({
-                                        data: {
-                                            orderId: newOrder.id,
-                                            vendorProductId: item.vendorProductId,
-                                            quantity: item.quantity,
-                                            instructions: item.instructions,
-                                            replacements: item.replacementIds
-                                                ? {
-                                                    connect: item.replacementIds.map(function (id) { return ({ id: id }); })
-                                                }
-                                                : undefined
-                                        }
-                                    })];
-                            case 4:
-                                _a.sent();
-                                _a.label = 5;
-                            case 5:
-                                _i++;
-                                return [3 /*break*/, 3];
-                            case 6:
-                                if (!(paymentMethod === client_1.PaymentMethods.credit_card && paymentIntentId)) return [3 /*break*/, 8];
-                                return [4 /*yield*/, tx.transaction.create({
-                                        data: {
+                // --- Transactional Block ---
+                return [2 /*return*/, prisma.$transaction(function (tx) { return __awaiter(void 0, void 0, void 0, function () {
+                        var orderCode, pickupOtp, newOrder, _i, orderItems_1, item, finalOrder;
+                        return __generator(this, function (_a) {
+                            switch (_a.label) {
+                                case 0: return [4 /*yield*/, generateUniqueOrderCode(tx)];
+                                case 1:
+                                    orderCode = _a.sent();
+                                    pickupOtp = generatePickupOtp();
+                                    return [4 /*yield*/, orderModel.createOrder({
                                             userId: userId,
                                             vendorId: vendorId,
-                                            orderId: newOrder.id,
-                                            amount: finalTotalAmount,
-                                            type: client_1.TransactionType.ORDER_PAYMENT,
-                                            source: client_1.TransactionSource.STRIPE,
-                                            status: client_1.TransactionStatus.PENDING,
-                                            externalId: paymentIntentId,
-                                            description: "Payment for Order #" + orderCode
-                                        }
-                                    })];
-                            case 7:
-                                _a.sent();
-                                _a.label = 8;
-                            case 8: return [4 /*yield*/, orderModel.getOrderById(newOrder.id, tx)];
-                            case 9:
-                                finalOrder = _a.sent();
-                                if (!finalOrder) {
-                                    throw new OrderCreationError("Failed to retrieve the created order.", 500);
-                                }
-                                // --- Add Notification Logic Here ---
-                                // --- Add Notification Logic Here ---
-                                return [4 /*yield*/, notificationService.createNotification({
-                                        userId: finalOrder.vendor.userId,
-                                        type: client_1.NotificationType.NEW_ORDER_PLACED,
-                                        category: client_1.NotificationCategory.ORDER,
-                                        title: 'New Order Received!',
-                                        body: "You have a new order #" + finalOrder.orderCode + " from " + finalOrder.user.name + ".",
-                                        meta: { orderId: finalOrder.id }
-                                    })];
-                            case 10:
-                                // --- Add Notification Logic Here ---
-                                // --- Add Notification Logic Here ---
-                                _a.sent();
-                                // I will remove it later
-                                return [4 /*yield*/, notificationService.createNotification({
-                                        userId: finalOrder.userId,
-                                        type: client_1.NotificationType.ORDER_PLACED_CUSTOMER,
-                                        category: client_1.NotificationCategory.ORDER,
-                                        title: 'Order Placed Successfully!',
-                                        body: "Your order #" + finalOrder.orderCode + " has been placed.",
-                                        meta: { orderId: finalOrder.id }
-                                    })];
-                            case 11:
-                                // I will remove it later
-                                _a.sent();
-                                // TODO: In a real application, you would send the `pickupOtp` to the customer
-                                // via SMS or a push notification that is only visible to them.
-                                // For now, it's available on the order object returned to the creating user.
-                                // --- End Notification Logic ---
-                                // --- End Notification Logic ---
-                                // Return the order along with the clientSecret so the frontend can complete the payment flow
-                                return [2 /*return*/, __assign(__assign({}, finalOrder), { clientSecret: clientSecret })];
-                        }
-                    });
-                }); })];
+                                            orderCode: orderCode,
+                                            pickupOtp: pickupOtp,
+                                            subtotal: subtotal,
+                                            totalAmount: finalTotalAmount,
+                                            deliveryFee: deliveryFee, serviceFee: serviceFee, shoppingFee: shoppingFee,
+                                            shopperTip: shopperTip, deliveryPersonTip: deliveryPersonTip,
+                                            paymentMethod: paymentMethod, shoppingMethod: shoppingMethod, deliveryMethod: deliveryMethod, scheduledDeliveryTime: scheduledDeliveryTime,
+                                            shoppingStartTime: shoppingStartTime,
+                                            deliveryAddressId: shippingAddressId,
+                                            deliveryInstructions: deliveryInstructions
+                                        }, tx)];
+                                case 2:
+                                    newOrder = _a.sent();
+                                    _i = 0, orderItems_1 = orderItems;
+                                    _a.label = 3;
+                                case 3:
+                                    if (!(_i < orderItems_1.length)) return [3 /*break*/, 6];
+                                    item = orderItems_1[_i];
+                                    if (item.quantity <= 0) {
+                                        throw new OrderCreationError("Quantity for product " + item.vendorProductId + " must be positive.");
+                                    }
+                                    return [4 /*yield*/, tx.orderItem.create({
+                                            data: {
+                                                orderId: newOrder.id,
+                                                vendorProductId: item.vendorProductId,
+                                                quantity: item.quantity,
+                                                instructions: item.instructions,
+                                                replacements: item.replacementIds
+                                                    ? {
+                                                        connect: item.replacementIds.map(function (id) { return ({ id: id }); })
+                                                    }
+                                                    : undefined
+                                            }
+                                        })];
+                                case 4:
+                                    _a.sent();
+                                    _a.label = 5;
+                                case 5:
+                                    _i++;
+                                    return [3 /*break*/, 3];
+                                case 6:
+                                    if (!(paymentMethod === client_1.PaymentMethods.credit_card && paymentIntentId)) return [3 /*break*/, 8];
+                                    return [4 /*yield*/, tx.transaction.create({
+                                            data: {
+                                                userId: userId,
+                                                vendorId: vendorId,
+                                                orderId: newOrder.id,
+                                                amount: finalTotalAmount,
+                                                type: client_1.TransactionType.ORDER_PAYMENT,
+                                                source: client_1.TransactionSource.STRIPE,
+                                                status: client_1.TransactionStatus.PENDING,
+                                                externalId: paymentIntentId,
+                                                description: "Payment for Order #" + orderCode
+                                            }
+                                        })];
+                                case 7:
+                                    _a.sent();
+                                    _a.label = 8;
+                                case 8: return [4 /*yield*/, orderModel.getOrderById(newOrder.id, tx)];
+                                case 9:
+                                    finalOrder = _a.sent();
+                                    if (!finalOrder) {
+                                        throw new OrderCreationError("Failed to retrieve the created order.", 500);
+                                    }
+                                    // --- Add Notification Logic Here ---
+                                    // --- Add Notification Logic Here ---
+                                    return [4 /*yield*/, notificationService.createNotification({
+                                            userId: finalOrder.vendor.userId,
+                                            type: client_1.NotificationType.NEW_ORDER_PLACED,
+                                            category: client_1.NotificationCategory.ORDER,
+                                            title: 'New Order Received!',
+                                            body: "You have a new order #" + finalOrder.orderCode + " from " + finalOrder.user.name + ".",
+                                            meta: { orderId: finalOrder.id }
+                                        })];
+                                case 10:
+                                    // --- Add Notification Logic Here ---
+                                    // --- Add Notification Logic Here ---
+                                    _a.sent();
+                                    // I will remove it later
+                                    return [4 /*yield*/, notificationService.createNotification({
+                                            userId: finalOrder.userId,
+                                            type: client_1.NotificationType.ORDER_PLACED_CUSTOMER,
+                                            category: client_1.NotificationCategory.ORDER,
+                                            title: 'Order Placed Successfully!',
+                                            body: "Your order #" + finalOrder.orderCode + " has been placed.",
+                                            meta: { orderId: finalOrder.id }
+                                        })];
+                                case 11:
+                                    // I will remove it later
+                                    _a.sent();
+                                    // TODO: In a real application, you would send the `pickupOtp` to the customer
+                                    // via SMS or a push notification that is only visible to them.
+                                    // For now, it's available on the order object returned to the creating user.
+                                    // --- End Notification Logic ---
+                                    // --- End Notification Logic ---
+                                    // Return the order along with the clientSecret so the frontend can complete the payment flow
+                                    return [2 /*return*/, __assign(__assign({}, finalOrder), { clientSecret: clientSecret })];
+                            }
+                        });
+                    }); })];
         }
     });
 }); };

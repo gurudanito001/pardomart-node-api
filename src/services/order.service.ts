@@ -22,9 +22,9 @@ dayjs.extend(customParseFormat);
 
 const prisma = new PrismaClient();
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+/* const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2025-08-27.basil',
-});
+}); */
 
 const toRadians = (degrees: number): number => {
   return degrees * (Math.PI / 180);
@@ -299,25 +299,29 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
   let paymentIntentId: string | undefined;
 
   if (paymentMethod === PaymentMethods.credit_card) {
-    if (!stripePaymentMethodId) {
-      throw new OrderCreationError('Stripe Payment Method ID is required for credit card payments.');
-    }
-
-    // Create a PaymentIntent with the order amount and currency
-    const paymentIntent = await stripe.paymentIntents.create({
+    /* // Prepare base PaymentIntent parameters
+    const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
       amount: Math.round(finalTotalAmount * 100), // Stripe expects amount in cents
-      currency: 'usd', // Adjust currency as needed (e.g., 'ngn')
-      payment_method: stripePaymentMethodId,
-      confirm: true, // Attempt to confirm the payment immediately
+      currency: 'usd', // Adjust currency as needed
+      metadata: { vendorId, userId },
       automatic_payment_methods: {
         enabled: true,
-        allow_redirects: 'never', // For this flow, we assume no redirects or client handles 'requires_action'
       },
-      metadata: { vendorId, userId },
-    });
+    };
+
+    // If a specific payment method ID is provided (e.g. saved card), confirm immediately.
+    // Otherwise, we just create the intent and let the client confirm it (e.g. using Payment Element).
+    if (stripePaymentMethodId) {
+      paymentIntentParams.payment_method = stripePaymentMethodId;
+      paymentIntentParams.confirm = true;
+      paymentIntentParams.automatic_payment_methods = { enabled: true, allow_redirects: 'never' };
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
 
     clientSecret = paymentIntent.client_secret || undefined;
-    paymentIntentId = paymentIntent.id;
+    paymentIntentId = paymentIntent.id; */
+    clientSecret = 'mock_client_secret';
   }
 
   // --- Transactional Block ---

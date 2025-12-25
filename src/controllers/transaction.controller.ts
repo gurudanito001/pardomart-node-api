@@ -20,9 +20,9 @@ import { Role, TransactionStatus } from '@prisma/client';
 import * as transactionService from '../services/transaction.service';
 
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+/* const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-08-27.basil',
-});
+}); */
 
 /**
  * @swagger
@@ -298,7 +298,7 @@ export const listVendorTransactionsController = async (req: AuthenticatedRequest
 };
 
 export const stripeWebhookController = async (req: Request, res: Response) => {
-  const sig = req.headers['stripe-signature'] as string;
+  /* const sig = req.headers['stripe-signature'] as string;
   let event: Stripe.Event;
 
   try {
@@ -314,7 +314,7 @@ export const stripeWebhookController = async (req: Request, res: Response) => {
     console.error('Error handling webhook event:', error);
     // Return a 200 to Stripe even if our internal processing fails
     // to prevent Stripe from retrying indefinitely. We should have internal monitoring for this.
-  }
+  } */
 
   res.status(200).json({ received: true });
 };

@@ -5,9 +5,9 @@ import * as transactionModel from '../models/transaction.model';
 
 import { sendEmail } from '../utils/email.util';
 const prisma = new PrismaClient();
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+/* const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-08-27.basil',
-});
+}); */
 
 /**
  * Finds a user's Stripe Customer ID, or creates a new Stripe Customer if one doesn't exist.
@@ -15,7 +15,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
  * @returns The Stripe Customer ID.
  */
 const findOrCreateStripeCustomer = async (user: User): Promise<string> => {
-  if (user.stripeCustomerId) {
+  /* if (user.stripeCustomerId) {
     return user.stripeCustomerId;
   }
 
@@ -29,8 +29,8 @@ const findOrCreateStripeCustomer = async (user: User): Promise<string> => {
     where: { id: user.id },
     data: { stripeCustomerId: customer.id },
   });
-
-  return customer.id;
+  return customer.id; */
+  return 'mock_stripe_customer_id';
 };
 
 /**
@@ -58,7 +58,7 @@ export const createPaymentIntentService = async (userId: string, orderId: string
     throw new OrderCreationError('This order has already been paid for.', 409);
   }
 
-  const stripeCustomerId = await findOrCreateStripeCustomer(user);
+  /* const stripeCustomerId = await findOrCreateStripeCustomer(user);
   const amountInCents = Math.round(order.totalAmount * 100);
 
   const paymentIntent = await stripe.paymentIntents.create({
@@ -89,9 +89,9 @@ export const createPaymentIntentService = async (userId: string, orderId: string
     meta: {
       client_secret: paymentIntent.client_secret,
     },
-  });
+  }); */
 
-  return { clientSecret: paymentIntent.client_secret };
+  return { clientSecret: 'mock_client_secret' };
 };
 
 /**
@@ -105,7 +105,7 @@ export const createSetupIntentService = async (userId: string) => {
     throw new OrderCreationError('User not found.', 404);
   }
 
-  const stripeCustomerId = await findOrCreateStripeCustomer(user);
+  /* const stripeCustomerId = await findOrCreateStripeCustomer(user);
 
   const setupIntent = await stripe.setupIntents.create({
     customer: stripeCustomerId,
@@ -114,9 +114,9 @@ export const createSetupIntentService = async (userId: string) => {
     metadata: {
       userId: user.id,
     },
-  });
+  }); */
 
-  return { clientSecret: setupIntent.client_secret };
+  return { clientSecret: 'mock_setup_secret' };
 };
 
 /**
@@ -124,7 +124,7 @@ export const createSetupIntentService = async (userId: string) => {
  * @param event The Stripe event object.
  */
 export const handleStripeWebhook = async (event: Stripe.Event) => {
-  switch (event.type) {
+  /* switch (event.type) {
     case 'payment_intent.succeeded':
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
       const orderId = paymentIntent.metadata.orderId;
@@ -210,7 +210,8 @@ export const handleStripeWebhook = async (event: Stripe.Event) => {
     }
     default:
       console.log(`Unhandled event type ${event.type}`);
-  }
+  } */
+  console.log('Stripe webhook handling is currently disabled.');
 };
 
 /**
@@ -258,7 +259,7 @@ export const detachPaymentMethodService = async (userId: string, stripePaymentMe
     throw new OrderCreationError('User or Stripe customer not found.', 404);
   }
 
-  const savedMethod = await prisma.savedPaymentMethod.findFirst({
+  /* const savedMethod = await prisma.savedPaymentMethod.findFirst({
     where: {
       userId: userId,
       stripePaymentMethodId: stripePaymentMethodId,
@@ -296,7 +297,8 @@ export const detachPaymentMethodService = async (userId: string, stripePaymentMe
         data: { isDefault: true },
       });
     }
-  }
+  } */
+  console.log('Detach payment method is currently disabled.');
 };
 
 
@@ -554,7 +556,7 @@ export const simulatePaymentService = async (userId: string, orderId: string) =>
   // Create completed transaction
   const transaction = await transactionModel.createTransaction({
     userId: user.id,
-    amount: -order.totalAmount,
+    amount: order.totalAmount,
     type: TransactionType.ORDER_PAYMENT,
     source: TransactionSource.SYSTEM, // Using SYSTEM to indicate internal/mock
     status: TransactionStatus.COMPLETED,
