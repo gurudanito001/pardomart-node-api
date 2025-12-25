@@ -41,17 +41,26 @@ var client_1 = require("@prisma/client");
 var notificationService = require("./notification.service");
 var prisma = new client_1.PrismaClient();
 exports.createAnnouncementService = function (payload) { return __awaiter(void 0, void 0, Promise, function () {
+    var announcement;
     var _a;
     return __generator(this, function (_b) {
-        return [2 /*return*/, prisma.announcement.create({
-                data: {
-                    title: payload.title,
-                    description: payload.description,
-                    imageUrl: payload.imageUrl,
-                    targetAudience: payload.targetAudience,
-                    isActive: (_a = payload.isActive) !== null && _a !== void 0 ? _a : true
+        switch (_b.label) {
+            case 0: return [4 /*yield*/, prisma.announcement.create({
+                    data: {
+                        title: payload.title,
+                        description: payload.description,
+                        imageUrl: payload.imageUrl,
+                        targetAudience: payload.targetAudience,
+                        isActive: (_a = payload.isActive) !== null && _a !== void 0 ? _a : true
+                    }
+                })];
+            case 1:
+                announcement = _b.sent();
+                if (announcement.isActive) {
+                    return [2 /*return*/, exports.broadcastAnnouncementService(announcement.id)];
                 }
-            })];
+                return [2 /*return*/, announcement];
+        }
     });
 }); };
 exports.updateAnnouncementService = function (id, payload) { return __awaiter(void 0, void 0, Promise, function () {

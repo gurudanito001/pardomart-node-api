@@ -20,7 +20,7 @@ export interface UpdateAnnouncementPayload {
 }
 
 export const createAnnouncementService = async (payload: CreateAnnouncementPayload): Promise<Announcement> => {
-  return prisma.announcement.create({
+  const announcement = await prisma.announcement.create({
     data: {
       title: payload.title,
       description: payload.description,
@@ -29,6 +29,12 @@ export const createAnnouncementService = async (payload: CreateAnnouncementPaylo
       isActive: payload.isActive ?? true,
     },
   });
+
+  if (announcement.isActive) {
+    return broadcastAnnouncementService(announcement.id);
+  }
+
+  return announcement;
 };
 
 export const updateAnnouncementService = async (id: string, payload: UpdateAnnouncementPayload): Promise<Announcement> => {
