@@ -290,6 +290,8 @@ model Vendor {
   userId         String
   name           String
   email          String?
+  mobileNumber   String?
+  mobileVerified Boolean              @default(false)
   tagline        String?
   details        String?
   image          String?
@@ -558,6 +560,25 @@ model SavedPaymentMethod {
   @@index([userId])
 }
 
+model ErrorLog {
+  id            String   @id @default(uuid())
+  correlationId String?
+  userId        String?
+  ipAddress     String?
+  requestMethod String?
+  requestPath   String?
+  statusCode    Int
+  errorCode     String?
+  message       String
+  stackTrace    String?  @db.Text
+  metaData      Json?
+  createdAt     DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([statusCode])
+  @@index([correlationId])
+}
+
 enum ReferenceType {
   bug_report_image
   ad_image
@@ -749,3 +770,4 @@ enum MediaType {
   AUDIO
   OTHER
 }
+

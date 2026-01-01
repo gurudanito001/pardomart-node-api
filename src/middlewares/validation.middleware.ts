@@ -83,6 +83,8 @@ export const validateCreateVendor = [
   body('address').optional({ checkFalsy: true }).isString().withMessage('Address must be a string'),
   body('longitude').optional({ checkFalsy: true }).isFloat().withMessage('Longitude must be a number'),
   body('latitude').optional({ checkFalsy: true }).isFloat().withMessage('Latitude must be a number'),
+  body('mobileNumber').optional({ checkFalsy: true }).isMobilePhone('any', { strictMode: true }).withMessage('A valid E.164 mobile number is required (e.g., +1234567890).'),
+  body('mobileVerified').optional().isBoolean().toBoolean().withMessage('mobileVerified must be a boolean.'),
   body('meta').optional({ checkFalsy: true }).isObject().withMessage('Meta must be an object'),
 ];
 
@@ -120,6 +122,8 @@ export const validateUpdateVendor = [
   body('longitude').optional({ checkFalsy: true }).isFloat().withMessage('Longitude must be a number'),
   body('latitude').optional({ checkFalsy: true }).isFloat().withMessage('Latitude must be a number'),
   body('isVerified').optional().isBoolean().toBoolean().withMessage('isVerified must be a boolean.'),
+  body('mobileNumber').optional({ checkFalsy: true }).isMobilePhone('any', { strictMode: true }).withMessage('A valid E.164 mobile number is required (e.g., +1234567890).'),
+  body('mobileVerified').optional().isBoolean().toBoolean().withMessage('mobileVerified must be a boolean.'),
   body('meta').optional({ checkFalsy: true }).isJSON().withMessage('Meta must be a valid JSON string.'),
 ];
 

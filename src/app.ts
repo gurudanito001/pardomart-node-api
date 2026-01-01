@@ -6,6 +6,8 @@ import morgan from 'morgan';
 import router from './routes';
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './config/swagger';
+import { globalErrorHandler } from './middlewares/error.middleware';
+import { errorLogService } from './services/errorLog.service';
 //import { Server } from 'socket.io';
 const http = require('http');
 require('dotenv').config();
@@ -49,6 +51,9 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(null, uiOptions));
 
 // Use routes
 app.use('/', router);
+
+// Global error handling middleware (Must be defined AFTER routes)
+app.use(globalErrorHandler);
 
 /* type roomsObject = {
   [key: string]: any[];
@@ -119,6 +124,27 @@ app.use('/', router);
     }
   });
 }); */
+
+
+process.on('uncaughtException', async (error: Error) => {
+  console.error('Uncaught Exception:', error);
+  await errorLogService.logError({
+    message: error.message,
+    stackTrace: error.stack,
+    errorCode: 'UNCAUGHT_EXCEPTION',
+  });
+  process.exit(1); // Mandatory (as per Node.js docs), exit after logging
+});
+
+process.on('unhandledRejection', async (reason: any) => {
+  console.error('Unhandled Rejection:', reason);
+  await errorLogService.logError({
+    message: reason instanceof Error ? reason.message : 'Unhandled Rejection',
+    stackTrace: reason instanceof Error ? reason.stack : JSON.stringify(reason),
+    errorCode: 'UNHANDLED_REJECTION',
+  });
+  // process.exit(1); // Optional: decide if you want to crash on unhandled promises
+});
 
 // Start Express server
 server.listen(port, () => {

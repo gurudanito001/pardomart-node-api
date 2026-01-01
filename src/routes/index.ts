@@ -29,7 +29,8 @@ import customerRoutes from './customer.routes'; // This line was already present
 import earningsRoutes from './earnings.routes';
 import deliveryPersonRoutes from './delivery-person.routes';
 import adRoutes from './ad.routes';
-import announcementRoutes from './announcement.routes'
+import announcementRoutes from './announcement.routes';
+import errorLogRoutes from './errorLog.routes';
 
 // Create a new Router instance
 const router = Router();
@@ -67,6 +68,7 @@ router.use('/api/v1/earnings', earningsRoutes);
 router.use('/api/v1/delivery-persons', deliveryPersonRoutes);
 router.use('/api/v1/ads', adRoutes);
 router.use('/api/v1/announcements', announcementRoutes);
+router.use('/api/v1/errors', errorLogRoutes);
 
 
 

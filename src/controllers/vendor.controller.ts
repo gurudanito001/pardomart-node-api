@@ -72,6 +72,8 @@ export interface AuthenticatedRequest extends Request {
  *         latitude: { type: number, format: float, nullable: true }
  *         timezone: { type: string, nullable: true, example: "America/New_York" }
  *         isVerified: { type: boolean }
+ *         mobileNumber: { type: string, nullable: true }
+ *         mobileVerified: { type: boolean }
  *         isPublished: { type: boolean }
  *         availableForShopping: { type: boolean }
  *         meta: { type: object, nullable: true }
@@ -160,6 +162,8 @@ export interface AuthenticatedRequest extends Request {
  *         address: { type: string, nullable: true, example: "123 Main St, Anytown, USA" }
  *         longitude: { type: number, format: float, nullable: true, example: -73.935242 }
  *         latitude: { type: number, format: float, nullable: true, example: 40.730610 }
+ *         mobileNumber: { type: string, nullable: true, example: "+1234567890" }
+ *         mobileVerified: { type: boolean, default: false }
  *         meta: { type: object, nullable: true }
  *     UpdateVendorPayload:
  *       type: object
@@ -173,6 +177,8 @@ export interface AuthenticatedRequest extends Request {
  *         longitude: { type: number, format: float }
  *         latitude: { type: number, format: float }
  *         isVerified: { type: boolean }
+ *         mobileNumber: { type: string }
+ *         mobileVerified: { type: boolean }
  *         availableForShopping: { type: boolean }
  *         meta: { type: object }
  */
