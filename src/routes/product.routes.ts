@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import * as productController from '../controllers/product.controllers';
 import { authenticate, authorize } from '../middlewares/auth.middleware'; // Assuming you have validation middleware
-import { validate } from '../middlewares/validation.middleware'; // Assuming you have validation middleware
+import { validate, validateUpdateVendorProduct } from '../middlewares/validation.middleware'; // Assuming you have validation middleware
 import {
     validateCreateProduct,
     validateUpdateProductBase,
@@ -9,7 +9,6 @@ import {
     validateGetVendorProductById,
     validateCreateVendorProduct,
     validateCreateVendorProductWithBarcode,
-    validateUpdateVendorProduct,
     validateGetAllVendorProducts,
     validateGetTrendingVendorProducts,
     validateGetProductByBarcode,

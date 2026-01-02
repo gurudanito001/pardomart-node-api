@@ -134,6 +134,29 @@ export const validateSetVendorAvailability = [
   body('available').isBoolean().withMessage('The "available" field must be a boolean.'),
 ];
 
+export const validateUpdateVendorProduct = [
+  param('id').isUUID(4).withMessage('A valid vendor product ID is required in the URL.'),
+  body('price').optional().isFloat({ min: 0 }).withMessage('Price must be a non-negative number.'),
+  body('name').optional().trim().notEmpty().withMessage('Name cannot be empty.'),
+  body('description').optional({ nullable: true }).isString(),
+  body('discountedPrice').optional({ nullable: true }).isFloat({ min: 0 }).withMessage('Discounted price must be a non-negative number.'),
+  body('images').optional().isArray().withMessage('Images must be an array of strings.'),
+  body('images.*').optional().isString().withMessage('Each image must be a string (URL).'),
+  body('weight').optional({ nullable: true }).isFloat({ min: 0 }).withMessage('Weight must be a non-negative number.'),
+  body('weightUnit').optional({ nullable: true }).isString(),
+  body('stock').optional({ nullable: true }).isInt({ min: 0 }).withMessage('Stock must be a non-negative integer.'),
+  body('isAvailable').optional().isBoolean().withMessage('isAvailable must be a boolean.'),
+  body('published').optional().isBoolean().withMessage('published must be a boolean.'),
+  body('isAlcohol').optional().isBoolean().withMessage('isAlcohol must be a boolean.'),
+  body('isAgeRestricted').optional().isBoolean().withMessage('isAgeRestricted must be a boolean.'),
+  body('attributes').optional({ nullable: true }).isObject(),
+  body('meta').optional({ nullable: true }).isObject(),
+  body('categoryIds').optional().isArray().withMessage('categoryIds must be an array of UUIDs.'),
+  body('categoryIds.*').optional().isUUID(4).withMessage('Each categoryId must be a valid UUID.'),
+  body('tagIds').optional().isArray().withMessage('tagIds must be an array of UUIDs.'),
+  body('tagIds.*').optional().isUUID(4).withMessage('Each tagId must be a valid UUID.'),
+];
+
 export const validateCreateOrUpdateVendorOpeningHours = [
   body('vendorId').notEmpty().withMessage('Vendor ID is required'),
   body('day')
