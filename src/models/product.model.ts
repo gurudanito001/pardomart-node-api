@@ -609,6 +609,8 @@ export const updateVendorProduct = async (payload: UpdateVendorProductPayload): 
 
   // Sanitize payload
   if ('sku' in data) delete (data as any).sku;
+  if ('barcode' in data) delete (data as any).barcode;
+  if ('productId' in data) delete (data as any).productId;
 
   // Handle tags: Map array of strings to Prisma 'set' syntax
   // We check for 'tagIds' (preferred) or 'tags' (if passed loosely)
