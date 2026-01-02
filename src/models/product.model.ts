@@ -604,9 +604,30 @@ export const updateProductBase = async (payload: UpdateProductBasePayload): Prom
 };
 
 export const updateVendorProduct = async (payload: UpdateVendorProductPayload): Promise<VendorProduct> => {
-  const { id, ...data } = payload;
+  const { id, tagIds, categoryIds, ...rest } = payload;
+  const data: any = { ...rest };
+
   // Sanitize payload
   if ('sku' in data) delete (data as any).sku;
+
+  // Handle tags: Map array of strings to Prisma 'set' syntax
+  // We check for 'tagIds' (preferred) or 'tags' (if passed loosely)
+  const tagsToUpdate = tagIds || (Array.isArray(data.tags) ? data.tags : undefined);
+  if (tagsToUpdate) {
+    data.tags = {
+      set: tagsToUpdate.map((tagId: string) => ({ id: tagId })),
+    };
+  } else if ('tags' in data) {
+    // If tags is present but not a valid array (or empty), remove it to prevent Prisma errors
+    delete data.tags;
+  }
+
+  // Handle categories
+  if (categoryIds) {
+    data.categories = {
+      set: categoryIds.map((catId) => ({ id: catId })),
+    };
+  }
 
   return prisma.vendorProduct.update({
     where: { id: id },
