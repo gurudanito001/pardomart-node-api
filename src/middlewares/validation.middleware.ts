@@ -134,6 +134,29 @@ export const validateSetVendorAvailability = [
   body('available').isBoolean().withMessage('The "available" field must be a boolean.'),
 ];
 
+export const validateCreateVendorProduct = [
+  body('vendorId').isUUID(4).withMessage('Vendor ID is required'),
+  body('productId').isUUID(4).withMessage('Product ID is required'),
+  body('price').isFloat({ min: 0 }).withMessage('Price must be a non-negative number'),
+  body('name').trim().notEmpty().withMessage('Name is required'),
+  body('categoryIds').isArray({ min: 1 }).withMessage('At least one category ID is required'),
+  body('categoryIds.*').isUUID(4).withMessage('Category IDs must be valid UUIDs'),
+  body('description').optional().isString(),
+  body('discountedPrice').optional({ nullable: true }).isFloat({ min: 0 }),
+  body('images').optional().isArray(),
+  body('tagIds').optional().isArray(),
+  body('tagIds.*').isUUID(4),
+  body('stock').optional({ nullable: true }).isInt({ min: 0 }),
+  body('weight').optional({ nullable: true }).isFloat({ min: 0 }),
+  body('weightUnit').optional({ nullable: true }).isString(),
+  body('isAvailable').optional().isBoolean(),
+  body('published').optional().isBoolean(),
+  body('isAlcohol').optional().isBoolean(),
+  body('isAgeRestricted').optional().isBoolean(),
+  body('meta').optional({ nullable: true }).isObject(),
+  body('attributes').optional({ nullable: true }).isObject(),
+];
+
 export const validateUpdateVendorProduct = [
   param('id').isUUID(4).withMessage('A valid vendor product ID is required in the URL.'),
   body('price').optional().isFloat({ min: 0 }).withMessage('Price must be a non-negative number.'),

@@ -19,7 +19,6 @@ export interface CreateVendorProductPayload {
   productId: string;
   price: number;
   discountedPrice?: number;
-  sku?: string;
   images?: string[];
   isAvailable?: boolean;
   attributes?: any;
@@ -27,6 +26,13 @@ export interface CreateVendorProductPayload {
   description?: string;
   categoryIds: string[];
   tagIds?: string[];
+  published?: boolean;
+  stock?: number;
+  weight?: number;
+  weightUnit?: string;
+  isAlcohol?: boolean;
+  isAgeRestricted?: boolean;
+  meta?: any;
 }
 
 
@@ -34,7 +40,6 @@ export interface UpdateVendorProductPayload {
   id: string;
   price?: number;
   discountedPrice?: number;
-  sku?: string;
   images?: string[];
   isAvailable?: boolean;
   attributes?: any;
@@ -42,6 +47,13 @@ export interface UpdateVendorProductPayload {
   description?: string;
   categoryIds?: string[];
   tagIds?: string[];
+  published?: boolean;
+  stock?: number;
+  weight?: number;
+  weightUnit?: string;
+  isAlcohol?: boolean;
+  isAgeRestricted?: boolean;
+  meta?: any;
 }
 
 export interface UpdateProductBasePayload {
@@ -86,6 +98,10 @@ export const createProduct = async (payload: CreateProductPayload): Promise<Prod
 
 export const createVendorProduct = async (payload: CreateVendorProductPayload & { id?: string }): Promise<VendorProduct> => {
   const { id, categoryIds, tagIds, productId, vendorId, ...restOfPayload } = payload;
+  
+  // Sanitize payload to remove unknown fields like 'sku' if they exist in the input
+  if ('sku' in restOfPayload) delete (restOfPayload as any).sku;
+
   return prisma.vendorProduct.create({
     data: {
       ...restOfPayload,
@@ -588,9 +604,13 @@ export const updateProductBase = async (payload: UpdateProductBasePayload): Prom
 };
 
 export const updateVendorProduct = async (payload: UpdateVendorProductPayload): Promise<VendorProduct> => {
+  const { id, ...data } = payload;
+  // Sanitize payload
+  if ('sku' in data) delete (data as any).sku;
+
   return prisma.vendorProduct.update({
-    where: { id: payload.id },
-    data: payload,
+    where: { id: id },
+    data: data,
     include: {
       product: true,
     },
@@ -644,10 +664,13 @@ export const transferVendorProducts = async (
         images: sourceProduct.images,
         weight: sourceProduct.weight,
         weightUnit: sourceProduct.weightUnit,
+        stock: sourceProduct.stock,
         isAvailable: sourceProduct.isAvailable,
+        published: sourceProduct.published,
         isAlcohol: sourceProduct.isAlcohol,
         isAgeRestricted: sourceProduct.isAgeRestricted,
         attributes: sourceProduct.attributes ?? Prisma.JsonNull,
+        meta: sourceProduct.meta ?? Prisma.JsonNull,
         categories: {
           connect: sourceProduct.categories.map(c => ({ id: c.id })),
         },
