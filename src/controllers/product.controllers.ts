@@ -45,6 +45,7 @@ import { AuthenticatedRequest } from './vendor.controller';
  *         categoryIds: { type: array, items: { type: string } }
  *         isAlcohol: { type: boolean }
  *         isAgeRestricted: { type: boolean }
+ *         isActive: { type: boolean }
  *         createdAt: { type: string, format: date-time }
  *         updatedAt: { type: string, format: date-time }
  *     CategorySummary:
@@ -83,10 +84,13 @@ import { AuthenticatedRequest } from './vendor.controller';
  *         images: { type: array, items: { type: string, format: uri } }
  *         weight: { type: number, format: float, nullable: true }
  *         weightUnit: { type: string, nullable: true }
+ *         stock: { type: integer, nullable: true }
  *         isAvailable: { type: boolean }
+ *         published: { type: boolean }
  *         isAlcohol: { type: boolean }
  *         isAgeRestricted: { type: boolean }
  *         attributes: { type: object, nullable: true }
+ *         meta: { type: object, nullable: true }
  *         categoryIds: { type: array, items: { type: string } }
  *         createdAt: { type: string, format: date-time }
  *         updatedAt: { type: string, format: date-time }
@@ -119,6 +123,7 @@ import { AuthenticatedRequest } from './vendor.controller';
  *         tagIds: { type: array, items: { type: string, format: uuid }, description: "Array of tag IDs to associate with the product." }
  *         isAlcohol: { type: boolean, default: false }
  *         isAgeRestricted: { type: boolean, default: false }
+ *         isActive: { type: boolean, default: true }
  *     CreateVendorProductPayload:
  *       type: object
  *       required: [vendorId, productId, price, name, categoryIds]
@@ -131,6 +136,16 @@ import { AuthenticatedRequest } from './vendor.controller';
  *         images: { type: array, items: { type: string }, description: "Array of image URLs or base64 encoded strings." }
  *         categoryIds: { type: array, items: { type: string, format: uuid } }
  *         tagIds: { type: array, items: { type: string, format: uuid } }
+ *         discountedPrice: { type: number, format: float, nullable: true }
+ *         stock: { type: integer, nullable: true }
+ *         isAvailable: { type: boolean, default: true }
+ *         published: { type: boolean, default: false }
+ *         isAlcohol: { type: boolean, default: false }
+ *         isAgeRestricted: { type: boolean, default: false }
+ *         weight: { type: number, format: float, nullable: true }
+ *         weightUnit: { type: string, nullable: true }
+ *         attributes: { type: object, nullable: true }
+ *         meta: { type: object, nullable: true }
  *     CreateVendorProductWithBarcodePayload:
  *       type: object
  *       required: [vendorId, barcode, price, name, categoryIds]
@@ -145,14 +160,48 @@ import { AuthenticatedRequest } from './vendor.controller';
  *         tagIds: { type: array, items: { type: string, format: uuid } }
  *         discountedPrice: { type: number, format: float, nullable: true }
  *         isAvailable: { type: boolean, default: true }
+ *         stock: { type: integer, nullable: true }
+ *         published: { type: boolean, default: false }
+ *         isAlcohol: { type: boolean, default: false }
+ *         isAgeRestricted: { type: boolean, default: false }
+ *         weight: { type: number, format: float, nullable: true }
+ *         weightUnit: { type: string, nullable: true }
+ *         attributes: { type: object, nullable: true }
+ *         meta: { type: object, nullable: true }
  *     UpdateProductBasePayload:
- *       allOf:
- *         - $ref: '#/components/schemas/VendorProduct'
- *         - type: object
- *           properties:
- *             orderCount:
- *               type: integer
- *               description: "The number of times this product has been ordered."
+ *       type: object
+ *       properties:
+ *         name: { type: string }
+ *         description: { type: string, nullable: true }
+ *         images: { type: array, items: { type: string, format: uri } }
+ *         weight: { type: number, format: float, nullable: true }
+ *         weightUnit: { type: string, nullable: true }
+ *         attributes: { type: object, nullable: true }
+ *         meta: { type: object, nullable: true }
+ *         categoryIds: { type: array, items: { type: string, format: uuid } }
+ *         tagIds: { type: array, items: { type: string, format: uuid } }
+ *         isAlcohol: { type: boolean }
+ *         isAgeRestricted: { type: boolean }
+ *         isActive: { type: boolean }
+ *     UpdateVendorProductPayload:
+ *       type: object
+ *       properties:
+ *         price: { type: number, format: float }
+ *         name: { type: string }
+ *         description: { type: string, nullable: true }
+ *         discountedPrice: { type: number, format: float, nullable: true }
+ *         images: { type: array, items: { type: string, format: uri } }
+ *         weight: { type: number, format: float, nullable: true }
+ *         weightUnit: { type: string, nullable: true }
+ *         stock: { type: integer, nullable: true }
+ *         isAvailable: { type: boolean }
+ *         published: { type: boolean }
+ *         isAlcohol: { type: boolean }
+ *         isAgeRestricted: { type: boolean }
+ *         attributes: { type: object, nullable: true }
+ *         meta: { type: object, nullable: true }
+ *         categoryIds: { type: array, items: { type: string, format: uuid } }
+ *         tagIds: { type: array, items: { type: string, format: uuid } }
  *     ProductOverview:
  *       type: object
  *       properties:
