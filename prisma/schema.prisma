@@ -99,8 +99,10 @@ model VendorProduct {
   weightUnit      String?
   stock           Int?
   isAvailable     Boolean     @default(true)
+  published       Boolean     @default(false)
   isAlcohol       Boolean     @default(false)
   isAgeRestricted Boolean     @default(false)
+  meta            Json?
   attributes      Json?
   categoryIds     String[]
   categories      Category[]
