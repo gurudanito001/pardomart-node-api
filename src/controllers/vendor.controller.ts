@@ -164,6 +164,7 @@ export interface AuthenticatedRequest extends Request {
  *         latitude: { type: number, format: float, nullable: true, example: 40.730610 }
  *         mobileNumber: { type: string, nullable: true, example: "+1234567890" }
  *         mobileVerified: { type: boolean, default: false }
+ *         availableForShopping: { type: boolean, default: true }
  *         meta: { type: object, nullable: true }
  *     UpdateVendorPayload:
  *       type: object
