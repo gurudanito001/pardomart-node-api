@@ -498,6 +498,7 @@ model Media {
   name          String? // Original file name
   referenceId   String // ID of the related resource (e.g., user id, product id)
   referenceType ReferenceType? 
+  identifier    Identifier? // Optional identifier for categorization (e.g., "profile_picture", "document_scan")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -589,6 +590,17 @@ enum ReferenceType {
   product_image
   category_image
   document
+  other
+}
+
+enum Identifier {
+  profile_picture
+  document_scan
+  product_image
+  category_image
+  ad_image
+  business_document_1
+  business_document_2
   other
 }
 

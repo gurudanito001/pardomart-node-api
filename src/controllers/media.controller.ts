@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import * as mediaService from '../services/media.service';
-import { ReferenceType } from '@prisma/client';
+import { ReferenceType, Identifier } from '@prisma/client';
 
 /**
  * @swagger
@@ -34,6 +34,10 @@ import { ReferenceType } from '@prisma/client';
  *                 type: string
  *                 description: The type of resource the media is associated with.
  *                 enum: [bug_report_image, user_image, store_image, product_image, category_image, document, other]
+ *               identifier:
+ *                 type: string
+ *                 description: Optional identifier for categorization.
+ *                 enum: [profile_picture, document_scan, product_image, category_image, ad_image, business_document_1, business_document_2, other]
  *     responses:
  *       201:
  *         description: File uploaded successfully. Returns the created media record.
@@ -59,7 +63,7 @@ export const uploadFile = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'No file uploaded.' });
     }
 
-    const { referenceId, referenceType } = req.body;
+    const { referenceId, referenceType, identifier } = req.body;
 
     if (!referenceId || !referenceType) {
       console.error('Upload failed: Missing referenceId or referenceType.', req.body);
@@ -76,10 +80,19 @@ export const uploadFile = async (req: Request, res: Response) => {
       });
     }
 
+    // Validate identifier if present
+    if (identifier && !Object.values(Identifier).includes(identifier as Identifier)) {
+      console.error(`Upload failed: Invalid identifier '${identifier}'. Allowed: ${Object.values(Identifier).join(', ')}`);
+      return res.status(400).json({
+        message: `Invalid identifier. Must be one of: ${Object.values(Identifier).join(', ')}`,
+      });
+    }
+
     const result = await mediaService.uploadMedia(
       req.file,
       referenceId,
-      referenceType
+      referenceType,
+      identifier as Identifier
     );
 
     res.status(201).json({ message: 'File uploaded successfully', data: result.dbRecord });
