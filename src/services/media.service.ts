@@ -45,20 +45,73 @@ export const uploadMedia = (
           return reject(new Error('Cloudinary upload failed'));
         }
 
-        const dbRecord = await prisma.media.create({
-          data: {
-            url: result.secure_url,
-            type: getMediaType(file.mimetype),
-            mimeType: file.mimetype,
-            size: file.size,
-            name: file.originalname,
-            referenceId,
-            referenceType,
-          },
-        });
-        resolve({ cloudinaryResult: result, dbRecord });
+        try {
+          const dbRecord = await prisma.media.create({
+            data: {
+              url: result.secure_url,
+              type: getMediaType(file.mimetype),
+              mimeType: file.mimetype,
+              size: file.size,
+              name: file.originalname,
+              referenceId,
+              referenceType,
+            },
+          });
+          resolve({ cloudinaryResult: result, dbRecord });
+        } catch (dbError) {
+          reject(dbError);
+        }
       }
     );
     streamifier.createReadStream(file.buffer).pipe(uploadStream);
   });
+};
+
+export const getMediaByReference = async (
+  referenceId: string,
+  referenceType?: ReferenceType
+) => {
+  return prisma.media.findMany({
+    where: {
+      referenceId,
+      ...(referenceType ? { referenceType } : {}),
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+};
+
+const getCloudinaryPublicId = (url: string) => {
+  // Regex to capture resource_type and the path after upload/ (handling optional version)
+  const regex = /\/([^\/]+)\/upload\/(?:v\d+\/)?(.+)$/;
+  const match = url.match(regex);
+  if (!match) return null;
+
+  const resourceType = match[1];
+  let publicId = match[2];
+
+  // For image and video, remove the extension from publicId
+  if (resourceType === 'image' || resourceType === 'video') {
+    const lastDotIndex = publicId.lastIndexOf('.');
+    if (lastDotIndex !== -1) {
+      publicId = publicId.substring(0, lastDotIndex);
+    }
+  }
+
+  return { resourceType, publicId };
+};
+
+export const deleteMedia = async (id: string) => {
+  const media = await prisma.media.findUnique({ where: { id } });
+  if (!media) {
+    throw new Error('Media not found');
+  }
+
+  const cloudInfo = getCloudinaryPublicId(media.url);
+  if (cloudInfo) {
+    await cloudinary.uploader.destroy(cloudInfo.publicId, { resource_types: cloudInfo.resourceType });
+  }
+
+  return prisma.media.delete({ where: { id } });
 };

@@ -449,7 +449,7 @@ export const updateVendor = async (req: Request, res: Response) => {
     if (error?.code === 'P2025') {
       return res.status(404).json({ error: 'Vendor not found' });
     }
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: error?.message || 'Internal server error' });
   }
 };
 

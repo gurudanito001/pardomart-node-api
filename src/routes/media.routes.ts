@@ -9,5 +9,7 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 router.post('/upload', upload.single('file'), mediaController.uploadFile);
+router.get('/', mediaController.getMedia);
+router.delete('/:id', mediaController.deleteMedia);
 
 export default router;
