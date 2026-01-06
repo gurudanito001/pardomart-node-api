@@ -55,12 +55,14 @@ import { ReferenceType } from '@prisma/client';
 export const uploadFile = async (req: Request, res: Response) => {
   try {
     if (!req.file) {
+      console.error('Upload failed: No file uploaded.');
       return res.status(400).json({ message: 'No file uploaded.' });
     }
 
     const { referenceId, referenceType } = req.body;
 
     if (!referenceId || !referenceType) {
+      console.error('Upload failed: Missing referenceId or referenceType.', req.body);
       return res
         .status(400)
         .json({ message: 'referenceId and referenceType are required.' });
@@ -68,6 +70,7 @@ export const uploadFile = async (req: Request, res: Response) => {
 
     // Validate that referenceType is a valid enum value
     if (!Object.values(ReferenceType).includes(referenceType as ReferenceType)) {
+      console.error(`Upload failed: Invalid referenceType '${referenceType}'. Allowed: ${Object.values(ReferenceType).join(', ')}`);
       return res.status(400).json({
         message: `Invalid referenceType. Must be one of: ${Object.values(ReferenceType).join(', ')}`,
       });
@@ -119,10 +122,12 @@ export const getMedia = async (req: Request, res: Response) => {
     const { referenceId, referenceType } = req.query;
 
     if (!referenceId) {
+      console.error('Get media failed: referenceId is required.');
       return res.status(400).json({ message: 'referenceId is required.' });
     }
 
     if (referenceType && !Object.values(ReferenceType).includes(referenceType as ReferenceType)) {
+      console.error(`Get media failed: Invalid referenceType '${referenceType}'`);
       return res.status(400).json({
         message: `Invalid referenceType. Must be one of: ${Object.values(ReferenceType).join(', ')}`,
       });
