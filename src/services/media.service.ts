@@ -26,6 +26,16 @@ const getMediaType = (mimeType: string): MediaType => {
   }
 };
 
+const getCloudinaryResourceType = (mimeType: string): 'image' | 'video' | 'raw' => {
+  if (mimeType.startsWith('image/')) {
+    return 'image';
+  }
+  if (mimeType.startsWith('video/') || mimeType.startsWith('audio/')) {
+    return 'video';
+  }
+  return 'raw';
+};
+
 export const uploadMedia = (
   file: Express.Multer.File,
   referenceId: string,
@@ -35,7 +45,7 @@ export const uploadMedia = (
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
-        resource_type: 'auto',
+        resource_type: getCloudinaryResourceType(file.mimetype),
         folder: `pardomart/${referenceType.toLowerCase()}`,
       },
       async (error, result) => {
