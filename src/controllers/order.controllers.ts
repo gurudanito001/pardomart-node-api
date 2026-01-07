@@ -90,6 +90,9 @@ import { AuthenticatedRequest } from './vendor.controller';
  *           type: string
  *           format: uuid
  *           description: The vendorProductId of the suggested replacement if status is NOT_FOUND or REPLACED.
+ *         replacementBarcode:
+ *           type: string
+ *           description: Optional. The barcode of a replacement item if chosenReplacementId is not provided.
  *     RespondToReplacementPayload:
  *       type: object
  *       required: [approved]

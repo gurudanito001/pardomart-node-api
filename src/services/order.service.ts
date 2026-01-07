@@ -1089,6 +1089,7 @@ export interface UpdateOrderItemShoppingStatusPayload {
   status?: OrderItemStatus;
   quantityFound?: number;
   chosenReplacementId?: string;
+  replacementBarcode?: string;
 }
 
 /**
@@ -1106,7 +1107,7 @@ export const updateOrderItemShoppingStatusService = async (
   shopperId: string,
   payload: UpdateOrderItemShoppingStatusPayload
 ): Promise<OrderItem> => {
-  const { status, quantityFound, chosenReplacementId } = payload;  
+  let { status, quantityFound, chosenReplacementId, replacementBarcode } = payload;
   // 1. Fetch order and user details for authorization
   const [order, requestingUser] = await Promise.all([
     prisma.order.findUnique({
@@ -1141,6 +1142,25 @@ export const updateOrderItemShoppingStatusService = async (
   // Validate payload logic
   if (status === 'FOUND' && quantityFound === undefined) {
     throw new OrderCreationError('quantityFound is required when status is FOUND.');
+  }
+
+  // Handle ad-hoc replacement via barcode
+  if (status === OrderItemStatus.REPLACED && !chosenReplacementId && replacementBarcode) {
+    const vendorProduct = await prisma.vendorProduct.findFirst({
+      where: {
+        vendorId: order.vendorId,
+        product: {
+          barcode: replacementBarcode
+        }
+      },
+      select: { id: true }
+    });
+
+    if (!vendorProduct) {
+      throw new OrderCreationError(`No product found with barcode ${replacementBarcode} in this store.`);
+    }
+
+    chosenReplacementId = vendorProduct.id;
   }
 
   const updatedItem = await prisma.orderItem.update({
