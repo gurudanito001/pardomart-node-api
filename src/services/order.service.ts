@@ -1162,8 +1162,12 @@ export const updateOrderItemShoppingStatusService = async (
     const io = getIO();
     // The room is the orderId. The customer and shopper should be in this room.
     io.to(orderId).emit('order_item_updated', updatedItem);
-  } catch (error) {
-    console.error('Socket.IO error in updateOrderItemShoppingStatusService:', error);
+  } catch (error: any) {
+    if (error.message === 'Socket.IO not initialized!') {
+      console.warn('Socket.IO warning: Real-time update not sent. Socket.IO is not initialized.');
+    } else {
+      console.error('Socket.IO error in updateOrderItemShoppingStatusService:', error);
+    }
   }
 
   return updatedItem;
@@ -1231,8 +1235,12 @@ export const respondToReplacementService = async (
   try {
     const io = getIO();
     io.to(orderId).emit('replacement_responded', updatedItem);
-  } catch (error) {
-    console.error('Socket.IO error in respondToReplacementService:', error);
+  } catch (error: any) {
+    if (error.message === 'Socket.IO not initialized!') {
+      console.warn('Socket.IO warning: Real-time update not sent. Socket.IO is not initialized.');
+    } else {
+      console.error('Socket.IO error in respondToReplacementService:', error);
+    }
   }
 
   return updatedItem;

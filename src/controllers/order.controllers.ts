@@ -89,7 +89,7 @@ import { AuthenticatedRequest } from './vendor.controller';
  *         chosenReplacementId:
  *           type: string
  *           format: uuid
- *           description: The vendorProductId of the suggested replacement if status is NOT_FOUND.
+ *           description: The vendorProductId of the suggested replacement if status is NOT_FOUND or REPLACED.
  *     RespondToReplacementPayload:
  *       type: object
  *       required: [approved]
@@ -519,6 +519,8 @@ export const updateOrderItemShoppingStatusController = async (req: Authenticated
     const shopperId = req.userId as string;
     const { orderId, itemId } = req.params;
     const payload: UpdateOrderItemShoppingStatusPayload = req.body;
+
+    console.log(`Updating item ${itemId} shopping status. Payload:`, JSON.stringify(payload, null, 2));
 
     const updatedItem = await updateOrderItemShoppingStatusService(orderId, itemId, shopperId, payload);
     res.status(200).json(updatedItem);
