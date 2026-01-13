@@ -20,6 +20,10 @@ const router = express.Router();
 router.post('/', authenticate, validate(validateCreateVendor), vendorController.createVendor);
 router.get('/', validate(validateGetAllVendors), vendorController.getAllVendors);
 //router.get('/findVendors/nearby', vendorController.getVendorsByProximity);
+
+// Export vendors (Admin)
+router.get('/export', authenticate, authorize(['admin']), validate(validateGetAllVendors), vendorController.exportVendors);
+
 router.get('/incomplete-setups', authenticate, vendorController.getIncompleteSetups);
 router.get('/getvendorsby/userId', authenticate, vendorController.getVendorsByUserId);
 
@@ -30,6 +34,7 @@ router.get('/overview', authenticate, authorize(['admin']), vendorController.get
 router.get('/users/:userId', authenticate, authorize(['admin']), vendorController.getVendorUserByIdController);
 
 router.get('/:id', validate(validateGetVendorById), vendorController.getVendorById);
+router.get('/:id/stats', authenticate, validate(validateVendorId), vendorController.getVendorStats);
 router.patch('/:id/approve', authenticate, authorize(['admin']), validate(validateVendorId), vendorController.approveVendor); // Admin only
 router.patch('/:id/publish', authenticate, authorize(['vendor', 'store_admin']), validate(validateVendorId), vendorController.publishVendor); // Vendor owner or store admin
 router.patch('/:id/availability', authenticate, authorize(['vendor']), validate(validateSetVendorAvailability), vendorController.setVendorAvailabilityController); // Vendor owner only

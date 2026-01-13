@@ -15,6 +15,10 @@ router.get('/all', userController.getAllUsers);
 // Note: These routes are protected and require admin privileges.
 router.use(authenticate, /* authorize([Role.admin]) */);
 
+// Admin Management Routes
+router.get('/admin/stats', authorize([Role.admin]), userController.getAdminStats);
+router.get('/admin/export', authorize([Role.admin]), userController.exportAdmins);
+
 router.get('/verificationCodes', userController.getAllVerificationCodes);
 router.get('/', validate(validateGetAllUsers), userController.getAllUsers);
 router.get('/:id', validate(validateUserId), userController.getUserById);

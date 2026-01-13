@@ -2,6 +2,8 @@
 import { Request, Response } from 'express';
 import * as vendorService from '../services/vendor.service';
 import { getVendorsFilters } from '../models/vendor.model';
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
 
 export interface AuthenticatedRequest extends Request {
   userId?: string;
@@ -374,7 +376,7 @@ export const getAllVendors = async (req: AuthenticatedRequest, res: Response) =>
     };
 
     const filters: getVendorsFilters = {
-      name, latitude, longitude, userId: queryUserId || authUserId,
+      name, latitude, longitude, userId: queryUserId,
       isVerified: parseBoolean(isVerified),
       isPublished: parseBoolean(isPublished),
       createdAtStart: createdAtStart as string | undefined,
@@ -384,6 +386,94 @@ export const getAllVendors = async (req: AuthenticatedRequest, res: Response) =>
     res.status(200).json(vendors);
   } catch (error) {
     console.error('Error getting all vendors:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
+ * /vendors/export:
+ *   get:
+ *     summary: Export vendors to CSV (Admin)
+ *     tags: [Vendor, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Exports a list of vendors matching the provided filters to a CSV file.
+ *     parameters:
+ *       - in: query
+ *         name: name
+ *         schema: { type: string }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *         description: Filter by the user who owns the store.
+ *       - in: query
+ *         name: isVerified
+ *         schema: { type: boolean }
+ *       - in: query
+ *         name: isPublished
+ *         schema: { type: boolean }
+ *     responses:
+ *       200:
+ *         description: CSV file download.
+ *         content:
+ *           text/csv:
+ *             schema:
+ *               type: string
+ *               format: binary
+ */
+export const exportVendors = async (req: AuthenticatedRequest, res: Response) => {
+  const {
+    name,
+    userId: queryUserId,
+    isVerified,
+    isPublished,
+    createdAtStart,
+    createdAtEnd,
+  }: getVendorsFilters = req.query;
+
+  try {
+    const parseBoolean = (value: any): boolean | undefined => {
+      if (value === 'true') return true;
+      if (value === 'false') return false;
+      return undefined;
+    };
+
+    const filters: getVendorsFilters = {
+      name,
+      userId: queryUserId,
+      isVerified: parseBoolean(isVerified),
+      isPublished: parseBoolean(isPublished),
+      createdAtStart: createdAtStart as string | undefined,
+      createdAtEnd: createdAtEnd as string | undefined,
+    };
+
+    // Fetch all matching vendors without pagination (or a very large limit)
+    const result = await vendorService.getAllVendors(filters, { page: '1', take: '10000' });
+    const vendors = result.data;
+
+    // Convert to CSV
+    const fields = ['id', 'name', 'email', 'mobileNumber', 'isVerified', 'isPublished', 'createdAt'];
+    const csvRows = [];
+    
+    // Header
+    csvRows.push(fields.join(','));
+
+    // Data
+    for (const vendor of vendors) {
+      const row = fields.map(field => {
+        const val = (vendor as any)[field];
+        // Escape quotes and handle commas
+        return `"${String(val || '').replace(/"/g, '""')}"`;
+      });
+      csvRows.push(row.join(','));
+    }
+
+    res.header('Content-Type', 'text/csv');
+    res.header('Content-Disposition', 'attachment; filename="vendors.csv"');
+    res.send(csvRows.join('\n'));
+  } catch (error) {
+    console.error('Error exporting vendors:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -771,7 +861,7 @@ export const getVendorUserByIdController = async (req: Request, res: Response) =
  *   get:
  *     summary: Get platform overview data (Admin)
  *     tags: [Vendor, Admin]
- *     description: Retrieves aggregate data about the platform, such as the total number of vendor users, stores, and staff members. Only accessible by admins.
+ *     description: Retrieves aggregate data about the platform, such as the total number of stores, users, orders, and delivered orders. Only accessible by admins.
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -782,9 +872,10 @@ export const getVendorUserByIdController = async (req: Request, res: Response) =
  *             schema:
  *               type: object
  *               properties:
- *                 totalVendorUsers: { type: integer }
  *                 totalStores: { type: integer }
- *                 totalStaff: { type: integer }
+ *                 totalUsers: { type: integer }
+ *                 totalOrders: { type: integer }
+ *                 totalDelivered: { type: integer }
  *       500:
  *         description: Internal server error.
  */
@@ -795,5 +886,51 @@ export const getOverviewDataController = async (req: Request, res: Response) => 
   } catch (error: any) {
     console.error('Error getting overview data:', error);
     res.status(500).json({ error: 'An unexpected error occurred.' });
+  }
+};
+
+/**
+ * @swagger
+ * /vendors/{id}/stats:
+ *   get:
+ *     summary: Get statistics for a specific store (Admin/Vendor)
+ *     tags: [Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Retrieves statistics for a store including total orders, total products, in-stock products, and out-of-stock products.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: The ID of the vendor/store.
+ *     responses:
+ *       200:
+ *         description: Store statistics.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalOrders: { type: integer }
+ *                 totalProducts: { type: integer }
+ *                 inStockProducts: { type: integer }
+ *                 outOfStockProducts: { type: integer }
+ */
+export const getVendorStats = async (req: Request, res: Response) => {
+  try {
+    const vendorId = req.params.id;
+
+    const [totalOrders, totalProducts, inStockProducts, outOfStockProducts] = await Promise.all([
+      prisma.order.count({ where: { vendorId } }),
+      prisma.vendorProduct.count({ where: { vendorId } }),
+      prisma.vendorProduct.count({ where: { vendorId, isAvailable: true } }),
+      prisma.vendorProduct.count({ where: { vendorId, isAvailable: false } }),
+    ]);
+
+    res.status(200).json({ totalOrders, totalProducts, inStockProducts, outOfStockProducts });
+  } catch (error) {
+    console.error('Error getting vendor stats:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 };

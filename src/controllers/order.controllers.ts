@@ -939,7 +939,7 @@ export const verifyPickupOtp = async (req: AuthenticatedRequest, res: Response) 
  *   get:
  *     summary: Get platform-wide order overview data (Admin)
  *     tags: [Order, Admin]
- *     description: Retrieves aggregate data about all orders on the platform, such as total orders, total products ordered, and total cancelled orders. Only accessible by admins.
+ *     description: Retrieves aggregate data about all orders on the platform, such as total orders, total products, in-stock products, and total cancelled orders. Only accessible by admins.
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -951,7 +951,8 @@ export const verifyPickupOtp = async (req: AuthenticatedRequest, res: Response) 
  *               type: object
  *               properties:
  *                 totalOrders: { type: integer }
- *                 totalProductsOrdered: { type: integer }
+ *                 totalProducts: { type: integer }
+ *                 inStockProducts: { type: integer }
  *                 totalCancelledOrders: { type: integer }
  *       500:
  *         description: Internal server error.
@@ -1019,12 +1020,12 @@ export const adminUpdateOrderController = async (req: Request, res: Response) =>
  *   get:
  *     summary: Get a paginated list of all orders (Admin)
  *     tags: [Order, Admin]
- *     description: Retrieves a paginated list of all orders on the platform. Allows filtering by orderCode, status, creation date, and customer name. Only accessible by admins.
+ *     description: Retrieves a paginated list of all orders on the platform. Allows filtering by orderCode, status (pending, in-progress, completed, cancelled), creation date, and customer name. Only accessible by admins.
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - { in: query, name: orderCode, schema: { type: string }, description: "Filter by order code." }
- *       - { in: query, name: status, schema: { $ref: '#/components/schemas/OrderStatus' }, description: "Filter by order status." }
+ *       - { in: query, name: status, schema: { type: string }, description: "Filter by order status (pending, in-progress, completed, cancelled) or specific OrderStatus." }
  *       - { in: query, name: customerName, schema: { type: string }, description: "Filter by customer's name (case-insensitive)." }
  *       - { in: query, name: createdAtStart, schema: { type: string, format: date-time }, description: "Filter orders created on or after this date." }
  *       - { in: query, name: createdAtEnd, schema: { type: string, format: date-time }, description: "Filter orders created on or before this date." }
@@ -1049,9 +1050,41 @@ export const adminGetAllOrdersController = async (req: Request, res: Response) =
     const page = parseInt(req.query.page as string) || 1;
     const take = parseInt(req.query.size as string) || 20;
 
+    let statusFilter: OrderStatus | OrderStatus[] | undefined;
+
+    if (status) {
+      const statusStr = status as string;
+      switch (statusStr.toLowerCase()) {
+        case 'pending':
+          statusFilter = [OrderStatus.pending];
+          break;
+        case 'in-progress':
+          statusFilter = [
+            OrderStatus.accepted_for_shopping,
+            OrderStatus.currently_shopping,
+            OrderStatus.ready_for_pickup,
+            OrderStatus.ready_for_delivery,
+            OrderStatus.accepted_for_delivery,
+            OrderStatus.en_route
+          ];
+          break;
+        case 'completed':
+          statusFilter = [OrderStatus.delivered, OrderStatus.picked_up_by_customer];
+          break;
+        case 'cancelled':
+          statusFilter = [OrderStatus.cancelled_by_customer, OrderStatus.declined_by_vendor];
+          break;
+        default:
+          if (Object.values(OrderStatus).includes(statusStr as OrderStatus)) {
+            statusFilter = statusStr as OrderStatus;
+          }
+          break;
+      }
+    }
+
     const filters = {
       orderCode: orderCode as string | undefined,
-      status: status as OrderStatus | undefined,
+      status: statusFilter,
       customerName: customerName as string | undefined,
       createdAtStart: createdAtStart as string | undefined,
       createdAtEnd: createdAtEnd as string | undefined,

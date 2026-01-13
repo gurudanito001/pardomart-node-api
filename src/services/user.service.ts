@@ -1,9 +1,11 @@
 // user.service.ts
 import * as userModel from '../models/user.model'; // Import functions from user.model.ts
-import { Prisma } from '@prisma/client';
+import { Prisma, PrismaClient, Role } from '@prisma/client';
 import { GetUserFilters, CreateUserPayload, UpdateUserPayload } from '../models/user.model';
 import { uploadMedia } from './media.service'; // Assuming you have a media.service.ts file
 import { Readable } from 'stream';
+
+const prisma = new PrismaClient();
 
 interface CheckUserFilters {
   mobileNumber: string;
@@ -11,8 +13,34 @@ interface CheckUserFilters {
 
 
 
-export const getAllUsers = async (filters: GetUserFilters, pagination: { page: number; take: number }) => {
-  return userModel.getAllUsers(filters, pagination);
+export const getAllUsers = async (filters: GetUserFilters & { search?: string }, pagination: { page: number; take: number }) => {
+  const { mobileVerified, active, role, language, search } = filters;
+  const skip = (pagination.page - 1) * pagination.take;
+
+  const where: Prisma.UserWhereInput = {};
+
+  if (mobileVerified !== undefined) where.mobileVerified = mobileVerified;
+  if (active !== undefined) where.active = active;
+  if (role) where.role = role;
+  if (language) where.language = language;
+
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: 'insensitive' } },
+      { email: { contains: search, mode: 'insensitive' } },
+      { mobileNumber: { contains: search, mode: 'insensitive' } },
+    ];
+  }
+
+  const [users, total] = await prisma.$transaction([
+    prisma.user.findMany({ where, skip, take: pagination.take, orderBy: { createdAt: 'desc' } }),
+    prisma.user.count({ where }),
+  ]);
+
+  return {
+    data: users,
+    pagination: { total, page: pagination.page, limit: pagination.take, totalPages: Math.ceil(total / pagination.take) },
+  };
 };
 
 export const findMany = async (args: Prisma.UserFindManyArgs) => {
@@ -66,4 +94,31 @@ export const updateUser = async (id: string, payload: UpdateUserPayload) => {
 
 export const deleteUser = async (userId: string) => {
   return userModel.deleteUser(userId);
+};
+
+export const getAdminStatsService = async () => {
+  const [totalAdmins, activeAdmins] = await prisma.$transaction([
+    prisma.user.count({ where: { role: Role.admin } }),
+    prisma.user.count({ where: { role: Role.admin, active: true } }),
+  ]);
+  return { totalAdmins, activeAdmins };
+};
+
+export const exportAdminsService = async () => {
+  const admins = await prisma.user.findMany({
+    where: { role: Role.admin },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  const header = ['ID', 'Name', 'Email', 'Mobile Number', 'Active', 'Created At'];
+  const rows = admins.map(admin => [
+    admin.id,
+    `"${(admin.name || '').replace(/"/g, '""')}"`,
+    admin.email,
+    admin.mobileNumber,
+    admin.active ? 'Yes' : 'No',
+    admin.createdAt.toISOString()
+  ]);
+
+  return [header.join(','), ...rows.map(r => r.join(','))].join('\n');
 };

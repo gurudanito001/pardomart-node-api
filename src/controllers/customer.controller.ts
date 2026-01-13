@@ -155,7 +155,7 @@ export const listCustomerTransactionsController = async (req: AuthenticatedReque
  *   get:
  *     summary: Get platform-wide customer overview data (Admin)
  *     tags: [Customers, Admin]
- *     description: Retrieves aggregate data about customers, such as total customers, total completed orders (invoices), and new customers in a given period. Only accessible by admins.
+ *     description: Retrieves aggregate data about customers, such as total customers, total completed orders, new customers, and total payments. Only accessible by admins.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -163,7 +163,7 @@ export const listCustomerTransactionsController = async (req: AuthenticatedReque
  *         name: days
  *         schema:
  *           type: integer
- *           default: 30
+ *           default: 7
  *         description: The number of past days to count for "new customers".
  *     responses:
  *       200:
@@ -176,16 +176,53 @@ export const listCustomerTransactionsController = async (req: AuthenticatedReque
  *                 totalCustomers: { type: integer }
  *                 totalCompletedOrders: { type: integer }
  *                 newCustomers: { type: integer }
+ *                 totalPayments: { type: integer }
  *       500:
  *         description: Internal server error.
  */
 export const getAdminCustomerOverviewController = async (req: Request, res: Response) => {
   try {
-    const days = req.query.days ? parseInt(req.query.days as string, 10) : 30;
+    const days = req.query.days ? parseInt(req.query.days as string, 10) : 7;
     const overviewData = await customerService.getAdminCustomerOverviewService(days);
     res.status(200).json(overviewData);
   } catch (error: any) {
     console.error('Error getting customer overview data:', error);
+    res.status(500).json({ error: 'An unexpected error occurred.' });
+  }
+};
+
+/**
+ * @swagger
+ * /customers/admin/export:
+ *   get:
+ *     summary: Export customers to CSV (Admin)
+ *     tags: [Customers, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - { in: query, name: search, schema: { type: string } }
+ *       - { in: query, name: status, schema: { type: boolean } }
+ *     responses:
+ *       200:
+ *         description: CSV file download.
+ */
+export const exportCustomersController = async (req: Request, res: Response) => {
+  try {
+    const { search, status, createdAtStart, createdAtEnd } = req.query;
+    const parseBoolean = (value: any): boolean | undefined => {
+      if (value === 'true') return true;
+      if (value === 'false') return false;
+      return undefined;
+    };
+    const filters = {
+      search: search as string | undefined,
+      status: parseBoolean(status),
+    };
+    const csv = await customerService.exportCustomersService(filters);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=customers.csv');
+    res.send(csv);
+  } catch (error: any) {
     res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };
@@ -200,10 +237,8 @@ export const getAdminCustomerOverviewController = async (req: Request, res: Resp
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - { in: query, name: name, schema: { type: string }, description: "Filter by customer name (case-insensitive)." }
+ *       - { in: query, name: search, schema: { type: string }, description: "Search by name, email, or mobile number." }
  *       - { in: query, name: status, schema: { type: boolean }, description: "Filter by active status (true/false)." }
- *       - { in: query, name: minAmountSpent, schema: { type: number }, description: "Filter by minimum total amount spent." }
- *       - { in: query, name: maxAmountSpent, schema: { type: number }, description: "Filter by maximum total amount spent." }
  *       - { in: query, name: createdAtStart, schema: { type: string, format: date-time }, description: "Filter customers created on or after this date." }
  *       - { in: query, name: createdAtEnd, schema: { type: string, format: date-time }, description: "Filter customers created on or before this date." }
  *       - { in: query, name: page, schema: { type: integer, default: 1 }, description: "Page number for pagination." }
@@ -217,10 +252,8 @@ export const getAdminCustomerOverviewController = async (req: Request, res: Resp
 export const adminListAllCustomersController = async (req: Request, res: Response) => {
   try {
     const {
-      name,
+      search,
       status,
-      minAmountSpent,
-      maxAmountSpent,
       createdAtStart,
       createdAtEnd,
     } = req.query;
@@ -231,11 +264,9 @@ export const adminListAllCustomersController = async (req: Request, res: Respons
       return undefined;
     };
 
-    const filters: AdminListCustomersFilters = {
-      name: name as string | undefined,
+    const filters = {
+      search: search as string | undefined,
       status: parseBoolean(status),
-      minAmountSpent: minAmountSpent ? parseFloat(minAmountSpent as string) : undefined,
-      maxAmountSpent: maxAmountSpent ? parseFloat(maxAmountSpent as string) : undefined,
       createdAtStart: createdAtStart as string | undefined,
       createdAtEnd: createdAtEnd as string | undefined,
     };

@@ -20,8 +20,11 @@ const router = Router();
  *         content: { type: string, description: "The HTML content string." }
  */
 
+// App-specific privacy policies
+router.get('/privacy-policy/:app', contentController.getPrivacyPolicyController);
+router.patch('/privacy-policy/:app', authenticate, authorize([Role.admin]), validate(validateUpdateContent), contentController.updatePrivacyPolicyController);
+
 router.get('/:type', validate(validateContentType), contentController.getContentController);
 router.patch('/:type', authenticate, authorize([Role.admin]), validate(validateUpdateContent), contentController.updateContentController);
 
 export default router;
-

@@ -18,7 +18,9 @@ router.use(authenticate);
 // --- Admin-only Transaction Routes ---
 router.get('/admin/overview', authorize([Role.admin]), transactionController.getTransactionOverviewController);
 router.get('/admin/all', authorize([Role.admin]), transactionController.adminListAllTransactionsController);
+router.get('/admin/export', authorize([Role.admin]), transactionController.exportTransactionsController);
 router.post('/admin/:transactionId/send-receipt', authorize([Role.admin]), transactionController.sendReceiptController);
+router.get('/admin/:transactionId/download-receipt', authorize([Role.admin]), transactionController.downloadReceiptController);
 router.get('/admin/:transactionId', authorize([Role.admin]), transactionController.adminGetTransactionByIdController);
 router.get('/', authorize([Role.vendor, Role.store_admin, Role.store_shopper]), transactionController.listTransactionsController);
 

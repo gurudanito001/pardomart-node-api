@@ -1408,28 +1408,24 @@ export const verifyPickupOtpService = async (
 
 /**
  * (Admin) Retrieves overview data for all orders on the platform.
- * @returns An object containing total counts for orders, products ordered, and cancelled orders.
+ * @returns An object containing total counts for orders, total products, in-stock products, and cancelled orders.
  */
 export const getOrderOverviewDataService = async (): Promise<{
   totalOrders: number;
-  totalProductsOrdered: number;
+  totalProducts: number;
+  inStockProducts: number;
   totalCancelledOrders: number;
 }> => {
-  const [totalOrders, productsOrderedAggregation, totalCancelledOrders] = await prisma.$transaction([
+  const [totalOrders, totalProducts, inStockProducts, totalCancelledOrders] = await prisma.$transaction([
     prisma.order.count(),
-    prisma.orderItem.aggregate({
-      _sum: {
-        quantity: true,
-      },
-    }),
+    prisma.vendorProduct.count(),
+    prisma.vendorProduct.count({ where: { isAvailable: true } }),
     prisma.order.count({
       where: { orderStatus: { in: [OrderStatus.cancelled_by_customer, OrderStatus.declined_by_vendor] } },
     }),
   ]);
 
-  const totalProductsOrdered = productsOrderedAggregation._sum.quantity || 0;
-
-  return { totalOrders, totalProductsOrdered, totalCancelledOrders };
+  return { totalOrders, totalProducts, inStockProducts, totalCancelledOrders };
 };
 
 /**
@@ -1439,10 +1435,61 @@ export const getOrderOverviewDataService = async (): Promise<{
  * @returns A paginated list of orders.
  */
 export const adminGetAllOrdersService = async (
-  filters: orderModel.AdminGetOrdersFilters,
-  pagination: orderModel.Pagination
+  filters: any,
+  pagination: { page: number; take: number }
 ) => {
-  return orderModel.adminGetAllOrders(filters, pagination);
+  const { orderCode, status, customerName, createdAtStart, createdAtEnd } = filters;
+  const skip = (pagination.page - 1) * pagination.take;
+
+  const where: Prisma.OrderWhereInput = {};
+
+  if (orderCode) {
+    where.orderCode = { contains: orderCode, mode: 'insensitive' };
+  }
+
+  if (status) {
+    if (Array.isArray(status)) {
+      where.orderStatus = { in: status };
+    } else {
+      where.orderStatus = status;
+    }
+  }
+
+  if (customerName) {
+    where.user = {
+      name: { contains: customerName, mode: 'insensitive' },
+    };
+  }
+
+  if (createdAtStart || createdAtEnd) {
+    where.createdAt = {};
+    if (createdAtStart) where.createdAt.gte = new Date(createdAtStart);
+    if (createdAtEnd) where.createdAt.lte = new Date(createdAtEnd);
+  }
+
+  const [orders, total] = await prisma.$transaction([
+    prisma.order.findMany({
+      where,
+      skip,
+      take: pagination.take,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: { select: { id: true, name: true, email: true, mobileNumber: true } },
+        vendor: { select: { id: true, name: true } },
+      },
+    }),
+    prisma.order.count({ where }),
+  ]);
+
+  return {
+    data: orders,
+    pagination: {
+      total,
+      page: pagination.page,
+      limit: pagination.take,
+      totalPages: Math.ceil(total / pagination.take),
+    },
+  };
 };
 
 /**

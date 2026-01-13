@@ -7,10 +7,10 @@ const prisma = new PrismaClient();
 
 /**
  * (Admin) Retrieves an overview of delivery person data for the platform.
- * @param days The number of days to look back for new delivery persons. Defaults to 30.
+ * @param days The number of days to look back for new delivery persons. Defaults to 7.
  * @returns An object containing overview data.
  */
-export const getDeliveryPersonOverviewService = async (days = 30) => {
+export const getDeliveryPersonOverviewService = async (days = 7) => {
   const startDate = dayjs().subtract(days, 'day').toDate();
 
   const [totalDeliveryPersons, newDeliveryPersons, totalDeliveries] = await prisma.$transaction([
@@ -54,10 +54,53 @@ export const getDeliveryPersonOverviewService = async (days = 30) => {
  * @returns A paginated list of delivery persons.
  */
 export const adminListAllDeliveryPersonsService = async (
-  filters: deliveryPersonModel.AdminListDeliveryPersonsFilters,
+  filters: any,
   pagination: { page: number; take: number }
 ) => {
-  return deliveryPersonModel.adminListAllDeliveryPersons(filters, pagination);
+  const { search, status, createdAtStart, createdAtEnd } = filters;
+  const skip = (pagination.page - 1) * pagination.take;
+
+  const where: Prisma.UserWhereInput = {
+    role: Role.delivery_person,
+  };
+
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: 'insensitive' } },
+      { email: { contains: search, mode: 'insensitive' } },
+      { mobileNumber: { contains: search, mode: 'insensitive' } },
+    ];
+  }
+
+  if (status !== undefined) {
+    where.active = status;
+  }
+
+  if (createdAtStart || createdAtEnd) {
+    where.createdAt = {};
+    if (createdAtStart) where.createdAt.gte = new Date(createdAtStart);
+    if (createdAtEnd) where.createdAt.lte = new Date(createdAtEnd);
+  }
+
+  const [users, total] = await prisma.$transaction([
+    prisma.user.findMany({
+      where,
+      skip,
+      take: pagination.take,
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.user.count({ where }),
+  ]);
+
+  return {
+    data: users,
+    pagination: {
+      total,
+      page: pagination.page,
+      limit: pagination.take,
+      totalPages: Math.ceil(total / pagination.take),
+    },
+  };
 };
 
 /**
@@ -101,4 +144,37 @@ export const adminUpdateDeliveryPersonProfileService = async (
   }
 
   return userModel.updateUser(deliveryPersonId, payload);
+};
+
+/**
+ * (Admin) Exports a list of delivery persons to CSV format.
+ */
+export const exportDeliveryPersonsService = async (filters: any) => {
+  const { search, status, createdAtStart, createdAtEnd } = filters;
+
+  const where: Prisma.UserWhereInput = {
+    role: Role.delivery_person,
+  };
+
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: 'insensitive' } },
+      { email: { contains: search, mode: 'insensitive' } },
+      { mobileNumber: { contains: search, mode: 'insensitive' } },
+    ];
+  }
+
+  if (status !== undefined) where.active = status;
+
+  const users = await prisma.user.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+  });
+
+  const header = ['ID', 'Name', 'Email', 'Mobile Number', 'Active', 'Created At'];
+  const rows = users.map((user) => [
+    user.id, `"${(user.name || '').replace(/"/g, '""')}"`, user.email, user.mobileNumber, user.active ? 'Yes' : 'No', user.createdAt.toISOString()
+  ]);
+
+  return [header.join(','), ...rows.map((r) => r.join(','))].join('\n');
 };

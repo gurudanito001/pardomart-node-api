@@ -391,7 +391,7 @@ export const listTransactionsController = async (req: AuthenticatedRequest, res:
  *   get:
  *     summary: Get platform-wide transaction overview (Admin)
  *     tags: [Transaction, Admin]
- *     description: Retrieves aggregate financial data for the platform, including total transactions, income (fees), expenses (refunds), and revenue. Only accessible by admins.
+ *     description: Retrieves aggregate financial data for the platform. Total Income is the sum of all paid order amounts. Total Revenue is the sum of service fees from paid orders. Total Expenses is the sum of refunds. Only accessible by admins.
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -559,6 +559,7 @@ export const sendReceiptController = async (req: Request, res: Response) => {
 export const adminListAllTransactionsController = async (req: Request, res: Response) => {
   try {
     const {
+      search,
       orderCode,
       customerName,
       status,
@@ -570,6 +571,7 @@ export const adminListAllTransactionsController = async (req: Request, res: Resp
     const take = parseInt(req.query.size as string) || 20;
 
     const filters = {
+      search: search as string | undefined,
       orderCode: orderCode as string | undefined,
       customerName: customerName as string | undefined,
       status: status as TransactionStatus | undefined,
@@ -584,6 +586,66 @@ export const adminListAllTransactionsController = async (req: Request, res: Resp
     res.status(200).json(result);
   } catch (error: any) {
     console.error('Error in adminListAllTransactionsController:', error);
+    res.status(500).json({ error: 'An unexpected error occurred.' });
+  }
+};
+
+/**
+ * @swagger
+ * /transactions/admin/{transactionId}/download-receipt:
+ *   get:
+ *     summary: Download receipt for a transaction (Admin)
+ *     tags: [Transaction, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: transactionId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: HTML receipt file.
+ *         content:
+ *           text/html:
+ *             schema: { type: string }
+ */
+export const downloadReceiptController = async (req: Request, res: Response) => {
+  try {
+    const { transactionId } = req.params;
+    const html = await transactionService.downloadReceiptService(transactionId);
+    res.setHeader('Content-Type', 'text/html');
+    res.setHeader('Content-Disposition', `attachment; filename=receipt-${transactionId}.html`);
+    res.send(html);
+  } catch (error: any) {
+    res.status(error.statusCode || 500).json({ error: error.message || 'An unexpected error occurred.' });
+  }
+};
+
+/**
+ * @swagger
+ * /transactions/admin/export:
+ *   get:
+ *     summary: Export transactions to CSV (Admin)
+ *     tags: [Transaction, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - { in: query, name: search, schema: { type: string } }
+ *       - { in: query, name: status, schema: { type: string } }
+ *       - { in: query, name: createdAtStart, schema: { type: string, format: date-time } }
+ *       - { in: query, name: createdAtEnd, schema: { type: string, format: date-time } }
+ *     responses:
+ *       200:
+ *         description: CSV file download.
+ */
+export const exportTransactionsController = async (req: Request, res: Response) => {
+  try {
+    const csv = await transactionService.exportTransactionsService(req.query);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=transactions.csv');
+    res.send(csv);
+  } catch (error: any) {
     res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };

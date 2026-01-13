@@ -7,6 +7,7 @@ import {
   updateSupportTicketStatusService,
   getSupportTicketOverviewService,
   getSupportTicketByIdService,
+  exportSupportTicketsService,
   GetAllTicketsFilters,
 } from '../services/support.service';
 import { Role, TicketCategory, TicketStatus } from '@prisma/client';
@@ -300,7 +301,7 @@ export const updateSupportTicketStatusController = async (req: Request, res: Res
  *   get:
  *     summary: Get platform-wide support ticket overview (Admin)
  *     tags: [Support, Admin]
- *     description: Retrieves aggregate data about support tickets, such as total count, open tickets, and closed tickets. Only accessible by admins.
+ *     description: Retrieves aggregate data about support tickets, such as total count, open tickets (including in-progress), closed tickets, and resolved tickets. Only accessible by admins.
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -314,6 +315,7 @@ export const updateSupportTicketStatusController = async (req: Request, res: Res
  *                 totalTickets: { type: integer }
  *                 openTickets: { type: integer }
  *                 closedTickets: { type: integer }
+ *                 resolvedTickets: { type: integer }
  *       500:
  *         description: Internal server error.
  */
@@ -323,6 +325,41 @@ export const getSupportTicketOverviewController = async (req: Request, res: Resp
     res.status(200).json(overviewData);
   } catch (error: any) {
     console.error('Error getting support ticket overview:', error);
+    res.status(500).json({ error: 'An unexpected error occurred.' });
+  }
+};
+
+/**
+ * @swagger
+ * /support/admin/export:
+ *   get:
+ *     summary: Export support tickets to CSV (Admin)
+ *     tags: [Support, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - { in: query, name: customerName, schema: { type: string } }
+ *       - { in: query, name: status, schema: { type: string } }
+ *       - { in: query, name: createdAtStart, schema: { type: string, format: date-time } }
+ *       - { in: query, name: createdAtEnd, schema: { type: string, format: date-time } }
+ *     responses:
+ *       200:
+ *         description: CSV file download.
+ */
+export const exportSupportTicketsController = async (req: Request, res: Response) => {
+  try {
+    const { customerName, status, createdAtStart, createdAtEnd } = req.query;
+    const filters: GetAllTicketsFilters = {
+      customerName: customerName as string | undefined,
+      status: status as TicketStatus | undefined,
+      createdAtStart: createdAtStart as string | undefined,
+      createdAtEnd: createdAtEnd as string | undefined,
+    };
+    const csv = await exportSupportTicketsService(filters);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=support_tickets.csv');
+    res.send(csv);
+  } catch (error: any) {
     res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };

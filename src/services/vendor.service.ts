@@ -1,7 +1,7 @@
 // services/vendor.service.ts
 import * as vendorModel from '../models/vendor.model';
 import * as userModel from '../models/user.model';
-import { Vendor, User, Role } from '@prisma/client';
+import { Vendor, User, Role, OrderStatus } from '@prisma/client';
 import { uploadMedia } from './media.service';
 import { getAggregateRatingService, getAggregateRatingsForVendorsService } from './rating.service';
 import { prisma } from '../config/prisma';
@@ -316,28 +316,21 @@ export const getVendorUserByIdService = async (userId: string): Promise<Omit<Use
 
 /**
  * (Admin) Retrieves overview data for the platform.
- * @returns An object containing total counts for vendor users, stores, and staff.
+ * @returns An object containing total counts for stores, users, orders, and delivered orders.
  */
-export const getOverviewDataService = async (): Promise<{
-  totalVendorUsers: number;
-  totalStores: number;
-  totalStaff: number;
-}> => {
-  const [totalVendorUsers, totalStores, totalStaff] = await prisma.$transaction([
-    prisma.user.count({
-      where: { role: Role.vendor },
-    }),
+export const getOverviewDataService = async () => {
+  const [totalStores, totalUsers, totalOrders, totalDelivered] = await prisma.$transaction([
     prisma.vendor.count(),
-    prisma.user.count({
+    prisma.user.count(),
+    prisma.order.count(),
+    prisma.order.count({
       where: {
-        role: {
-          in: [Role.store_admin, Role.store_shopper],
-        },
-      },
+        orderStatus: { in: [OrderStatus.delivered, OrderStatus.picked_up_by_customer] }
+      }
     }),
   ]);
 
-  return { totalVendorUsers, totalStores, totalStaff };
+  return { totalStores, totalUsers, totalOrders, totalDelivered };
 };
 
 /**

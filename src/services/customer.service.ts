@@ -1,5 +1,5 @@
 // services/customer.service.ts
-import { PrismaClient, User, Role, Prisma } from '@prisma/client';
+import { PrismaClient, User, Role, Prisma, TransactionType, TransactionStatus } from '@prisma/client';
 import * as customerModel from '../models/customer.model';
 
 const prisma = new PrismaClient();
@@ -80,13 +80,13 @@ export const listCustomerTransactionsService = async (
 
 /**
  * (Admin) Retrieves an overview of customer data for the platform.
- * @param days The number of days to look back for new customers. Defaults to 30.
- * @returns An object containing total customers, total completed orders, and new customers.
+ * @param days The number of days to look back for new customers. Defaults to 7.
+ * @returns An object containing total customers, total completed orders, new customers, and total payments.
  */
-export const getAdminCustomerOverviewService = async (days = 30) => {
+export const getAdminCustomerOverviewService = async (days = 7) => {
   const startDate = dayjs().subtract(days, 'day').toDate();
 
-  const [totalCustomers, totalCompletedOrders, newCustomers] = await prisma.$transaction([
+  const [totalCustomers, totalCompletedOrders, newCustomers, totalPayments] = await prisma.$transaction([
     // 1. Total number of users with the 'customer' role
     prisma.user.count({
       where: { role: Role.customer },
@@ -106,9 +106,17 @@ export const getAdminCustomerOverviewService = async (days = 30) => {
         createdAt: { gte: startDate },
       },
     }),
+
+    // 4. Total number of payments (Completed ORDER_PAYMENT transactions)
+    prisma.transaction.count({
+      where: {
+        type: TransactionType.ORDER_PAYMENT,
+        status: TransactionStatus.COMPLETED,
+      },
+    }),
   ]);
 
-  return { totalCustomers, totalCompletedOrders, newCustomers };
+  return { totalCustomers, totalCompletedOrders, newCustomers, totalPayments };
 };
 
 /**
@@ -118,10 +126,53 @@ export const getAdminCustomerOverviewService = async (days = 30) => {
  * @returns A paginated list of customers.
  */
 export const adminListAllCustomersService = async (
-  filters: customerModel.AdminListCustomersFilters,
+  filters: any,
   pagination: { page: number; take: number }
 ) => {
-  return customerModel.adminListAllCustomers(filters, pagination);
+  const { search, status, createdAtStart, createdAtEnd } = filters;
+  const skip = (pagination.page - 1) * pagination.take;
+
+  const where: Prisma.UserWhereInput = {
+    role: Role.customer,
+  };
+
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: 'insensitive' } },
+      { email: { contains: search, mode: 'insensitive' } },
+      { mobileNumber: { contains: search, mode: 'insensitive' } },
+    ];
+  }
+
+  if (status !== undefined) {
+    where.active = status;
+  }
+
+  if (createdAtStart || createdAtEnd) {
+    where.createdAt = {};
+    if (createdAtStart) where.createdAt.gte = new Date(createdAtStart);
+    if (createdAtEnd) where.createdAt.lte = new Date(createdAtEnd);
+  }
+
+  const [users, total] = await prisma.$transaction([
+    prisma.user.findMany({
+      where,
+      skip,
+      take: pagination.take,
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.user.count({ where }),
+  ]);
+
+  return {
+    data: users,
+    pagination: {
+      total,
+      page: pagination.page,
+      limit: pagination.take,
+      totalPages: Math.ceil(total / pagination.take),
+    },
+  };
 };
 
 /**
@@ -183,4 +234,37 @@ export const adminListCustomerTransactionsService = async (
   }
 
   return customerModel.adminListCustomerTransactions(customerId, pagination);
+};
+
+/**
+ * (Admin) Exports a list of customers to CSV format.
+ */
+export const exportCustomersService = async (filters: any) => {
+  const { search, status, createdAtStart, createdAtEnd } = filters;
+
+  const where: Prisma.UserWhereInput = {
+    role: Role.customer,
+  };
+
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: 'insensitive' } },
+      { email: { contains: search, mode: 'insensitive' } },
+      { mobileNumber: { contains: search, mode: 'insensitive' } },
+    ];
+  }
+
+  if (status !== undefined) where.active = status;
+
+  const users = await prisma.user.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+  });
+
+  const header = ['ID', 'Name', 'Email', 'Mobile Number', 'Active', 'Created At'];
+  const rows = users.map((user) => [
+    user.id, `"${(user.name || '').replace(/"/g, '""')}"`, user.email, user.mobileNumber, user.active ? 'Yes' : 'No', user.createdAt.toISOString()
+  ]);
+
+  return [header.join(','), ...rows.map((r) => r.join(','))].join('\n');
 };

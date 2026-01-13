@@ -46,6 +46,11 @@ import { AuthenticatedRequest } from '../middlewares/auth.middleware';
  *           type: integer
  *           default: 20
  *         description: Number of items per page.
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by name, email, or mobile number.
  *     responses:
  *       200:
  *         description: A paginated list of users.
@@ -120,13 +125,14 @@ import { AuthenticatedRequest } from '../middlewares/auth.middleware';
  */
 export const getAllUsers = async (req: Request, res: Response) => {
   // express-validator has already sanitized and converted types
-  const { mobileVerified, active, role, language, page, size } = req.query;
+  const { mobileVerified, active, role, language, page, size, search } = req.query;
 
-  const filters: GetUserFilters = {
+  const filters: GetUserFilters & { search?: string } = {
     mobileVerified: mobileVerified as boolean | undefined,
     active: active as boolean | undefined,
     role: role as Role | undefined,
     language: language as string | undefined,
+    search: search as string | undefined,
   };
 
   const pagination = {
@@ -138,6 +144,61 @@ export const getAllUsers = async (req: Request, res: Response) => {
     res.status(200).json(users);
   } catch (error) {
     console.error('Error getting all users:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
+ * /users/admin/stats:
+ *   get:
+ *     summary: Get admin statistics (Admin)
+ *     tags: [User, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Retrieves statistics about admin users, including total count and active count.
+ *     responses:
+ *       200:
+ *         description: Admin statistics.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalAdmins: { type: integer }
+ *                 activeAdmins: { type: integer }
+ */
+export const getAdminStats = async (req: Request, res: Response) => {
+  try {
+    const stats = await userService.getAdminStatsService();
+    res.status(200).json(stats);
+  } catch (error) {
+    console.error('Error getting admin stats:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
+ * /users/admin/export:
+ *   get:
+ *     summary: Export list of admins (Admin)
+ *     tags: [User, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Downloads a CSV file containing a list of all admin users.
+ *     responses:
+ *       200:
+ *         description: CSV file download.
+ */
+export const exportAdmins = async (req: Request, res: Response) => {
+  try {
+    const csv = await userService.exportAdminsService();
+    res.header('Content-Type', 'text/csv');
+    res.header('Content-Disposition', 'attachment; filename="admins.csv"');
+    res.send(csv);
+  } catch (error) {
+    console.error('Error exporting admins:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

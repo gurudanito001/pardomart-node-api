@@ -360,32 +360,42 @@ export const listTransactionsService = async (filters: ListTransactionsFilters):
 
 /**
  * (Admin) Retrieves an overview of platform-wide financial transactions.
- * - Income is the sum of service and shopping fees from completed orders.
+ * - Income is the sum of totalAmount of all paid orders.
+ * - Revenue is the sum of service fees from paid orders.
  * - Expense is the sum of all refunded amounts.
- * - Revenue is Income - Expense.
  * @returns An object containing the financial overview data.
  */
 export const getTransactionOverviewService = async () => {
   const [
     totalTransactions,
     incomeAggregation,
+    revenueAggregation,
     expenseAggregation,
   ] = await prisma.$transaction([
     // 1. Total number of all transactions
     prisma.transaction.count(),
 
-    // 2. Total income (sum of service and shopping fees from completed orders)
+    // 2. Total Income (Sum of totalAmount of all paid orders)
     prisma.order.aggregate({
       where: {
-        orderStatus: { in: [OrderStatus.delivered, OrderStatus.picked_up_by_customer] },
+        paymentStatus: PaymentStatus.paid,
       },
       _sum: {
-        serviceFee: true,
-        shoppingFee: true,
+        totalAmount: true,
       },
     }),
 
-    // 3. Total expense (sum of all refunds)
+    // 3. Total Revenue (Sum of serviceFee of all paid orders)
+    prisma.order.aggregate({
+      where: {
+        paymentStatus: PaymentStatus.paid,
+      },
+      _sum: {
+        serviceFee: true,
+      },
+    }),
+
+    // 4. Total expense (sum of all refunds)
     prisma.transaction.aggregate({
       where: { type: TransactionType.REFUND },
       _sum: {
@@ -394,11 +404,11 @@ export const getTransactionOverviewService = async () => {
     }),
   ]);
 
-  const totalIncome = (incomeAggregation._sum.serviceFee || 0) + (incomeAggregation._sum.shoppingFee || 0);
+  const totalIncome = incomeAggregation._sum.totalAmount || 0;
+  const totalRevenue = revenueAggregation._sum.serviceFee || 0;
   const totalExpense = expenseAggregation._sum.amount || 0;
-  const revenue = totalIncome - totalExpense;
 
-  return { totalTransactions, totalIncome, totalExpense, revenue };
+  return { totalTransactions, totalIncome, totalExpense, revenue: totalRevenue };
 };
 
 /**
@@ -408,10 +418,61 @@ export const getTransactionOverviewService = async () => {
  * @returns A paginated list of transactions.
  */
 export const adminListAllTransactionsService = async (
-  filters: transactionModel.AdminListTransactionsFilters,
+  filters: any,
   pagination: { page: number; take: number }
 ) => {
-  return transactionModel.adminListAllTransactions(filters, pagination);
+  const { search, status, type, startDate, endDate } = filters;
+  const skip = (pagination.page - 1) * pagination.take;
+
+  const where: Prisma.TransactionWhereInput = {};
+
+  if (search) {
+    where.OR = [
+      { description: { contains: search, mode: 'insensitive' } },
+      { externalId: { contains: search, mode: 'insensitive' } },
+      { order: { orderCode: { contains: search, mode: 'insensitive' } } },
+      { user: { name: { contains: search, mode: 'insensitive' } } },
+      { user: { email: { contains: search, mode: 'insensitive' } } },
+    ];
+  }
+
+  if (status) {
+    where.status = status;
+  }
+
+  if (type) {
+    where.type = type;
+  }
+
+  if (startDate || endDate) {
+    where.createdAt = {};
+    if (startDate) where.createdAt.gte = new Date(startDate);
+    if (endDate) where.createdAt.lte = new Date(endDate);
+  }
+
+  const [transactions, total] = await prisma.$transaction([
+    prisma.transaction.findMany({
+      where,
+      skip,
+      take: pagination.take,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        order: { select: { id: true, orderCode: true, totalAmount: true } },
+      },
+    }),
+    prisma.transaction.count({ where }),
+  ]);
+
+  return {
+    data: transactions,
+    pagination: {
+      total,
+      page: pagination.page,
+      limit: pagination.take,
+      totalPages: Math.ceil(total / pagination.take),
+    },
+  };
 };
 
 /**
@@ -526,6 +587,122 @@ export const sendReceiptService = async (transactionId: string): Promise<{ messa
   });
 
   return { message: `Receipt successfully sent to ${user.email}.` };
+};
+
+/**
+ * (Admin) Generates a receipt HTML string for download.
+ * @param transactionId The ID of the transaction.
+ * @returns The HTML string of the receipt.
+ */
+export const downloadReceiptService = async (transactionId: string): Promise<string> => {
+  const transaction = await prisma.transaction.findUnique({
+    where: { id: transactionId },
+    include: {
+      user: true,
+      order: {
+        include: {
+          orderItems: {
+            include: {
+              vendorProduct: {
+                include: {
+                  product: true,
+                },
+              },
+            },
+          },
+          vendor: true,
+        },
+      },
+    },
+  });
+
+  if (!transaction) throw new OrderCreationError('Transaction not found.', 404);
+  if (!transaction.order) throw new OrderCreationError('This transaction is not associated with an order.', 400);
+  if (!transaction.user) throw new OrderCreationError('Customer details not found.', 404);
+
+  const { order, user } = transaction;
+
+  const itemsHtml = order.orderItems.map(item => `
+    <tr>
+      <td>${item.vendorProduct.name}</td>
+      <td>${item.quantity}</td>
+      <td>$${item.vendorProduct.price.toFixed(2)}</td>
+      <td>$${(item.quantity * item.vendorProduct.price).toFixed(2)}</td>
+    </tr>`).join('');
+
+  return `
+    <html>
+      <head>
+        <style>
+          body { font-family: sans-serif; padding: 20px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          .header { margin-bottom: 20px; }
+          .summary { margin-top: 20px; text-align: right; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h2>Receipt for Order #${order.orderCode}</h2>
+          <p><strong>Date:</strong> ${new Date(transaction.createdAt).toLocaleString()}</p>
+          <p><strong>Transaction ID:</strong> ${transaction.id}</p>
+          <p><strong>Customer:</strong> ${user.name} (${user.email})</p>
+          <p><strong>Store:</strong> ${order.vendor.name}</p>
+        </div>
+        <h3>Order Items</h3>
+        <table>
+          <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
+          <tbody>${itemsHtml}</tbody>
+        </table>
+        <div class="summary">
+          <p>Subtotal: $${order.subtotal.toFixed(2)}</p>
+          <p>Delivery Fee: $${(order.deliveryFee || 0).toFixed(2)}</p>
+          <p>Service Fee: $${(order.serviceFee || 0).toFixed(2)}</p>
+          <p><strong>Total Paid: $${order.totalAmount.toFixed(2)}</strong></p>
+        </div>
+        <br/><p style="text-align: center;">Thank you for your purchase!</p>
+      </body>
+    </html>`;
+};
+
+/**
+ * (Admin) Exports transactions to CSV format based on filters.
+ */
+export const exportTransactionsService = async (filters: any) => {
+  const { search, status, type, startDate, endDate } = filters;
+  const where: Prisma.TransactionWhereInput = {};
+
+  if (search) {
+    where.OR = [
+      { description: { contains: search, mode: 'insensitive' } },
+      { externalId: { contains: search, mode: 'insensitive' } },
+      { order: { orderCode: { contains: search, mode: 'insensitive' } } },
+      { user: { name: { contains: search, mode: 'insensitive' } } },
+      { user: { email: { contains: search, mode: 'insensitive' } } },
+    ];
+  }
+  if (status) where.status = status;
+  if (type) where.type = type;
+  if (startDate || endDate) {
+    where.createdAt = {};
+    if (startDate) where.createdAt.gte = new Date(startDate);
+    if (endDate) where.createdAt.lte = new Date(endDate);
+  }
+
+  const transactions = await prisma.transaction.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    include: { user: { select: { name: true, email: true } }, order: { select: { orderCode: true } } },
+  });
+
+  const header = ['ID', 'Date', 'Type', 'Status', 'Amount', 'Source', 'Description', 'Order Code', 'User Name', 'User Email', 'External ID'];
+  const rows = transactions.map(t => [
+    t.id, t.createdAt.toISOString(), t.type, t.status, t.amount, t.source,
+    `"${(t.description || '').replace(/"/g, '""')}"`, t.order?.orderCode || '',
+    `"${(t.user?.name || '').replace(/"/g, '""')}"`, t.user?.email || '', t.externalId || ''
+  ]);
+
+  return [header.join(','), ...rows.map(r => r.join(','))].join('\n');
 };
 
 /**

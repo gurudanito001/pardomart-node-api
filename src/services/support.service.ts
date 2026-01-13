@@ -178,14 +178,15 @@ export const updateSupportTicketStatusService = async (
 
 /**
  * (Admin) Retrieves an overview of support ticket data for the platform.
- * @returns An object containing total, open, and closed ticket counts.
+ * @returns An object containing total, open, closed, and resolved ticket counts.
  */
 export const getSupportTicketOverviewService = async (): Promise<{
   totalTickets: number;
   openTickets: number;
   closedTickets: number;
+  resolvedTickets: number;
 }> => {
-  const [totalTickets, openTickets, closedTickets] = await Promise.all([
+  const [totalTickets, openTickets, closedTickets, resolvedTickets] = await Promise.all([
     prisma.supportTicket.count(),
     prisma.supportTicket.count({
       where: {
@@ -194,10 +195,53 @@ export const getSupportTicketOverviewService = async (): Promise<{
     }),
     prisma.supportTicket.count({
       where: {
-        status: { in: [TicketStatus.RESOLVED, TicketStatus.CLOSED] },
+        status: TicketStatus.CLOSED,
+      },
+    }),
+    prisma.supportTicket.count({
+      where: {
+        status: TicketStatus.RESOLVED,
       },
     }),
   ]);
 
-  return { totalTickets, openTickets, closedTickets };
+  return { totalTickets, openTickets, closedTickets, resolvedTickets };
+};
+
+/**
+ * (Admin) Exports support tickets to CSV format based on filters.
+ */
+export const exportSupportTicketsService = async (filters: GetAllTicketsFilters) => {
+  const { customerName, status, createdAtStart, createdAtEnd } = filters;
+  const where: Prisma.SupportTicketWhereInput = {};
+
+  if (customerName) {
+    where.user = { name: { contains: customerName, mode: 'insensitive' } };
+  }
+  if (status) where.status = status;
+  if (createdAtStart || createdAtEnd) {
+    where.createdAt = {};
+    if (createdAtStart) (where.createdAt as Prisma.DateTimeFilter).gte = new Date(createdAtStart);
+    if (createdAtEnd) (where.createdAt as Prisma.DateTimeFilter).lte = new Date(createdAtEnd);
+  }
+
+  const tickets = await prisma.supportTicket.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    include: { user: { select: { name: true, email: true } } },
+  });
+
+  const header = ['ID', 'User Name', 'User Email', 'Title', 'Description', 'Category', 'Status', 'Created At'];
+  const rows = tickets.map(t => [
+    t.id,
+    `"${(t.user?.name || '').replace(/"/g, '""')}"`,
+    t.user?.email || '',
+    `"${(t.title || '').replace(/"/g, '""')}"`,
+    `"${(t.description || '').replace(/"/g, '""')}"`,
+    t.category,
+    t.status,
+    t.createdAt.toISOString()
+  ]);
+
+  return [header.join(','), ...rows.map(r => r.join(','))].join('\n');
 };

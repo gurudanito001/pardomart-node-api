@@ -22,7 +22,7 @@ import * as deliveryPersonService from '../services/delivery-person.service';
  *         name: days
  *         schema:
  *           type: integer
- *           default: 30
+ *           default: 7
  *         description: The number of past days to count for "new delivery persons".
  *     responses:
  *       200:
@@ -41,7 +41,7 @@ import * as deliveryPersonService from '../services/delivery-person.service';
  */
 export const getAdminDeliveryPersonOverviewController = async (req: Request, res: Response) => {
   try {
-    const days = req.query.days ? parseInt(req.query.days as string, 10) : 30;
+    const days = req.query.days ? parseInt(req.query.days as string, 10) : 7;
     const overviewData = await deliveryPersonService.getDeliveryPersonOverviewService(days);
     res.status(200).json(overviewData);
   } catch (error: any) {
@@ -61,10 +61,8 @@ export const getAdminDeliveryPersonOverviewController = async (req: Request, res
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - { in: query, name: name, schema: { type: string }, description: "Filter by name (case-insensitive)." }
+ *       - { in: query, name: search, schema: { type: string }, description: "Search by name, email, or mobile number." }
  *       - { in: query, name: status, schema: { type: boolean }, description: "Filter by active status (true/false)." }
- *       - { in: query, name: minDeliveries, schema: { type: integer }, description: "Filter by minimum number of completed deliveries." }
- *       - { in: query, name: maxDeliveries, schema: { type: integer }, description: "Filter by maximum number of completed deliveries." }
  *       - { in: query, name: createdAtStart, schema: { type: string, format: date-time }, description: "Filter users created on or after this date." }
  *       - { in: query, name: createdAtEnd, schema: { type: string, format: date-time }, description: "Filter users created on or before this date." }
  *       - { in: query, name: page, schema: { type: integer, default: 1 }, description: "Page number for pagination." }
@@ -78,10 +76,8 @@ export const getAdminDeliveryPersonOverviewController = async (req: Request, res
 export const adminListAllDeliveryPersonsController = async (req: Request, res: Response) => {
   try {
     const {
-      name,
+      search,
       status,
-      minDeliveries,
-      maxDeliveries,
       createdAtStart,
       createdAtEnd,
     } = req.query;
@@ -93,10 +89,8 @@ export const adminListAllDeliveryPersonsController = async (req: Request, res: R
     };
 
     const filters = {
-      name: name as string | undefined,
+      search: search as string | undefined,
       status: parseBoolean(status),
-      minDeliveries: minDeliveries ? parseInt(minDeliveries as string) : undefined,
-      maxDeliveries: maxDeliveries ? parseInt(maxDeliveries as string) : undefined,
       createdAtStart: createdAtStart as string | undefined,
       createdAtEnd: createdAtEnd as string | undefined,
     };
@@ -109,6 +103,42 @@ export const adminListAllDeliveryPersonsController = async (req: Request, res: R
     res.status(200).json(result);
   } catch (error: any) {
     console.error('Error in adminListAllDeliveryPersonsController:', error);
+    res.status(500).json({ error: 'An unexpected error occurred.' });
+  }
+};
+
+/**
+ * @swagger
+ * /delivery-persons/admin/export:
+ *   get:
+ *     summary: Export delivery persons to CSV (Admin)
+ *     tags: [Delivery Persons, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - { in: query, name: search, schema: { type: string } }
+ *       - { in: query, name: status, schema: { type: boolean } }
+ *     responses:
+ *       200:
+ *         description: CSV file download.
+ */
+export const exportDeliveryPersonsController = async (req: Request, res: Response) => {
+  try {
+    const { search, status, createdAtStart, createdAtEnd } = req.query;
+    const parseBoolean = (value: any): boolean | undefined => {
+      if (value === 'true') return true;
+      if (value === 'false') return false;
+      return undefined;
+    };
+    const filters = {
+      search: search as string | undefined,
+      status: parseBoolean(status),
+    };
+    const csv = await deliveryPersonService.exportDeliveryPersonsService(filters);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=delivery_persons.csv');
+    res.send(csv);
+  } catch (error: any) {
     res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };

@@ -25,6 +25,12 @@ router.get(
 );
 
 router.get(
+  '/admin/export',
+  authorize([Role.admin]),
+  supportController.exportSupportTicketsController
+);
+
+router.get(
   '/tickets',
   authorize([Role.admin]),
   supportController.getAllSupportTicketsController
