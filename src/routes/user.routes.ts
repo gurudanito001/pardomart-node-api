@@ -19,6 +19,10 @@ router.use(authenticate, /* authorize([Role.admin]) */);
 router.get('/admin/stats', authorize([Role.admin]), userController.getAdminStats);
 router.get('/admin/export', authorize([Role.admin]), userController.exportAdmins);
 
+router.post('/admin', authorize([Role.admin]), userController.createAdminController);
+router.patch('/admin/:id', authorize([Role.admin]), userController.updateAdminController);
+router.patch('/admin/:id/deactivate', authorize([Role.admin]), userController.deactivateAdminController);
+
 router.get('/verificationCodes', userController.getAllVerificationCodes);
 router.get('/', validate(validateGetAllUsers), userController.getAllUsers);
 router.get('/:id', validate(validateUserId), userController.getUserById);

@@ -150,6 +150,106 @@ export const getAllUsers = async (req: Request, res: Response) => {
 
 /**
  * @swagger
+ * /users/admin:
+ *   post:
+ *     summary: Create a new admin user (Admin)
+ *     tags: [User, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateUserPayload'
+ *     responses:
+ *       201:
+ *         description: The created admin user.
+ *       403:
+ *         description: Forbidden.
+ *       500:
+ *         description: Internal server error.
+ */
+export const createAdminController = async (req: Request, res: Response) => {
+  try {
+    const payload = req.body;
+    const admin = await userService.createAdminService(payload);
+    res.status(201).json(admin);
+  } catch (error: any) {
+    console.error('Error creating admin:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
+ * /users/admin/{id}:
+ *   patch:
+ *     summary: Update an admin user profile (Admin)
+ *     tags: [User, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateUserPayload'
+ *     responses:
+ *       200:
+ *         description: The updated admin user.
+ *       500:
+ *         description: Internal server error.
+ */
+export const updateAdminController = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const payload = req.body;
+    const updatedAdmin = await userService.updateAdminService(id, payload);
+    res.status(200).json(updatedAdmin);
+  } catch (error: any) {
+    console.error('Error updating admin:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
+ * /users/admin/{id}/deactivate:
+ *   patch:
+ *     summary: Deactivate an admin user account (Admin)
+ *     tags: [User, Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: The deactivated admin user.
+ *       500:
+ *         description: Internal server error.
+ */
+export const deactivateAdminController = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const deactivatedAdmin = await userService.deactivateAdminService(id);
+    res.status(200).json(deactivatedAdmin);
+  } catch (error: any) {
+    console.error('Error deactivating admin:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
  * /users/admin/stats:
  *   get:
  *     summary: Get admin statistics (Admin)

@@ -122,3 +122,15 @@ export const exportAdminsService = async () => {
 
   return [header.join(','), ...rows.map(r => r.join(','))].join('\n');
 };
+
+export const createAdminService = async (payload: CreateUserPayload) => {
+  return userModel.createUser({ ...payload, role: Role.admin });
+};
+
+export const updateAdminService = async (id: string, payload: UpdateUserPayload) => {
+  return updateUser(id, payload);
+};
+
+export const deactivateAdminService = async (id: string) => {
+  return updateUser(id, { active: false });
+};
