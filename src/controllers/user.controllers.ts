@@ -412,6 +412,7 @@ export const createUser = async (req: Request, res: Response) => {
  */
 export const updateUser = async (req: AuthenticatedRequest, res: Response) => {
   try {
+    console.log('Update User Payload:', JSON.stringify(req.body, null, 2));
     const userId = req.userId as string;
     const payload = req.body;
 

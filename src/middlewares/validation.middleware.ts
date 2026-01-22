@@ -28,6 +28,7 @@ export const validate = (validations: ValidationChain[]) => {
       return next();
     }
 
+    console.log('Validation Errors:', JSON.stringify(errors.array(), null, 2));
     res.status(400).json({ errors: errors.array() });
   };
 };
@@ -435,6 +436,7 @@ export const validateUserId = [param('id').isUUID(4).withMessage('A valid user I
 export const validateUpdateUser = [
   param('id').isUUID(4).withMessage('A valid user ID is required in the URL.'),
   body('name').optional().trim().notEmpty().withMessage('Name cannot be empty if provided.'),
+  body('image').optional().trim().notEmpty().withMessage('Image cannot be empty if provided.'),
   body('email').optional({ checkFalsy: true }).isEmail().normalizeEmail().withMessage('A valid email is required if provided.'),
   body('mobileNumber')
     .optional()
