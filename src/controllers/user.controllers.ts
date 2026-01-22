@@ -116,6 +116,7 @@ import { AuthenticatedRequest } from '../middlewares/auth.middleware';
  *         name: { type: string }
  *         email: { type: string, format: email }
  *         mobileNumber: { type: string }
+ *         image: { type: string, description: "Base64 encoded image or URL" }
  *         role: { $ref: '#/components/schemas/Role' }
  *         mobileVerified: { type: boolean }
  *         active: { type: boolean }
@@ -387,20 +388,12 @@ export const createUser = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /users/{id}:
+ * /users/update:
  *   put:
- *     summary: Update a user's details
+ *     summary: Update the authenticated user's details
  *     tags: [User]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: The ID of the user to update.
  *     requestBody:
  *       required: true
  *       content:
