@@ -4,6 +4,7 @@ import { authenticate, authorize } from '../middlewares/auth.middleware';
 import {
   validate,
   validateCreateSupportTicket,
+  validateUpdateSupportTicket,
   validateUpdateSupportTicketStatus,
 } from '../middlewares/validation.middleware';
 import { Role } from '@prisma/client';
@@ -16,6 +17,7 @@ router.use(authenticate);
 router.post('/tickets', validate(validateCreateSupportTicket), supportController.createSupportTicketController);
 router.get('/tickets/me', supportController.getMySupportTicketsController);
 router.get('/tickets/:ticketId', supportController.getSupportTicketByIdController);
+router.put('/tickets/:ticketId', validate(validateUpdateSupportTicket), supportController.updateSupportTicketController);
 
 // Admin-facing routes
 router.get(

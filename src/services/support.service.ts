@@ -1,4 +1,6 @@
-import { PrismaClient, SupportTicket, TicketCategory, Prisma, TicketStatus, Role } from '@prisma/client';
+import { PrismaClient, SupportTicket, TicketCategory, Prisma, TicketStatus, Role, ReferenceType } from '@prisma/client';
+import { uploadMedia } from './media.service';
+import { Readable } from 'stream';
 
 const prisma = new PrismaClient();
 
@@ -7,6 +9,7 @@ interface CreateSupportTicketPayload {
   title: string;
   description: string;
   category: TicketCategory;
+  image?: string;
   meta?: Prisma.JsonObject;
 }
 
@@ -16,7 +19,7 @@ interface CreateSupportTicketPayload {
  * @returns The created support ticket.
  */
 export const createSupportTicketService = async (payload: CreateSupportTicketPayload): Promise<SupportTicket> => {
-  const { userId, title, description, category, meta } = payload;
+  const { userId, title, description, category, meta, image } = payload;
 
   const ticket = await prisma.supportTicket.create({
     data: {
@@ -28,10 +31,81 @@ export const createSupportTicketService = async (payload: CreateSupportTicketPay
     },
   });
 
+  if (image) {
+    try {
+      const imageBuffer = Buffer.from(image, 'base64');
+      const mockFile: Express.Multer.File = {
+        fieldname: 'image',
+        originalname: `${ticket.id}-ticket-image.jpg`,
+        encoding: '7bit',
+        mimetype: 'image/jpeg',
+        buffer: imageBuffer,
+        size: imageBuffer.length,
+        stream: new Readable(),
+        destination: '',
+        filename: '',
+        path: '',
+      };
+
+      // Use 'other' or a specific type if available in ReferenceType enum
+      const uploadResult = await uploadMedia(mockFile, ticket.id, ReferenceType.other);
+      
+      // Update ticket with image URL if the model supports it
+      // Assuming SupportTicket has an 'image' field based on user request
+      return prisma.supportTicket.update({
+        where: { id: ticket.id },
+        data: { image: uploadResult.cloudinaryResult.secure_url } as any, 
+      });
+    } catch (error) {
+      console.error('Error uploading ticket image:', error);
+    }
+  }
+
   // Optional: Notify support staff via email or another system
   // e.g., `notifySupportTeam(ticket);`
 
   return ticket;
+};
+
+export const updateSupportTicketService = async (
+  ticketId: string,
+  userId: string,
+  payload: Partial<CreateSupportTicketPayload>
+): Promise<SupportTicket> => {
+  const ticket = await prisma.supportTicket.findUnique({ where: { id: ticketId } });
+  if (!ticket) throw new Error('Support ticket not found.');
+  if (ticket.userId !== userId) throw new Error('You are not authorized to update this ticket.');
+
+  const { image, ...data } = payload;
+  let imageUrl = (ticket as any).image;
+
+  if (image) {
+    try {
+      const imageBuffer = Buffer.from(image, 'base64');
+      const mockFile: Express.Multer.File = {
+        fieldname: 'image',
+        originalname: `${ticket.id}-ticket-image-updated.jpg`,
+        encoding: '7bit',
+        mimetype: 'image/jpeg',
+        buffer: imageBuffer,
+        size: imageBuffer.length,
+        stream: new Readable(),
+        destination: '',
+        filename: '',
+        path: '',
+      };
+
+      const uploadResult = await uploadMedia(mockFile, ticket.id, ReferenceType.other);
+      imageUrl = uploadResult.cloudinaryResult.secure_url;
+    } catch (error) {
+      console.error('Error uploading updated ticket image:', error);
+    }
+  }
+
+  return prisma.supportTicket.update({
+    where: { id: ticketId },
+    data: { ...data, image: imageUrl } as any,
+  });
 };
 
 /**

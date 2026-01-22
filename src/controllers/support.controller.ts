@@ -7,6 +7,7 @@ import {
   updateSupportTicketStatusService,
   getSupportTicketOverviewService,
   getSupportTicketByIdService,
+  updateSupportTicketService,
   exportSupportTicketsService,
   GetAllTicketsFilters,
 } from '../services/support.service';
@@ -58,6 +59,7 @@ import { Role, TicketCategory, TicketStatus } from '@prisma/client';
  *         userId: { type: string, format: uuid }
  *         title: { type: string }
  *         description: { type: string }
+ *         image: { type: string, format: uri, nullable: true }
  *         category: { $ref: '#/components/schemas/TicketCategory' }
  *         status: { $ref: '#/components/schemas/TicketStatus' }
  *         meta: { type: object, nullable: true }
@@ -76,9 +78,20 @@ import { Role, TicketCategory, TicketStatus } from '@prisma/client';
  *         category:
  *           $ref: '#/components/schemas/TicketCategory'
  *         meta:
- *           type: object
+ *           type: object 
  *           description: "Optional. e.g., { \"orderId\": \"uuid-goes-here\" }"
  *           nullable: true
+ *         image:
+ *           type: string
+ *           description: "Optional. Base64 encoded image."
+ *     UpdateSupportTicketPayload:
+ *       type: object
+ *       properties:
+ *         title: { type: string }
+ *         description: { type: string }
+ *         category: { $ref: '#/components/schemas/TicketCategory' }
+ *         image: { type: string, description: "Base64 encoded image." }
+ *         meta: { type: object }
  *     UpdateSupportTicketStatusPayload:
  *       type: object
  *       required: [status]
@@ -100,7 +113,12 @@ import { Role, TicketCategory, TicketStatus } from '@prisma/client';
 export const createSupportTicketController = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.userId as string;
-    const { title, description, category, meta } = req.body;
+    const { title, description, category, meta, image } = req.body;
+
+    let imageData = image;
+    if (imageData && imageData.startsWith('data:')) {
+      imageData = imageData.split(',')[1];
+    }
 
     const ticket = await createSupportTicketService({
       userId,
@@ -108,12 +126,56 @@ export const createSupportTicketController = async (req: AuthenticatedRequest, r
       description,
       category: category as TicketCategory,
       meta,
+      image: imageData,
     });
 
     res.status(201).json(ticket);
   } catch (error: any) {
     console.error('Error creating support ticket:', error);
     res.status(500).json({ error: 'Failed to create support ticket.' });
+  }
+};
+
+/**
+ * @swagger
+ * /support/tickets/{ticketId}:
+ *   put:
+ *     summary: Update a support ticket
+ *     tags: [Support]
+ *     description: Updates the details of a support ticket. Only the creator can update it.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: ticketId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json: { "schema": { "$ref": "#/components/schemas/UpdateSupportTicketPayload" } }
+ *     responses:
+ *       200: { description: "The updated support ticket.", content: { "application/json": { "schema": { "$ref": "#/components/schemas/SupportTicket" } } } }
+ *       403: { description: "Forbidden." }
+ *       404: { description: "Ticket not found." }
+ */
+export const updateSupportTicketController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { ticketId } = req.params;
+    const userId = req.userId as string;
+    const payload = req.body;
+
+    if (payload.image && payload.image.startsWith('data:')) {
+      payload.image = payload.image.split(',')[1];
+    }
+
+    const updatedTicket = await updateSupportTicketService(ticketId, userId, payload);
+    res.status(200).json(updatedTicket);
+  } catch (error: any) {
+    console.error('Error updating support ticket:', error);
+    if (error.message.includes('not found')) return res.status(404).json({ error: error.message });
+    if (error.message.includes('authorized')) return res.status(403).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to update support ticket.' });
   }
 };
 

@@ -493,6 +493,28 @@ export const validateCreateSupportTicket = [
   body('title').trim().notEmpty().withMessage('Title is required.'),
   body('description').trim().notEmpty().withMessage('Description is required.'),
   body('category').isIn(Object.values(TicketCategory)).withMessage(`Category must be one of: ${Object.values(TicketCategory).join(', ')}`),
+  body('image')
+    .optional({ checkFalsy: true })
+    .custom((value) => {
+      const base64Regex = /^(data:image\/[a-zA-Z]+;base64,)?([A-Za-z0-9+/]+={0,2})$/;
+      return base64Regex.test(value);
+    })
+    .withMessage('Image must be a valid base64 string, optionally with a data URI prefix.'),
+  body('meta').optional({ nullable: true }).isObject().withMessage('Meta must be an object.'),
+];
+
+export const validateUpdateSupportTicket = [
+  param('ticketId').isUUID(4).withMessage('A valid ticketId is required in the URL.'),
+  body('title').optional().trim().notEmpty().withMessage('Title cannot be empty.'),
+  body('description').optional().trim().notEmpty().withMessage('Description cannot be empty.'),
+  body('category').optional().isIn(Object.values(TicketCategory)).withMessage(`Category must be one of: ${Object.values(TicketCategory).join(', ')}`),
+  body('image')
+    .optional({ checkFalsy: true })
+    .custom((value) => {
+      const base64Regex = /^(data:image\/[a-zA-Z]+;base64,)?([A-Za-z0-9+/]+={0,2})$/;
+      return base64Regex.test(value);
+    })
+    .withMessage('Image must be a valid base64 string, optionally with a data URI prefix.'),
   body('meta').optional({ nullable: true }).isObject().withMessage('Meta must be an object.'),
 ];
 
