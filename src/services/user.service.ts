@@ -14,13 +14,14 @@ interface CheckUserFilters {
 
 
 export const getAllUsers = async (filters: GetUserFilters & { search?: string }, pagination: { page: number; take: number }) => {
-  const { mobileVerified, active, role, language, search } = filters;
+  const { mobileVerified, active, role, language, search, online } = filters;
   const skip = (pagination.page - 1) * pagination.take;
 
   const where: Prisma.UserWhereInput = {};
 
   if (mobileVerified !== undefined) where.mobileVerified = mobileVerified;
   if (active !== undefined) where.active = active;
+  if (online !== undefined) where.online = online;
   if (role) where.role = role;
   if (language) where.language = language;
 

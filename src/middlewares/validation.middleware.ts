@@ -425,6 +425,7 @@ export const validateSearchByCategoryId = [
 export const validateGetAllUsers = [
   query('mobileVerified').optional().isBoolean().toBoolean().withMessage('mobileVerified must be a boolean.'),
   query('active').optional().isBoolean().toBoolean().withMessage('active must be a boolean.'),
+  query('online').optional().isBoolean().toBoolean().withMessage('online must be a boolean.'),
   query('role').optional().isIn(Object.values(Role)).withMessage(`Role must be one of: ${Object.values(Role).join(', ')}`),
   query('language').optional().isString().withMessage('language must be a string.'),
   query('page').optional().isInt({ min: 1 }).toInt().withMessage('page must be a positive integer.'),
@@ -444,6 +445,7 @@ export const validateUpdateUser = [
   body('role').optional().isIn(Object.values(Role)).withMessage(`Role must be one of: ${Object.values(Role).join(', ')}`),
   body('mobileVerified').optional().isBoolean().withMessage('mobileVerified must be a boolean if provided.'),
   body('active').optional().isBoolean().withMessage('active must be a boolean if provided.'),
+  body('online').optional().isBoolean().withMessage('online must be a boolean if provided.'),
   body('language').optional().isString().withMessage('language must be a string if provided.'),
   body('notification').optional().isObject().withMessage('notification must be an object if provided.'),
 ];

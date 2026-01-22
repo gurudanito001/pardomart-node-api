@@ -27,6 +27,7 @@ model User {
   image            String?
   dynamicMediaUrls Json?
   active           Boolean @default(true)
+  online           Boolean @default(true)
   language         String?
   notification     Json?
   rememberToken    String?

@@ -24,6 +24,7 @@ export const findMany = async (args: Prisma.UserFindManyArgs): Promise<User[]> =
 export interface GetUserFilters {
   mobileVerified?: boolean;
   active?: boolean;
+  online?: boolean;
   role?: Role;
   language?: string;
   // Add other filter fields as needed
@@ -38,6 +39,7 @@ export const getAllUsers = async (filters: GetUserFilters, pagination: { page: n
     where: {
       ...(filters.mobileVerified !== undefined && { mobileVerified: filters.mobileVerified }), // Assuming mobileVerified maps to verified filter
       ...(filters.active !== undefined && { active: filters.active }),
+      ...(filters.online !== undefined && { online: filters.online }),
       ...(filters.role && { role: filters.role }),
       ...(filters.language && { language: filters.language }),
       // Add other filter conditions here
@@ -53,6 +55,7 @@ export const getAllUsers = async (filters: GetUserFilters, pagination: { page: n
     where: {
       ...(filters.mobileVerified !== undefined && { mobileVerified: filters.mobileVerified }), // Assuming mobileVerified maps to verified filter
       ...(filters.active !== undefined && { active: filters.active }),
+      ...(filters.online !== undefined && { online: filters.online }),
       ...(filters.role && { role: filters.role }),
       ...(filters.language && { language: filters.language }),
       // Add other filter conditions here
@@ -79,9 +82,11 @@ export interface CreateUserPayload {
   name: string;
   email: string;
   mobileNumber: string;
+  image?: string;
   role: Role;
   mobileVerified?: boolean;
   active?: boolean;
+  online?: boolean;
   language?: string;
   notification?: any;
   referralCode?: string;
@@ -93,9 +98,11 @@ export const createUser = async (payload: CreateUserPayload): Promise<User> => {
       name: payload.name,
       email: payload.email,
       mobileNumber: payload.mobileNumber,
+      image: payload.image,
       role: payload.role,
       mobileVerified: payload.mobileVerified,
       active: payload.active,
+      online: payload.online,
       language: payload.language,
       notification: payload.notification,
       referralCode: payload.referralCode,
@@ -111,6 +118,7 @@ export interface UpdateUserPayload {
   role?: Role;
   mobileVerified?: boolean;
   active?: boolean;
+  online?: boolean;
   language?: string;
   notification?: any;
   referralCode?: string;

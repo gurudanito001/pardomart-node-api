@@ -25,6 +25,11 @@ import { AuthenticatedRequest } from '../middlewares/auth.middleware';
  *           type: boolean
  *         description: Filter by active status.
  *       - in: query
+ *         name: online
+ *         schema:
+ *           type: boolean
+ *         description: Filter by online status.
+ *       - in: query
  *         name: role
  *         schema:
  *           $ref: '#/components/schemas/Role'
@@ -88,8 +93,10 @@ import { AuthenticatedRequest } from '../middlewares/auth.middleware';
  *         email: { type: string, format: email }
  *         mobileNumber: { type: string }
  *         mobileVerified: { type: boolean }
+ *         image: { type: string, nullable: true }
  *         dynamicMediaUrls: { type: object, nullable: true }
  *         active: { type: boolean }
+ *         online: { type: boolean }
  *         language: { type: string, nullable: true }
  *         notification: { type: object, nullable: true }
  *         rememberToken: { type: string, nullable: true }
@@ -120,17 +127,19 @@ import { AuthenticatedRequest } from '../middlewares/auth.middleware';
  *         role: { $ref: '#/components/schemas/Role' }
  *         mobileVerified: { type: boolean }
  *         active: { type: boolean }
+ *         online: { type: boolean }
  *         language: { type: string }
  *         notification: { type: object }
  *         referralCode: { type: string }
  */
 export const getAllUsers = async (req: Request, res: Response) => {
   // express-validator has already sanitized and converted types
-  const { mobileVerified, active, role, language, page, size, search } = req.query;
+  const { mobileVerified, active, role, language, page, size, search, online } = req.query;
 
   const filters: GetUserFilters & { search?: string } = {
     mobileVerified: mobileVerified as boolean | undefined,
     active: active as boolean | undefined,
+    online: online as boolean | undefined,
     role: role as Role | undefined,
     language: language as string | undefined,
     search: search as string | undefined,
