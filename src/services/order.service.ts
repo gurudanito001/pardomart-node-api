@@ -1612,7 +1612,7 @@ export const getAvailableOrdersForDeliveryService = async (pagination: { page: n
         },
         OR: [
           { scheduledDeliveryTime: null },
-          { scheduledDeliveryTime: { gte: thirtyMinsFromNow } }, // Must have at least 30 mins lead time
+          { scheduledDeliveryTime: { lte: thirtyMinsFromNow } }, // Show if scheduled time is within 30 mins or in the past
         ],
       },
     ],
