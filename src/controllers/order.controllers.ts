@@ -21,7 +21,9 @@ import {
   verifyPickupOtpService,
   getOrderOverviewDataService,
   adminGetAllOrdersService,
-  adminUpdateOrderService
+  adminUpdateOrderService,
+  getOrdersForDeliveryPersonService,
+  getAvailableOrdersForDeliveryService
 } from '../services/order.service'; // Adjust the path if needed
 import { Role, OrderStatus, DeliveryMethod, } from '@prisma/client';
 import { AuthenticatedRequest } from './vendor.controller';
@@ -964,6 +966,94 @@ export const getOrderOverviewDataController = async (req: Request, res: Response
   } catch (error: any) {
     console.error('Error getting order overview data:', error);
     res.status(500).json({ error: 'An unexpected error occurred.' });
+  }
+};
+
+/**
+ * @swagger
+ * /order/delivery/me:
+ *   get:
+ *     summary: Get orders assigned to the authenticated delivery person
+ *     tags: [Order]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: A list of orders assigned to the delivery person.
+ *         content:
+ *           application/json:
+ *             schema: { type: array, items: { $ref: '#/components/schemas/VendorOrder' } }
+ */
+export const getMyDeliveryOrdersController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.userId as string;
+    const orders = await getOrdersForDeliveryPersonService(userId);
+    res.status(200).json(orders);
+  } catch (error: any) {
+    console.error('Error getting delivery orders:', error);
+    res.status(500).json({ error: 'Failed to retrieve delivery orders.' });
+  }
+};
+
+/**
+ * @swagger
+ * /order/delivery/available:
+ *   get:
+ *     summary: Get available orders for delivery persons
+ *     tags: [Order]
+ *     security:
+ *       - bearerAuth: []
+ *     description: >
+ *       Retrieves a list of unassigned orders that require a delivery person.
+ *       - If shopping is by vendor, order must be `ready_for_delivery`.
+ *       - If shopping is by delivery person, order is available immediately or 30 mins before scheduled time.
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *         description: Page number for pagination.
+ *       - in: query
+ *         name: size
+ *         schema: { type: integer, default: 20 }
+ *         description: Number of items per page.
+ *     responses:
+ *       200:
+ *         description: A paginated list of available orders.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: { type: string, format: uuid }
+ *                       shoppingMethod: { $ref: '#/components/schemas/ShoppingMethod' }
+ *                       deliveryMethod: { $ref: '#/components/schemas/DeliveryMethod' }
+ *                       totalAmount: { type: number }
+ *                       customerName: { type: string }
+ *                       scheduledDeliveryTime: { type: string, format: date-time }
+ *                       numberOfOrderItems: { type: integer }
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total: { type: integer }
+ *                     page: { type: integer }
+ *                     limit: { type: integer }
+ *                     totalPages: { type: integer }
+ */
+export const getAvailableOrdersForDeliveryController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const size = parseInt(req.query.size as string) || 20;
+
+    const result = await getAvailableOrdersForDeliveryService({ page, take: size });
+    res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error getting available delivery orders:', error);
+    res.status(500).json({ error: 'Failed to retrieve available orders.' });
   }
 };
 

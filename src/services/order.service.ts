@@ -1557,3 +1557,105 @@ export const adminUpdateOrderService = async (
 
   return orderModel.updateOrder(orderId, updates);
 };
+
+/**
+ * Retrieves all orders assigned to a specific delivery person.
+ * @param deliveryPersonId - The ID of the delivery person.
+ * @returns An array of orders.
+ */
+export const getOrdersForDeliveryPersonService = async (deliveryPersonId: string) => {
+  return prisma.order.findMany({
+    where: {
+      deliveryPersonId: deliveryPersonId,
+    },
+    include: {
+      user: { select: { id: true, name: true, mobileNumber: true, image: true } },
+      vendor: { select: { id: true, name: true, address: true, mobileNumber: true, latitude: true, longitude: true, image: true } },
+      deliveryAddress: true,
+      orderItems: {
+        include: {
+          vendorProduct: {
+            include: { product: true },
+          },
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+};
+
+/**
+ * Retrieves all orders available for delivery persons to pick up.
+ * Filters based on shopping method, status, and timing.
+ */
+export const getAvailableOrdersForDeliveryService = async (pagination: { page: number; take: number }) => {
+  const thirtyMinsFromNow = dayjs().add(30, 'minute').toDate();
+  const { page, take } = pagination;
+  const skip = (page - 1) * take;
+
+  const where: Prisma.OrderWhereInput = {
+    deliveryMethod: DeliveryMethod.delivery_person,
+    paymentStatus: PaymentStatus.paid,
+    deliveryPersonId: null, // Only unassigned orders
+    OR: [
+      // Scenario A: Vendor shopped, ready for delivery
+      {
+        shoppingMethod: ShoppingMethod.vendor,
+        orderStatus: OrderStatus.ready_for_delivery,
+      },
+      // Scenario B: Delivery person shops
+      {
+        shoppingMethod: ShoppingMethod.delivery_person,
+        // Exclude terminal states to be safe
+        orderStatus: {
+          notIn: [OrderStatus.cancelled_by_customer, OrderStatus.declined_by_vendor, OrderStatus.delivered, OrderStatus.picked_up_by_customer]
+        },
+        OR: [
+          { scheduledDeliveryTime: null },
+          { scheduledDeliveryTime: { gte: thirtyMinsFromNow } }, // Must have at least 30 mins lead time
+        ],
+      },
+    ],
+  };
+
+  const [orders, total] = await prisma.$transaction([
+    prisma.order.findMany({
+      where,
+      select: {
+        id: true,
+        shoppingMethod: true,
+        deliveryMethod: true,
+        totalAmount: true,
+        scheduledDeliveryTime: true,
+        user: { select: { name: true } },
+        _count: { select: { orderItems: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take,
+    }),
+    prisma.order.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(total / take);
+
+  const formattedOrders = orders.map(order => ({
+    id: order.id,
+    shoppingMethod: order.shoppingMethod,
+    deliveryMethod: order.deliveryMethod,
+    totalAmount: order.totalAmount,
+    customerName: order.user?.name || 'Unknown',
+    scheduledDeliveryTime: order.scheduledDeliveryTime,
+    numberOfOrderItems: order._count.orderItems,
+  }));
+
+  return {
+    data: formattedOrders,
+    pagination: {
+      total,
+      page,
+      limit: take,
+      totalPages,
+    }
+  };
+};

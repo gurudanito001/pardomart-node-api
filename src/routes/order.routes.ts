@@ -55,6 +55,7 @@ router.post(
 router.post('/', validate(validateCreateOrder), orderController.createOrderController);
 router.get('/user/me', orderController.getOrdersByUserController);
 router.get('/delivery-slots', validate(validateGetDeliverySlots), orderController.getAvailableDeliverySlotsController);
+router.get('/delivery/available', authenticate, authorize([Role.delivery_person]), orderController.getAvailableOrdersForDeliveryController);
 router.get('/:id', validate(validateGetOrDeleteOrder), orderController.getOrderByIdController);
 router.patch('/:id', validate(validateUpdateOrder), orderController.updateOrderController);
 router.patch('/:id/status', validate(validateUpdateOrderStatus), orderController.updateOrderStatusController);
