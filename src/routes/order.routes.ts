@@ -56,6 +56,7 @@ router.post('/', validate(validateCreateOrder), orderController.createOrderContr
 router.get('/user/me', orderController.getOrdersByUserController);
 router.get('/delivery-slots', validate(validateGetDeliverySlots), orderController.getAvailableDeliverySlotsController);
 router.get('/delivery/available', authenticate, authorize([Role.delivery_person]), orderController.getAvailableOrdersForDeliveryController);
+router.get('/delivery/me', authenticate, authorize([Role.delivery_person]), orderController.getMyDeliveryOrdersController);
 router.patch(
   '/:orderId/accept-delivery',
   authenticate,
