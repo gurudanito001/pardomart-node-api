@@ -23,7 +23,8 @@ import {
   adminGetAllOrdersService,
   adminUpdateOrderService,
   getOrdersForDeliveryPersonService,
-  getAvailableOrdersForDeliveryService
+  getAvailableOrdersForDeliveryService,
+  acceptOrderForDeliveryService
 } from '../services/order.service'; // Adjust the path if needed
 import { Role, OrderStatus, DeliveryMethod, } from '@prisma/client';
 import { AuthenticatedRequest } from './vendor.controller';
@@ -1054,6 +1055,41 @@ export const getAvailableOrdersForDeliveryController = async (req: Authenticated
   } catch (error: any) {
     console.error('Error getting available delivery orders:', error);
     res.status(500).json({ error: 'Failed to retrieve available orders.' });
+  }
+};
+
+/**
+ * @swagger
+ * /order/{orderId}/accept-delivery:
+ *   patch:
+ *     summary: Accept an order for delivery (Delivery Person)
+ *     tags: [Order]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Allows a delivery person to accept an available order.
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Order accepted successfully.
+ *       409:
+ *         description: Conflict (order already assigned).
+ */
+export const acceptOrderForDeliveryController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { orderId } = req.params;
+    const deliveryPersonId = req.userId as string;
+    const order = await acceptOrderForDeliveryService(orderId, deliveryPersonId);
+    res.status(200).json(order);
+  } catch (error: any) {
+    if (error instanceof OrderCreationError) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+    console.error('Error accepting order for delivery:', error);
+    res.status(500).json({ error: 'Internal server error.' });
   }
 };
 

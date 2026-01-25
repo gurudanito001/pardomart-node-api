@@ -94,8 +94,14 @@ export const getOrderByIdService = async (
     (requestingUserRole === Role.store_admin || requestingUserRole === Role.store_shopper) &&
     staffVendorId === order.vendorId;
   const isAdmin = requestingUserRole === Role.admin;
+  const isDeliveryPerson = requestingUserRole === Role.delivery_person && (
+    order.deliveryPersonId === requestingUserId ||
+    (order.deliveryPersonId === null && order.deliveryMethod === DeliveryMethod.delivery_person)
+  );
 
-  if (!isCustomer && !isVendorOwner && !isStoreStaff && !isAdmin) {
+
+
+  if (!isCustomer && !isVendorOwner && !isStoreStaff && !isAdmin && !isDeliveryPerson) {
     throw new OrderCreationError('You are not authorized to view this order.', 403);
   }
 
@@ -1658,4 +1664,61 @@ export const getAvailableOrdersForDeliveryService = async (pagination: { page: n
       totalPages,
     }
   };
+};
+
+/**
+ * Allows a delivery person to accept an available order.
+ * @param orderId The ID of the order.
+ * @param deliveryPersonId The ID of the delivery person.
+ */
+export const acceptOrderForDeliveryService = async (orderId: string, deliveryPersonId: string) => {
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      throw new OrderCreationError('Order not found.', 404);
+    }
+
+    if (order.deliveryPersonId) {
+      throw new OrderCreationError('This order has already been assigned to another delivery person.', 409);
+    }
+
+    if (order.deliveryMethod !== DeliveryMethod.delivery_person) {
+      throw new OrderCreationError('This order is not for delivery.', 400);
+    }
+
+    const updates: Prisma.OrderUpdateInput = {
+      deliveryPerson: { connect: { id: deliveryPersonId } },
+    };
+
+    if (order.shoppingMethod === ShoppingMethod.vendor) {
+      if (order.orderStatus !== OrderStatus.ready_for_delivery) {
+        throw new OrderCreationError('Order is not ready for delivery.', 400);
+      }
+      updates.orderStatus = OrderStatus.accepted_for_delivery;
+    } else {
+      // Shopping by delivery person: They become the shopper as well.
+      updates.shopper = { connect: { id: deliveryPersonId } };
+      updates.orderStatus = OrderStatus.accepted_for_shopping;
+    }
+
+    const updatedOrder = await tx.order.update({
+      where: { id: orderId },
+      data: updates,
+    });
+
+    // Notify Customer
+    await notificationService.createNotification({
+      userId: updatedOrder.userId,
+      type: NotificationType.ASSIGNED_TO_ORDER,
+      category: NotificationCategory.ORDER,
+      title: 'Delivery Person Assigned',
+      body: `A delivery person has accepted your order #${updatedOrder.orderCode}.`,
+      meta: { orderId: updatedOrder.id },
+    });
+
+    return updatedOrder;
+  });
 };
