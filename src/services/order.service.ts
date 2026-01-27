@@ -542,7 +542,7 @@ export const updateOrderStatusService = async (
   const updates: orderModel.UpdateOrderPayload = { orderStatus: status };
 
   // --- Authorization Check ---
-  const orderForAuth = await prisma.order.findUnique({ where: { id: orderId }, select: { userId: true, vendor: { select: { userId: true } } } });
+  const orderForAuth = await prisma.order.findUnique({ where: { id: orderId }, select: { userId: true, deliveryPersonId: true, vendor: { select: { userId: true } } } });
   if (!orderForAuth) {
     throw new OrderCreationError('Order not found', 404);
   }
@@ -550,10 +550,12 @@ export const updateOrderStatusService = async (
   const isCustomer = requestingUserRole === Role.customer && orderForAuth.userId === requestingUserId;
   const isVendorOwner = requestingUserRole === Role.vendor && orderForAuth.vendor.userId === requestingUserId;
   const isAdmin = requestingUserRole === Role.admin;
+  const isDeliveryPerson = requestingUserRole === Role.delivery_person && orderForAuth.deliveryPersonId === requestingUserId;
+
 
   // For now, only customer, vendor owner, or admin can change status.
   // More granular logic can be added here based on which status transitions are allowed by which role.
-  if (!isCustomer && !isVendorOwner && !isAdmin) {
+  if (!isCustomer && !isVendorOwner && !isAdmin && !isDeliveryPerson) {
     throw new OrderCreationError('You are not authorized to update the status of this order.', 403);
   }
 
