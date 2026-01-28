@@ -24,7 +24,8 @@ import {
   adminUpdateOrderService,
   getOrdersForDeliveryPersonService,
   getAvailableOrdersForDeliveryService,
-  acceptOrderForDeliveryService
+  acceptOrderForDeliveryService,
+  getActiveOrderService
 } from '../services/order.service'; // Adjust the path if needed
 import { Role, OrderStatus, DeliveryMethod, } from '@prisma/client';
 import { AuthenticatedRequest } from './vendor.controller';
@@ -315,6 +316,35 @@ export const getOrderByIdController = async (req: AuthenticatedRequest, res: Res
     res.status(200).json(order);
   } catch (error: any) {
     res.status(500).json({ error: 'Failed to retrieve order: ' + error.message });
+  }
+};
+
+/**
+ * Controller for getting the active order for the authenticated user.
+ * @swagger
+ * /order/active/me:
+ *   get:
+ *     summary: Get the currently active order for the user
+ *     tags: [Order]
+ *     description: Retrieves the order that the user (Vendor Staff or Delivery Person) is currently working on. Returns 200 with the order if found, or 200 with null/empty if no active order exists.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: The active order or null.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/OrderWithRelations'
+ */
+export const getActiveOrderController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { userId, userRole } = req;
+    const order = await getActiveOrderService(userId as string, userRole as Role);
+    // It's okay to return null if no order is active, frontend should handle it.
+    res.status(200).json(order); 
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to retrieve active order: ' + error.message });
   }
 };
 

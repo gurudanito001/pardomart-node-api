@@ -54,6 +54,11 @@ router.post(
 // --- Customer-facing routes ---
 router.post('/', validate(validateCreateOrder), orderController.createOrderController);
 router.get('/user/me', orderController.getOrdersByUserController);
+router.get(
+  '/active/me',
+  authorize([Role.store_admin, Role.store_shopper, Role.delivery_person]),
+  orderController.getActiveOrderController
+);
 router.get('/delivery-slots', validate(validateGetDeliverySlots), orderController.getAvailableDeliverySlotsController);
 router.get('/delivery/available', authenticate, authorize([Role.delivery_person]), orderController.getAvailableOrdersForDeliveryController);
 router.get('/delivery/me', authenticate, authorize([Role.delivery_person]), orderController.getMyDeliveryOrdersController);

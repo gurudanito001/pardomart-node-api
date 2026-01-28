@@ -255,3 +255,27 @@ export const adminGetAllOrders = async (filters: AdminGetOrdersFilters, paginati
     totalCount,
   };
 };
+
+/**
+ * Finds the single active order for a specific user (shopper or delivery person).
+ * An order is active if the user is assigned to it and it is in a non-terminal, working state.
+ */
+export const findActiveOrderForUser = async (userId: string): Promise<OrderWithRelations | null> => {
+  return prisma.order.findFirst({
+    where: {
+      OR: [
+        {
+          // User is the shopper and shopping is in progress
+          shopperId: userId,
+          orderStatus: { in: [OrderStatus.accepted_for_shopping, OrderStatus.currently_shopping] },
+        },
+        {
+          // User is the delivery person and delivery is in progress (or ready for pickup by them)
+          deliveryPersonId: userId,
+          orderStatus: { in: [OrderStatus.accepted_for_delivery, OrderStatus.ready_for_delivery, OrderStatus.en_route] },
+        },
+      ],
+    },
+    ...orderWithRelations,
+  });
+};
