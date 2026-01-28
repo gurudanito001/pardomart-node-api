@@ -2,12 +2,12 @@
 import { Request, Response } from 'express';
 import * as vendorService from '../services/vendor.service';
 import { getVendorsFilters } from '../models/vendor.model';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Role } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export interface AuthenticatedRequest extends Request {
   userId?: string;
-  userRole?: string;
+  userRole?: Role;
   vendorId?: string
 }
 

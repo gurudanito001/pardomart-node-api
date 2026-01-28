@@ -40,10 +40,13 @@ const orderWithRelations = Prisma.validator<Prisma.OrderDefaultArgs>()({
         vendorProduct: {
           include: {
             product: true,
+            categories: true,
           },
         },
         chosenReplacement: {
-          include: { product: true },
+          include: {
+            product: true,
+          },
         },
         replacements: {
           include: {
@@ -66,31 +69,7 @@ export const getOrderById = async (id: string, tx?: Prisma.TransactionClient): P
   const db = tx || prisma;
   return db.order.findUnique({
     where: { id },
-     include: {
-      orderItems: {
-        include: {
-          vendorProduct: {
-            include: { 
-              categories: true,  
-              product: true
-            }
-          },
-          chosenReplacement: {
-            include: { product: true }
-          },
-          replacements: {
-            include: {
-              product: true,
-            },
-          }
-        }
-      },
-      shopper: true,
-      deliveryPerson: true,
-      deliveryAddress: true,
-      vendor: true,
-      user: true
-    },
+    ...orderWithRelations,
   });
 };
 
@@ -276,4 +255,3 @@ export const adminGetAllOrders = async (filters: AdminGetOrdersFilters, paginati
     totalCount,
   };
 };
-

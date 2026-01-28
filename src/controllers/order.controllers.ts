@@ -53,7 +53,7 @@ import { AuthenticatedRequest } from './vendor.controller';
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/VendorOrder'
+ *               $ref: '#/components/schemas/OrderWithRelations'
  *       400:
  *         description: Bad request due to invalid input (e.g., missing fields, invalid time, item out of stock).
  *       401:
@@ -134,15 +134,42 @@ import { AuthenticatedRequest } from './vendor.controller';
  *         id: { type: string, format: uuid }
  *         name: { type: string, nullable: true }
  *         mobileNumber: { type: string, nullable: true }
- *     VendorOrder:
+ *     Order:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         userId: { type: string, format: uuid }
+ *         vendorId: { type: string, format: uuid }
+ *         orderCode: { type: string }
+ *         pickupOtp: { type: string, nullable: true }
+ *         subtotal: { type: number, format: float }
+ *         totalAmount: { type: number, format: float }
+ *         deliveryFee: { type: number, format: float, nullable: true }
+ *         serviceFee: { type: number, format: float, nullable: true }
+ *         shoppingFee: { type: number, format: float, nullable: true }
+ *         shopperTip: { type: number, format: float, nullable: true }
+ *         deliveryPersonTip: { type: number, format: float, nullable: true }
+ *         paymentMethod: { $ref: '#/components/schemas/PaymentMethods' }
+ *         paymentStatus: { $ref: '#/components/schemas/PaymentStatus' }
+ *         orderStatus: { $ref: '#/components/schemas/OrderStatus' }
+ *         deliveryAddressId: { type: string, format: uuid, nullable: true }
+ *         deliveryInstructions: { type: string, nullable: true }
+ *         shopperId: { type: string, format: uuid, nullable: true }
+ *         deliveryPersonId: { type: string, format: uuid, nullable: true }
+ *         shoppingMethod: { $ref: '#/components/schemas/ShoppingMethod' }
+ *         deliveryMethod: { $ref: '#/components/schemas/DeliveryMethod' }
+ *         shoppingStartTime: { type: string, format: date-time, nullable: true }
+ *         scheduledDeliveryTime: { type: string, format: date-time, nullable: true }
+ *         actualDeliveryTime: { type: string, format: date-time, nullable: true }
+ *         pickupOtpVerifiedAt: { type: string, format: date-time, nullable: true }
+ *         reasonForDecline: { type: string, nullable: true }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
+ *     OrderWithRelations:
  *       allOf:
  *         - $ref: '#/components/schemas/Order'
  *         - type: object
  *           properties:
- *             orderCode:
- *               type: string
- *               description: A unique, human-readable code for the order.
- *               example: "AB12CD"
  *             user: { $ref: '#/components/schemas/UserSummary', nullable: true }
  *             shopper: { $ref: '#/components/schemas/UserSummary', nullable: true }
  *             deliveryPerson: { $ref: '#/components/schemas/UserSummary', nullable: true }
@@ -191,27 +218,6 @@ import { AuthenticatedRequest } from './vendor.controller';
  *         isVerified: { type: boolean }
  *         meta: { type: object, nullable: true }
  *     VendorWithRatingAndDistance:
- *       type: object
- *       properties:
- *         subtotal: { type: number, format: float }
- *         totalAmount: { type: number, format: float }
- *         deliveryFee: { type: number, format: float }
- *         serviceFee: { type: number, format: float }
- *         shoppingFee: { type: number, format: float }
- *         shopperTip: { type: number, format: float }
- *         deliveryPersonTip: { type: number, format: float }
- *         paymentMethod: { $ref: '#/components/schemas/PaymentMethods' }
- *         paymentStatus: { $ref: '#/components/schemas/PaymentStatus' }
- *         orderStatus: { $ref: '#/components/schemas/OrderStatus' }
- *         deliveryAddressId: { type: string, format: uuid }
- *         deliveryInstructions: { type: string }
- *         shopperId: { type: string, format: uuid }
- *         deliveryPersonId: { type: string, format: uuid }
- *         shoppingMethod: { $ref: '#/components/schemas/ShoppingMethod' }
- *         deliveryMethod: { $ref: '#/components/schemas/DeliveryMethod' }
- *         shoppingStartTime: { type: string, format: date-time }
- *         scheduledDeliveryTime: { type: string, format: date-time }
- *         actualDeliveryTime: { type: string, format: date-time }
  *     CreateOrderClientPayload:
  *       type: object
  *       required: [vendorId, paymentMethod, orderItems, shoppingMethod, deliveryMethod]
@@ -293,7 +299,7 @@ export const createOrderController = async (req: AuthenticatedRequest, res: Resp
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/VendorOrder'
+ *               $ref: '#/components/schemas/OrderWithRelations'
  *       404:
  *         description: Order not found.
  */
@@ -302,7 +308,7 @@ export const getOrderByIdController = async (req: AuthenticatedRequest, res: Res
     const orderId = req.params.id;
     const { userId, userRole, vendorId: staffVendorId } = req;
 
-    const order = await getOrderByIdService(orderId, userId as string, userRole as any, staffVendorId);
+    const order = await getOrderByIdService(orderId, userId as string, userRole, staffVendorId);
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
     }
@@ -329,7 +335,7 @@ export const getOrderByIdController = async (req: AuthenticatedRequest, res: Res
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/VendorOrder'
+ *                 $ref: '#/components/schemas/OrderWithRelations'
  */
 export const getOrdersByUserController = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -471,7 +477,7 @@ interface OrderAuthenticatedRequest extends Request {
  *             schema: 
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/VendorOrder'
+ *                 $ref: '#/components/schemas/OrderWithRelations'
  */
 export const getVendorOrdersController = async (req: OrderAuthenticatedRequest, res: Response) => {
   try {
@@ -983,7 +989,7 @@ export const getOrderOverviewDataController = async (req: Request, res: Response
  *         description: A list of orders assigned to the delivery person.
  *         content:
  *           application/json:
- *             schema: { type: array, items: { $ref: '#/components/schemas/VendorOrder' } }
+ *             schema: { type: array, items: { $ref: '#/components/schemas/OrderWithRelations' } }
  */
 export const getMyDeliveryOrdersController = async (req: AuthenticatedRequest, res: Response) => {
   try {

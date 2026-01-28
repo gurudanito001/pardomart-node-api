@@ -1,7 +1,7 @@
 
 
 import { Request, Response, Router } from 'express';
-import * as orderModel from '../models/order.model'; // Adjust the path if needed
+import * as orderModel from '../models/order.model';
 import * as vendorModel from '../models/vendor.model'; // Add this import for vendorModel
 import { PrismaClient, Order, OrderItem, Role, ShoppingMethod, OrderStatus, DeliveryMethod, VendorProduct, Product, DeliveryAddress, Prisma, PaymentMethods, OrderItemStatus, PaymentStatus, TransactionType, TransactionSource, TransactionStatus, NotificationCategory, NotificationType } from '@prisma/client';
 import dayjs from 'dayjs';
@@ -70,6 +70,13 @@ export const createOrderService = async (payload: orderModel.CreateOrderPayload)
   return order;
 };
 
+export type OrderWithVendorExtras = orderModel.OrderWithRelations & {
+  vendor: orderModel.OrderWithRelations['vendor'] & {
+    rating: { average: number; count: number };
+    distance?: number;
+  };
+};
+
 /**
  * Retrieves an order by its ID.
  * @param id - The ID of the order to retrieve.
@@ -78,9 +85,9 @@ export const createOrderService = async (payload: orderModel.CreateOrderPayload)
 export const getOrderByIdService = async (
   id: string,
   requestingUserId: string,
-  requestingUserRole: Role,
+  requestingUserRole: Role | undefined,
   staffVendorId?: string
-): Promise<any | null> => {
+): Promise<OrderWithVendorExtras | null> => {
   const order = await orderModel.getOrderById(id);
 
   if (!order || !order.vendor) {
@@ -132,7 +139,7 @@ export const getOrderByIdService = async (
     },
   };
 
-  return orderWithExtras;
+  return orderWithExtras as OrderWithVendorExtras;
 };
 
 
