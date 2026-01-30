@@ -71,7 +71,7 @@ import { AuthenticatedRequest } from './vendor.controller';
  *       enum: [pending, paid, failed, refunded]
  *     OrderStatus:
  *       type: string
- *       enum: [pending, accepted_for_shopping, currently_shopping, ready_for_pickup, ready_for_delivery, accepted_for_delivery, en_route, delivered, picked_up_by_customer, declined_by_vendor, cancelled_by_customer]
+ *       enum: [pending, accepted_for_shopping, accepted_for_delivery, currently_shopping, bagging_items, ready_for_pickup, ready_for_delivery, en_route_to_pickup, arrived_at_store, en_route_to_delivery, arrived_at_customer_location, en_route_to_return_pickup, arrived_at_return_pickup_location, en_route_to_return_to_store, returned_to_store, delivered, picked_up_by_customer, declined_by_vendor, cancelled_by_customer]
  *     ShoppingMethod:
  *       type: string
  *       enum: [vendor, delivery_person]
@@ -244,6 +244,11 @@ import { AuthenticatedRequest } from './vendor.controller';
  *         shoppingMethod: { $ref: '#/components/schemas/ShoppingMethod' }
  *         deliveryMethod: { $ref: '#/components/schemas/DeliveryMethod' }
  *         scheduledDeliveryTime: { type: string, format: date-time, nullable: true }
+ *     UpdateOrderStatusPayload:
+ *       type: object
+ *       required: [status]
+ *       properties:
+ *         status: { $ref: '#/components/schemas/OrderStatus' }
  *     UpdateTipPayload:
  *       type: object
  *       properties:
@@ -933,7 +938,7 @@ export const getOrdersForVendor = async (req: AuthenticatedRequest, res: Respons
  *       Allows a vendor or their staff to verify an order for pickup by providing a 6-digit OTP.
  *       Upon successful verification, the order status is automatically transitioned.
  *       - If `deliveryMethod` is `customer_pickup`, status changes from `ready_for_pickup` to `picked_up_by_customer`.
- *       - If `deliveryMethod` is `delivery_person`, status changes from `ready_for_delivery` to `en_route`.
+ *       - If `deliveryMethod` is `delivery_person`, status changes from `ready_for_delivery` to `en_route_to_delivery`.
  *     parameters:
  *       - in: path
  *         name: id
