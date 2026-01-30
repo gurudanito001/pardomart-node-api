@@ -663,15 +663,23 @@ enum OrderStatus {
 
   // Active Shopping Flow
   accepted_for_shopping
+  accepted_for_delivery
   currently_shopping
+  bagging_items
 
   // Handoff States (Shopping is complete)
   ready_for_pickup
   ready_for_delivery
 
   // Active Delivery Flow
-  accepted_for_delivery
-  en_route // Delivery person has the order and is on the way.
+  en_route_to_pickup // Delivery person has the order and is on the way.
+  arrived_at_store
+  en_route_to_delivery // Delivery person is delivering the order to the customer.
+  arrived_at_customer_location
+  en_route_to_return_pickup // Delivery person is returning to pick up the order after a failed delivery attempt.
+  arrived_at_return_pickup_location
+  en_route_to_return_to_store // Delivery person is returning the order to the vendor/store.
+  returned_to_store // Order has been returned to the vendor/store.
 
   // Terminal Success States
   delivered

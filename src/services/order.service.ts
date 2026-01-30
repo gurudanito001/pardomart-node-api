@@ -661,7 +661,7 @@ export const updateOrderStatusService = async (
         });
         break;
 
-      case 'en_route':
+      case 'en_route_to_delivery':
         await notificationService.createNotification({
           userId: orderDetails.userId,
           type: NotificationType.EN_ROUTE,
@@ -1398,7 +1398,7 @@ export const verifyPickupOtpService = async (
     if (order.deliveryMethod === DeliveryMethod.customer_pickup && order.orderStatus === OrderStatus.ready_for_pickup) {
       nextStatus = OrderStatus.picked_up_by_customer;
     } else if (order.deliveryMethod === DeliveryMethod.delivery_person && order.orderStatus === OrderStatus.ready_for_delivery) {
-      nextStatus = OrderStatus.en_route;
+      nextStatus = OrderStatus.en_route_to_delivery;
     } else {
       throw new OrderCreationError(`Order is not ready for pickup. Current status: ${order.orderStatus}`, 400);
     }

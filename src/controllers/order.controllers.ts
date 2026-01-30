@@ -1223,11 +1223,18 @@ export const adminGetAllOrdersController = async (req: Request, res: Response) =
         case 'in-progress':
           statusFilter = [
             OrderStatus.accepted_for_shopping,
-            OrderStatus.currently_shopping,
-            OrderStatus.ready_for_pickup,
-            OrderStatus.ready_for_delivery,
             OrderStatus.accepted_for_delivery,
-            OrderStatus.en_route
+            OrderStatus.currently_shopping,
+            OrderStatus.bagging_items,
+            
+            OrderStatus.en_route_to_pickup,
+            OrderStatus.arrived_at_store,
+            OrderStatus.en_route_to_delivery,
+            OrderStatus.arrived_at_customer_location,
+            OrderStatus.en_route_to_return_pickup,
+            OrderStatus.arrived_at_return_pickup_location,
+            OrderStatus.en_route_to_return_to_store,
+            OrderStatus.ready_for_pickup,
           ];
           break;
         case 'completed':
