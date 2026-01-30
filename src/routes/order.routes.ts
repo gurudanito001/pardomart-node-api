@@ -69,6 +69,7 @@ router.patch(
   orderController.acceptOrderForDeliveryController
 );
 router.get('/:id', validate(validateGetOrDeleteOrder), orderController.getOrderByIdController);
+router.get('/:id/history', validate(validateGetOrDeleteOrder), orderController.getOrderHistoryController);
 router.patch('/:id', validate(validateUpdateOrder), orderController.updateOrderController);
 router.patch('/:id/status', validate(validateUpdateOrderStatus), orderController.updateOrderStatusController);
 router.patch('/:orderId/tip', validate(validateUpdateTip), orderController.updateOrderTipController);

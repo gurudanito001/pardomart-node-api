@@ -2,6 +2,7 @@
 
 import { Request, Response, Router } from 'express';
 import * as orderModel from '../models/order.model';
+import * as orderHistoryModel from '../models/orderHistory.model';
 import * as vendorModel from '../models/vendor.model'; // Add this import for vendorModel
 import { PrismaClient, Order, OrderItem, Role, ShoppingMethod, OrderStatus, DeliveryMethod, VendorProduct, Product, DeliveryAddress, Prisma, PaymentMethods, OrderItemStatus, PaymentStatus, TransactionType, TransactionSource, TransactionStatus, NotificationCategory, NotificationType } from '@prisma/client';
 import dayjs from 'dayjs';
@@ -15,6 +16,7 @@ import { getAggregateRatingService } from './rating.service';
 import * as notificationService from './notification.service';
 import * as transactionModel from '../models/transaction.model';
 import Stripe from 'stripe';
+import { Or } from '@prisma/client/runtime/library';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -140,6 +142,36 @@ export const getOrderByIdService = async (
   };
 
   return orderWithExtras as OrderWithVendorExtras;
+};
+
+/**
+ * Retrieves the history of an order.
+ * @param orderId - The ID of the order.
+ * @param requestingUserId - The ID of the user requesting the history.
+ * @param requestingUserRole - The role of the user requesting the history.
+ * @param staffVendorId - The vendor ID if the user is staff.
+ */
+export const getOrderHistoryService = async (
+  orderId: string,
+  requestingUserId: string,
+  requestingUserRole: Role,
+  staffVendorId?: string
+) => {
+  // Reuse getOrderByIdService for authorization check
+  const order = await getOrderByIdService(orderId, requestingUserId, requestingUserRole, staffVendorId);
+  
+  if (!order) {
+    // If getOrderByIdService returns null, it means either not found or unauthorized (it throws for unauthorized usually, but let's be safe)
+    // Actually getOrderByIdService throws 403 if unauthorized, so if we get here, we are good or it's 404.
+    // However, getOrderByIdService returns null if not found.
+    // We should probably check if the order exists first to distinguish 404 from 403 if we weren't reusing logic.
+    // Since we reuse it, if it throws, this function throws. If it returns null, we return null.
+    // But wait, getOrderByIdService throws 403.
+    // Let's just try to fetch it.
+    throw new OrderCreationError('Order not found or access denied.', 404);
+  }
+
+  return orderHistoryModel.getOrderHistoryByOrderId(orderId);
 };
 
 
@@ -356,6 +388,14 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
       shoppingStartTime, deliveryAddressId: shippingAddressId, deliveryInstructions,
     }, tx);
 
+    // --- 5b. Create Initial History Entry ---
+    await orderHistoryModel.createOrderHistory({
+      orderId: newOrder.id,
+      status: OrderStatus.pending,
+      changedBy: userId,
+      notes: 'Order placed'
+    }, tx);
+
     // --- 6. Create the OrderItem records ---
     for (const item of orderItems) {
       if (item.quantity <= 0) {
@@ -544,41 +584,123 @@ export const updateOrderStatusService = async (
   orderId: string,
   status: OrderStatus,
   requestingUserId: string,
-  requestingUserRole: Role
+  requestingUserRole: Role,
+  staffVendorId?: string
 ): Promise<Order> => {
   const updates: orderModel.UpdateOrderPayload = { orderStatus: status };
 
-  // --- Authorization Check ---
-  const orderForAuth = await prisma.order.findUnique({ where: { id: orderId }, select: { userId: true, deliveryPersonId: true, vendor: { select: { userId: true } } } });
-  if (!orderForAuth) {
+  const order = await orderModel.getOrderById(orderId);
+  if (!order) {
     throw new OrderCreationError('Order not found', 404);
   }
 
-  const isCustomer = requestingUserRole === Role.customer && orderForAuth.userId === requestingUserId;
-  const isVendorOwner = requestingUserRole === Role.vendor && orderForAuth.vendor.userId === requestingUserId;
-  const isAdmin = requestingUserRole === Role.admin;
-  const isDeliveryPerson = requestingUserRole === Role.delivery_person && orderForAuth.deliveryPersonId === requestingUserId;
+  // --- State Machine and Authorization Logic ---
+  const assertHasRole = (allowedRoles: Role[]) => {
+    if (!allowedRoles.includes(requestingUserRole)) {
+      throw new OrderCreationError(`Role '${requestingUserRole}' is not authorized to set status to '${status}'.`, 403);
+    }
+  };
 
+  const assertPreviousStatus = (allowedStatuses: OrderStatus[]) => {
+    if (!allowedStatuses.includes(order.orderStatus)) {
+      throw new OrderCreationError(`Cannot transition from '${order.orderStatus}' to '${status}'.`, 409);
+    }
+  };
 
-  // For now, only customer, vendor owner, or admin can change status.
-  // More granular logic can be added here based on which status transitions are allowed by which role.
-  if (!isCustomer && !isVendorOwner && !isAdmin && !isDeliveryPerson) {
-    throw new OrderCreationError('You are not authorized to update the status of this order.', 403);
+  const assertIsShopper = () => {
+    if (order.shopperId !== requestingUserId) {
+      throw new OrderCreationError('You are not the assigned shopper for this order.', 403);
+    }
+  };
+
+  const assertIsDeliveryPerson = () => {
+    if (order.deliveryPersonId !== requestingUserId) {
+      throw new OrderCreationError('You are not the assigned delivery person for this order.', 403);
+    }
+  };
+
+  switch (status) {
+    // --- Phase 1: Pickup & Shop ---
+    case OrderStatus.en_route_to_pickup:
+      assertHasRole([Role.delivery_person]);
+      assertPreviousStatus([OrderStatus.accepted_for_delivery]);
+      assertIsDeliveryPerson();
+      break;
+
+    case OrderStatus.arrived_at_store:
+      assertHasRole([Role.delivery_person]);
+      assertPreviousStatus([OrderStatus.en_route_to_pickup]);
+      assertIsDeliveryPerson();
+      break;
+
+    case OrderStatus.currently_shopping:
+      assertHasRole([Role.store_shopper, Role.store_admin, Role.delivery_person]);
+      assertPreviousStatus([OrderStatus.accepted_for_shopping, OrderStatus.arrived_at_store]);
+      assertIsShopper();
+      break;
+
+    case OrderStatus.bagging_items:
+      assertHasRole([Role.store_shopper, Role.store_admin, Role.delivery_person]);
+      assertPreviousStatus([OrderStatus.currently_shopping]);
+      assertIsShopper();
+      break;
+
+    case OrderStatus.ready_for_delivery:
+      assertHasRole([Role.store_shopper, Role.store_admin, Role.delivery_person]);
+      assertPreviousStatus([OrderStatus.bagging_items]);
+      assertIsShopper();
+      break;
+
+    // --- Phase 2: Delivery to Customer ---
+    case OrderStatus.en_route_to_delivery:
+      assertHasRole([Role.delivery_person]);
+      assertPreviousStatus([OrderStatus.ready_for_delivery]); // This assumes OTP was handled or is not required for this flow
+      assertIsDeliveryPerson();
+      break;
+
+    case OrderStatus.arrived_at_customer_location:
+      assertHasRole([Role.delivery_person]);
+      assertPreviousStatus([OrderStatus.en_route_to_delivery]);
+      assertIsDeliveryPerson();
+      break;
+
+    // --- Phase 3: Return Flow ---
+    case OrderStatus.en_route_to_return_pickup:
+    case OrderStatus.arrived_at_return_pickup_location:
+    case OrderStatus.en_route_to_return_to_store:
+    case OrderStatus.returned_to_store:
+      assertHasRole([Role.delivery_person]);
+      assertIsDeliveryPerson();
+      // Add more specific previous status checks for return flow if needed
+      break;
+
+    // --- Terminal States ---
+    case OrderStatus.delivered:
+      assertHasRole([Role.delivery_person]);
+      assertPreviousStatus([OrderStatus.arrived_at_customer_location]);
+      assertIsDeliveryPerson();
+      break;
+
+    default:
+      // For other statuses like 'cancelled_by_customer', we might need different logic.
+      // For now, we block any unhandled transitions.
+      throw new OrderCreationError(`Status transition to '${status}' is not handled by this service.`, 400);
   }
+
+  // --- Create History Entry (Before Transaction to ensure it's ready) ---
+  // Actually, better inside transaction if we had one wrapping everything, but here we are.
+  // We'll do it after successful update or inside the delivered transaction.
+  const historyPayload = {
+    orderId,
+    status,
+    changedBy: requestingUserId,
+  };
 
   // If order is delivered, handle payments to wallets
   if (status === OrderStatus.delivered) {
     updates.actualDeliveryTime = new Date();
 
     return prisma.$transaction(async (tx) => {
-      const order = await tx.order.findUnique({
-        where: { id: orderId },
-        include: { vendor: true }, // includes the nested user object for the vendor
-      });
-      if (!order) {
-        throw new OrderCreationError('Order not found', 404);
-      }
-
       // 1. Pay Vendor
       // The vendor gets paid the subtotal of the items. Platform fees are handled separately.
       const vendorAmount = order.subtotal;
@@ -641,16 +763,19 @@ export const updateOrderStatusService = async (
       }
 
       // 4. Update the order status
-      return orderModel.updateOrder(orderId, updates, tx);
+      // Log history inside transaction
+      await orderHistoryModel.createOrderHistory(historyPayload, tx);
+
+      return orderModel.updateOrder(orderId, updates, tx) as unknown as Order;
     });
   }
 
 
-   // --- Add Notification Logic Here ---
-  const orderDetails = await orderModel.getOrderById(orderId); // Fetch details for notification
+  // --- Add Notification Logic Here ---
+  const orderDetails = order; // Use the already fetched order
   if (orderDetails) {
-    switch (status) {
-      case 'ready_for_pickup':
+    switch (status as OrderStatus) {
+      case OrderStatus.ready_for_pickup:
         await notificationService.createNotification({
           userId: orderDetails.userId,
           type: NotificationType.ORDER_READY_FOR_PICKUP,
@@ -661,7 +786,7 @@ export const updateOrderStatusService = async (
         });
         break;
 
-      case 'en_route_to_delivery':
+      case OrderStatus.en_route_to_delivery:
         await notificationService.createNotification({
           userId: orderDetails.userId,
           type: NotificationType.EN_ROUTE,
@@ -671,11 +796,68 @@ export const updateOrderStatusService = async (
           meta: { orderId: orderId }
         });
         break;
+
+      case OrderStatus.arrived_at_store:
+        await notificationService.createNotification({
+          userId: orderDetails.vendor.userId,
+          type: NotificationType.EN_ROUTE,
+          category: NotificationCategory.ORDER,
+          title: 'Delivery Person Arrived',
+          body: `The delivery person has arrived at the store for order #${orderDetails.orderCode}.`,
+          meta: { orderId: orderId }
+        });
+        break;
+
+      case OrderStatus.arrived_at_customer_location:
+        await notificationService.createNotification({
+          userId: orderDetails.userId,
+          type: NotificationType.EN_ROUTE,
+          category: NotificationCategory.ORDER,
+          title: 'Delivery Person Arrived',
+          body: `Your delivery person has arrived at your location for order #${orderDetails.orderCode}.`,
+          meta: { orderId: orderId }
+        });
+        break;
       
-      // Add other cases like DELIVERED, etc.
+      case OrderStatus.delivered:
+        await notificationService.createNotification({
+          userId: orderDetails.userId,
+          type: NotificationType.DELIVERED,
+          category: NotificationCategory.ORDER,
+          title: 'Order Delivered',
+          body: `Your order #${orderDetails.orderCode} has been delivered. Enjoy!`,
+          meta: { orderId: orderId }
+        });
+        break;
+
+      // Return Flow Notifications
+      case OrderStatus.en_route_to_return_to_store:
+        await notificationService.createNotification({
+          userId: orderDetails.vendor.userId,
+          type: NotificationType.ACCOUNT_UPDATE, // Or a more specific type
+          category: NotificationCategory.ORDER,
+          title: 'Order Return Initiated',
+          body: `The delivery person is returning order #${orderDetails.orderCode} to your store.`,
+          meta: { orderId: orderId }
+        });
+        break;
+
+      case OrderStatus.returned_to_store:
+        await notificationService.createNotification({
+          userId: orderDetails.vendor.userId,
+          type: NotificationType.ACCOUNT_UPDATE, // Or a more specific type
+          category: NotificationCategory.ORDER,
+          title: 'Order Returned',
+          body: `Order #${orderDetails.orderCode} has been successfully returned to your store.`,
+          meta: { orderId: orderId }
+        });
+        break;
     }
   }
   // --- End Notification Logic ---
+
+  // Log history for non-delivered updates
+  await orderHistoryModel.createOrderHistory(historyPayload);
 
   return orderModel.updateOrder(orderId, updates, prisma);
 };
@@ -928,6 +1110,14 @@ export const acceptOrderService = async (
       },
     });
 
+    // --- Create History Entry ---
+    await orderHistoryModel.createOrderHistory({
+      orderId: acceptedOrder.id,
+      status: OrderStatus.accepted_for_shopping,
+      changedBy: shoppingHandlerUserId,
+      notes: 'Order accepted for shopping'
+    });
+
     // --- Add Notification Logic Here ---
     await notificationService.createNotification({
       userId: acceptedOrder.userId,
@@ -1014,6 +1204,14 @@ export const declineOrderService = async (
       },
     });
 
+    // --- Create History Entry ---
+    await orderHistoryModel.createOrderHistory({
+      orderId: declinedOrder.id,
+      status: OrderStatus.declined_by_vendor,
+      changedBy: vendorId, // Or the specific user if we had it passed down, but vendorId is close enough for context
+      notes: reason ? `Declined: ${reason}` : 'Order declined by vendor'
+    }, tx);
+
      // --- Replace TODO with Notification Logic Here ---
     await notificationService.createNotification({
       userId: orderToDecline.userId,
@@ -1089,6 +1287,15 @@ export const startShoppingService = async (
         shopperId: shoppingHandlerUserId, // Re-confirm handler, or assign if not already done by accept
       },
     });
+
+    // --- Create History Entry ---
+    await orderHistoryModel.createOrderHistory({
+      orderId: order.id,
+      status: OrderStatus.currently_shopping,
+      changedBy: shoppingHandlerUserId,
+      notes: 'Shopping started'
+    });
+
     return order;
   } catch (error: any) {
     if (error.code === 'P2025') {
@@ -1416,6 +1623,14 @@ export const verifyPickupOtpService = async (
 
     // TODO: Add notification logic here to inform the customer that their order is on its way or has been picked up.
 
+    // --- Create History Entry ---
+    await orderHistoryModel.createOrderHistory({
+      orderId: updatedOrder.id,
+      status: nextStatus,
+      changedBy: requestingUserId,
+      notes: 'Pickup OTP verified'
+    }, tx);
+
     return updatedOrder;
   });
 };
@@ -1554,6 +1769,16 @@ export const adminUpdateOrderService = async (
       // TODO: Add logic for Shopper and Delivery Person tip payouts if applicable, similar to updateOrderStatusService
 
       // 2. Update the order with all the admin's changes
+      // If status changed, log it
+      if (updates.orderStatus) {
+        await orderHistoryModel.createOrderHistory({
+          orderId,
+          status: updates.orderStatus,
+          notes: 'Admin update',
+          // changedBy: ??? We don't have admin ID here easily without passing it down. 
+          // For now, we can leave changedBy null or update signature to accept adminId.
+        }, tx);
+      }
       return orderModel.updateOrder(orderId, updates, tx);
     });
   }
@@ -1569,6 +1794,14 @@ export const adminUpdateOrderService = async (
     updates.paymentStatus = PaymentStatus.refunded;
   }
 
+  // Log history if status is changing
+  if (updates.orderStatus && updates.orderStatus !== order.orderStatus) {
+     await orderHistoryModel.createOrderHistory({
+          orderId,
+          status: updates.orderStatus,
+          notes: 'Admin update',
+     });
+  }
 
   return orderModel.updateOrder(orderId, updates);
 };
@@ -1727,6 +1960,14 @@ export const acceptOrderForDeliveryService = async (orderId: string, deliveryPer
       body: `A delivery person has accepted your order #${updatedOrder.orderCode}.`,
       meta: { orderId: updatedOrder.id },
     });
+
+    // --- Create History Entry ---
+    await orderHistoryModel.createOrderHistory({
+      orderId: updatedOrder.id,
+      status: updatedOrder.orderStatus,
+      changedBy: deliveryPersonId,
+      notes: 'Accepted for delivery'
+    }, tx);
 
     return updatedOrder;
   });

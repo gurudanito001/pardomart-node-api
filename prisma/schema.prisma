@@ -60,6 +60,7 @@ model User {
   transactions      Transaction[]
   bugReports      BugReport[]
   wallet          Wallet?
+  orderHistory    OrderHistory[]
 
   @@unique([mobileNumber, role])
 }
@@ -228,6 +229,7 @@ model Order {
   deliveryPersonLocations DeliveryPersonLocation[]
   messages                   Message[]
   transactions            Transaction[]
+  history                    OrderHistory[]
 }
 
 model DeliveryAddress {
@@ -583,6 +585,19 @@ model ErrorLog {
   @@index([correlationId])
 }
 
+model OrderHistory {
+  id        String      @id @default(uuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    OrderStatus
+  changedBy String?     // ID of the user who changed the status
+  user      User?       @relation(fields: [changedBy], references: [id], onDelete: SetNull)
+  notes     String?
+  createdAt DateTime    @default(now())
+
+  @@index([orderId])
+}
+
 enum ReferenceType {
   bug_report_image
   ad_image
@@ -672,7 +687,7 @@ enum OrderStatus {
   ready_for_delivery
 
   // Active Delivery Flow
-  en_route_to_pickup // Delivery person has the order and is on the way.
+  en_route_to_pickup // Delivery person has accepted the order and is on the way to the store to pick it up .
   arrived_at_store
   en_route_to_delivery // Delivery person is delivering the order to the customer.
   arrived_at_customer_location
@@ -793,4 +808,3 @@ enum MediaType {
   AUDIO
   OTHER
 }
-

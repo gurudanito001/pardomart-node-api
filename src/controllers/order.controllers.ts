@@ -25,7 +25,8 @@ import {
   getOrdersForDeliveryPersonService,
   getAvailableOrdersForDeliveryService,
   acceptOrderForDeliveryService,
-  getActiveOrderService
+  getActiveOrderService,
+  getOrderHistoryService
 } from '../services/order.service'; // Adjust the path if needed
 import { Role, OrderStatus, DeliveryMethod, } from '@prisma/client';
 import { AuthenticatedRequest } from './vendor.controller';
@@ -180,6 +181,16 @@ import { AuthenticatedRequest } from './vendor.controller';
  *             vendor: { $ref: '#/components/schemas/VendorWithDetails' }
  *             deliveryAddress: { $ref: '#/components/schemas/DeliveryAddress', nullable: true }
  *     VendorWithDetails:
+ *     OrderHistory:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         orderId: { type: string, format: uuid }
+ *         status: { $ref: '#/components/schemas/OrderStatus' }
+ *         changedBy: { type: string, format: uuid, nullable: true }
+ *         notes: { type: string, nullable: true }
+ *         createdAt: { type: string, format: date-time }
+ *         user: { type: object, properties: { id: { type: string }, name: { type: string }, role: { type: string } }, nullable: true }
  *       allOf:
  *         - $ref: '#/components/schemas/Vendor'
  *         - type: object
@@ -321,6 +332,43 @@ export const getOrderByIdController = async (req: AuthenticatedRequest, res: Res
     res.status(200).json(order);
   } catch (error: any) {
     res.status(500).json({ error: 'Failed to retrieve order: ' + error.message });
+  }
+};
+
+/**
+ * Controller for getting the history of an order.
+ * @swagger
+ * /order/{id}/history:
+ *   get:
+ *     summary: Get the history of an order
+ *     tags: [Order]
+ *     description: Retrieves the timeline of status changes for a specific order. Accessible by the customer, vendor, delivery person, and admin involved in the order.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: The ID of the order.
+ *     responses:
+ *       200:
+ *         description: The order history.
+ *         content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/OrderHistory' } } } }
+ *       403: { description: "Forbidden. User is not authorized to view this order's history." }
+ *       404: { description: "Order not found." }
+ */
+export const getOrderHistoryController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { userId, userRole, vendorId } = req;
+    const history = await getOrderHistoryService(id, userId!, userRole!, vendorId);
+    res.status(200).json(history);
+  } catch (error: any) {
+    if (error instanceof OrderCreationError) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Failed to retrieve order history: ' + error.message });
   }
 };
 
