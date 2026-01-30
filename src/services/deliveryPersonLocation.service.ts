@@ -16,10 +16,19 @@ export const addDeliveryPersonLocation = async (
   }
 
   // Enhancement: Ensure the order is in a state where location can be tracked.
-  const deliverableStatuses: OrderStatus[] = [OrderStatus.ready_for_delivery, OrderStatus.en_route];
+  const deliverableStatuses: OrderStatus[] = [
+    OrderStatus.accepted_for_delivery,
+    OrderStatus.ready_for_delivery,
+    OrderStatus.en_route_to_pickup,
+    OrderStatus.arrived_at_store,
+    OrderStatus.en_route_to_delivery,
+    OrderStatus.arrived_at_customer_location,
+    OrderStatus.en_route_to_return_pickup,
+    OrderStatus.en_route_to_return_to_store
+  ];
   if (!deliverableStatuses.includes(order.orderStatus)) {
     throw new OrderCreationError(
-      `Cannot log location for an order with status '${order.orderStatus}'. Order must be ready for delivery or en route.`,
+      `Cannot log location for an order with status '${order.orderStatus}'. Order must be in an active delivery state.`,
       409 // 409 Conflict is a good status code for a state mismatch
     );
   }
@@ -54,4 +63,3 @@ export const getDeliveryPath = async (orderId: string, userId: string, userRole:
   }
   return path;
 };
-
