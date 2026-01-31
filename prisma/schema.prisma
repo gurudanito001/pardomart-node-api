@@ -31,14 +31,14 @@ model User {
   language         String?
   notification     Json?
   rememberToken    String?
-  stripeCustomerId String?           @unique
+  stripeCustomerId String? @unique
   referralCode     String?
   role             Role
   // NEW: Link Vendor Staff to their Vendor
   vendorId         String? // ID of the Vendor this staff user belongs to (null for customers/delivery_persons)
   vendor           Vendor? @relation("VendorStaff", fields: [vendorId], references: [id], onDelete: SetNull)
 
-  vendors           Vendor[]        @relation("Vendor")
+  vendors           Vendor[]          @relation("Vendor")
   orderShoppers     Order[]           @relation("OrderShopper")
   orderDeliverers   Order[]           @relation("OrderDeliverer")
   deliveryAddresses DeliveryAddress[]
@@ -48,19 +48,20 @@ model User {
   updatedAt         DateTime          @updatedAt
 
   // New fields for ratings
-  ratingsGiven    Rating[] @relation("RatingsGiven")
-  ratingsReceived Rating[] @relation("RatingsReceived")
-  wishlistItems   WishlistItem[] 
-  sentMessages    Message[]         @relation("SentMessages")
-  receivedMessages  Message[]         @relation("ReceivedMessages")
-  notifications   Notification[]
-  supportTickets  SupportTicket[]
+  ratingsGiven        Rating[]             @relation("RatingsGiven")
+  ratingsReceived     Rating[]             @relation("RatingsReceived")
+  wishlistItems       WishlistItem[]
+  sentMessages        Message[]            @relation("SentMessages")
+  receivedMessages    Message[]            @relation("ReceivedMessages")
+  notifications       Notification[]
+  supportTickets      SupportTicket[]
   savedPaymentMethods SavedPaymentMethod[]
-  devices         Device[]
-  transactions      Transaction[]
-  bugReports      BugReport[]
-  wallet          Wallet?
-  orderHistory    OrderHistory[]
+  devices             Device[]
+  transactions        Transaction[]
+  bugReports          BugReport[]
+  wallet              Wallet?
+  orderHistory        OrderHistory[]
+  ReturnRequest       ReturnRequest[]
 
   @@unique([mobileNumber, role])
 }
@@ -87,35 +88,35 @@ model Product {
 }
 
 model VendorProduct {
-  id              String      @id @default(uuid())
-  vendor          Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  vendorId        String
-  product         Product     @relation("baseProduct", fields: [productId], references: [id], onDelete: Cascade)
-  productId       String
-  price           Float
-  name            String
-  description     String?
-  discountedPrice Float?
-  images          String[]
-  weight          Float?
-  weightUnit      String?
-  stock           Int?
-  isAvailable     Boolean     @default(true)
-  published       Boolean     @default(false)
-  isAlcohol       Boolean     @default(false)
-  isAgeRestricted Boolean     @default(false)
-  meta            Json?
-  attributes      Json?
-  categoryIds     String[]
-  categories      Category[]
-  tags            Tag[]
-  cartItems       CartItem[]
-  orderItems      OrderItem[] @relation("originalProduct")
-  replacementFor  OrderItem[] @relation("replacementFor")
-  wishlistItems   WishlistItem[]
-  chosenAsReplacementFor OrderItem[] @relation("chosenReplacement")
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id                     String         @id @default(uuid())
+  vendor                 Vendor         @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  vendorId               String
+  product                Product        @relation("baseProduct", fields: [productId], references: [id], onDelete: Cascade)
+  productId              String
+  price                  Float
+  name                   String
+  description            String?
+  discountedPrice        Float?
+  images                 String[]
+  weight                 Float?
+  weightUnit             String?
+  stock                  Int?
+  isAvailable            Boolean        @default(true)
+  published              Boolean        @default(false)
+  isAlcohol              Boolean        @default(false)
+  isAgeRestricted        Boolean        @default(false)
+  meta                   Json?
+  attributes             Json?
+  categoryIds            String[]
+  categories             Category[]
+  tags                   Tag[]
+  cartItems              CartItem[]
+  orderItems             OrderItem[]    @relation("originalProduct")
+  replacementFor         OrderItem[]    @relation("replacementFor")
+  wishlistItems          WishlistItem[]
+  chosenAsReplacementFor OrderItem[]    @relation("chosenReplacement")
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
 
   @@unique([vendorId, productId])
 }
@@ -147,11 +148,11 @@ model CartItem {
 }
 
 model OrderItem {
-  id              String        @id @default(uuid())
+  id              String          @id @default(uuid())
   orderId         String
-  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order           Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   vendorProductId String
-  vendorProduct   VendorProduct @relation("originalProduct", fields: [vendorProductId], references: [id])
+  vendorProduct   VendorProduct   @relation("originalProduct", fields: [vendorProductId], references: [id])
   quantity        Int
   instructions    String?
   replacements    VendorProduct[] @relation("replacementFor")
@@ -162,8 +163,8 @@ model OrderItem {
   chosenReplacementId   String?
   chosenReplacement     VendorProduct?  @relation("chosenReplacement", fields: [chosenReplacementId], references: [id], onDelete: SetNull)
   isReplacementApproved Boolean?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
 }
 
 model DeliveryPersonLocation {
@@ -183,7 +184,7 @@ model Device {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   fcmToken  String   @unique // A token should be unique across all devices
-  platform  String   // e.g., "ios", "android", "web"
+  platform  String // e.g., "ios", "android", "web"
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -191,64 +192,83 @@ model Device {
 }
 
 model Order {
-  id                         String           @id @default(uuid())
-  orderCode                  String           @unique
-  userId                     String
-  user                       User             @relation("OrderCustomer", fields: [userId], references: [id], onDelete: Cascade)
-  vendorId                   String
-  vendor                     Vendor           @relation(fields: [vendorId], references: [id])
-  subtotal                   Float
-  deliveryFee                Float?
-  serviceFee                 Float?
-  shoppingFee                Float?
-  shopperTip                 Float? 
-  deliveryPersonTip          Float?
-  totalAmount                Float
-  paymentMethod              PaymentMethods   @default(credit_card)
-  paymentStatus              PaymentStatus    @default(pending)
-  orderStatus                OrderStatus      @default(pending)
-  reasonForDecline           String?
-  deliveryAddressId          String?
-  deliveryAddress            DeliveryAddress? @relation(fields: [deliveryAddressId], references: [id])
-  deliveryInstructions       String?
-  shopperId                  String?
-  shopper                    User?            @relation("OrderShopper", fields: [shopperId], references: [id])
-  deliveryPersonId           String?
-  deliveryPerson             User?            @relation("OrderDeliverer", fields: [deliveryPersonId], references: [id])
-  shoppingMethod             ShoppingMethod?  @default(vendor)
-  deliveryMethod             DeliveryMethod?  @default(customer_pickup)
-  shoppingStartTime          DateTime?
-  scheduledDeliveryTime      DateTime?
-  actualDeliveryTime         DateTime?
-  orderItems                 OrderItem[]
-  createdAt                  DateTime         @default(now())
-  updatedAt                  DateTime         @updatedAt
-  pickupOtp                  String?          // OTP for verifying pickup
-  pickupOtpVerifiedAt        DateTime?        // Timestamp when OTP was verified
-  ratings Rating[]
+  id                      String                   @id @default(uuid())
+  orderCode               String                   @unique
+  userId                  String
+  user                    User                     @relation("OrderCustomer", fields: [userId], references: [id], onDelete: Cascade)
+  vendorId                String
+  vendor                  Vendor                   @relation(fields: [vendorId], references: [id])
+  subtotal                Float
+  deliveryFee             Float?
+  serviceFee              Float?
+  shoppingFee             Float?
+  shopperTip              Float?
+  deliveryPersonTip       Float?
+  totalAmount             Float
+  paymentMethod           PaymentMethods           @default(credit_card)
+  paymentStatus           PaymentStatus            @default(pending)
+  orderStatus             OrderStatus              @default(pending)
+  reasonForDecline        String?
+  deliveryAddressId       String?
+  deliveryAddress         DeliveryAddress?         @relation(fields: [deliveryAddressId], references: [id])
+  deliveryInstructions    String?
+  shopperId               String?
+  shopper                 User?                    @relation("OrderShopper", fields: [shopperId], references: [id])
+  deliveryPersonId        String?
+  deliveryPerson          User?                    @relation("OrderDeliverer", fields: [deliveryPersonId], references: [id])
+  shoppingMethod          ShoppingMethod?          @default(vendor)
+  deliveryMethod          DeliveryMethod?          @default(customer_pickup)
+  shoppingStartTime       DateTime?
+  scheduledDeliveryTime   DateTime?
+  actualDeliveryTime      DateTime?
+  orderItems              OrderItem[]
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  pickupOtp               String? // OTP for verifying pickup
+  pickupOtpVerifiedAt     DateTime? // Timestamp when OTP was verified
+  ratings                 Rating[]
   deliveryPersonLocations DeliveryPersonLocation[]
-  messages                   Message[]
+  messages                Message[]
   transactions            Transaction[]
-  history                    OrderHistory[]
+  history                 OrderHistory[]
+  ReturnRequest           ReturnRequest[]
+}
+
+model ReturnRequest {
+  id           String       @id @default(uuid())
+  orderId      String
+  order        Order        @relation(fields: [orderId], references: [id])
+  userId       String
+  user         User         @relation(fields: [userId], references: [id])
+  vendorId     String
+  vendor       Vendor       @relation(fields: [vendorId], references: [id])
+  driverId     String? // Optional: if you assign a driver for pickup
+  status       ReturnStatus @default(PENDING)
+  items        Json // Stores array of { vendorProductId, quantity, reason }
+  reason       String? // General reason for the return
+  refundAmount Float
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 }
 
 model DeliveryAddress {
-  id           String  @id @default(uuid())
+  id           String   @id @default(uuid())
   userId       String
-  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   label        String?
   addressLine1 String
   addressLine2 String?
   city         String
   state        String?
   postalCode   String?
-  country      String  @default("Nigeria")
+  country      String   @default("Nigeria")
   latitude     Float?
   longitude    Float?
-  isDefault    Boolean @default(false)
+  isDefault    Boolean  @default(false)
   orders       Order[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
   @@index([userId])
 }
 
@@ -290,36 +310,37 @@ model Tag {
 }
 
 model Vendor {
-  id             String               @id @default(uuid())
-  user           User                 @relation("Vendor", fields: [userId], references: [id], onDelete: Restrict)
-  userId         String
-  name           String
-  email          String?
-  mobileNumber   String?
-  mobileVerified Boolean              @default(false)
-  tagline        String?
-  details        String?
-  image          String?
-  address        String?
-  longitude      Float?
-  latitude       Float?
-  timezone       String?              @default("America/New_York")
-  isVerified     Boolean              @default(false)
-  isPublished    Boolean              @default(false)
-  availableForShopping Boolean         @default(true)
-  meta           Json?
-  openingHours   VendorOpeningHours[]
-  carts          Cart[]
-  vendorProducts VendorProduct[]
-  transactions    Transaction[]
-  orders         Order[]
-  staff          User[]               @relation("VendorStaff")
-  ads            Ad[]
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
-  wallet         Wallet?
+  id                   String               @id @default(uuid())
+  user                 User                 @relation("Vendor", fields: [userId], references: [id], onDelete: Restrict)
+  userId               String
+  name                 String
+  email                String?
+  mobileNumber         String?
+  mobileVerified       Boolean              @default(false)
+  tagline              String?
+  details              String?
+  image                String?
+  address              String?
+  longitude            Float?
+  latitude             Float?
+  timezone             String?              @default("America/New_York")
+  isVerified           Boolean              @default(false)
+  isPublished          Boolean              @default(false)
+  availableForShopping Boolean              @default(true)
+  meta                 Json?
+  openingHours         VendorOpeningHours[]
+  carts                Cart[]
+  vendorProducts       VendorProduct[]
+  transactions         Transaction[]
+  orders               Order[]
+  staff                User[]               @relation("VendorStaff")
+  ads                  Ad[]
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  wallet               Wallet?
 
-  ratings Rating[]
+  ratings       Rating[]
+  ReturnRequest ReturnRequest[]
 }
 
 model VendorOpeningHours {
@@ -361,23 +382,23 @@ model Setting {
 }
 
 model Rating {
-  id        String      @id @default(uuid())
-  orderId   String
-  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  raterId   String // The customer who is giving the rating
-  rater     User        @relation("RatingsGiven", fields: [raterId], references: [id], onDelete: Cascade)
+  id      String @id @default(uuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  raterId String // The customer who is giving the rating
+  rater   User   @relation("RatingsGiven", fields: [raterId], references: [id], onDelete: Cascade)
 
   // Who/what is being rated
   ratedVendorId String?
-  ratedVendor   Vendor?     @relation(fields: [ratedVendorId], references: [id], onDelete: Cascade)
+  ratedVendor   Vendor? @relation(fields: [ratedVendorId], references: [id], onDelete: Cascade)
   ratedUserId   String? // If rating a shopper or deliverer
-  ratedUser     User?       @relation("RatingsReceived", fields: [ratedUserId], references: [id], onDelete: Cascade)
+  ratedUser     User?   @relation("RatingsReceived", fields: [ratedUserId], references: [id], onDelete: Cascade)
 
   rating    Int // The score (e.g., 1-5)
   comment   String?
   type      RatingType
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
   @@unique([orderId, type])
 }
@@ -396,57 +417,57 @@ model WishlistItem {
 }
 
 model Notification {
-  id        String           @id @default(uuid())
+  id        String               @id @default(uuid())
   userId    String
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   type      NotificationType
   category  NotificationCategory @default(ORDER)
   title     String
   body      String
-  isRead    Boolean          @default(false)
+  isRead    Boolean              @default(false)
   meta      Json? // To store related IDs like orderId, etc. for deep linking
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
 
   @@index([userId, isRead, createdAt])
 }
 
 model Message {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   content     String
   senderId    String
-  sender      User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  sender      User      @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
   recipientId String
-  recipient   User     @relation("ReceivedMessages", fields: [recipientId], references: [id], onDelete: Cascade)
+  recipient   User      @relation("ReceivedMessages", fields: [recipientId], references: [id], onDelete: Cascade)
   orderId     String
-  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
   readAt      DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([orderId, createdAt])
 }
 
 model Wallet {
-  id           String              @id @default(uuid())
-  balance      Float               @default(0.0)
-  transactions Transaction[]       // Transactions related to wallet top-ups and deductions
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
+  id           String        @id @default(uuid())
+  balance      Float         @default(0.0)
+  transactions Transaction[] // Transactions related to wallet top-ups and deductions
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   // A Wallet can belong to either a User or a Vendor, but not both.
   // The @unique constraint ensures a one-to-one relationship.
-  userId       String?             @unique
-  user         User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  vendorId     String?             @unique
-  vendor       Vendor?             @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  userId   String? @unique
+  user     User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendorId String? @unique
+  vendor   Vendor? @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 }
 
 model BugReport {
-  id          String   @id @default(uuid())
-  description String   @db.Text
+  id          String  @id @default(uuid())
+  description String  @db.Text
   imageUrl    String?
-  isResolved  Boolean  @default(false)
+  isResolved  Boolean @default(false)
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
@@ -472,7 +493,7 @@ model Announcement {
   title          String
   description    String    @db.Text
   imageUrl       String?
-  targetAudience Role[]    // Uses PostgreSQL arrays to store multiple roles (e.g. [customer, vendor])
+  targetAudience Role[] // Uses PostgreSQL arrays to store multiple roles (e.g. [customer, vendor])
   isActive       Boolean   @default(true)
   sentAt         DateTime? // Null means draft; value means it has been broadcasted
   createdAt      DateTime  @default(now())
@@ -493,17 +514,17 @@ enum ContentType {
 }
 
 model Media {
-  id            String    @id @default(uuid())
+  id            String         @id @default(uuid())
   url           String
   type          MediaType
   mimeType      String
   size          Int? // File size in bytes
   name          String? // Original file name
   referenceId   String // ID of the related resource (e.g., user id, product id)
-  referenceType ReferenceType? 
+  referenceType ReferenceType?
   identifier    Identifier? // Optional identifier for categorization (e.g., "profile_picture", "document_scan")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@index([referenceId, referenceType])
 }
@@ -517,11 +538,11 @@ model Ad {
   startDate   DateTime  @default(now())
   endDate     DateTime?
 
-  vendorId    String
-  vendor      Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([vendorId])
 }
@@ -532,7 +553,7 @@ model Transaction {
   user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   walletId    String?
   wallet      Wallet?           @relation(fields: [walletId], references: [id], onDelete: SetNull)
-  vendorId    String?           
+  vendorId    String?
   vendor      Vendor?           @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   amount      Float // Can be positive (credit) or negative (debit)
   type        TransactionType
@@ -541,10 +562,10 @@ model Transaction {
   description String?
 
   // Optional fields for linking and external references
-  orderId     String?
-  order       Order?            @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  externalId  String? // For stripePaymentIntentId, etc.
-  meta        Json? // For paymentMethodDetails, etc.
+  orderId    String?
+  order      Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  externalId String? // For stripePaymentIntentId, etc.
+  meta       Json? // For paymentMethodDetails, etc.
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -590,7 +611,7 @@ model OrderHistory {
   orderId   String
   order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
   status    OrderStatus
-  changedBy String?     // ID of the user who changed the status
+  changedBy String? // ID of the user who changed the status
   user      User?       @relation(fields: [changedBy], references: [id], onDelete: SetNull)
   notes     String?
   createdAt DateTime    @default(now())
@@ -638,7 +659,6 @@ enum TransactionType {
   CREDIT
   DEBIT
 }
-
 
 enum Role {
   customer
@@ -703,6 +723,16 @@ enum OrderStatus {
   // Terminal Failure/Cancellation States
   declined_by_vendor
   cancelled_by_customer
+}
+
+enum ReturnStatus {
+  PENDING
+  APPROVED
+  PICKUP_ASSIGNED
+  PICKED_UP
+  RETURNED
+  REFUNDED
+  REJECTED
 }
 
 enum ShoppingMethod {
@@ -791,7 +821,6 @@ enum NotificationType {
   // Add more as needed
   BUG_REPORT_RECEIVED
   BUG_REPORT_RESOLVED
-  
 }
 
 enum NotificationCategory {

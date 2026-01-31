@@ -168,29 +168,45 @@ import { AuthenticatedRequest } from './vendor.controller';
  *         createdAt: { type: string, format: date-time }
  *         updatedAt: { type: string, format: date-time }
  *     OrderWithRelations:
- *       allOf:
- *         - $ref: '#/components/schemas/Order'
- *         - type: object
- *           properties:
- *             user: { $ref: '#/components/schemas/UserSummary', nullable: true }
- *             shopper: { $ref: '#/components/schemas/UserSummary', nullable: true }
- *             deliveryPerson: { $ref: '#/components/schemas/UserSummary', nullable: true }
- *             orderItems:
- *               type: array
- *               items: { $ref: '#/components/schemas/OrderItemWithRelations' }
- *             vendor: { $ref: '#/components/schemas/VendorWithDetails' }
- *             deliveryAddress: { $ref: '#/components/schemas/DeliveryAddress', nullable: true }
- *     VendorWithDetails:
- *     OrderHistory:
  *       type: object
  *       properties:
  *         id: { type: string, format: uuid }
- *         orderId: { type: string, format: uuid }
- *         status: { $ref: '#/components/schemas/OrderStatus' }
- *         changedBy: { type: string, format: uuid, nullable: true }
- *         notes: { type: string, nullable: true }
+ *         userId: { type: string, format: uuid }
+ *         vendorId: { type: string, format: uuid }
+ *         orderCode: { type: string }
+ *         pickupOtp: { type: string, nullable: true }
+ *         subtotal: { type: number, format: float }
+ *         totalAmount: { type: number, format: float }
+ *         deliveryFee: { type: number, format: float, nullable: true }
+ *         serviceFee: { type: number, format: float, nullable: true }
+ *         shoppingFee: { type: number, format: float, nullable: true }
+ *         shopperTip: { type: number, format: float, nullable: true }
+ *         deliveryPersonTip: { type: number, format: float, nullable: true }
+ *         paymentMethod: { $ref: '#/components/schemas/PaymentMethods' }
+ *         paymentStatus: { $ref: '#/components/schemas/PaymentStatus' }
+ *         orderStatus: { $ref: '#/components/schemas/OrderStatus' }
+ *         deliveryAddressId: { type: string, format: uuid, nullable: true }
+ *         deliveryInstructions: { type: string, nullable: true }
+ *         shopperId: { type: string, format: uuid, nullable: true }
+ *         deliveryPersonId: { type: string, format: uuid, nullable: true }
+ *         shoppingMethod: { $ref: '#/components/schemas/ShoppingMethod' }
+ *         deliveryMethod: { $ref: '#/components/schemas/DeliveryMethod' }
+ *         shoppingStartTime: { type: string, format: date-time, nullable: true }
+ *         scheduledDeliveryTime: { type: string, format: date-time, nullable: true }
+ *         actualDeliveryTime: { type: string, format: date-time, nullable: true }
+ *         pickupOtpVerifiedAt: { type: string, format: date-time, nullable: true }
+ *         reasonForDecline: { type: string, nullable: true }
  *         createdAt: { type: string, format: date-time }
- *         user: { type: object, properties: { id: { type: string }, name: { type: string }, role: { type: string } }, nullable: true }
+ *         updatedAt: { type: string, format: date-time }
+ *         user: { $ref: '#/components/schemas/UserSummary', nullable: true }
+ *         shopper: { $ref: '#/components/schemas/UserSummary', nullable: true }
+ *         deliveryPerson: { $ref: '#/components/schemas/UserSummary', nullable: true }
+ *         orderItems:
+ *           type: array
+ *           items: { $ref: '#/components/schemas/OrderItemWithRelations' }
+ *         vendor: { $ref: '#/components/schemas/VendorWithDetails' }
+ *         deliveryAddress: { $ref: '#/components/schemas/DeliveryAddress', nullable: true }
+ *     VendorWithDetails:
  *       allOf:
  *         - $ref: '#/components/schemas/Vendor'
  *         - type: object
@@ -202,6 +218,16 @@ import { AuthenticatedRequest } from './vendor.controller';
  *                 average: { type: number, format: float }
  *                 count: { type: integer }
  *             distance: { type: number, format: float, nullable: true }
+ *     OrderHistory:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         orderId: { type: string, format: uuid }
+ *         status: { $ref: '#/components/schemas/OrderStatus' }
+ *         changedBy: { type: string, format: uuid, nullable: true }
+ *         notes: { type: string, nullable: true }
+ *         createdAt: { type: string, format: date-time }
+ *         user: { type: object, properties: { id: { type: string }, name: { type: string }, role: { type: string } }, nullable: true }
  *     VendorProductWithProduct:
  *       allOf:
  *         - $ref: '#/components/schemas/VendorProduct'

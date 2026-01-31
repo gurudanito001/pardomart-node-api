@@ -32,6 +32,7 @@ import adRoutes from './ad.routes';
 import announcementRoutes from './announcement.routes';
 import errorLogRoutes from './errorLog.routes';
 import dashboardRoutes from './dashboard.routes';
+import returnRoutes from './return.routes';
 
 // Create a new Router instance
 const router = Router();
@@ -71,6 +72,7 @@ router.use('/api/v1/ads', adRoutes);
 router.use('/api/v1/announcements', announcementRoutes);
 router.use('/api/v1/errors', errorLogRoutes);
 router.use('/api/v1/dashboard', dashboardRoutes);
+router.use('/api/v1/returns', returnRoutes);
 
 
 
