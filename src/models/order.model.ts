@@ -163,6 +163,20 @@ export const findOrdersForVendors = async (filters: GetOrdersForVendorFilters): 
     where.shopperId = filters.shopperId;
   }
 
+  // Add logic to handle shoppingMethod
+  // An order is eligible for a vendor if:
+  // 1. The shopping is done by the vendor ('vendor' shopping method).
+  // 2. Or, if shopping is done by a delivery person, it's only eligible when it's bagged and ready for pickup from the store.
+  where.AND = [
+    ...(where.AND as Prisma.OrderWhereInput[] || []), // preserve existing AND conditions if any
+    {
+      OR: [
+        { shoppingMethod: ShoppingMethod.vendor },
+        { shoppingMethod: ShoppingMethod.delivery_person, orderStatus: OrderStatus.completed_bagging }
+      ]
+    }
+  ];
+
   return prisma.order.findMany({
     where,
     ...orderWithRelations,
