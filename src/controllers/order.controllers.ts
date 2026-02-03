@@ -544,7 +544,7 @@ export const updateOrderController = async (req: Request, res: Response) => {
   try {
     const orderId = req.params.id;
     const updates = req.body;
-
+    console.log(`Updating order ${orderId} with data:`, JSON.stringify(updates, null, 2));
     const updatedOrder = await updateOrderService(orderId, updates);
     res.status(200).json(updatedOrder);
   } catch (error: any) {
