@@ -708,7 +708,7 @@ enum OrderStatus {
 
   // Active Delivery Flow
   en_route_to_pickup // Delivery person has accepted the order and is on the way to the store to pick it up .
-  arrived_at_store
+  arrived_at_store // Delivery person has arrived at the store/vendor location.
   en_route_to_delivery // Delivery person is delivering the order to the customer.
   arrived_at_customer_location
   en_route_to_return_pickup // Delivery person is returning to pick up the order after a failed delivery attempt.
