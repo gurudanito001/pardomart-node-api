@@ -623,7 +623,11 @@ export const updateOrderStatusService = async (
     // --- Phase 1: Pickup & Shop ---
     case OrderStatus.en_route_to_pickup:
       assertHasRole([Role.delivery_person]);
-      assertPreviousStatus([OrderStatus.accepted_for_delivery]);
+      if (order.shoppingMethod === ShoppingMethod.delivery_person && order.deliveryMethod === DeliveryMethod.delivery_person) {
+        assertPreviousStatus([OrderStatus.accepted_for_shopping]);
+      } else {
+        assertPreviousStatus([OrderStatus.accepted_for_delivery]);
+      }
       assertIsDeliveryPerson();
       break;
 
