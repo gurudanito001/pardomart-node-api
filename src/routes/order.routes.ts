@@ -68,6 +68,12 @@ router.patch(
   authorize([Role.delivery_person]),
   orderController.acceptOrderForDeliveryController
 );
+router.post(
+  '/:orderId/complete-delivery',
+  authenticate,
+  authorize([Role.delivery_person]),
+  orderController.completeDeliveryController
+);
 router.get('/:id', validate(validateGetOrDeleteOrder), orderController.getOrderByIdController);
 router.get('/:id/history', validate(validateGetOrDeleteOrder), orderController.getOrderHistoryController);
 router.patch('/:id', validate(validateUpdateOrder), orderController.updateOrderController);

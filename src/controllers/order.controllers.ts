@@ -25,6 +25,7 @@ import {
   getOrdersForDeliveryPersonService,
   getAvailableOrdersForDeliveryService,
   acceptOrderForDeliveryService,
+  completeDeliveryService,
   getActiveOrderService,
   getOrderHistoryService
 } from '../services/order.service'; // Adjust the path if needed
@@ -1204,6 +1205,67 @@ export const acceptOrderForDeliveryController = async (req: AuthenticatedRequest
       return res.status(error.statusCode).json({ error: error.message });
     }
     console.error('Error accepting order for delivery:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+};
+
+/**
+ * @swagger
+ * /order/{orderId}/complete-delivery:
+ *   post:
+ *     summary: Complete delivery with proof of delivery image
+ *     tags: [Order]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Updates the order status to delivered and saves the proof of delivery image.
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [proofOfDeliveryImage]
+ *             properties:
+ *               proofOfDeliveryImage:
+ *                 type: string
+ *                 description: Base64 encoded image string.
+ *     responses:
+ *       200: { description: "Order completed successfully." }
+ *       400: { description: "Bad request." }
+ *       403: { description: "Forbidden." }
+ */
+export const completeDeliveryController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { orderId } = req.params;
+    const deliveryPersonId = req.userId as string;
+    const { proofOfDeliveryImage } = req.body;
+
+    if (!proofOfDeliveryImage) {
+      return res.status(400).json({ error: 'Proof of delivery image is required.' });
+    }
+
+    // Sanitize base64: remove data URI prefix if it exists
+    let imagePayload = proofOfDeliveryImage;
+    if (imagePayload.startsWith('data:')) {
+      const parts = imagePayload.split(',');
+      if (parts.length < 2) {
+        return res.status(400).json({ error: 'Invalid proof of delivery image format.' });
+      }
+      imagePayload = parts[1];
+    }
+
+    const completedOrder = await completeDeliveryService(orderId, deliveryPersonId, imagePayload);
+    res.status(200).json(completedOrder);
+  } catch (error: any) {
+    if (error instanceof OrderCreationError) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+    console.error('Error completing delivery:', error);
     res.status(500).json({ error: 'Internal server error.' });
   }
 };

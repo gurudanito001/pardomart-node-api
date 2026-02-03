@@ -116,6 +116,7 @@ export interface UpdateOrderPayload {
   shoppingStartTime?: Date;
   scheduledDeliveryTime?: Date;
   actualDeliveryTime?: Date;
+  proofOfDeliveryImageUrl?: string;
 }
 
 export const updateOrder = async (

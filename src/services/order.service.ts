@@ -1,10 +1,8 @@
-
-
 import { Request, Response, Router } from 'express';
 import * as orderModel from '../models/order.model';
 import * as orderHistoryModel from '../models/orderHistory.model';
 import * as vendorModel from '../models/vendor.model'; // Add this import for vendorModel
-import { PrismaClient, Order, OrderItem, Role, ShoppingMethod, OrderStatus, DeliveryMethod, VendorProduct, Product, DeliveryAddress, Prisma, PaymentMethods, OrderItemStatus, PaymentStatus, TransactionType, TransactionSource, TransactionStatus, NotificationCategory, NotificationType } from '@prisma/client';
+import { PrismaClient, Order, OrderItem, Role, ShoppingMethod, OrderStatus, DeliveryMethod, VendorProduct, Product, DeliveryAddress, Prisma, PaymentMethods, OrderItemStatus, PaymentStatus, TransactionType, TransactionSource, TransactionStatus, NotificationCategory, NotificationType, ReferenceType } from '@prisma/client';
 import dayjs from 'dayjs';
 import { calculateOrderFeesService } from './fee.service';
 import { getVendorById } from './vendor.service';
@@ -17,6 +15,8 @@ import * as notificationService from './notification.service';
 import * as transactionModel from '../models/transaction.model';
 import Stripe from 'stripe';
 import { Or } from '@prisma/client/runtime/library';
+import { uploadMedia } from './media.service';
+import { Readable } from 'stream';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -1975,6 +1975,151 @@ export const acceptOrderForDeliveryService = async (orderId: string, deliveryPer
 
     return updatedOrder;
   });
+};
+
+/**
+ * Completes the delivery process for an order.
+ * This is called when the delivery person takes a picture of the package at the doorstep.
+ * It updates the status to 'delivered', saves the proof of delivery image, and triggers payouts.
+ *
+ * @param orderId The ID of the order.
+ * @param deliveryPersonId The ID of the delivery person performing the action.
+ * @param proofOfDeliveryImage The base64 string or URL of the proof of delivery image.
+ */
+export const completeDeliveryService = async (
+  orderId: string,
+  deliveryPersonId: string,
+  proofOfDeliveryImage: string
+): Promise<Order> => {
+  const order = await orderModel.getOrderById(orderId);
+
+  if (!order) {
+    throw new OrderCreationError('Order not found.', 404);
+  }
+
+  if (order.deliveryPersonId !== deliveryPersonId) {
+    throw new OrderCreationError('You are not the assigned delivery person for this order.', 403);
+  }
+
+  if (order.orderStatus !== OrderStatus.arrived_at_customer_location) {
+    throw new OrderCreationError('Order must be at the customer location before completing delivery.', 400);
+  }
+
+  let proofOfDeliveryImageUrl = proofOfDeliveryImage;
+
+  // Handle Base64 Image Upload
+  if (proofOfDeliveryImage && !proofOfDeliveryImage.startsWith('http')) {
+    try {
+      const imageBuffer = Buffer.from(proofOfDeliveryImage, 'base64');
+      const mockFile: Express.Multer.File = {
+        fieldname: 'image',
+        originalname: `${orderId}-proof-of-delivery.jpg`,
+        encoding: '7bit',
+        mimetype: 'image/jpeg',
+        buffer: imageBuffer,
+        size: imageBuffer.length,
+        stream: new Readable(),
+        destination: '',
+        filename: '',
+        path: '',
+      };
+
+      const uploadResult = await uploadMedia(mockFile, orderId, ReferenceType.other);
+      proofOfDeliveryImageUrl = uploadResult.cloudinaryResult.secure_url;
+    } catch (error) {
+      console.error('Error uploading proof of delivery image:', error);
+      throw new OrderCreationError('Failed to upload proof of delivery image.');
+    }
+  }
+
+  const updates: orderModel.UpdateOrderPayload = {
+    orderStatus: OrderStatus.delivered,
+    actualDeliveryTime: new Date(),
+    proofOfDeliveryImageUrl,
+  };
+
+  const completedOrder = await prisma.$transaction(async (tx) => {
+    // 1. Pay Vendor
+    const vendorAmount = order.subtotal;
+    if (vendorAmount > 0 && order.vendor.userId) {
+      await tx.wallet.update({
+        where: { vendorId: order.vendorId },
+        data: { balance: { increment: vendorAmount } }
+      });
+      await tx.transaction.create({
+        data: {
+          vendorId: order.vendorId,
+          userId: order.vendor.userId,
+          amount: vendorAmount,
+          type: TransactionType.VENDOR_PAYOUT,
+          source: TransactionSource.SYSTEM,
+          status: 'COMPLETED',
+          description: `Payment for order #${order.id.substring(0, 8)}`,
+          orderId: order.id,
+        },
+      });
+    }
+
+    // 2. Pay Shopper Tip
+    if (order.shopperId && order.shopperTip && order.shopperTip > 0) {
+      await tx.wallet.update({
+        where: { userId: order.shopperId },
+        data: { balance: { increment: order.shopperTip } },
+      });
+      await tx.transaction.create({
+        data: {
+          userId: order.shopperId,
+          amount: order.shopperTip,
+          type: TransactionType.TIP_PAYOUT,
+          source: TransactionSource.SYSTEM,
+          status: 'COMPLETED',
+          description: `Tip for order #${order.id.substring(0, 8)}`,
+          orderId: order.id,
+        },
+      });
+    }
+
+    // 3. Pay Delivery Person Tip
+    if (order.deliveryPersonId && order.deliveryPersonTip && order.deliveryPersonTip > 0) {
+      await tx.wallet.update({
+        where: { userId: order.deliveryPersonId },
+        data: { balance: { increment: order.deliveryPersonTip } },
+      });
+      await tx.transaction.create({
+        data: {
+          userId: order.deliveryPersonId,
+          amount: order.deliveryPersonTip,
+          type: TransactionType.TIP_PAYOUT,
+          source: TransactionSource.SYSTEM,
+          status: 'COMPLETED',
+          description: `Tip for order #${order.id.substring(0, 8)}`,
+          orderId: order.id,
+        },
+      });
+    }
+
+    // 4. Update Order and History
+    await orderHistoryModel.createOrderHistory({
+      orderId: order.id,
+      status: OrderStatus.delivered,
+      changedBy: deliveryPersonId,
+      notes: 'Delivered with proof of delivery',
+    }, tx);
+
+    return orderModel.updateOrder(orderId, updates, tx);
+  });
+
+  // Notifications
+  await notificationService.createNotification({
+    userId: order.userId,
+    type: NotificationType.DELIVERED,
+    category: NotificationCategory.ORDER,
+    title: 'Order Delivered',
+    body: `Your order #${order.orderCode} has been delivered. View the proof of delivery in the app.`,
+    meta: { orderId: order.id },
+  });
+
+  return completedOrder;
 };
 
 /**

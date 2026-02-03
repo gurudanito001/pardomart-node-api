@@ -226,6 +226,7 @@ model Order {
   updatedAt               DateTime                 @updatedAt
   pickupOtp               String? // OTP for verifying pickup
   pickupOtpVerifiedAt     DateTime? // Timestamp when OTP was verified
+  proofOfDeliveryImageUrl String?   // Image of the delivered package
   ratings                 Rating[]
   deliveryPersonLocations DeliveryPersonLocation[]
   messages                Message[]
