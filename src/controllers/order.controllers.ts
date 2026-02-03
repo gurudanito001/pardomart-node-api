@@ -72,7 +72,7 @@ import { AuthenticatedRequest } from './vendor.controller';
  *       enum: [pending, paid, failed, refunded]
  *     OrderStatus:
  *       type: string
- *       enum: [pending, accepted_for_shopping, accepted_for_delivery, currently_shopping, bagging_items, ready_for_pickup, ready_for_delivery, en_route_to_pickup, arrived_at_store, en_route_to_delivery, arrived_at_customer_location, en_route_to_return_pickup, arrived_at_return_pickup_location, en_route_to_return_to_store, returned_to_store, delivered, picked_up_by_customer, declined_by_vendor, cancelled_by_customer]
+ *       enum: [pending, accepted_for_shopping, accepted_for_delivery, currently_shopping, completed_bagging, ready_for_pickup, ready_for_delivery, en_route_to_pickup, arrived_at_store, en_route_to_delivery, arrived_at_customer_location, en_route_to_return_pickup, arrived_at_return_pickup_location, en_route_to_return_to_store, returned_to_store, delivered, picked_up_by_customer, declined_by_vendor, cancelled_by_customer]
  *     ShoppingMethod:
  *       type: string
  *       enum: [vendor, delivery_person]
@@ -1304,7 +1304,7 @@ export const adminGetAllOrdersController = async (req: Request, res: Response) =
             OrderStatus.accepted_for_shopping,
             OrderStatus.accepted_for_delivery,
             OrderStatus.currently_shopping,
-            OrderStatus.bagging_items,
+            OrderStatus.completed_bagging,
             
             OrderStatus.en_route_to_pickup,
             OrderStatus.arrived_at_store,

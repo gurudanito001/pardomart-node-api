@@ -643,7 +643,7 @@ export const updateOrderStatusService = async (
       assertIsShopper();
       break;
 
-    case OrderStatus.bagging_items:
+    case OrderStatus.completed_bagging:
       assertHasRole([Role.store_shopper, Role.store_admin, Role.delivery_person]);
       assertPreviousStatus([OrderStatus.currently_shopping]);
       assertIsShopper();
@@ -651,7 +651,7 @@ export const updateOrderStatusService = async (
 
     case OrderStatus.ready_for_delivery:
       assertHasRole([Role.store_shopper, Role.store_admin, Role.delivery_person]);
-      assertPreviousStatus([OrderStatus.bagging_items]);
+      assertPreviousStatus([OrderStatus.completed_bagging]);
       assertIsShopper();
       break;
 
@@ -1608,8 +1608,8 @@ export const verifyPickupOtpService = async (
     let nextStatus: OrderStatus;
     if (order.deliveryMethod === DeliveryMethod.customer_pickup && order.orderStatus === OrderStatus.ready_for_pickup) {
       nextStatus = OrderStatus.picked_up_by_customer;
-    } else if (order.deliveryMethod === DeliveryMethod.delivery_person && order.orderStatus === OrderStatus.ready_for_delivery) {
-      nextStatus = OrderStatus.en_route_to_delivery;
+    } else if (order.deliveryMethod === DeliveryMethod.delivery_person && order.orderStatus === OrderStatus.completed_bagging) {
+      nextStatus = OrderStatus.ready_for_delivery;
     } else {
       throw new OrderCreationError(`Order is not ready for pickup. Current status: ${order.orderStatus}`, 400);
     }

@@ -700,7 +700,7 @@ enum OrderStatus {
   accepted_for_shopping
   accepted_for_delivery
   currently_shopping
-  bagging_items
+  completed_bagging
 
   // Handoff States (Shopping is complete)
   ready_for_pickup

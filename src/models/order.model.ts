@@ -272,7 +272,7 @@ export const findActiveOrderForUser = async (userId: string): Promise<OrderWithR
             in: [
               OrderStatus.accepted_for_shopping,
               OrderStatus.currently_shopping,
-              OrderStatus.bagging_items,
+              OrderStatus.completed_bagging,
             ],
           },
         },
