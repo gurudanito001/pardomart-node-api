@@ -15,6 +15,7 @@ export const sendVerificationCode = async (mobileNumber: string, verificationCod
 
             // Check if real SMTP credentials are provided in environment variables
             if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+                console.log('Initializing production SMTP transporter...');
                 transporter = nodemailer.createTransport({
                     host: process.env.SMTP_HOST,
                     port: Number(process.env.SMTP_PORT) || 587,
@@ -26,6 +27,7 @@ export const sendVerificationCode = async (mobileNumber: string, verificationCod
                 });
             } else {
                 // Fallback to Ethereal for development if no real SMTP is configured
+                console.log('SMTP environment variables not set. Falling back to Ethereal transport.');
                 const testAccount = await nodemailer.createTestAccount();
                 transporter = nodemailer.createTransport({
                     host: "smtp.ethereal.email",
