@@ -56,8 +56,8 @@ export const getUserById = async (userId: string) => {
   return userModel.getUserById(userId);
 };
 
-export const createUser = async (payload: CreateUserPayload) => {
-  return userModel.createUser(payload);
+export const createUser = async (payload: CreateUserPayload, tx?: Prisma.TransactionClient) => {
+  return userModel.createUser(payload, tx);
 };
 
 export const updateUser = async (id: string, payload: UpdateUserPayload) => {
@@ -125,7 +125,7 @@ export const exportAdminsService = async () => {
 };
 
 export const createAdminService = async (payload: CreateUserPayload) => {
-  return userModel.createUser({ ...payload, role: Role.admin });
+  return userModel.createUser({ ...payload, role: Role.admin }, undefined);
 };
 
 export const updateAdminService = async (id: string, payload: UpdateUserPayload) => {

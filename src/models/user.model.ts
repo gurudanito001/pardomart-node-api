@@ -92,8 +92,9 @@ export interface CreateUserPayload {
   referralCode?: string;
 }
 
-export const createUser = async (payload: CreateUserPayload): Promise<User> => {
-  return prisma.user.create({
+export const createUser = async (payload: CreateUserPayload, tx: Prisma.TransactionClient | undefined): Promise<User> => {
+  const db = tx || prisma;
+  return db.user.create({
     data: {
       name: payload.name,
       email: payload.email,

@@ -1,4 +1,4 @@
-import { PrismaClient, Role, User } from '@prisma/client';
+import { PrismaClient, Role, User, Prisma } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
@@ -40,10 +40,12 @@ export const findUserForLogin = async (mobileNumber: string, role: Role): Promis
  * Stores a verification code for a mobile number.
  * @param mobileNumber The mobile number.
  * @param code The verification code.
+ * @param tx Optional Prisma transaction client.
  */
-export const storeVerificationCode = async (mobileNumber: string, code: string): Promise<void> => {
+export const storeVerificationCode = async (mobileNumber: string, code: string, tx?: Prisma.TransactionClient): Promise<void> => {
+  const db = tx || prisma;
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
-  await prisma.verification.upsert({
+  await db.verification.upsert({
     where: { mobileNumber },
     create: { mobileNumber, code, expiresAt, attempts: 0 },
     update: { code, expiresAt, attempts: 0 },

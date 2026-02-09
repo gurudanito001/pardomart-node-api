@@ -58,11 +58,13 @@ const prisma = new PrismaClient();
  */
 export const registerUser = async (req: Request, res: Response) => {
   try {
-    const newUser = await userService.createUser(req.body);
+    await prisma.$transaction(async (tx) => {
+      const newUser = await userService.createUser(req.body, tx);
 
-    const verificationCode = generateVerificationCode();
-    await authService.storeVerificationCode(newUser?.mobileNumber, verificationCode);
-    await sendVerificationCode(newUser?.mobileNumber, verificationCode);
+      const verificationCode = generateVerificationCode();
+      await authService.storeVerificationCode(newUser?.mobileNumber, verificationCode, tx);
+      await sendVerificationCode(newUser?.mobileNumber, verificationCode, newUser?.email);
+    });
 
     res.status(201).json({ message: 'Verification code sent' });
   } catch (error: any) {
@@ -168,9 +170,11 @@ export const initiateLogin = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'User not found.' });
     }
 
-    const verificationCode = generateVerificationCode();
-    await authService.storeVerificationCode(mobileNumber, verificationCode);
-    await sendVerificationCode(mobileNumber, verificationCode);
+    await prisma.$transaction(async (tx) => {
+      const verificationCode = generateVerificationCode();
+      await authService.storeVerificationCode(mobileNumber, verificationCode, tx);
+      await sendVerificationCode(mobileNumber, verificationCode, user.email);
+    });
 
     // Return the actual role found for the user
     res.status(200).json({ success: true, role: user.role });

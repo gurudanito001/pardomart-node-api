@@ -122,7 +122,7 @@ export const deleteMedia = async (id: string) => {
 
   const cloudInfo = getCloudinaryPublicId(media.url);
   if (cloudInfo) {
-    await cloudinary.uploader.destroy(cloudInfo.publicId, { resource_types: cloudInfo.resourceType });
+    await cloudinary.uploader.destroy(cloudInfo.publicId, { resource_type: cloudInfo.resourceType });
   }
 
   return prisma.media.delete({ where: { id } });
