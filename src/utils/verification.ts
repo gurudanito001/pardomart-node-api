@@ -1,5 +1,7 @@
 // utils/verification.ts
+
 import nodemailer from 'nodemailer';
+import sgMail from '@sendgrid/mail';
 
 export const generateVerificationCode = (): string => {
   //return '123456'
@@ -11,11 +13,24 @@ export const sendVerificationCode = async (mobileNumber: string, verificationCod
 
     if (email) {
         try {
-            let transporter;
-
-            // Check if real SMTP credentials are provided in environment variables
-            if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-                console.log('Initializing production SMTP transporter...');
+            // Prioritize SendGrid if API key is available (recommended for production)
+            if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_FROM_EMAIL) {
+                console.log('Initializing SendGrid transporter...');
+                sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+                const msg = {
+                    to: email,
+                    from: process.env.SENDGRID_FROM_EMAIL, // Important: Use a verified sender email/domain
+                    subject: 'Your Verification Code',
+                    text: `Your verification code is: ${verificationCode}`,
+                    html: `<b>Your verification code is: ${verificationCode}</b>`,
+                };
+                await sgMail.send(msg);
+                console.log("Message sent successfully via SendGrid.");
+            
+            } else if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+                // Fallback to generic SMTP
+                console.log('Initializing generic SMTP transporter...');
+                let transporter;
                 transporter = nodemailer.createTransport({
                     host: process.env.SMTP_HOST,
                     port: Number(process.env.SMTP_PORT) || 587,
@@ -25,9 +40,19 @@ export const sendVerificationCode = async (mobileNumber: string, verificationCod
                         pass: process.env.SMTP_PASS,
                     },
                 });
+                const info = await transporter.sendMail({
+                    from: process.env.SMTP_FROM || '"Pardomart Support" <no-reply@pardomart.com>', // sender address
+                    to: email, // list of receivers
+                    subject: "Your Verification Code", // Subject line
+                    text: `Your verification code is: ${verificationCode}`, // plain text body
+                    html: `<b>Your verification code is: ${verificationCode}</b>`, // html body
+                });
+                console.log("Message sent: %s", info.messageId);
+
             } else {
                 // Fallback to Ethereal for development if no real SMTP is configured
-                console.log('SMTP environment variables not set. Falling back to Ethereal transport.');
+                console.log('SendGrid/SMTP environment variables not set. Falling back to Ethereal transport.');
+                let transporter;
                 const testAccount = await nodemailer.createTestAccount();
                 transporter = nodemailer.createTransport({
                     host: "smtp.ethereal.email",
@@ -38,24 +63,23 @@ export const sendVerificationCode = async (mobileNumber: string, verificationCod
                         pass: testAccount.pass,
                     },
                 });
+                const info = await transporter.sendMail({
+                    from: '"Pardomart Support" <no-reply@pardomart.com>', // sender address
+                    to: email, // list of receivers
+                    subject: "Your Verification Code", // Subject line
+                    text: `Your verification code is: ${verificationCode}`, // plain text body
+                    html: `<b>Your verification code is: ${verificationCode}</b>`, // html body
+                });
+                console.log("Message sent: %s", info.messageId);
+                if (nodemailer.getTestMessageUrl(info)) {
+                    console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
+                }
             }
-
-            // send mail with defined transport object
-            const info = await transporter.sendMail({
-                from: process.env.SMTP_FROM || '"Pardomart Support" <no-reply@pardomart.com>', // sender address
-                to: email, // list of receivers
-                subject: "Your Verification Code", // Subject line
-                text: `Your verification code is: ${verificationCode}`, // plain text body
-                html: `<b>Your verification code is: ${verificationCode}</b>`, // html body
-            });
-
-            console.log("Message sent: %s", info.messageId);
-            // Preview only available when sending through an Ethereal account
-            if (nodemailer.getTestMessageUrl(info)) {
-                console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
-            }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error sending email verification:", error);
+            if (error.response) {
+              console.error('SendGrid Error Body:', error.response.body);
+            }
             throw error;
         }
     }
