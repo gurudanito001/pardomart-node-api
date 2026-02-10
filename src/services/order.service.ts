@@ -868,7 +868,11 @@ export const updateOrderStatusService = async (
 
 interface TimeSlot {
   date: string;
-  timeSlots: string[];
+  timeSlots: {
+    start: string; // ISO 8601 UTC string
+    end: string;   // ISO 8601 UTC string
+    display: string; // User-friendly local time string
+  }[];
 }
 
 /**
@@ -942,7 +946,7 @@ export const getAvailableDeliverySlots = async (
       firstSlotStart = firstSlotStart.add(1, 'hour').startOf('hour');
     }
 
-    const timeSlots: string[] = [];
+    const timeSlots: TimeSlot['timeSlots'] = [];
     let currentSlotStart = firstSlotStart;
 
     // Generate 1-hour slots until the start of the next slot is past the latest end time.
@@ -952,9 +956,11 @@ export const getAvailableDeliverySlots = async (
       if (slotEnd.isAfter(latestSlotEndTime)) {
         break;
       }
-      timeSlots.push(
-        `${currentSlotStart.format('h:mma')} - ${slotEnd.format('h:mma')}`.toLowerCase()
-      );
+      timeSlots.push({
+        start: currentSlotStart.utc().toISOString(),
+        end: slotEnd.utc().toISOString(),
+        display: `${currentSlotStart.format('h:mma')} - ${slotEnd.format('h:mma')}`.toLowerCase(),
+      });
       currentSlotStart = currentSlotStart.add(1, 'hour');
     }
 

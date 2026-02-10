@@ -290,15 +290,31 @@ import { AuthenticatedRequest } from './vendor.controller';
  *     UpdateTipPayload:
  *       type: object
  *       properties:
- *         shopperTip: { type: number, format: float }
- *         deliveryPersonTip: { type: number, format: float }
+ *         shopperTip: { type: number, format: float, description: "Optional. Tip for the shopper." }
+ *         deliveryPersonTip: { type: number, format: float, description: "Optional. Tip for the delivery person." }
  *     DeliverySlot:
  *       type: object
  *       properties:
  *         date: { type: string, example: "27-09-2025" }
  *         timeSlots:
  *           type: array
- *           items: { type: string, example: "9:00am - 10:00am" }
+ *           items:
+ *             type: object
+ *             properties:
+ *               start:
+ *                 type: string
+ *                 format: date-time
+ *                 description: The start time of the slot in UTC (ISO 8601 format).
+ *                 example: "2025-09-27T13:00:00.000Z"
+ *               end:
+ *                 type: string
+ *                 format: date-time
+ *                 description: The end time of the slot in UTC (ISO 8601 format).
+ *                 example: "2025-09-27T14:00:00.000Z"
+ *               display:
+ *                 type: string
+ *                 description: The user-friendly display string in the vendor's local time.
+ *                 example: "9:00am - 10:00am"
  *     DeclineOrderPayload:
  *       type: object
  *       properties:
