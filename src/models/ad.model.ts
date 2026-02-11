@@ -53,9 +53,10 @@ export const getAdById = async (id: string): Promise<Ad | null> => {
 /**
  * Retrieves a list of ads based on filters.
  * @param filters - The filtering criteria.
- * @returns An array of ad objects.
+ * @param pagination - The pagination options.
+ * @returns An object containing ads and pagination info.
  */
-export const listAds = async (filters: ListAdsFilters): Promise<Ad[]> => {
+export const listAds = async (filters: ListAdsFilters, pagination: { page: number; take: number }) => {
   const where: Prisma.AdWhereInput = {};
 
   if (filters.isActive !== undefined) {
@@ -71,11 +72,28 @@ export const listAds = async (filters: ListAdsFilters): Promise<Ad[]> => {
     where.vendorId = filters.vendorId;
   }
 
-  return prisma.ad.findMany({
-    where,
-    include: { vendor: { select: { id: true, name: true } } },
-    orderBy: { createdAt: 'desc' },
-  });
+  const skip = (pagination.page - 1) * pagination.take;
+
+  const [ads, total] = await prisma.$transaction([
+    prisma.ad.findMany({
+      where,
+      include: { vendor: { select: { id: true, name: true } } },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: pagination.take,
+    }),
+    prisma.ad.count({ where }),
+  ]);
+
+  return {
+    data: ads,
+    pagination: {
+      total,
+      page: pagination.page,
+      limit: pagination.take,
+      totalPages: Math.ceil(total / pagination.take),
+    },
+  };
 };
 
 /**

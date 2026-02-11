@@ -46,10 +46,11 @@ export const createAdService = async (payload: CreateAdServicePayload): Promise<
 /**
  * Retrieves a list of ads based on filters.
  * @param filters - The filtering criteria.
- * @returns An array of ad objects.
+ * @param pagination - The pagination options.
+ * @returns An object containing ads and pagination info.
  */
-export const listAdsService = async (filters: adModel.ListAdsFilters): Promise<Ad[]> => {
-  return adModel.listAds(filters);
+export const listAdsService = async (filters: adModel.ListAdsFilters, pagination: { page: number; take: number }) => {
+  return adModel.listAds(filters, pagination);
 };
 
 /**

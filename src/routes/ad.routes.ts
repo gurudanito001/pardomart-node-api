@@ -23,6 +23,19 @@ const upload = multer({ storage: multer.memoryStorage() });
  *         isActive: { type: boolean }
  *         startDate: { type: string, format: date-time }
  *         endDate: { type: string, format: date-time, nullable: true }
+ *     PaginatedAds:
+ *       type: object
+ *       properties:
+ *         data:
+ *           type: array
+ *           items: { "$ref": "#/components/schemas/Ad" }
+ *         pagination:
+ *           type: object
+ *           properties:
+ *             total: { type: integer }
+ *             page: { type: integer }
+ *             limit: { type: integer }
+ *             totalPages: { type: integer }
  *     CreateAdPayload:
  *       type: object
  *       required: [title, vendorId, image]

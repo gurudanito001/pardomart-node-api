@@ -69,20 +69,31 @@ export const createAdController = async (req: Request, res: Response) => {
  *         name: vendorId
  *         schema: { type: string, format: uuid }
  *         description: "Filter ads for a specific store."
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *         description: "Page number for pagination."
+ *       - in: query
+ *         name: size
+ *         schema: { type: integer, default: 5 }
+ *         description: "Number of items per page."
  *     responses:
  *       200:
- *         description: A list of ads.
- *         content: { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Ad" } } } }
+ *         description: A paginated list of ads.
+ *         content: { "application/json": { "schema": { "$ref": "#/components/schemas/PaginatedAds" } } }
  */
 export const listAdsController = async (req: Request, res: Response) => {
   try {
-    const { isActive, vendorId } = req.query;
+    const { isActive, vendorId, page, size } = req.query;
     const filters: any = {};
     if (isActive !== undefined) filters.isActive = isActive === 'true';
     if (vendorId) filters.vendorId = vendorId as string;
 
-    const ads = await adService.listAdsService(filters);
-    res.status(200).json(ads);
+    const pageNum = parseInt(page as string) || 1;
+    const takeNum = parseInt(size as string) || 5;
+
+    const result = await adService.listAdsService(filters, { page: pageNum, take: takeNum });
+    res.status(200).json(result);
   } catch (error) {
     console.error('Error listing ads:', error);
     res.status(500).json({ error: 'Internal server error' });
