@@ -1344,7 +1344,7 @@ export const updateOrderItemShoppingStatusService = async (
   const [order, requestingUser] = await Promise.all([
     prisma.order.findUnique({
       where: { id: orderId },
-      select: { shopperId: true, deliveryPersonId: true, userId: true, vendorId: true, shoppingMethod: true },
+      select: { shopperId: true, deliveryPersonId: true, userId: true, vendorId: true, shoppingMethod: true, orderStatus: true },
     }),
     prisma.user.findUnique({
       where: { id: shopperId },
@@ -1369,6 +1369,20 @@ export const updateOrderItemShoppingStatusService = async (
 
   if (!isAssignedShopperByVendor && !isAssignedShopperAsDeliveryPerson && !isStoreAdmin && !isVendorOwner) {
     throw new OrderCreationError('You are not authorized to update this order item.', 403);
+  }
+
+  // Automatically update order status to currently_shopping if it isn't already
+  if (order.orderStatus !== OrderStatus.currently_shopping) {
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { orderStatus: OrderStatus.currently_shopping },
+    });
+    await orderHistoryModel.createOrderHistory({
+      orderId,
+      status: OrderStatus.currently_shopping,
+      changedBy: shopperId,
+      notes: 'Shopping started automatically via item update',
+    });
   }
 
   // Validate payload logic
