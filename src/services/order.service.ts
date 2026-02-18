@@ -649,6 +649,12 @@ export const updateOrderStatusService = async (
       assertIsShopper();
       break;
 
+    case OrderStatus.ready_for_pickup:
+      assertHasRole([Role.store_shopper, Role.store_admin, Role.delivery_person, Role.vendor]);
+      assertPreviousStatus([OrderStatus.completed_bagging]);
+      assertIsShopper();
+      break;
+
     case OrderStatus.ready_for_delivery:
       assertHasRole([Role.store_shopper, Role.store_admin, Role.delivery_person]);
       assertPreviousStatus([OrderStatus.completed_bagging]);
@@ -776,87 +782,91 @@ export const updateOrderStatusService = async (
 
 
   // --- Add Notification Logic Here ---
-  const orderDetails = order; // Use the already fetched order
-  if (orderDetails) {
-    switch (status as OrderStatus) {
-      case OrderStatus.ready_for_pickup:
-        await notificationService.createNotification({
-          userId: orderDetails.userId,
-          type: NotificationType.ORDER_READY_FOR_PICKUP,
-          category: NotificationCategory.ORDER,
-          title: 'Your order is ready for pickup!',
-          body: `Order #${orderDetails.orderCode} is now ready for pickup at ${orderDetails.vendor.name}.`,
-          meta: { orderId: orderId }
-        });
-        break;
+  try {
+    const orderDetails = order; // Use the already fetched order
+    if (orderDetails) {
+      switch (status as OrderStatus) {
+        case OrderStatus.ready_for_pickup:
+          await notificationService.createNotification({
+            userId: orderDetails.userId,
+            type: NotificationType.ORDER_READY_FOR_PICKUP,
+            category: NotificationCategory.ORDER,
+            title: 'Your order is ready for pickup!',
+            body: `Order #${orderDetails.orderCode} is now ready for pickup at ${orderDetails.vendor.name}.`,
+            meta: { orderId: orderId }
+          });
+          break;
 
-      case OrderStatus.en_route_to_delivery:
-        await notificationService.createNotification({
-          userId: orderDetails.userId,
-          type: NotificationType.EN_ROUTE,
-          category: NotificationCategory.ORDER,
-          title: 'Your order is on the way!',
-          body: `Your delivery person is en route with order #${orderDetails.orderCode}.`,
-          meta: { orderId: orderId }
-        });
-        break;
+        case OrderStatus.en_route_to_delivery:
+          await notificationService.createNotification({
+            userId: orderDetails.userId,
+            type: NotificationType.EN_ROUTE,
+            category: NotificationCategory.ORDER,
+            title: 'Your order is on the way!',
+            body: `Your delivery person is en route with order #${orderDetails.orderCode}.`,
+            meta: { orderId: orderId }
+          });
+          break;
 
-      case OrderStatus.arrived_at_store:
-        await notificationService.createNotification({
-          userId: orderDetails.vendor.userId,
-          type: NotificationType.EN_ROUTE,
-          category: NotificationCategory.ORDER,
-          title: 'Delivery Person Arrived',
-          body: `The delivery person has arrived at the store for order #${orderDetails.orderCode}.`,
-          meta: { orderId: orderId }
-        });
-        break;
+        case OrderStatus.arrived_at_store:
+          await notificationService.createNotification({
+            userId: orderDetails.vendor.userId,
+            type: NotificationType.EN_ROUTE,
+            category: NotificationCategory.ORDER,
+            title: 'Delivery Person Arrived',
+            body: `The delivery person has arrived at the store for order #${orderDetails.orderCode}.`,
+            meta: { orderId: orderId }
+          });
+          break;
 
-      case OrderStatus.arrived_at_customer_location:
-        await notificationService.createNotification({
-          userId: orderDetails.userId,
-          type: NotificationType.EN_ROUTE,
-          category: NotificationCategory.ORDER,
-          title: 'Delivery Person Arrived',
-          body: `Your delivery person has arrived at your location for order #${orderDetails.orderCode}.`,
-          meta: { orderId: orderId }
-        });
-        break;
-      
-      case OrderStatus.delivered:
-        await notificationService.createNotification({
-          userId: orderDetails.userId,
-          type: NotificationType.DELIVERED,
-          category: NotificationCategory.ORDER,
-          title: 'Order Delivered',
-          body: `Your order #${orderDetails.orderCode} has been delivered. Enjoy!`,
-          meta: { orderId: orderId }
-        });
-        break;
+        case OrderStatus.arrived_at_customer_location:
+          await notificationService.createNotification({
+            userId: orderDetails.userId,
+            type: NotificationType.EN_ROUTE,
+            category: NotificationCategory.ORDER,
+            title: 'Delivery Person Arrived',
+            body: `Your delivery person has arrived at your location for order #${orderDetails.orderCode}.`,
+            meta: { orderId: orderId }
+          });
+          break;
 
-      // Return Flow Notifications
-      case OrderStatus.en_route_to_return_to_store:
-        await notificationService.createNotification({
-          userId: orderDetails.vendor.userId,
-          type: NotificationType.ACCOUNT_UPDATE, // Or a more specific type
-          category: NotificationCategory.ORDER,
-          title: 'Order Return Initiated',
-          body: `The delivery person is returning order #${orderDetails.orderCode} to your store.`,
-          meta: { orderId: orderId }
-        });
-        break;
+        case OrderStatus.delivered:
+          await notificationService.createNotification({
+            userId: orderDetails.userId,
+            type: NotificationType.DELIVERED,
+            category: NotificationCategory.ORDER,
+            title: 'Order Delivered',
+            body: `Your order #${orderDetails.orderCode} has been delivered. Enjoy!`,
+            meta: { orderId: orderId }
+          });
+          break;
 
-      case OrderStatus.returned_to_store:
-        await notificationService.createNotification({
-          userId: orderDetails.vendor.userId,
-          type: NotificationType.ACCOUNT_UPDATE, // Or a more specific type
-          category: NotificationCategory.ORDER,
-          title: 'Order Returned',
-          body: `Order #${orderDetails.orderCode} has been successfully returned to your store.`,
-          meta: { orderId: orderId }
-        });
-        break;
+        // Return Flow Notifications
+        case OrderStatus.en_route_to_return_to_store:
+          await notificationService.createNotification({
+            userId: orderDetails.vendor.userId,
+            type: NotificationType.ACCOUNT_UPDATE, // Or a more specific type
+            category: NotificationCategory.ORDER,
+            title: 'Order Return Initiated',
+            body: `The delivery person is returning order #${orderDetails.orderCode} to your store.`,
+            meta: { orderId: orderId }
+          });
+          break;
+
+        case OrderStatus.returned_to_store:
+          await notificationService.createNotification({
+            userId: orderDetails.vendor.userId,
+            type: NotificationType.ACCOUNT_UPDATE, // Or a more specific type
+            category: NotificationCategory.ORDER,
+            title: 'Order Returned',
+            body: `Order #${orderDetails.orderCode} has been successfully returned to your store.`,
+            meta: { orderId: orderId }
+          });
+          break;
+      }
     }
+  } catch (error) {
+    console.error('Error sending notification during order status update:', error);
   }
   // --- End Notification Logic ---
 
