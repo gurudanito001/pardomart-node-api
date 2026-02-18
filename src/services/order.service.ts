@@ -638,13 +638,13 @@ export const updateOrderStatusService = async (
       break;
 
     case OrderStatus.currently_shopping:
-      assertHasRole([Role.store_shopper, Role.store_admin, Role.delivery_person]);
+      assertHasRole([Role.store_shopper, Role.store_admin, Role.delivery_person, Role.vendor]);
       assertPreviousStatus([OrderStatus.accepted_for_shopping, OrderStatus.arrived_at_store]);
       assertIsShopper();
       break;
 
     case OrderStatus.completed_bagging:
-      assertHasRole([Role.store_shopper, Role.store_admin, Role.delivery_person]);
+      assertHasRole([Role.store_shopper, Role.store_admin, Role.delivery_person, Role.vendor]);
       assertPreviousStatus([OrderStatus.currently_shopping]);
       assertIsShopper();
       break;
@@ -656,7 +656,7 @@ export const updateOrderStatusService = async (
       break;
 
     case OrderStatus.ready_for_delivery:
-      assertHasRole([Role.store_shopper, Role.store_admin, Role.delivery_person]);
+      assertHasRole([Role.store_shopper, Role.store_admin, Role.delivery_person, Role.vendor]);
       assertPreviousStatus([OrderStatus.completed_bagging]);
       assertIsShopper();
       break;
