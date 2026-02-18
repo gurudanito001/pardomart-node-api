@@ -1392,6 +1392,8 @@ export const adminGetAllOrdersController = async (req: Request, res: Response) =
             OrderStatus.arrived_at_return_pickup_location,
             OrderStatus.en_route_to_return_to_store,
             OrderStatus.ready_for_pickup,
+            OrderStatus.ready_for_delivery,
+            OrderStatus.returned_to_store,
           ];
           break;
         case 'completed':
