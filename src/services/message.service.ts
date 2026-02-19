@@ -92,39 +92,43 @@ export const sendMessageService = async ({
 };
 
 /**
- * Retrieves all messages for a specific order.
- * Validates that the requesting user is a participant of the order.
+ * Retrieves messages for a specific order between two users.
+ * Validates that the requesting user is one of the participants in the conversation.
  * @param {string} orderId - The ID of the order.
- * @param {string} userId - The ID of the user requesting the messages.
- * @returns {Promise<Message[]>} A list of messages for the order.
+ * @param {string} requestingUserId - The ID of the user requesting the messages.
+ * @param {string} user1Id - The ID of the first user.
+ * @param {string} user2Id - The ID of the second user.
+ * @returns {Promise<Message[]>} A list of messages between the two users.
  */
-export const getMessagesForOrderService = async (orderId: string, userId: string): Promise<Message[]> => {
-  // 1. Find the order and verify the user is a participant
+export const getMessagesForOrderService = async (
+  orderId: string,
+  requestingUserId: string,
+  user1Id: string,
+  user2Id: string
+): Promise<Message[]> => {
+  // 1. Find the order to ensure it exists
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    select: {
-      userId: true,
-      shopperId: true,
-      deliveryPersonId: true,
-    },
+    select: { id: true }, // We just need to check existence
   });
 
   if (!order) {
     throw new Error('Order not found.');
   }
 
-  const participants = [order.userId, order.shopperId, order.deliveryPersonId].filter(
-    (id): id is string => id !== null,
-  );
-
-  if (!participants.includes(userId)) {
-    throw new Error('User is not allowed to view messages for this order.');
+  // 2. Authorization: Ensure the requester is one of the two users involved in the conversation.
+  if (requestingUserId !== user1Id && requestingUserId !== user2Id) {
+    throw new Error('You are not authorized to view messages between these users.');
   }
 
-  // 2. Retrieve messages for the order
+  // 3. Retrieve messages for the order filtered by the two users
   const messages = await prisma.message.findMany({
     where: {
       orderId: orderId,
+      OR: [
+        { senderId: user1Id, recipientId: user2Id },
+        { senderId: user2Id, recipientId: user1Id },
+      ],
     },
     orderBy: {
       createdAt: 'asc',

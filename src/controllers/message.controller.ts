@@ -119,9 +119,9 @@ export const sendMessageController = async (req: AuthenticatedRequest, res: Resp
  * @swagger
  * /order/{orderId}/messages:
  *   get:
- *     summary: Get messages for an order
+ *     summary: Get messages for an order between two users
  *     tags: [Order, Messaging]
- *     description: Retrieves the conversation history for a specific order. The user must be a participant in the order (customer, shopper, or delivery person).
+ *     description: Retrieves the conversation history between two specific users within an order. The authenticated user must be one of the two users.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -132,6 +132,20 @@ export const sendMessageController = async (req: AuthenticatedRequest, res: Resp
  *           type: string
  *           format: uuid
  *         description: The ID of the order.
+ *       - in: query
+ *         name: user1Id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the first user in the conversation.
+ *       - in: query
+ *         name: user2Id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the second user in the conversation.
  *     responses:
  *       200:
  *         description: A list of messages for the order.
@@ -140,10 +154,12 @@ export const sendMessageController = async (req: AuthenticatedRequest, res: Resp
  *             schema:
  *               type: array
  *               items: { $ref: '#/components/schemas/MessageWithRelations' }
+ *       400:
+ *         description: Bad request (missing user IDs).
  *       401:
  *         description: Unauthorized.
  *       403:
- *         description: Forbidden (user is not a participant in the order).
+ *         description: Forbidden (user is not a participant in the conversation).
  *       404:
  *         description: Order not found.
  *       500:
@@ -153,9 +169,19 @@ export const getMessagesForOrderController = async (req: AuthenticatedRequest, r
   try {
     const userId = req.userId as string;
     const { orderId } = req.params;
+    const { user1Id, user2Id } = req.query;
 
-    // The service would handle validation to ensure the user is part of the order
-    const messages = await getMessagesForOrderService(orderId, userId);
+    if (!user1Id || !user2Id) {
+      return res.status(400).json({ error: 'Both user1Id and user2Id are required query parameters.' });
+    }
+
+    // The service would handle validation to ensure the user is part of the conversation
+    const messages = await getMessagesForOrderService(
+      orderId,
+      userId,
+      user1Id as string,
+      user2Id as string
+    );
 
     res.status(200).json(messages);
   } catch (error: any) {
@@ -163,7 +189,7 @@ export const getMessagesForOrderController = async (req: AuthenticatedRequest, r
     if (error.message.includes('not found')) {
       return res.status(404).json({ error: error.message });
     }
-    if (error.message.includes('not allowed')) {
+    if (error.message.includes('not allowed') || error.message.includes('authorized')) {
       return res.status(403).json({ error: error.message });
     }
     res.status(500).json({ error: 'Failed to get messages.' });
