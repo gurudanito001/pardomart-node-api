@@ -227,6 +227,7 @@ model Order {
   pickupOtp               String? // OTP for verifying pickup
   pickupOtpVerifiedAt     DateTime? // Timestamp when OTP was verified
   proofOfDeliveryImageUrl String?   // Image of the delivered package
+  bugReports              BugReport[]
   ratings                 Rating[]
   deliveryPersonLocations DeliveryPersonLocation[]
   messages                Message[]
@@ -466,6 +467,8 @@ model Wallet {
 
 model BugReport {
   id          String  @id @default(uuid())
+  orderId     String? // Optional: if the bug report is related to a specific order
+  order       Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
   description String  @db.Text
   imageUrl    String?
   isResolved  Boolean @default(false)

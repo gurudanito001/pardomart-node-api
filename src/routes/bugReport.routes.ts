@@ -33,6 +33,10 @@ const router = Router();
  *               description:
  *                 type: string
  *                 description: A description of the bug.
+ *               orderId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: (Optional) The ID of the order related to the bug.
  *               image:
  *                 type: string
  *                 format: binary

@@ -6,16 +6,18 @@ interface CreateBugReportPayload {
   userId: string;
   description: string;
   imageUrl?: string;
+  orderId?: string;
 }
 
 export const createBugReportService = async (payload: CreateBugReportPayload) => {
-  const { userId, description, imageUrl } = payload;
+  const { userId, description, imageUrl, orderId } = payload;
 
   const bugReport = await prisma.bugReport.create({
     data: {
       userId,
       description,
       imageUrl,
+      orderId,
     },
   });
 

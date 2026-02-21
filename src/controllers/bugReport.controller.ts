@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 export const createBugReportController = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.userId!;
-    const { description } = req.body;
+    const { description, orderId } = req.body;
 
     if (!description) {
       return res.status(400).json({ error: 'Description is required.' });
@@ -22,6 +22,7 @@ export const createBugReportController = async (req: AuthenticatedRequest, res: 
       userId,
       description,
       imageUrl,
+      orderId: orderId && orderId !== 'null' && orderId !== 'undefined' ? orderId : undefined,
     });
 
     // --- Start Notification Logic ---
@@ -35,7 +36,7 @@ export const createBugReportController = async (req: AuthenticatedRequest, res: 
         category: NotificationCategory.SUPPORT,
         title: 'New Bug Report',
         body: `A new bug has been reported by ${user?.name || 'a user'}.`,
-        meta: { bugReportId: bugReport.id },
+        meta: { bugReportId: bugReport.id, orderId: bugReport.orderId },
       });
     }
     // Notify the user that their report has been received
@@ -45,7 +46,7 @@ export const createBugReportController = async (req: AuthenticatedRequest, res: 
         category: NotificationCategory.SUPPORT,
         title: 'New Bug Report',
         body: `Your bug report has been received.`,
-        meta: { bugReportId: bugReport.id },
+        meta: { bugReportId: bugReport.id, orderId: bugReport.orderId },
       });
     // --- End Notification Logic ---
 
