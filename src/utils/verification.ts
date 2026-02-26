@@ -4,8 +4,8 @@ import nodemailer from 'nodemailer';
 import sgMail from '@sendgrid/mail';
 
 export const generateVerificationCode = (): string => {
-  //return '123456'
-  return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
+  return '123456'
+  //return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
 };
 
 export const sendVerificationCode = async (mobileNumber: string, verificationCode: string, email?: string): Promise<void> => {
