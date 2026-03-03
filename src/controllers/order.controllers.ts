@@ -1261,6 +1261,8 @@ export const completeDeliveryController = async (req: AuthenticatedRequest, res:
     const deliveryPersonId = req.userId as string;
     const { proofOfDeliveryImage } = req.body;
 
+    console.log(req.body);
+
     if (!proofOfDeliveryImage) {
       return res.status(400).json({ error: 'Proof of delivery image is required.' });
     }
