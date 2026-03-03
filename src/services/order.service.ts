@@ -1869,10 +1869,10 @@ export const getAvailableOrdersForDeliveryService = async (pagination: { page: n
         orderStatus: {
           notIn: [OrderStatus.cancelled_by_customer, OrderStatus.declined_by_vendor, OrderStatus.delivered, OrderStatus.picked_up_by_customer]
         },
-        OR: [
+        /* OR: [
           { scheduledDeliveryTime: null },
           { scheduledDeliveryTime: { lte: thirtyMinsFromNow } }, // Show if scheduled time is within 30 mins or in the past
-        ],
+        ], */
       },
     ],
   };
