@@ -684,13 +684,6 @@ export const updateOrderStatusService = async (
       // Add more specific previous status checks for return flow if needed
       break;
 
-    // --- Terminal States ---
-    case OrderStatus.delivered:
-      assertHasRole([Role.delivery_person]);
-      assertPreviousStatus([OrderStatus.arrived_at_customer_location]);
-      assertIsDeliveryPerson();
-      break;
-
     default:
       // For other statuses like 'cancelled_by_customer', we might need different logic.
       // For now, we block any unhandled transitions.
@@ -705,81 +698,6 @@ export const updateOrderStatusService = async (
     status,
     changedBy: requestingUserId,
   };
-
-  // If order is delivered, handle payments to wallets
-  if (status === OrderStatus.delivered) {
-    updates.actualDeliveryTime = new Date();
-
-    return prisma.$transaction(async (tx) => {
-      // 1. Pay Vendor
-      // The vendor gets paid the subtotal of the items. Platform fees are handled separately.
-      const vendorAmount = order.subtotal;
-      if (vendorAmount > 0 && order.vendor.userId) {
-        // Credit the vendor's own wallet directly
-        await tx.wallet.updateMany({
-          where: { vendorId: order.vendorId },
-          data: { balance: { increment: vendorAmount } }
-        });
-        await tx.transaction.create({
-          data: {
-            vendorId: order.vendorId, // Link transaction to vendor
-            userId: order.vendor.userId, // Required: associate the transaction with the vendor's user record
-            amount: vendorAmount,
-            type: TransactionType.VENDOR_PAYOUT,
-            source: TransactionSource.SYSTEM,
-            status: 'COMPLETED',
-            description: `Payment for order #${order.id.substring(0, 8)}`,
-            orderId: order.id,
-          },
-        });
-      }
-
-      // 2. Pay Shopper Tip
-      if (order.shopperId && order.shopperTip && order.shopperTip > 0) {
-        await tx.wallet.update({
-          where: { userId: order.shopperId },
-          data: { balance: { increment: order.shopperTip } },
-        });
-        await tx.transaction.create({
-          data: {
-          userId: order.shopperId,
-          amount: order.shopperTip,
-          type: TransactionType.TIP_PAYOUT,
-          source: TransactionSource.SYSTEM,
-          status: 'COMPLETED',
-          description: `Tip for order #${order.id.substring(0, 8)}`,
-            orderId: order.id,
-          },
-        });
-      }
-
-      // 3. Pay Delivery Person Tip
-      if (order.deliveryPersonId && order.deliveryPersonTip && order.deliveryPersonTip > 0) {
-        await tx.wallet.update({
-          where: { userId: order.deliveryPersonId },
-          data: { balance: { increment: order.deliveryPersonTip } },
-        });
-        await tx.transaction.create({
-          data: {
-          userId: order.deliveryPersonId,
-          amount: order.deliveryPersonTip,
-          type: TransactionType.TIP_PAYOUT,
-          source: TransactionSource.SYSTEM,
-          status: 'COMPLETED',
-          description: `Tip for order #${order.id.substring(0, 8)}`,
-            orderId: order.id,
-          },
-        });
-      }
-
-      // 4. Update the order status
-      // Log history inside transaction
-      await orderHistoryModel.createOrderHistory(historyPayload, tx);
-
-      return orderModel.updateOrder(orderId, updates, tx) as unknown as Order;
-    });
-  }
-
 
   // --- Add Notification Logic Here ---
   try {
@@ -826,17 +744,6 @@ export const updateOrderStatusService = async (
             category: NotificationCategory.ORDER,
             title: 'Delivery Person Arrived',
             body: `Your delivery person has arrived at your location for order #${orderDetails.orderCode}.`,
-            meta: { orderId: orderId }
-          });
-          break;
-
-        case OrderStatus.delivered:
-          await notificationService.createNotification({
-            userId: orderDetails.userId,
-            type: NotificationType.DELIVERED,
-            category: NotificationCategory.ORDER,
-            title: 'Order Delivered',
-            body: `Your order #${orderDetails.orderCode} has been delivered. Enjoy!`,
             meta: { orderId: orderId }
           });
           break;
@@ -1636,12 +1543,21 @@ export const verifyPickupOtpService = async (
     }
 
     let nextStatus: OrderStatus;
-    if (order.deliveryMethod === DeliveryMethod.customer_pickup && order.orderStatus === OrderStatus.ready_for_pickup) {
-      nextStatus = OrderStatus.picked_up_by_customer;
-    } else if (order.deliveryMethod === DeliveryMethod.delivery_person && order.orderStatus === OrderStatus.completed_bagging) {
-      nextStatus = OrderStatus.ready_for_delivery;
+
+    if (order.deliveryMethod === DeliveryMethod.customer_pickup) {
+      if (order.orderStatus === OrderStatus.ready_for_pickup) {
+        nextStatus = OrderStatus.picked_up_by_customer;
+      } else {
+        throw new OrderCreationError(`Order is not ready for pickup. Current status: ${order.orderStatus}`, 400);
+      }
+    } else if (order.deliveryMethod === DeliveryMethod.delivery_person) {
+      if (order.orderStatus === OrderStatus.ready_for_delivery || order.orderStatus === OrderStatus.arrived_at_store) {
+        nextStatus = OrderStatus.en_route_to_delivery;
+      } else {
+        throw new OrderCreationError(`Order is not ready for pickup. Current status: ${order.orderStatus}`, 400);
+      }
     } else {
-      throw new OrderCreationError(`Order is not ready for pickup. Current status: ${order.orderStatus}`, 400);
+      throw new OrderCreationError(`Invalid delivery method or status for OTP verification.`, 400);
     }
 
     // 4. Update the order: set new status, clear OTP, and timestamp verification
@@ -1655,7 +1571,68 @@ export const verifyPickupOtpService = async (
       },
     });
 
-    // TODO: Add notification logic here to inform the customer that their order is on its way or has been picked up.
+    // Handle payouts if picked up by customer (Terminal State)
+    if (nextStatus === OrderStatus.picked_up_by_customer) {
+      const vendorAmount = order.subtotal;
+      if (vendorAmount > 0 && order.vendor.userId) {
+        await tx.wallet.updateMany({
+          where: { vendorId: order.vendorId },
+          data: { balance: { increment: vendorAmount } }
+        });
+        await tx.transaction.create({
+          data: {
+            vendorId: order.vendorId,
+            userId: order.vendor.userId,
+            amount: vendorAmount,
+            type: TransactionType.VENDOR_PAYOUT,
+            source: TransactionSource.SYSTEM,
+            status: 'COMPLETED',
+            description: `Payment for order #${order.orderCode}`,
+            orderId: order.id,
+          },
+        });
+      }
+
+      // Pay Shopper Tip (if applicable)
+      if (order.shopperId && order.shopperTip && order.shopperTip > 0) {
+        await tx.wallet.update({
+          where: { userId: order.shopperId },
+          data: { balance: { increment: order.shopperTip } },
+        });
+        await tx.transaction.create({
+          data: {
+            userId: order.shopperId,
+            amount: order.shopperTip,
+            type: TransactionType.TIP_PAYOUT,
+            source: TransactionSource.SYSTEM,
+            status: 'COMPLETED',
+            description: `Tip for order #${order.orderCode}`,
+            orderId: order.id,
+          },
+        });
+      }
+    }
+
+    // Notifications
+    if (nextStatus === OrderStatus.picked_up_by_customer) {
+      await notificationService.createNotification({
+        userId: order.userId,
+        type: NotificationType.COMPLETED,
+        category: NotificationCategory.ORDER,
+        title: 'Order Picked Up',
+        body: `Your order #${order.orderCode} has been picked up. Thank you for shopping with us!`,
+        meta: { orderId: order.id }
+      });
+    } else if (nextStatus === OrderStatus.en_route_to_delivery) {
+      await notificationService.createNotification({
+        userId: order.userId,
+        type: NotificationType.EN_ROUTE,
+        category: NotificationCategory.ORDER,
+        title: 'Order En Route',
+        body: `Your order #${order.orderCode} has been picked up by the delivery person and is on its way.`,
+        meta: { orderId: order.id }
+      });
+    }
 
     // --- Create History Entry ---
     await orderHistoryModel.createOrderHistory({
