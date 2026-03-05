@@ -280,8 +280,6 @@ export const findActiveOrderForUser = async (userId: string): Promise<OrderWithR
     where: {
       OR: [
         {
-          // Case 1: The user is the assigned shopper and the order is in an active shopping state.
-          // This applies whether the shopper is a vendor staff or a delivery person doing the shopping.
           shopperId: userId,
           orderStatus: {
             in: [
@@ -292,17 +290,18 @@ export const findActiveOrderForUser = async (userId: string): Promise<OrderWithR
           },
         },
         {
-          // Case 2: The user is the assigned delivery person and the order is in an active delivery state.
-          // This applies for both dedicated delivery persons and those who also did the shopping.
           deliveryPersonId: userId,
           orderStatus: {
             in: [
               OrderStatus.accepted_for_delivery,
-              OrderStatus.ready_for_delivery,
               OrderStatus.en_route_to_pickup,
               OrderStatus.arrived_at_store,
+              OrderStatus.ready_for_delivery,
               OrderStatus.en_route_to_delivery,
               OrderStatus.arrived_at_customer_location,
+              OrderStatus.en_route_to_return_pickup,
+              OrderStatus.arrived_at_return_pickup_location,
+              OrderStatus.en_route_to_return_to_store,
             ],
           },
         },
