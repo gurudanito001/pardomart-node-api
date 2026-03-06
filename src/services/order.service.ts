@@ -1854,7 +1854,15 @@ export const getAvailableOrdersForDeliveryService = async (pagination: { page: n
 
   const where: Prisma.OrderWhereInput = {
     deliveryMethod: DeliveryMethod.delivery_person,
-    paymentStatus: PaymentStatus.paid,
+    // Allow Paid orders OR Cash orders (which are pending payment)
+    AND: [
+      {
+        OR: [
+          { paymentStatus: PaymentStatus.paid },
+          { paymentMethod: PaymentMethods.cash },
+        ],
+      },
+    ],
     deliveryPersonId: null, // Only unassigned orders
     OR: [
       // Scenario A: Vendor shopped, ready for delivery
@@ -1942,25 +1950,35 @@ export const acceptOrderForDeliveryService = async (orderId: string, deliveryPer
       throw new OrderCreationError('This order is not for delivery.', 400);
     }
 
-    const updates: Prisma.OrderUpdateInput = {
-      deliveryPerson: { connect: { id: deliveryPersonId } },
-    };
+    let nextStatus: OrderStatus;
+    let updateShopper = false;
 
     if (order.shoppingMethod === ShoppingMethod.vendor) {
       if (order.orderStatus !== OrderStatus.ready_for_delivery) {
         throw new OrderCreationError('Order is not ready for delivery.', 400);
       }
-      updates.orderStatus = OrderStatus.accepted_for_delivery;
+      nextStatus = OrderStatus.accepted_for_delivery;
     } else {
       // Shopping by delivery person: They become the shopper as well.
-      updates.shopper = { connect: { id: deliveryPersonId } };
-      updates.orderStatus = OrderStatus.accepted_for_shopping;
+      updateShopper = true;
+      nextStatus = OrderStatus.accepted_for_shopping;
     }
 
-    const updatedOrder = await tx.order.update({
-      where: { id: orderId },
-      data: updates,
+    // Atomic Update: Ensure deliveryPersonId is still null to prevent race conditions
+    const result = await tx.order.updateMany({
+      where: { id: orderId, deliveryPersonId: null },
+      data: {
+        deliveryPersonId: deliveryPersonId,
+        orderStatus: nextStatus,
+        shopperId: updateShopper ? deliveryPersonId : undefined,
+      },
     });
+
+    if (result.count === 0) {
+      throw new OrderCreationError('This order has already been assigned to another delivery person.', 409);
+    }
+
+    const updatedOrder = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
 
     // Notify Customer
     await notificationService.createNotification({
