@@ -10,6 +10,7 @@ import {
   calculateOrderFeesService
 } from '../services/fee.service'; // Adjust the path to your fee service file
 import { FeeType, DeliveryMethod } from '@prisma/client'; // Assuming FeeType enum is exported from Prisma client
+import { errorLogService } from '../services/errorLog.service';
 
 // --- Fee Controllers ---
 
@@ -115,7 +116,18 @@ export const createFeeController = async (req: Request, res: Response) => {
     const newFee = await createFee(payload);
     res.status(201).json(newFee);
   } catch (error: any) {
-    console.error('Error in createFeeController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to create fee',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'CREATE_FEE_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -164,7 +176,18 @@ export const updateFeeController = async (req: Request, res: Response) => {
     const updatedFee = await updateFee(id, payload);
     res.status(200).json(updatedFee);
   } catch (error: any) {
-    console.error('Error in updateFeeController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to update fee',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UPDATE_FEE_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message === 'Fee not found') {
       return res.status(404).json({ error: error.message });
     }
@@ -206,7 +229,18 @@ export const deleteFeeController = async (req: Request, res: Response) => {
     const deletedFee = await deleteFee(id);
     res.status(200).json(deletedFee);
   } catch (error: any) {
-    console.error('Error in deleteFeeController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to delete fee',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'DELETE_FEE_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message === 'Fee not found') {
       return res.status(404).json({ error: error.message });
     }
@@ -255,7 +289,18 @@ export const deactivateFeeController = async (req: Request, res: Response) => {
       res.status(404).json({ message: `No active fee found for type: ${type}` });
     }
   } catch (error: any) {
-    console.error('Error in deactivateFeeController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to deactivate fee',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'DEACTIVATE_FEE_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -330,7 +375,18 @@ export const getCurrentFeesController = async (req: Request, res: Response) => {
       res.status(200).json(result);
     }
   } catch (error: any) {
-    console.error('Error in getCurrentFeesController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get current fees',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_CURRENT_FEES_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -376,7 +432,18 @@ export const calculateFeesController = async (req: Request, res: Response) => {
 
     res.status(200).json(feesResult);
   } catch (error: any) {
-    console.error('Error in calculateFeesController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to calculate fees',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'CALCULATE_FEES_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: error.message || 'Internal server error during fee calculation.' });
   }
 };

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
+import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
@@ -27,8 +28,24 @@ import { StatusCodes } from 'http-status-codes';
  *                   type: string
  *                   example: "Pardomart API is awake and running!"
  */
-export const healthCheckController = (req: Request, res: Response) => {
-  res.status(StatusCodes.OK).json({
-    message: 'Pardomart API is awake and running!',
-  });
+export const healthCheckController = async (req: Request, res: Response) => {
+  try {
+    res.status(StatusCodes.OK).json({
+      message: 'Pardomart API is awake and running!',
+    });
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed health check',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
+      errorCode: error.code || 'HEALTH_CHECK_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Internal server error' });
+  }
 };

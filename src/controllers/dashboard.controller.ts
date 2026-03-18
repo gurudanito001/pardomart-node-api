@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { errorLogService } from '../services/errorLog.service';
 
 const prisma = new PrismaClient();
 
@@ -79,8 +80,19 @@ export const getDashboardCardsData = async (req: Request, res: Response) => {
         totalDelivered
       }
     });
-  } catch (error) {
-    console.error('Get Dashboard Cards Error:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to fetch cards data',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'DASHBOARD_CARDS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Internal Server Error', message: 'Failed to fetch cards data' });
   }
 };
@@ -189,8 +201,19 @@ export const getDashboardTimeframeStats = async (req: Request, res: Response) =>
         revenue
       }
     });
-  } catch (error) {
-    console.error('Get Dashboard Stats Error:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to fetch timeframe stats',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'DASHBOARD_STATS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Internal Server Error', message: 'Failed to fetch timeframe stats' });
   }
 };
@@ -252,8 +275,19 @@ export const getDashboardRecentTransactions = async (req: Request, res: Response
       success: true,
       data: recentTransactions
     });
-  } catch (error) {
-    console.error('Get Dashboard Transactions Error:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to fetch recent transactions',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'DASHBOARD_TRANSACTIONS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Internal Server Error', message: 'Failed to fetch recent transactions' });
   }
 };
@@ -313,8 +347,19 @@ export const getDashboardAverageOrderValue = async (req: Request, res: Response)
     const averageOrderValue = orders.length > 0 ? revenue / orders.length : 0;
 
     res.status(200).json({ success: true, data: { averageOrderValue, timeframe: timeframe || 'last1month' } });
-  } catch (error) {
-    console.error('Get Dashboard AOV Error:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to fetch average order value',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'DASHBOARD_AOV_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Internal Server Error', message: 'Failed to fetch average order value' });
   }
 };

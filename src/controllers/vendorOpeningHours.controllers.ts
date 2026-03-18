@@ -2,6 +2,7 @@
 import { Request, Response } from 'express';
 import * as vendorOpeningHoursService from '../services/vendorOpeningHours.service';
 import { Prisma } from '@prisma/client'; // Import Prisma
+import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
@@ -92,11 +93,22 @@ export const updateVendorOpeningHours = async (req: Request, res: Response) => {
 
     res.json(updatedOpeningHours);
 
-  } catch (error) {
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to update vendor opening hours',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UPDATE_VENDOR_OPENING_HOURS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return res.status(409).json({ error: 'Vendor opening hours for this day already exists' });
     }
-    console.error('Error updating vendor opening hours:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -134,8 +146,18 @@ export const getAllVendorOpeningHours = async (req: Request, res: Response) => {
     const vendorId = req.query.vendorId as string ;
     const vendorOpeningHours = await vendorOpeningHoursService.getAllVendorOpeningHours(vendorId);
     res.json(vendorOpeningHours);
-  } catch (error) {
-    console.error('Error getting all vendor opening hours:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get all vendor opening hours',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_ALL_VENDOR_OPENING_HOURS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Internal server error' });
   }
 };

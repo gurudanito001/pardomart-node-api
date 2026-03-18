@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import * as categoryService from '../services/category.service';
 import { CategoryFilters } from '../models/category.model';
 import { Prisma } from '@prisma/client';
+import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
@@ -43,7 +44,18 @@ export const getCategoryOverviewController = async (req: Request, res: Response)
     const overview = await categoryService.getCategoryOverviewService();
     res.status(200).json(overview);
   } catch (error: any) {
-    console.error('Error getting category overview:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get category overview',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_CATEGORY_OVERVIEW_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -72,7 +84,18 @@ export const getAllParentCategoriesController = async (req: Request, res: Respon
     const parentCategories = await categoryService.getAllParentCategoriesService();
     res.status(200).json(parentCategories);
   } catch (error: any) {
-    console.error('Error getting parent categories:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get parent categories',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_PARENT_CATEGORIES_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -101,7 +124,18 @@ export const getAllSubCategoriesController = async (req: Request, res: Response)
     const subCategories = await categoryService.getAllSubCategoriesService();
     res.status(200).json(subCategories);
   } catch (error: any) {
-    console.error('Error getting sub-categories:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get sub-categories',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_SUB_CATEGORIES_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -140,8 +174,19 @@ export const createCategoriesBulk = async (req: Request, res: Response) => {
     const createdCategories = await categoryService.createCategoriesBulk(categories);
     res.status(201).json(createdCategories);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to create categories in bulk',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'CREATE_CATEGORIES_BULK_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    console.error('Error creating categories in bulk:', error);
     res.status(500).json({ error: errorMessage });
   }
 };
@@ -180,6 +225,18 @@ export const createCategory = async (req: Request, res: Response) => {
     const category = await categoryService.createCategory(req.body);
     res.status(201).json(category);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to create category',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'CREATE_CATEGORY_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       // Handle unique constraint violation (e.g., duplicate category name)
       if (error.code === 'P2002') {
@@ -190,7 +247,6 @@ export const createCategory = async (req: Request, res: Response) => {
       }
     }
     const errorMessage = error.message || 'Internal server error';
-    console.error('Error creating category:', error);
     res.status(500).json({ error: errorMessage });
   }
 };
@@ -226,9 +282,20 @@ export const getCategoryById = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Category not found' });
     }
     res.json(category);
-  } catch (error) {
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get category by ID',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_CATEGORY_BY_ID_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    console.error('Error getting category by ID:', error);
     res.status(500).json({ error: errorMessage });
   }
 };
@@ -274,9 +341,20 @@ export const getAllCategories = async (req: Request, res: Response) => {
   try {
     const categories = await categoryService.getAllCategories({ parentId, type, name });
     res.json(categories);
-  } catch (error) {
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get all categories',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_ALL_CATEGORIES_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    console.error('Error getting all categories:', error);
     res.status(500).json({ error: errorMessage });
   }
 };
@@ -322,6 +400,18 @@ export const updateCategory = async (req: Request, res: Response) => {
     const category = await categoryService.updateCategory({ id: req.params.id, ...req.body });
     res.json(category);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to update category',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UPDATE_CATEGORY_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2025') {
         return res.status(404).json({ error: 'Category not found.' });
@@ -362,6 +452,18 @@ export const deleteCategory = async (req: Request, res: Response) => {
     const category = await categoryService.deleteCategory(req.params.id);
     res.json(category);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to delete category',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'DELETE_CATEGORY_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
       return res.status(404).json({ error: 'Category not found.' });
     }

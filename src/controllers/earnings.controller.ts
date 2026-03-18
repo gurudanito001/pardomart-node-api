@@ -2,6 +2,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from './vendor.controller';
 import * as earningsService from '../services/earnings.service';
+import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
@@ -52,7 +53,18 @@ export const listEarningsController = async (req: AuthenticatedRequest, res: Res
 
     res.status(200).json(earnings);
   } catch (error: any) {
-    console.error('Error listing earnings:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to list earnings',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'LIST_EARNINGS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message.includes('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
@@ -108,7 +120,18 @@ export const getTotalEarningsController = async (req: AuthenticatedRequest, res:
     const totalEarnings = await earningsService.getTotalEarningsService(requestingUserId, period);
     res.status(200).json({ totalEarnings });
   } catch (error: any) {
-    console.error('Error getting total earnings:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get total earnings',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_TOTAL_EARNINGS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'An unexpected error occurred while calculating earnings.' });
   }
 };

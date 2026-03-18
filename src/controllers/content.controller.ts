@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import * as contentService from '../services/content.service';
 import { ContentType, UpdateContentPayload } from '../models/content.model';
 import { StatusCodes } from 'http-status-codes';
+import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
@@ -39,7 +40,19 @@ export const getContentController = async (req: Request, res: Response) => {
     const { type } = req.params;
     const content = await contentService.getContentService(type as ContentType);
     res.status(StatusCodes.OK).json(content);
-  } catch (error) {
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to fetch content',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_CONTENT_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Error fetching content' });
   }
 };
@@ -84,7 +97,19 @@ export const updateContentController = async (req: Request, res: Response) => {
     const payload: UpdateContentPayload = req.body;
     const updatedContent = await contentService.updateContentService(type as ContentType, payload);
     res.status(StatusCodes.OK).json(updatedContent);
-  } catch (error) {
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to update content',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UPDATE_CONTENT_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Error updating content' });
   }
 };
@@ -127,7 +152,19 @@ export const getPrivacyPolicyController = async (req: Request, res: Response) =>
     }
     const content = await contentService.getContentService(type);
     res.status(StatusCodes.OK).json(content);
-  } catch (error) {
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to fetch privacy policy',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_PRIVACY_POLICY_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Error fetching content' });
   }
 };
@@ -180,7 +217,19 @@ export const updatePrivacyPolicyController = async (req: Request, res: Response)
     }
     const updatedContent = await contentService.updateContentService(type, payload);
     res.status(StatusCodes.OK).json(updatedContent);
-  } catch (error) {
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to update privacy policy',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UPDATE_PRIVACY_POLICY_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Error updating content' });
   }
 };

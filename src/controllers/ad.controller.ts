@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import * as adService from '../services/ad.service';
 import { AdError } from '../services/ad.service';
 import { Prisma } from '@prisma/client';
+import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
@@ -44,11 +45,26 @@ export const createAdController = async (req: Request, res: Response) => {
 
     const ad = await adService.createAdService(payload);
     res.status(201).json(ad);
-  } catch (error) {
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to create ad',
+      stackTrace: error.stack,
+      metaData: { 
+        body: req.body, 
+        query: req.query, 
+        params: req.params 
+      },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'AD_CREATION_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof AdError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
-    console.error('Error creating ad:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -94,8 +110,23 @@ export const listAdsController = async (req: Request, res: Response) => {
 
     const result = await adService.listAdsService(filters, { page: pageNum, take: takeNum });
     res.status(200).json(result);
-  } catch (error) {
-    console.error('Error listing ads:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to list ads',
+      stackTrace: error.stack,
+      metaData: { 
+        body: req.body, 
+        query: req.query, 
+        params: req.params 
+      },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'AD_LIST_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -124,8 +155,23 @@ export const getAdByIdController = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Ad not found.' });
     }
     res.status(200).json(ad);
-  } catch (error) {
-    console.error('Error getting ad by ID:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get ad by ID',
+      stackTrace: error.stack,
+      metaData: { 
+        body: req.body, 
+        query: req.query, 
+        params: req.params 
+      },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'AD_GET_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -164,7 +210,23 @@ export const updateAdController = async (req: Request, res: Response) => {
     }
     const ad = await adService.updateAdService(req.params.id, payload as adService.UpdateAdServicePayload);
     res.status(200).json(ad);
-  } catch (error) {
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to update ad',
+      stackTrace: error.stack,
+      metaData: { 
+        body: req.body, 
+        query: req.query, 
+        params: req.params 
+      },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'AD_UPDATE_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof AdError) return res.status(error.statusCode).json({ error: error.message });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') return res.status(404).json({ error: 'Ad not found.' });
     res.status(500).json({ error: 'Internal server error' });
@@ -192,7 +254,23 @@ export const deleteAdController = async (req: Request, res: Response) => {
   try {
     await adService.deleteAdService(req.params.id);
     res.status(204).send();
-  } catch (error) {
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to delete ad',
+      stackTrace: error.stack,
+      metaData: { 
+        body: req.body, 
+        query: req.query, 
+        params: req.params 
+      },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'AD_DELETE_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof AdError) return res.status(error.statusCode).json({ error: error.message });
     res.status(500).json({ error: 'Internal server error' });
   }

@@ -3,6 +3,7 @@ import { Response } from 'express';
 import * as staffService from '../services/staff.service';
 import { Role, Transaction } from '@prisma/client';
 import { AuthenticatedRequest } from './vendor.controller';
+import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
@@ -43,7 +44,18 @@ export const createStaffController = async (req: AuthenticatedRequest, res: Resp
     const staff = await staffService.createStaffService({ ...req.body, ownerId });
     res.status(201).json(staff);
   } catch (error: any) {
-    console.error('Error creating staff:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to create staff',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'CREATE_STAFF_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -91,7 +103,18 @@ export const listStaffTransactionsController = async (req: AuthenticatedRequest,
     });
     res.status(200).json(transactions);
   } catch (error: any) {
-    console.error('Error listing staff transactions:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to list staff transactions',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'LIST_STAFF_TRANSACTIONS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message.includes('not found') || error.message.includes('Assigned store not found')) {
       return res.status(404).json({ error: error.message });
     }
@@ -137,7 +160,18 @@ export const listStaffForVendorOrAdminController = async (req: AuthenticatedRequ
     const staffList = await staffService.listStaffService({ userId, userRole, staffVendorId, vendorId });
     res.status(200).json(staffList);
   } catch (error: any) {
-    console.error('Error listing staff:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to list staff',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'LIST_STAFF_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message.includes('Unauthorized') || error.message.includes('not associated') || error.message.includes('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
@@ -171,7 +205,18 @@ export const listStaffByVendorController = async (req: AuthenticatedRequest, res
     const staffList = await staffService.listStaffByVendorIdService(vendorId, ownerId);
     res.status(200).json(staffList);
   } catch (error: any) {
-    console.error('Error listing staff by vendor:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to list staff by vendor',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'LIST_STAFF_BY_VENDOR_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -205,6 +250,18 @@ export const adminListStaffByVendorController = async (req: AuthenticatedRequest
     const staffList = await staffService.adminListStaffByVendorIdService(vendorId);
     res.status(200).json(staffList);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to list staff by vendor (Admin)',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'ADMIN_LIST_STAFF_BY_VENDOR_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message.includes('not found')) {
       return res.status(404).json({ error: error.message });
     }
@@ -234,10 +291,26 @@ export const adminListStaffByVendorController = async (req: AuthenticatedRequest
  *         description: Staff member not found.
  */
 export const adminGetStaffByIdController = async (req: AuthenticatedRequest, res: Response) => {
-  const { staffId } = req.params;
-  const staff = await staffService.adminGetStaffByIdService(staffId);
-  if (!staff) return res.status(404).json({ error: 'Staff member not found.' });
-  res.status(200).json(staff);
+  try {
+    const { staffId } = req.params;
+    const staff = await staffService.adminGetStaffByIdService(staffId);
+    if (!staff) return res.status(404).json({ error: 'Staff member not found.' });
+    res.status(200).json(staff);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get staff by ID (Admin)',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'ADMIN_GET_STAFF_BY_ID_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
 };
 
 /**
@@ -271,7 +344,18 @@ export const getStaffByIdController = async (req: AuthenticatedRequest, res: Res
     }
     res.status(200).json(staff);
   } catch (error: any) {
-    console.error('Error getting staff by ID:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get staff by ID',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_STAFF_BY_ID_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -311,7 +395,18 @@ export const updateStaffController = async (req: AuthenticatedRequest, res: Resp
     const updatedStaff = await staffService.updateStaffService({ ...req.body, staffId, ownerId });
     res.status(200).json(updatedStaff);
   } catch (error: any) {
-    console.error('Error updating staff:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to update staff',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UPDATE_STAFF_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -340,7 +435,18 @@ export const deleteStaffController = async (req: AuthenticatedRequest, res: Resp
     await staffService.deleteStaffService(staffId, ownerId);
     res.status(204).send();
   } catch (error: any) {
-    console.error('Error deleting staff:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to delete staff',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'DELETE_STAFF_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };

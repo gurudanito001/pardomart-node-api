@@ -4,6 +4,7 @@ import * as customerService from '../services/customer.service';
 import { AuthenticatedRequest } from './vendor.controller';
 import { Role } from '@prisma/client';
 import { AdminListCustomersFilters } from '../models/customer.model';
+import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
@@ -75,7 +76,18 @@ export const listCustomersController = async (req: AuthenticatedRequest, res: Re
     const customers = await customerService.listCustomersService({ ownerId, vendorId: vendorIdToQuery });
     res.status(200).json(customers);
   } catch (error: any) {
-    console.error('Error listing customers:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to list customers',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'LIST_CUSTOMERS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message.includes('Unauthorized')) {
       return res.status(403).json({ error: error.message });
     }
@@ -138,7 +150,18 @@ export const listCustomerTransactionsController = async (req: AuthenticatedReque
     );
     res.status(200).json(transactions);
   } catch (error: any) {
-    console.error('Error listing customer transactions for vendor:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to list customer transactions',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'LIST_CUSTOMER_TRANSACTIONS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message.includes('Unauthorized') || error.message.includes('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
@@ -186,7 +209,18 @@ export const getAdminCustomerOverviewController = async (req: Request, res: Resp
     const overviewData = await customerService.getAdminCustomerOverviewService(days);
     res.status(200).json(overviewData);
   } catch (error: any) {
-    console.error('Error getting customer overview data:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get customer overview data',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'ADMIN_CUSTOMER_OVERVIEW_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };
@@ -223,6 +257,18 @@ export const exportCustomersController = async (req: Request, res: Response) => 
     res.setHeader('Content-Disposition', 'attachment; filename=customers.csv');
     res.send(csv);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to export customers',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'EXPORT_CUSTOMERS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };
@@ -278,7 +324,18 @@ export const adminListAllCustomersController = async (req: Request, res: Respons
 
     res.status(200).json(result);
   } catch (error: any) {
-    console.error('Error in adminListAllCustomersController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to list all customers (Admin)',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'ADMIN_LIST_ALL_CUSTOMERS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };
@@ -314,10 +371,21 @@ export const adminGetCustomerDetailsController = async (req: Request, res: Respo
     const customerDetails = await customerService.adminGetCustomerDetailsService(customerId);
     res.status(200).json(customerDetails);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get customer details (Admin)',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'ADMIN_GET_CUSTOMER_DETAILS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message.includes('not found')) {
       return res.status(404).json({ error: error.message });
     }
-    console.error('Error in adminGetCustomerDetailsController:', error);
     res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };
@@ -363,6 +431,18 @@ export const adminUpdateCustomerProfileController = async (req: Request, res: Re
     const updatedCustomer = await customerService.adminUpdateCustomerProfileService(customerId, updates);
     res.status(200).json(updatedCustomer);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to update customer profile (Admin)',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'ADMIN_UPDATE_CUSTOMER_PROFILE_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message });
   }
 };
@@ -401,6 +481,18 @@ export const adminListCustomerTransactionsController = async (req: Request, res:
     const result = await customerService.adminListCustomerTransactionsService(customerId, { page, take });
     res.status(200).json(result);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to list customer transactions (Admin)',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'ADMIN_LIST_CUSTOMER_TRANSACTIONS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message.includes('not found')) {
       return res.status(404).json({ error: error.message });
     }

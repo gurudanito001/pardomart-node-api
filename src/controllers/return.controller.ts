@@ -3,6 +3,7 @@ import { AuthenticatedRequest } from './vendor.controller';
 import * as returnService from '../services/return.service';
 import { ReturnStatus, Role } from '@prisma/client';
 import { OrderCreationError } from '../services/order.service';
+import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
@@ -55,6 +56,23 @@ export const createReturnRequestController = async (req: AuthenticatedRequest, r
     const returnRequest = await returnService.createReturnRequestService(userId, payload);
     res.status(201).json(returnRequest);
   } catch (error: any) {
+    // Extract necessary information from the request and log the error
+    await errorLogService.logError({
+      message: error.message || 'Failed to create return request',
+      stackTrace: error.stack,
+      metaData: { 
+        body: req.body, 
+        query: req.query, 
+        params: req.params 
+      },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'RETURN_CREATION_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr)); // Prevent logging failures from crashing the app
+
     if (error instanceof OrderCreationError) {
         return res.status(error.statusCode).json({ error: error.message });
     }
@@ -105,10 +123,27 @@ export const updateReturnRequestStatusController = async (req: AuthenticatedRequ
     const updatedRequest = await returnService.updateReturnRequestStatusService(requestId, status as ReturnStatus, userId, userRole);
     res.status(200).json(updatedRequest);
   } catch (error: any) {
+    // Extract necessary information from the request and log the error
+    await errorLogService.logError({
+      message: error.message || 'Failed to update return request status',
+      stackTrace: error.stack,
+      metaData: { 
+        body: req.body, 
+        query: req.query, 
+        params: req.params 
+      },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'RETURN_STATUS_UPDATE_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof OrderCreationError) {
         return res.status(error.statusCode).json({ error: error.message });
     }
     console.error('Error updating return request status:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', });
   }
 };

@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from './vendor.controller';
 import * as walletService from '../services/wallet.service';
+import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
@@ -44,7 +45,18 @@ export const getWalletController = async (req: AuthenticatedRequest, res: Respon
     const wallet = await walletService.getWalletByUserIdService(userId);
     res.status(200).json(wallet);
   } catch (error: any) {
-    console.error('Error getting wallet:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get wallet',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_WALLET_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Failed to retrieve wallet.' });
   }
 };
@@ -76,7 +88,18 @@ export const getWalletTransactionsController = async (req: AuthenticatedRequest,
     const transactions = await walletService.getWalletTransactionsService(userId);
     res.status(200).json(transactions);
   } catch (error: any) {
-    console.error('Error getting wallet transactions:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get wallet transactions',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_WALLET_TRANSACTIONS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Failed to retrieve wallet transactions.' });
   }
 };

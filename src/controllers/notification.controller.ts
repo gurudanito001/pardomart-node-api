@@ -2,6 +2,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import * as notificationService from '../services/notification.service';
+import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
@@ -86,6 +87,18 @@ export const getNotificationsController = async (req: AuthenticatedRequest, res:
     const notifications = await notificationService.getNotifications(userId, page, size);
     res.status(200).json(notifications);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to retrieve notifications',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_NOTIFICATIONS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Failed to retrieve notifications.' });
   }
 };
@@ -128,6 +141,18 @@ export const markAsReadController = async (req: AuthenticatedRequest, res: Respo
 
     res.status(200).json(notification);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to mark notification as read',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'MARK_AS_READ_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Failed to mark notification as read.' });
   }
 };
@@ -157,6 +182,18 @@ export const markAllAsReadController = async (req: AuthenticatedRequest, res: Re
     const result = await notificationService.markAllAsRead(userId);
     res.status(200).json(result);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to mark all notifications as read',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'MARK_ALL_AS_READ_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Failed to mark all notifications as read.' });
   }
 };
@@ -186,6 +223,18 @@ export const getUnreadCountController = async (req: AuthenticatedRequest, res: R
     const result = await notificationService.getUnreadCount(userId);
     res.status(200).json(result);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get unread notification count',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_UNREAD_COUNT_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Failed to get unread notification count.' });
   }
 };

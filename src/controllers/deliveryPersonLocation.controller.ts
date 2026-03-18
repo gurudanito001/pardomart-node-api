@@ -2,6 +2,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import * as deliveryPersonLocationService from '../services/deliveryPersonLocation.service';
+import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
@@ -72,6 +73,18 @@ export const addLocationController = async (req: AuthenticatedRequest, res: Resp
 
     res.status(201).json(location);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to add delivery person location',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'ADD_LOCATION_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(error.statusCode || 500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -114,6 +127,18 @@ export const getPathController = async (req: AuthenticatedRequest, res: Response
     const path = await deliveryPersonLocationService.getDeliveryPath(orderId, userId!, userRole!);
     res.status(200).json(path);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get delivery path',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_PATH_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(error.statusCode || 500).json({ error: error.message || 'Internal server error' });
   }
 };

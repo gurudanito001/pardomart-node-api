@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as wishlistService from '../services/wishlist.service';
 import { WishlistError } from '../services/wishlist.service';
+import { errorLogService } from '../services/errorLog.service';
 
 // It assumes an authentication middleware adds a `userId` property to the request.
 interface AuthenticatedRequest extends Request {
@@ -132,11 +133,22 @@ export const addToWishlistController = async (req: AuthenticatedRequest, res: Re
 
     const wishlistItem = await wishlistService.addToWishlistService(userId, vendorProductId as string);
     res.status(201).json(wishlistItem);
-  } catch (error) {
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to add to wishlist',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'ADD_TO_WISHLIST_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof WishlistError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
-    console.error('Error adding to wishlist:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -166,8 +178,19 @@ export const getWishlistController = async (req: AuthenticatedRequest, res: Resp
     const userId = req.userId as string;
     const wishlist = await wishlistService.getWishlistService(userId);
     res.status(200).json(wishlist);
-  } catch (error) {
-    console.error('Error getting wishlist:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get wishlist',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_WISHLIST_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -206,11 +229,22 @@ export const removeFromWishlistController = async (req: AuthenticatedRequest, re
     const { id } = req.params;
     const removedItem = await wishlistService.removeFromWishlistService(userId, id as string);
     res.status(200).json(removedItem);
-  } catch (error) {
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to remove from wishlist',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'REMOVE_FROM_WISHLIST_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof WishlistError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
-    console.error('Error removing from wishlist:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

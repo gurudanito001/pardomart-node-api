@@ -2,6 +2,7 @@
 import { Request, Response } from 'express';
 import * as tagService from '../services/tag.service';
 import { TagFilters } from '../models/tag.model';
+import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
@@ -69,8 +70,19 @@ export const createTag = async (req: Request, res: Response) => {
   try {
     const tag = await tagService.createTag(req.body.name);
     res.status(201).json(tag);
-  } catch (error) {
-    console.error('Error creating tag:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to create tag',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'CREATE_TAG_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -111,8 +123,19 @@ export const createTagsBulk = async (req: Request, res: Response) => {
 
     const tags = await tagService.createTagsBulk(names);
     res.status(201).json(tags);
-  } catch (error) {
-    console.error('Error creating tags in bulk:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to create tags in bulk',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'CREATE_TAGS_BULK_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -148,8 +171,19 @@ export const getTagById = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Tag not found' });
     }
     res.json(tag);
-  } catch (error) {
-    console.error('Error getting tag by ID:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get tag by ID',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_TAG_BY_ID_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -181,8 +215,19 @@ export const getAllTags = async (req: Request, res: Response) => {
   try {
     const tags = await tagService.getAllTags({name});
     res.json(tags);
-  } catch (error) {
-    console.error('Error getting all tags:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get all tags',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_ALL_TAGS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -224,7 +269,18 @@ export const updateTag = async (req: Request, res: Response) => {
     const tag = await tagService.updateTag(req.params.id, req.body.name);
     res.json(tag);
   } catch (error: any) {
-    console.error('Error updating tag:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to update tag',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UPDATE_TAG_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error?.code === 'P2025') { // Prisma's error code for record not found on update
       return res.status(404).json({ error: 'Tag not found' });
     }
@@ -263,7 +319,18 @@ export const deleteTag = async (req: Request, res: Response) => {
     const tag = await tagService.deleteTag(req.params.id);
     res.json(tag);
   } catch (error: any) {
-    console.error('Error deleting tag:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to delete tag',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'DELETE_TAG_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error?.code === 'P2025') { // Prisma's error code for record not found on delete
       return res.status(404).json({ error: 'Tag not found' });
     }

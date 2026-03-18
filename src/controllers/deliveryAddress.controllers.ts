@@ -3,6 +3,7 @@ import { createDeliveryAddressService, getDeliveryAddressByIdService, getDeliver
 
 import * as deliveryAddressModel from "../models/deliveryAddress.model";
 import { Prisma } from '@prisma/client';
+import { errorLogService } from '../services/errorLog.service';
 
 // A better approach would be to have this in a shared types file
 interface AuthenticatedRequest extends Request {
@@ -100,7 +101,18 @@ export const createDeliveryAddressController = async (req: AuthenticatedRequest,
     const newAddress = await createDeliveryAddressService(payload);
     res.status(201).json(newAddress);
   } catch (error: any) {
-    console.error('Error in createDeliveryAddressController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to create delivery address',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'CREATE_DELIVERY_ADDRESS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -140,7 +152,18 @@ export const getDeliveryAddressByIdController = async (req: AuthenticatedRequest
     }
     res.status(200).json(address);
   } catch (error: any) {
-    console.error('Error in getDeliveryAddressByIdController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get delivery address by ID',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_DELIVERY_ADDRESS_BY_ID_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -175,7 +198,18 @@ export const getMyDeliveryAddressesController = async (req: AuthenticatedRequest
     const addresses = await getDeliveryAddressesByUserIdService(userId);
     res.status(200).json(addresses);
   } catch (error: any) {
-    console.error('Error in getMyDeliveryAddressesController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get my delivery addresses',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_MY_DELIVERY_ADDRESSES_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -213,7 +247,18 @@ export const getMyDefaultDeliveryAddressController = async (req: AuthenticatedRe
     }
     res.status(200).json(defaultAddress);
   } catch (error: any) {
-    console.error('Error in getMyDefaultDeliveryAddressController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get my default delivery address',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_MY_DEFAULT_DELIVERY_ADDRESS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -258,7 +303,18 @@ export const updateDeliveryAddressController = async (req: AuthenticatedRequest,
     const updatedAddress = await updateDeliveryAddressService(id, payload);
     res.status(200).json(updatedAddress);
   } catch (error: any) {
-    console.error('Error in updateDeliveryAddressController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to update delivery address',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UPDATE_DELIVERY_ADDRESS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     // The service/model layer throws a generic error for not found.
     if (error.message.toLowerCase().includes('not found')) {
       return res.status(404).json({ error: error.message });
@@ -299,7 +355,18 @@ export const deleteDeliveryAddressController = async (req: Request, res: Respons
     const deletedAddress = await deleteDeliveryAddressService(id);
     res.status(200).json(deletedAddress);
   } catch (error: any) {
-    console.error('Error in deleteDeliveryAddressController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to delete delivery address',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as AuthenticatedRequest).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'DELETE_DELIVERY_ADDRESS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     // The service/model layer throws a generic error for not found.
     if (error.message.toLowerCase().includes('not found')) {
       return res.status(404).json({ error: 'Delivery address not found.' });
@@ -349,7 +416,18 @@ export const setDefaultDeliveryAddressController = async (req: AuthenticatedRequ
     const newDefaultAddress = await setDefaultDeliveryAddressService(userId, addressId);
     res.status(200).json(newDefaultAddress);
   } catch (error: any) {
-    console.error('Error in setDefaultDeliveryAddressController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to set default delivery address',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'SET_DEFAULT_DELIVERY_ADDRESS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
       return res.status(404).json({ error: 'Delivery address not found or does not belong to the user.' });
     }

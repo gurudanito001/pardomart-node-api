@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import * as vendorService from '../services/vendor.service';
 import { getVendorsFilters } from '../models/vendor.model';
 import { PrismaClient, Role } from '@prisma/client';
+import { errorLogService } from '../services/errorLog.service';
 const prisma = new PrismaClient();
 
 export interface AuthenticatedRequest extends Request {
@@ -195,8 +196,18 @@ export const createVendor = async (req: AuthenticatedRequest, res: Response) => 
 
     const vendor = await vendorService.createVendor({ ...payload, userId: req.userId as string });
     res.status(201).json(vendor);
-  } catch (error) {
-    console.error('Error creating vendor:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to create vendor',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'CREATE_VENDOR_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -247,8 +258,18 @@ export const getVendorById = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Vendor not found' });
     }
     res.status(200).json(vendor);
-  } catch (error) {
-    console.error('Error getting vendor by ID:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get vendor by ID',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_VENDOR_BY_ID_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -384,8 +405,18 @@ export const getAllVendors = async (req: AuthenticatedRequest, res: Response) =>
     };
     const vendors = await vendorService.getAllVendors(filters, {page, take});
     res.status(200).json(vendors);
-  } catch (error) {
-    console.error('Error getting all vendors:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get all vendors',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_ALL_VENDORS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -472,8 +503,18 @@ export const exportVendors = async (req: AuthenticatedRequest, res: Response) =>
     res.header('Content-Type', 'text/csv');
     res.header('Content-Disposition', 'attachment; filename="vendors.csv"');
     res.send(csvRows.join('\n'));
-  } catch (error) {
-    console.error('Error exporting vendors:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to export vendors',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'EXPORT_VENDORS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -535,7 +576,17 @@ export const updateVendor = async (req: Request, res: Response) => {
     const vendor = await vendorService.updateVendor(id, payload);
     res.status(200).json(vendor);
   } catch (error: any) {
-    console.error('Error updating vendor:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to update vendor',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UPDATE_VENDOR_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     if (error?.code === 'P2025') {
       return res.status(404).json({ error: 'Vendor not found' });
     }
@@ -576,7 +627,17 @@ export const deleteVendor = async (req: Request, res: Response) => {
     const vendor = await vendorService.deleteVendor(req.params.id);
     res.status(200).json(vendor);
   } catch (error: any) {
-    console.error('Error deleting vendor:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to delete vendor',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'DELETE_VENDOR_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     if (error?.code === 'P2025') {
       return res.status(404).json({ error: 'Vendor not found' });
     }
@@ -610,8 +671,18 @@ export const getVendorsByUserId = async (req: AuthenticatedRequest, res: Respons
     }
     const vendors = await vendorService.getVendorsByUserId(req.userId);
     res.status(200).json(vendors);
-  } catch (error) {
-    console.error('Error getting vendors by userId:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get vendors by userId',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_VENDORS_BY_USER_ID_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -665,8 +736,18 @@ export const getIncompleteSetups = async (req: AuthenticatedRequest, res: Respon
     });
 
     res.status(200).json({ incompleteVendors });
-  } catch (error) {
-    console.error('Failed to get incomplete vendor setups:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get incomplete vendor setups',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_INCOMPLETE_VENDOR_SETUPS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -711,7 +792,17 @@ export const publishVendor = async (req: AuthenticatedRequest, res: Response) =>
     const vendor = await vendorService.publishVendor(id, userId);
     res.status(200).json(vendor);
   } catch (error: any) {
-    console.error('Error publishing vendor:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to publish vendor',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'PUBLISH_VENDOR_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     if (error.message.includes('not found')) {
       return res.status(404).json({ error: error.message });
     }
@@ -759,6 +850,17 @@ export const approveVendor = async (req: Request, res: Response) => {
     const vendor = await vendorService.approveVendor(id);
     res.status(200).json(vendor);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to approve vendor',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'APPROVE_VENDOR_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message });
   }
 };
@@ -810,6 +912,17 @@ export const setVendorAvailabilityController = async (req: AuthenticatedRequest,
     const vendor = await vendorService.setVendorAvailability(id, userId, available);
     res.status(200).json(vendor);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to set vendor availability',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'SET_VENDOR_AVAILABILITY_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     if (error.message.includes('not found')) {
       return res.status(404).json({ error: error.message });
     }
@@ -851,6 +964,17 @@ export const getVendorUserByIdController = async (req: Request, res: Response) =
     const vendorUser = await vendorService.getVendorUserByIdService(userId);
     res.status(200).json(vendorUser);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get vendor user by ID',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_VENDOR_USER_BY_ID_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message });
   }
 };
@@ -884,7 +1008,17 @@ export const getOverviewDataController = async (req: Request, res: Response) => 
     const overviewData = await vendorService.getOverviewDataService();
     res.status(200).json(overviewData);
   } catch (error: any) {
-    console.error('Error getting overview data:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get platform overview data',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_PLATFORM_OVERVIEW_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };
@@ -929,8 +1063,18 @@ export const getVendorStats = async (req: Request, res: Response) => {
     ]);
 
     res.status(200).json({ totalOrders, totalProducts, inStockProducts, outOfStockProducts });
-  } catch (error) {
-    console.error('Error getting vendor stats:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get vendor stats',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_VENDOR_STATS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Internal server error' });
   }
 };

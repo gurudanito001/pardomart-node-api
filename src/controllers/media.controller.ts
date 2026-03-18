@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as mediaService from '../services/media.service';
 import { ReferenceType, Identifier } from '@prisma/client';
+import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
@@ -97,7 +98,18 @@ export const uploadFile = async (req: Request, res: Response) => {
 
     res.status(201).json({ message: 'File uploaded successfully', data: result.dbRecord });
   } catch (error: any) {
-    console.error('Error uploading file:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to upload file',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UPLOAD_FILE_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ message: error.message || 'Error uploading file' });
   }
 };
@@ -149,7 +161,18 @@ export const getMedia = async (req: Request, res: Response) => {
     const media = await mediaService.getMediaByReference(referenceId as string, referenceType as ReferenceType);
     res.status(200).json(media);
   } catch (error: any) {
-    console.error('Error fetching media:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to fetch media',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_MEDIA_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ message: error.message || 'Error fetching media' });
   }
 };
@@ -181,7 +204,18 @@ export const deleteMedia = async (req: Request, res: Response) => {
     await mediaService.deleteMedia(req.params.id);
     res.status(200).json({ message: 'File deleted successfully' });
   } catch (error: any) {
-    console.error('Error deleting media:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to delete media',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'DELETE_MEDIA_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message === 'Media not found') {
       return res.status(404).json({ message: 'Media not found' });
     }

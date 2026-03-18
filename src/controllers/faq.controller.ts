@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import * as faqService from '../services/faq.service';
 import { CreateFaqPayload, UpdateFaqPayload } from '../models/faq.model';
 import { StatusCodes } from 'http-status-codes';
+import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
@@ -89,7 +90,19 @@ export const getAllFaqsController = async (req: Request, res: Response) => {
     };
     const faqs = await faqService.getAllFaqsService(filters);
     res.status(StatusCodes.OK).json(faqs);
-  } catch (error) {
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to fetch FAQs',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
+      errorCode: error.code || 'GET_FAQS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res
       .status(StatusCodes.INTERNAL_SERVER_ERROR)
       .json({ message: 'Error fetching FAQs' });
@@ -131,7 +144,19 @@ export const createFaqController = async (req: Request, res: Response) => {
     const payload: CreateFaqPayload = req.body;
     const newFaq = await faqService.createFaqService(payload);
     res.status(StatusCodes.CREATED).json(newFaq);
-  } catch (error) {
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to create FAQ',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
+      errorCode: error.code || 'CREATE_FAQ_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res
       .status(StatusCodes.INTERNAL_SERVER_ERROR)
       .json({ message: 'Error creating FAQ' });
@@ -185,6 +210,18 @@ export const updateFaqController = async (req: Request, res: Response) => {
     const updatedFaq = await faqService.updateFaqService(id, payload);
     res.status(StatusCodes.OK).json(updatedFaq);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to update FAQ',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
+      errorCode: error.code || 'UPDATE_FAQ_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message === 'FAQ not found') {
       return res.status(StatusCodes.NOT_FOUND).json({ message: error.message });
     }
@@ -228,6 +265,18 @@ export const deleteFaqController = async (req: Request, res: Response) => {
     await faqService.deleteFaqService(id);
     res.status(StatusCodes.NO_CONTENT).send();
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to delete FAQ',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
+      errorCode: error.code || 'DELETE_FAQ_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message === 'FAQ not found') {
       return res.status(StatusCodes.NOT_FOUND).json({ message: error.message });
     }

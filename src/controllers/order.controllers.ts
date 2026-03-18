@@ -31,6 +31,7 @@ import {
 } from '../services/order.service'; // Adjust the path if needed
 import { Role, OrderStatus, DeliveryMethod, } from '@prisma/client';
 import { AuthenticatedRequest } from './vendor.controller';
+import { errorLogService } from '../services/errorLog.service';
 
 // --- Order Controllers ---
 
@@ -328,10 +329,21 @@ export const createOrderController = async (req: AuthenticatedRequest, res: Resp
     const finalOrder = await createOrderFromClient(userId, req.body);
     res.status(201).json(finalOrder);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to create order',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'CREATE_ORDER_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof OrderCreationError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
-    console.error('Error creating order:', error);
     res.status(500).json({ error: error.message || 'Internal server error during order creation.' });
   }
 };
@@ -374,6 +386,18 @@ export const getOrderByIdController = async (req: AuthenticatedRequest, res: Res
     }
     res.status(200).json(order);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to retrieve order by ID',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_ORDER_BY_ID_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Failed to retrieve order: ' + error.message });
   }
 };
@@ -408,6 +432,18 @@ export const getOrderHistoryController = async (req: AuthenticatedRequest, res: 
     const history = await getOrderHistoryService(id, userId!, userRole!, vendorId);
     res.status(200).json(history);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to retrieve order history',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_ORDER_HISTORY_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof OrderCreationError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
@@ -440,6 +476,18 @@ export const getActiveOrderController = async (req: AuthenticatedRequest, res: R
     // It's okay to return null if no order is active, frontend should handle it.
     res.status(200).json(order); 
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to retrieve active order',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_ACTIVE_ORDER_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Failed to retrieve active order: ' + error.message });
   }
 };
@@ -469,6 +517,18 @@ export const getOrdersByUserController = async (req: AuthenticatedRequest, res: 
     const orders = await getOrdersByUserIdService(userId as string);
     res.status(200).json(orders);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to retrieve orders by user',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_ORDERS_BY_USER_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Failed to retrieve orders: ' + error.message });
   }
 };
@@ -514,6 +574,18 @@ export const updateOrderStatusController = async (req: AuthenticatedRequest, res
     const updatedOrder = await updateOrderStatusService(orderId, status, userId as string, userRole as any);
     res.status(200).json(updatedOrder);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to update order status',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UPDATE_ORDER_STATUS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof OrderCreationError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
@@ -565,6 +637,18 @@ export const updateOrderController = async (req: Request, res: Response) => {
     const updatedOrder = await updateOrderService(orderId, updates);
     res.status(200).json(updatedOrder);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to update order',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UPDATE_ORDER_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message === 'Order not found') {
       return res.status(404).json({ error: error.message });
     }
@@ -613,7 +697,18 @@ export const getVendorOrdersController = async (req: OrderAuthenticatedRequest, 
     const orders = await getOrdersForVendorDashboard(vendorId, { status: status });
     res.status(200).json(orders);
   } catch (error: any) {
-    console.error('Error in getVendorOrdersController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get vendor orders',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_VENDOR_ORDERS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -658,15 +753,24 @@ export const updateOrderItemShoppingStatusController = async (req: Authenticated
     const { orderId, itemId } = req.params;
     const payload: UpdateOrderItemShoppingStatusPayload = req.body;
 
-    console.log(`Updating item ${itemId} shopping status. Payload:`, JSON.stringify(payload, null, 2));
-
     const updatedItem = await updateOrderItemShoppingStatusService(orderId, itemId, shopperId, payload);
     res.status(200).json(updatedItem);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to update order item shopping status',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UPDATE_ITEM_SHOPPING_STATUS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof OrderCreationError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
-    console.error('Error in updateOrderItemShoppingStatusController:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -714,10 +818,21 @@ export const respondToReplacementController = async (req: AuthenticatedRequest, 
     const updatedItem = await respondToReplacementService(orderId, itemId, customerId, payload);
     res.status(200).json(updatedItem);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to respond to replacement',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'RESPOND_TO_REPLACEMENT_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof OrderCreationError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
-    console.error('Error in respondToReplacementController:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -760,7 +875,18 @@ export const acceptOrderController = async (req: OrderAuthenticatedRequest, res:
     const acceptedOrder = await acceptOrderService(orderId, shoppingHandlerUserId, vendorId);
     res.status(200).json(acceptedOrder);
   } catch (error: any) {
-    console.error('Error in acceptOrderController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to accept order',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'ACCEPT_ORDER_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message.includes('not found') || error.message.includes('cannot be accepted')) {
       return res.status(400).json({ error: error.message });
     }
@@ -812,7 +938,18 @@ export const getAvailableDeliverySlotsController = async (req: AuthenticatedRequ
     const slots = await getAvailableDeliverySlots(vendorId, deliveryMethod);
     res.status(200).json(slots);
   } catch (error: any) {
-    console.error('Error getting delivery slots:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get delivery slots',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_DELIVERY_SLOTS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -855,7 +992,18 @@ export const declineOrderController = async (req: OrderAuthenticatedRequest, res
     const declinedOrder = await declineOrderService(orderId, vendorId, reason);
     res.status(200).json(declinedOrder);
   } catch (error: any) {
-    console.error('Error in declineOrderController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to decline order',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'DECLINE_ORDER_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message.includes('not found') || error.message.includes('cannot be declined')) {
       return res.status(400).json({ error: error.message });
     }
@@ -900,7 +1048,18 @@ export const startShoppingController = async (req: OrderAuthenticatedRequest, re
     const updatedOrder = await startShoppingService(orderId, shoppingHandlerUserId, vendorId);
     res.status(200).json(updatedOrder);
   } catch (error: any) {
-    console.error('Error in startShoppingController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to start shopping',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'START_SHOPPING_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message.includes('not found') || error.message.includes('cannot start shopping')) {
       return res.status(400).json({ error: error.message });
     }
@@ -956,8 +1115,19 @@ export const updateOrderTipController = async (req: AuthenticatedRequest, res: R
     const updatedOrder = await updateOrderTipService(orderId, userId, payload);
     res.status(200).json(updatedOrder);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to update order tip',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UPDATE_ORDER_TIP_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof OrderCreationError) { return res.status(error.statusCode).json({ error: error.message }); }
-    console.error('Error in updateOrderTipController:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -1007,6 +1177,18 @@ export const getOrdersForVendor = async (req: AuthenticatedRequest, res: Respons
     const orders = await getOrdersForVendorUserService(userId as string, userRole as any, { vendorId, status, staffVendorId });
     res.status(200).json(orders);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get orders for vendor',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_ORDERS_FOR_VENDOR_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof OrderCreationError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
@@ -1060,7 +1242,18 @@ export const verifyPickupOtp = async (req: AuthenticatedRequest, res: Response) 
     const updatedOrder = await verifyPickupOtpService(id, otp, userId!, userRole as Role, staffVendorId);
     res.status(200).json(updatedOrder);
   } catch (error: any) {
-    console.error(`Error verifying OTP for order ${id}:`, error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to verify pickup OTP',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'VERIFY_PICKUP_OTP_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof OrderCreationError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
@@ -1097,7 +1290,18 @@ export const getOrderOverviewDataController = async (req: Request, res: Response
     const overviewData = await getOrderOverviewDataService();
     res.status(200).json(overviewData);
   } catch (error: any) {
-    console.error('Error getting order overview data:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get order overview data',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_ORDER_OVERVIEW_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };
@@ -1123,7 +1327,18 @@ export const getMyDeliveryOrdersController = async (req: AuthenticatedRequest, r
     const orders = await getOrdersForDeliveryPersonService(userId);
     res.status(200).json(orders);
   } catch (error: any) {
-    console.error('Error getting delivery orders:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get delivery orders',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_MY_DELIVERY_ORDERS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Failed to retrieve delivery orders.' });
   }
 };
@@ -1185,7 +1400,18 @@ export const getAvailableOrdersForDeliveryController = async (req: Authenticated
     const result = await getAvailableOrdersForDeliveryService({ page, take: size });
     res.status(200).json(result);
   } catch (error: any) {
-    console.error('Error getting available delivery orders:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get available orders for delivery',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_AVAILABLE_DELIVERY_ORDERS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Failed to retrieve available orders.' });
   }
 };
@@ -1217,10 +1443,21 @@ export const acceptOrderForDeliveryController = async (req: AuthenticatedRequest
     const order = await acceptOrderForDeliveryService(orderId, deliveryPersonId);
     res.status(200).json(order);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to accept order for delivery',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'ACCEPT_ORDER_DELIVERY_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof OrderCreationError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
-    console.error('Error accepting order for delivery:', error);
     res.status(500).json({ error: 'Internal server error.' });
   }
 };
@@ -1280,10 +1517,21 @@ export const completeDeliveryController = async (req: AuthenticatedRequest, res:
     const completedOrder = await completeDeliveryService(orderId, deliveryPersonId, imagePayload);
     res.status(200).json(completedOrder);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to complete delivery',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'COMPLETE_DELIVERY_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof OrderCreationError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
-    console.error('Error completing delivery:', error);
     res.status(500).json({ error: 'Internal server error.' });
   }
 };
@@ -1328,6 +1576,18 @@ export const adminUpdateOrderController = async (req: Request, res: Response) =>
     const updatedOrder = await adminUpdateOrderService(orderId, updates);
     res.status(200).json(updatedOrder);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to update order (Admin)',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'ADMIN_UPDATE_ORDER_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof OrderCreationError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
@@ -1426,7 +1686,18 @@ export const adminGetAllOrdersController = async (req: Request, res: Response) =
 
     res.status(200).json(result);
   } catch (error: any) {
-    console.error('Error in adminGetAllOrdersController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get all orders (Admin)',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'ADMIN_GET_ALL_ORDERS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };

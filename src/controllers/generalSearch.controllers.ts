@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { searchProductsService, searchStoreService, searchByCategoryService, searchStoreProductsService, searchByCategoryIdService } from '../services/generalSearch.service';
-
+import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
@@ -196,7 +196,18 @@ export const searchByProductController = async (req: Request, res: Response) => 
     const result = await searchProductsService(userSearchTerm, userLatitude, userLongitude);
     res.json(result);
   } catch (error: any) {
-    // Handle errors from the service
+    await errorLogService.logError({
+      message: error.message || 'Failed to search products',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'SEARCH_PRODUCTS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -250,6 +261,18 @@ export const searchByStoreController = async (req: Request, res: Response) => {
     const result = await searchStoreService(userSearchTerm, userLatitude, userLongitude);
     res.json(result);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to search store',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'SEARCH_STORE_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -303,6 +326,18 @@ export const searchByCategoryController = async (req: Request, res: Response) =>
     const result = await searchByCategoryService(userSearchTerm, userLatitude, userLongitude);
     res.json(result);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to search by category',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'SEARCH_BY_CATEGORY_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -354,6 +389,18 @@ export const searchByCategoryIdController = async (req: Request, res: Response) 
     const result = await searchByCategoryIdService(categoryId, latitude as unknown as number, longitude as unknown as number);
     res.json(result);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to search by category ID',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'SEARCH_BY_CATEGORY_ID_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -437,7 +484,18 @@ export const searchStoreProductsController = async (req: Request, res: Response)
     }
     res.json(result);
   } catch (error: any) {
-    console.error('Error searching store products:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to search store products',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'SEARCH_STORE_PRODUCTS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };

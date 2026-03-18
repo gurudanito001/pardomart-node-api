@@ -239,7 +239,7 @@ model Order {
 model ReturnRequest {
   id           String       @id @default(uuid())
   orderId      String
-  order        Order        @relation(fields: [orderId], references: [id])
+  order        Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
   userId       String
   user         User         @relation(fields: [userId], references: [id])
   vendorId     String

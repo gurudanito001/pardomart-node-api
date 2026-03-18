@@ -5,6 +5,7 @@ import { Prisma } from '@prisma/client';
 import { CartError } from '../services/cart.service';
 
 import { AuthenticatedRequest } from './vendor.controller';
+import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
@@ -119,10 +120,21 @@ export const addItemToCartController = async (req: AuthenticatedRequest, res: Re
     const updatedCart = await cartService.addItemToCartService(userId, { vendorProductId, quantity });
     res.status(201).json(updatedCart);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to add item to cart',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'ADD_CART_ITEM_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof CartError) {
         return res.status(error.statusCode).json({ error: error.message });
     }
-    console.error('Error in addItemToCartController:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -171,7 +183,18 @@ export const getCartItemByIdController = async (req: AuthenticatedRequest, res: 
 
     res.json(cartItem);
   } catch (error: any) {
-    console.error('Error in getCartItemByIdController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get cart item by ID',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_CART_ITEM_BY_ID_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -234,6 +257,18 @@ export const updateCartItemController = async (req: AuthenticatedRequest, res: R
     const updatedCartItem = await updateCartItemService(cartItemId, { quantity });
     res.json(updatedCartItem);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to update cart item',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UPDATE_CART_ITEM_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
       return res.status(404).json({ error: 'Cart item not found' });
     }
@@ -286,6 +321,18 @@ export const deleteCartItemController = async (req: AuthenticatedRequest, res: R
     const deletedCartItem = await deleteCartItemService(cartItemId);
     res.json(deletedCartItem);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to delete cart item',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'DELETE_CART_ITEM_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
       return res.status(404).json({ error: 'Cart item not found' });
     }

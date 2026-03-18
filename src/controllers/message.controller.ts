@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from './vendor.controller';
 import { sendMessageService, getMessagesForOrderService, markMessagesAsReadService, adminGetMessagesForOrderService } from '../services/message.service';
+import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
@@ -104,7 +105,18 @@ export const sendMessageController = async (req: AuthenticatedRequest, res: Resp
 
     res.status(201).json(message);
   } catch (error: any) {
-    console.error('Error sending message:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to send message',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'SEND_MESSAGE_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message.includes('not found')) {
       return res.status(404).json({ error: error.message });
     }
@@ -185,7 +197,18 @@ export const getMessagesForOrderController = async (req: AuthenticatedRequest, r
 
     res.status(200).json(messages);
   } catch (error: any) {
-    console.error('Error getting messages:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get messages for order',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_MESSAGES_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message.includes('not found')) {
       return res.status(404).json({ error: error.message });
     }
@@ -242,7 +265,18 @@ export const markMessagesAsReadController = async (req: AuthenticatedRequest, re
 
     res.status(200).json(result);
   } catch (error: any) {
-    console.error('Error marking messages as read:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to mark messages as read',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'MARK_MESSAGES_READ_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message.includes('not found')) {
       return res.status(404).json({ error: error.message });
     }
@@ -287,6 +321,18 @@ export const adminGetMessagesForOrderController = async (req: AuthenticatedReque
     const messages = await adminGetMessagesForOrderService(orderId);
     res.status(200).json(messages);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get messages for order (Admin)',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'ADMIN_GET_MESSAGES_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message });
   }
 };

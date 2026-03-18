@@ -3,6 +3,7 @@ import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import * as bugReportService from '../services/bugReport.service';
 import { Prisma, PrismaClient, Role, NotificationCategory } from '@prisma/client';
 import * as notificationService from '../services/notification.service';
+import { errorLogService } from '../services/errorLog.service';
 
 const prisma = new PrismaClient();
 
@@ -52,7 +53,18 @@ export const createBugReportController = async (req: AuthenticatedRequest, res: 
 
     res.status(201).json({ message: 'Bug report submitted successfully.', bugReport });
   } catch (error: any) {
-    console.error('Error creating bug report:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to create bug report',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'BUG_REPORT_CREATION_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Failed to create bug report.', message: error.message });
   }
 };
@@ -79,13 +91,24 @@ export const updateBugReportStatusController = async (req: AuthenticatedRequest,
 
     res.status(200).json({ message: 'Bug report status updated successfully.', bugReport: updatedBugReport });
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to update bug report status',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'BUG_REPORT_UPDATE_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
       return res.status(404).json({ error: 'Bug report not found.' });
     }
     if (error.message.includes('not found')) {
       return res.status(404).json({ error: error.message });
     }
-    console.error('Error updating bug report status:', error);
     res.status(500).json({ error: 'Failed to update bug report status.', message: error.message });
   }
 };

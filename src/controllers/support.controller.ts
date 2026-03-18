@@ -12,6 +12,7 @@ import {
   GetAllTicketsFilters,
 } from '../services/support.service';
 import { Role, TicketCategory, TicketStatus } from '@prisma/client';
+import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
@@ -131,7 +132,18 @@ export const createSupportTicketController = async (req: AuthenticatedRequest, r
 
     res.status(201).json(ticket);
   } catch (error: any) {
-    console.error('Error creating support ticket:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to create support ticket',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'CREATE_SUPPORT_TICKET_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Failed to create support ticket.' });
   }
 };
@@ -172,7 +184,18 @@ export const updateSupportTicketController = async (req: AuthenticatedRequest, r
     const updatedTicket = await updateSupportTicketService(ticketId, userId, payload);
     res.status(200).json(updatedTicket);
   } catch (error: any) {
-    console.error('Error updating support ticket:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to update support ticket',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UPDATE_SUPPORT_TICKET_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message.includes('not found')) return res.status(404).json({ error: error.message });
     if (error.message.includes('authorized')) return res.status(403).json({ error: error.message });
     res.status(500).json({ error: 'Failed to update support ticket.' });
@@ -208,7 +231,18 @@ export const getMySupportTicketsController = async (req: AuthenticatedRequest, r
     const tickets = await getSupportTicketsByUserService(userId);
     res.status(200).json(tickets);
   } catch (error: any) {
-    console.error('Error getting support tickets:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to retrieve support tickets',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_MY_SUPPORT_TICKETS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Failed to retrieve support tickets.' });
   }
 };
@@ -253,6 +287,18 @@ export const getSupportTicketByIdController = async (req: AuthenticatedRequest, 
 
     res.status(200).json(ticket);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get support ticket by ID',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_SUPPORT_TICKET_BY_ID_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(error.message.includes('authorized') ? 403 : 500).json({ error: error.message });
   }
 };
@@ -302,7 +348,18 @@ export const getAllSupportTicketsController = async (req: Request, res: Response
 
     res.status(200).json(tickets);
   } catch (error: any) {
-    console.error('Error getting all support tickets:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to retrieve all support tickets',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_ALL_SUPPORT_TICKETS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Failed to retrieve support tickets.' });
   }
 };
@@ -348,7 +405,18 @@ export const updateSupportTicketStatusController = async (req: Request, res: Res
     const updatedTicket = await updateSupportTicketStatusService(ticketId, status as TicketStatus);
     res.status(200).json(updatedTicket);
   } catch (error: any) {
-    console.error('Error updating support ticket status:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to update support ticket status',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UPDATE_SUPPORT_TICKET_STATUS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.code === 'P2025') {
       // Prisma's record not found error
       return res.status(404).json({ error: 'Support ticket not found.' });
@@ -386,7 +454,18 @@ export const getSupportTicketOverviewController = async (req: Request, res: Resp
     const overviewData = await getSupportTicketOverviewService();
     res.status(200).json(overviewData);
   } catch (error: any) {
-    console.error('Error getting support ticket overview:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get support ticket overview',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_SUPPORT_TICKET_OVERVIEW_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };
@@ -422,6 +501,18 @@ export const exportSupportTicketsController = async (req: Request, res: Response
     res.setHeader('Content-Disposition', 'attachment; filename=support_tickets.csv');
     res.send(csv);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to export support tickets',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'EXPORT_SUPPORT_TICKETS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };

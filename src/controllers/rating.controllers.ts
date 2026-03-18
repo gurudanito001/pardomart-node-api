@@ -3,6 +3,7 @@ import * as ratingService from '../services/rating.service';
 import { RatingError } from '../services/rating.service';
 import { CreateRatingPayload, GetRatingsFilters, UpdateRatingPayload } from '../models/rating.model';
 import { RatingType } from '@prisma/client';
+import { errorLogService } from '../services/errorLog.service';
 
 // This interface is a placeholder for your actual authenticated request type.
 // It assumes an authentication middleware adds a `user` object to the request.
@@ -113,11 +114,22 @@ export const createRatingController = async (req: AuthenticatedRequest, res: Res
     const payload: Omit<CreateRatingPayload, 'raterId'> = req.body;
     const rating = await ratingService.createRatingService(raterId, payload);
     res.status(201).json(rating);
-  } catch (error) {
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to create rating',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.user?.id as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'CREATE_RATING_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof RatingError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
-    console.error('Error creating rating:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -173,11 +185,22 @@ export const updateRatingController = async (req: AuthenticatedRequest, res: Res
 
     const updatedRating = await ratingService.updateRatingService(id, raterId, payload);
     res.status(200).json(updatedRating);
-  } catch (error) {
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to update rating',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.user?.id as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UPDATE_RATING_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof RatingError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
-    console.error('Error updating rating:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -222,11 +245,22 @@ export const deleteRatingController = async (req: AuthenticatedRequest, res: Res
     const { id } = req.params;
     const deletedRating = await ratingService.deleteRatingService(id, raterId);
     res.status(200).json(deletedRating);
-  } catch (error) {
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to delete rating',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.user?.id as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'DELETE_RATING_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof RatingError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
-    console.error('Error deleting rating:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -288,8 +322,19 @@ export const getRatingsController = async (req: Request, res: Response) => {
 
     const ratings = await ratingService.getRatingsService(filters);
     res.json(ratings);
-  } catch (error) {
-    console.error('Error getting ratings:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get ratings',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).user?.id as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_RATINGS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -338,11 +383,22 @@ export const getAggregateRatingController = async (req: Request, res: Response) 
 
     const aggregate = await ratingService.getAggregateRatingService(filters);
     res.json(aggregate);
-  } catch (error) {
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get aggregate rating',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).user?.id as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_AGGREGATE_RATING_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof RatingError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
-    console.error('Error getting aggregate rating:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -379,8 +435,19 @@ export const getRatingByIdController = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Rating not found' });
     }
     res.json(rating);
-  } catch (error) {
-    console.error('Error getting rating by ID:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get rating by ID',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).user?.id as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_RATING_BY_ID_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Internal server error' });
   }
 };

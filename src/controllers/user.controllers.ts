@@ -3,6 +3,7 @@ import * as userService from '../services/user.service'; // Assuming you have a 
 import { User, Role } from '@prisma/client'; // Import User type
 import { GetUserFilters } from '../models/user.model';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
+import { errorLogService } from '../services/errorLog.service';
 
 // User Controllers
 /**
@@ -152,8 +153,18 @@ export const getAllUsers = async (req: Request, res: Response) => {
   try {
     const users = await userService.getAllUsers(filters, pagination); // Pass query params for filtering
     res.status(200).json(users);
-  } catch (error) {
-    console.error('Error getting all users:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get all users',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_ALL_USERS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -186,7 +197,17 @@ export const createAdminController = async (req: Request, res: Response) => {
     const admin = await userService.createAdminService(payload);
     res.status(201).json(admin);
   } catch (error: any) {
-    console.error('Error creating admin:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to create admin user',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'CREATE_ADMIN_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -223,7 +244,17 @@ export const updateAdminController = async (req: Request, res: Response) => {
     const updatedAdmin = await userService.updateAdminService(id, payload);
     res.status(200).json(updatedAdmin);
   } catch (error: any) {
-    console.error('Error updating admin:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to update admin user',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UPDATE_ADMIN_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -253,7 +284,17 @@ export const deactivateAdminController = async (req: Request, res: Response) => 
     const deactivatedAdmin = await userService.deactivateAdminService(id);
     res.status(200).json(deactivatedAdmin);
   } catch (error: any) {
-    console.error('Error deactivating admin:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to deactivate admin user',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'DEACTIVATE_ADMIN_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -282,8 +323,18 @@ export const getAdminStats = async (req: Request, res: Response) => {
   try {
     const stats = await userService.getAdminStatsService();
     res.status(200).json(stats);
-  } catch (error) {
-    console.error('Error getting admin stats:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get admin stats',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_ADMIN_STATS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -307,8 +358,18 @@ export const exportAdmins = async (req: Request, res: Response) => {
     res.header('Content-Type', 'text/csv');
     res.header('Content-Disposition', 'attachment; filename="admins.csv"');
     res.send(csv);
-  } catch (error) {
-    console.error('Error exporting admins:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to export admins',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'EXPORT_ADMINS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -335,8 +396,18 @@ export const getAllVerificationCodes = async (req: Request, res: Response) => {
   try {
     const verificationCodes = await userService.getAllVerificationCodes();
     res.status(200).json(verificationCodes);
-  } catch (error) {
-    console.error('Error getting all verification codes:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get all verification codes',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_ALL_VERIFICATION_CODES_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -375,8 +446,18 @@ export const getUserById = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'User not found' });
     }
     res.status(200).json(user);
-  } catch (error) {
-    console.error('Error getting user by ID:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get user by ID',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_USER_BY_ID_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -389,8 +470,18 @@ export const createUser = async (req: Request, res: Response) => {
   try {
     const newUser = await userService.createUser(req.body);
     res.status(201).json(newUser);
-  } catch (error) {
-    console.error('Error creating user:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to create user',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'CREATE_USER_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -421,7 +512,6 @@ export const createUser = async (req: Request, res: Response) => {
  */
 export const updateUser = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    console.log('Update User Payload:', JSON.stringify(req.body, null, 2));
     const userId = req.userId as string;
     const payload = req.body;
 
@@ -433,7 +523,18 @@ export const updateUser = async (req: AuthenticatedRequest, res: Response) => {
     const updatedUser = await userService.updateUser(userId, payload);
     res.status(200).json(updatedUser);
   } catch (error: any) {
-    console.error('Error updating user:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to update user',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UPDATE_USER_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error?.code === 'P2025') { // Prisma's error code for record not found on update
       return res.status(404).json({ error: 'User not found' });
     }
@@ -469,7 +570,18 @@ export const deleteUser = async (req: Request, res: Response) => {
     const deletedUser = await userService.deleteUser(userId);
     res.status(200).json(deletedUser);
   } catch (error: any) {
-    console.error('Error deleting user:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to delete user',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'DELETE_USER_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error?.code === 'P2025') { // Prisma's error code for record not found on delete
       return res.status(404).json({ error: 'User not found' });
     }

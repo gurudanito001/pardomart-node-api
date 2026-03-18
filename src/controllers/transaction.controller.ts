@@ -18,6 +18,7 @@ import { OrderCreationError } from '../services/order.service';
 import Stripe from 'stripe';
 import { Role, TransactionStatus } from '@prisma/client';
 import * as transactionService from '../services/transaction.service';
+import { errorLogService } from '../services/errorLog.service';
 
 
 /* const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -114,10 +115,21 @@ export const createPaymentIntentController = async (req: AuthenticatedRequest, r
     const paymentIntent = await createPaymentIntentService(userId, orderId);
     res.status(200).json(paymentIntent);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to create payment intent',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'CREATE_PAYMENT_INTENT_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof OrderCreationError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
-    console.error('Error creating payment intent:', error);
     res.status(500).json({ error: 'Failed to create payment intent.' });
   }
 };
@@ -152,10 +164,21 @@ export const createSetupIntentController = async (req: AuthenticatedRequest, res
     const setupIntent = await createSetupIntentService(userId);
     res.status(200).json(setupIntent);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to create setup intent',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'CREATE_SETUP_INTENT_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof OrderCreationError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
-    console.error('Error creating setup intent:', error);
     res.status(500).json({ error: 'Failed to create setup intent.' });
   }
 };
@@ -184,7 +207,17 @@ export const listMySavedPaymentMethodsController = async (req: AuthenticatedRequ
     const paymentMethods = await listSavedPaymentMethodsService(userId);
     res.status(200).json(paymentMethods);
   } catch (error: any) {
-    console.error('Error listing saved payment methods:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to list saved payment methods',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'LIST_SAVED_PAYMENT_METHODS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Failed to list saved payment methods.' });
   }
 };
@@ -219,10 +252,21 @@ export const detachPaymentMethodController = async (req: AuthenticatedRequest, r
     await detachPaymentMethodService(userId, paymentMethodId);
     res.status(204).send();
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to detach payment method',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'DETACH_PAYMENT_METHOD_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof OrderCreationError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
-    console.error('Error detaching payment method:', error);
     res.status(500).json({ error: 'Failed to detach payment method.' });
   }
 };
@@ -251,7 +295,17 @@ export const listMyTransactionsController = async (req: AuthenticatedRequest, re
     const transactions = await listTransactionsForUserService(userId);
     res.status(200).json(transactions);
   } catch (error: any) {
-    console.error('Error listing transactions:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to list my transactions',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'LIST_MY_TRANSACTIONS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Failed to list transactions.' });
   }
 };
@@ -292,7 +346,17 @@ export const listVendorTransactionsController = async (req: AuthenticatedRequest
         const transactions = await listTransactionsForVendorService(userId, vendorId as string | undefined);
         res.status(200).json(transactions);
     } catch (error: any) {
-        console.error('Error listing vendor transactions:', error);
+        await errorLogService.logError({
+          message: error.message || 'Failed to list vendor transactions',
+          stackTrace: error.stack,
+          metaData: { body: req.body, query: req.query, params: req.params },
+          userId: (req as any).userId as string,
+          ipAddress: req.ip || req.socket?.remoteAddress,
+          requestMethod: req.method,
+          requestPath: req.originalUrl || req.path,
+          statusCode: error.statusCode || 500,
+          errorCode: error.code || 'LIST_VENDOR_TRANSACTIONS_ERROR'
+        }).catch((logErr: any) => console.error('Failed to log error:', logErr));
         res.status(500).json({ error: 'Failed to list vendor transactions.' });
     }
 };
@@ -377,7 +441,17 @@ export const listTransactionsController = async (req: AuthenticatedRequest, res:
     const transactions = await transactionService.listTransactionsService(filters);
     res.status(200).json(transactions);
   } catch (error: any) {
-    console.error('Error listing transactions:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to list transactions',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'LIST_TRANSACTIONS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     if (error.message.includes('Forbidden') || error.message.includes('Unauthorized')) {
       return res.status(403).json({ error: error.message });
     }
@@ -414,7 +488,17 @@ export const getTransactionOverviewController = async (req: Request, res: Respon
     const overviewData = await transactionService.getTransactionOverviewService();
     res.status(200).json(overviewData);
   } catch (error: any) {
-    console.error('Error getting transaction overview:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get transaction overview',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_TRANSACTION_OVERVIEW_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };
@@ -454,10 +538,21 @@ export const simulatePaymentController = async (req: AuthenticatedRequest, res: 
     const transaction = await simulatePaymentService(userId, orderId);
     res.status(200).json(transaction);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to simulate payment',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'SIMULATE_PAYMENT_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof OrderCreationError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
-    console.error('Error simulating payment:', error);
     res.status(500).json({ error: 'Failed to simulate payment.' });
   }
 };
@@ -494,6 +589,17 @@ export const adminGetTransactionByIdController = async (req: Request, res: Respo
     const transaction = await transactionService.adminGetTransactionByIdService(transactionId);
     res.status(200).json(transaction);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get transaction by ID (Admin)',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'ADMIN_GET_TRANSACTION_BY_ID_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(error.statusCode || 500).json({ error: error.message || 'An unexpected error occurred.' });
   }
 };
@@ -529,6 +635,17 @@ export const sendReceiptController = async (req: Request, res: Response) => {
     const result = await transactionService.sendReceiptService(transactionId);
     res.status(200).json(result);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to send receipt',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'SEND_RECEIPT_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(error.statusCode || 500).json({ error: error.message || 'An unexpected error occurred.' });
   }
 };
@@ -585,7 +702,17 @@ export const adminListAllTransactionsController = async (req: Request, res: Resp
 
     res.status(200).json(result);
   } catch (error: any) {
-    console.error('Error in adminListAllTransactionsController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to list all transactions (Admin)',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'ADMIN_LIST_ALL_TRANSACTIONS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };
@@ -618,6 +745,17 @@ export const downloadReceiptController = async (req: Request, res: Response) => 
     res.setHeader('Content-Disposition', `attachment; filename=receipt-${transactionId}.html`);
     res.send(html);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to download receipt',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'DOWNLOAD_RECEIPT_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(error.statusCode || 500).json({ error: error.message || 'An unexpected error occurred.' });
   }
 };
@@ -646,6 +784,17 @@ export const exportTransactionsController = async (req: Request, res: Response) 
     res.setHeader('Content-Disposition', 'attachment; filename=transactions.csv');
     res.send(csv);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to export transactions',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'EXPORT_TRANSACTIONS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };

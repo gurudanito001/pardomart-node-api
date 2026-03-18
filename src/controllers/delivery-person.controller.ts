@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as deliveryPersonService from '../services/delivery-person.service';
+import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
@@ -45,7 +46,18 @@ export const getAdminDeliveryPersonOverviewController = async (req: Request, res
     const overviewData = await deliveryPersonService.getDeliveryPersonOverviewService(days);
     res.status(200).json(overviewData);
   } catch (error: any) {
-    console.error('Error getting delivery person overview data:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get delivery person overview data',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'DELIVERY_PERSON_OVERVIEW_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };
@@ -102,7 +114,18 @@ export const adminListAllDeliveryPersonsController = async (req: Request, res: R
 
     res.status(200).json(result);
   } catch (error: any) {
-    console.error('Error in adminListAllDeliveryPersonsController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to list all delivery persons (Admin)',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'ADMIN_LIST_DELIVERY_PERSONS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };
@@ -139,6 +162,18 @@ export const exportDeliveryPersonsController = async (req: Request, res: Respons
     res.setHeader('Content-Disposition', 'attachment; filename=delivery_persons.csv');
     res.send(csv);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to export delivery persons',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'EXPORT_DELIVERY_PERSONS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };
@@ -179,7 +214,18 @@ export const adminGetDeliveryPersonDetailsByIdController = async (req: Request, 
 
     res.status(200).json(deliveryPersonDetails);
   } catch (error: any) {
-    console.error('Error in adminGetDeliveryPersonDetailsByIdController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get delivery person details',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'ADMIN_GET_DELIVERY_PERSON_DETAILS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };
@@ -226,7 +272,18 @@ export const adminGetDeliveryHistoryController = async (req: Request, res: Respo
     const history = await deliveryPersonService.adminGetDeliveryHistoryService(id, { page, take });
     res.status(200).json(history);
   } catch (error: any) {
-    console.error('Error in adminGetDeliveryHistoryController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get delivery person history',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'ADMIN_GET_DELIVERY_HISTORY_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'An unexpected error occurred.' });
   }
 };
@@ -272,6 +329,18 @@ export const adminUpdateDeliveryPersonProfileController = async (req: Request, r
     const updatedUser = await deliveryPersonService.adminUpdateDeliveryPersonProfileService(id, updates);
     res.status(200).json(updatedUser);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to update delivery person profile',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'ADMIN_UPDATE_DELIVERY_PERSON_PROFILE_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message });
   }
 };

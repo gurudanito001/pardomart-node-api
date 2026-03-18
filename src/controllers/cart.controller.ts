@@ -2,6 +2,7 @@ import { Response } from 'express';
 import * as cartService from '../services/cart.service';
 import { AuthenticatedRequest } from './vendor.controller';
 import { CartError } from '../services/cart.service';
+import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
@@ -29,7 +30,18 @@ export const getCartsController = async (req: AuthenticatedRequest, res: Respons
     const carts = await cartService.getCartsByUserIdService(userId);
     res.status(200).json(carts || []);
   } catch (error: any) {
-    console.error('Error in getCartsController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get carts',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_CARTS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -77,7 +89,18 @@ export const getCartByIdController = async (req: AuthenticatedRequest, res: Resp
     }
     res.status(200).json(cart);
   } catch (error: any) {
-    console.error('Error in getCartByIdController:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get cart by ID',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_CART_BY_ID_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -118,7 +141,18 @@ export const deleteCartController = async (req: AuthenticatedRequest, res: Respo
         const deletedCart = await cartService.deleteCartService(cartId);
         res.status(200).json(deletedCart);
     } catch (error: any) {
-        console.error('Error in deleteCartController:', error);
+        await errorLogService.logError({
+          message: error.message || 'Failed to delete cart',
+          stackTrace: error.stack,
+          metaData: { body: req.body, query: req.query, params: req.params },
+          userId: req.userId as string,
+          ipAddress: req.ip || req.socket?.remoteAddress,
+          requestMethod: req.method,
+          requestPath: req.originalUrl || req.path,
+          statusCode: error.statusCode || 500,
+          errorCode: error.code || 'DELETE_CART_ERROR'
+        }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
         res.status(500).json({ error: 'Internal server error' });
     }
 };

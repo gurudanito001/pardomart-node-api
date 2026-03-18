@@ -5,6 +5,7 @@ import * as productService from '../services/product.service';
 import { Prisma, Role } from '@prisma/client';
 import { getVendorProductsFilters } from '../models/product.model';
 import { AuthenticatedRequest } from './vendor.controller';
+import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
@@ -235,10 +236,21 @@ export const createProduct = async (req: Request, res: Response) => {
     const product = await productService.createProduct(req.body);
     res.status(201).json(product);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to create product',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'CREATE_PRODUCT_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return res.status(409).json({ error: 'A product with this barcode already exists.' });
     }
-    console.error('Error creating product:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -248,7 +260,17 @@ export const getProductOverviewController = async (req: Request, res: Response) 
       const overview = await productService.getProductOverviewService();
       res.status(200).json(overview);
     } catch (error: any) {
-      console.error('Error getting product overview:', error);
+      await errorLogService.logError({
+        message: error.message || 'Failed to get product overview',
+        stackTrace: error.stack,
+        metaData: { body: req.body, query: req.query, params: req.params },
+        userId: (req as any).userId as string,
+        ipAddress: req.ip || req.socket?.remoteAddress,
+        requestMethod: req.method,
+        requestPath: req.originalUrl || req.path,
+        statusCode: error.statusCode || 500,
+        errorCode: error.code || 'GET_PRODUCT_OVERVIEW_ERROR'
+      }).catch((logErr: any) => console.error('Failed to log error:', logErr));
       res.status(500).json({ error: 'Internal server error' });
     }
   };
@@ -281,10 +303,21 @@ export const createVendorProduct = async (req: AuthenticatedRequest, res: Respon
     const vendorProduct = await productService.createVendorProduct(req.body, ownerId);
     res.status(201).json(vendorProduct);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to create vendor product',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'CREATE_VENDOR_PRODUCT_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return res.status(409).json({ error: 'This product is already listed by this vendor.' });
     }
-    console.error('Error creating vendor product:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -327,10 +360,21 @@ export const getVendorProductsForProductController = async (req: Request, res: R
         const result = await productService.getVendorProductsForProductService(productId, { page, size });
         res.status(200).json(result);
     } catch (error: any) {
+        await errorLogService.logError({
+          message: error.message || 'Failed to get vendor products for product',
+          stackTrace: error.stack,
+          metaData: { body: req.body, query: req.query, params: req.params },
+          userId: (req as any).userId as string,
+          ipAddress: req.ip || req.socket?.remoteAddress,
+          requestMethod: req.method,
+          requestPath: req.originalUrl || req.path,
+          statusCode: error.statusCode || 500,
+          errorCode: error.code || 'GET_VENDOR_PRODUCTS_FOR_PRODUCT_ERROR'
+        }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
         if (error.message.includes('not found')) {
             return res.status(404).json({ error: error.message });
         }
-        console.error('Error in getVendorProductsForProductController:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 };
@@ -366,8 +410,18 @@ export const getVendorProductById = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Vendor product not found' });
     }
     res.json(vendorProduct);
-  } catch (error) {
-    console.error(`Error in getVendorProductById: ${error}`);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get vendor product by ID',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_VENDOR_PRODUCT_BY_ID_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -403,6 +457,18 @@ export const createVendorProductWithBarcode = async (req: AuthenticatedRequest, 
     const vendorProduct = await productService.createVendorProductWithBarcode(req.body, ownerId);
     res.status(201).json(vendorProduct);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to create vendor product with barcode',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'CREATE_VENDOR_PRODUCT_WITH_BARCODE_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof Prisma.PrismaClientKnownRequestError && error?.code === 'P2002') {
       // Construct a user-friendly error message
       return res.status(409).json({
@@ -412,7 +478,6 @@ export const createVendorProductWithBarcode = async (req: AuthenticatedRequest, 
     if (error.message.startsWith('Unauthorized')) {
       return res.status(403).json({ error: error.message });
     }
-    console.error('Error creating vendor product with barcode:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 
@@ -451,8 +516,18 @@ export const getProductByBarcode = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Product not found' });
     }
     res.json(product);
-  } catch (error) {
-    console.error('Error getting product by barcode:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get product by barcode',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_PRODUCT_BY_BARCODE_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -497,8 +572,18 @@ export const getVendorProductByBarcode = async (req: Request, res: Response) => 
       return res.status(404).json({ error: 'Vendor product not found' });
     }
     res.json(vendorProduct);
-  } catch (error) {
-    console.error('Error getting vendor product by barcode:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get vendor product by barcode',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_VENDOR_PRODUCT_BY_BARCODE_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -537,8 +622,18 @@ export const getProductsByTagIds = async (req: Request, res: Response) => {
   try {
     const products = await productService.getProductsByTagIds(req.query.tagIds as string[]);
     res.json(products);
-  } catch (error) {
-    console.error('Error getting products by tag IDs:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get products by tag IDs',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_PRODUCTS_BY_TAG_IDS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -578,8 +673,18 @@ export const getVendorProductsByTagIds = async (req: Request, res: Response) => 
     const { tagIds, vendorId } = req.query;
     const vendorProducts = await productService.getVendorProductsByTagIds(tagIds as string[]);
     res.json(vendorProducts);
-  } catch (error) {
-    console.error('Error getting vendor products by tag IDs:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get vendor products by tag IDs',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_VENDOR_PRODUCTS_BY_TAG_IDS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -621,13 +726,24 @@ export const updateProductBase = async (req: Request, res: Response) => {
     const product = await productService.updateProductBase({ id: req.params.id, ...req.body });
     res.json(product);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to update product base',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UPDATE_PRODUCT_BASE_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
       return res.status(404).json({ error: 'Product not found.' });
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return res.status(409).json({ error: 'A product with this barcode already exists.' });
     }
-    console.error('Error updating product base:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -669,10 +785,21 @@ export const updateVendorProduct = async (req: Request, res: Response) => {
     const vendorProduct = await productService.updateVendorProduct({ id: req.params.id, ...req.body });
     res.json(vendorProduct);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to update vendor product',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UPDATE_VENDOR_PRODUCT_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
       return res.status(404).json({ error: 'Vendor product not found.' });
     }
-    console.error('Error updating vendor product:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -697,8 +824,18 @@ export const getAllProducts = async (req: Request, res: Response) => {
   try {
     const products = await productService.getAllProducts();
     res.json(products);
-  } catch (error) {
-    console.error('Error getting all products:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get all products',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_ALL_PRODUCTS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -762,8 +899,18 @@ export const adminGetAllProductsController = async (req: Request, res: Response)
 
         const result = await productService.adminGetAllProductsService(filters, { page, take: size });
         res.status(200).json(result);
-    } catch (error) {
-        console.error('Error in adminGetAllProductsController:', error);
+    } catch (error: any) {
+        await errorLogService.logError({
+          message: error.message || 'Failed to get all products (Admin)',
+          stackTrace: error.stack,
+          metaData: { body: req.body, query: req.query, params: req.params },
+          userId: (req as any).userId as string,
+          ipAddress: req.ip || req.socket?.remoteAddress,
+          requestMethod: req.method,
+          requestPath: req.originalUrl || req.path,
+          statusCode: error.statusCode || 500,
+          errorCode: error.code || 'ADMIN_GET_ALL_PRODUCTS_ERROR'
+        }).catch((logErr: any) => console.error('Failed to log error:', logErr));
         res.status(500).json({ error: 'Internal server error' });
     }
 };
@@ -821,8 +968,18 @@ export const getAllVendorProducts = async (req: Request, res: Response) => {
   try {
     const vendorProducts = await productService.getAllVendorProducts({name, vendorId, categoryIds, tagIds, productId}, {page, take});
     res.json(vendorProducts);
-  } catch (error) {
-    console.error('Error getting vendor products:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get all vendor products',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_ALL_VENDOR_PRODUCTS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -865,8 +1022,18 @@ export const getVendorProductsByCategory = async (req: Request, res: Response) =
     );
 
     res.json(vendorProducts);
-  } catch (error) {
-    console.error('Error getting vendor products by category:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get vendor products by category',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_VENDOR_PRODUCTS_BY_CATEGORY_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -909,8 +1076,18 @@ export const getVendorProductsByUserController = async (req: AuthenticatedReques
 
     const products = await productService.getVendorProductsByUser(userId);
     res.status(200).json(products);
-  } catch (error) {
-    console.error('Error getting vendor products by user:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get vendor products by user',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_VENDOR_PRODUCTS_BY_USER_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -944,10 +1121,20 @@ export const deleteProduct = async (req: Request, res: Response) => {
     const product = await productService.deleteProduct(req.params.id);
     res.json(product);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to delete product',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'DELETE_PRODUCT_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
       return res.status(404).json({ error: 'Product not found.' });
     }
-    console.error('Error deleting product:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -987,10 +1174,25 @@ export const deleteProduct = async (req: Request, res: Response) => {
  *         description: Product not found.
  */
 export const updateProductStatusController = async (req: Request, res: Response) => {
-    const { id } = req.params;
-    const { isActive } = req.body;
-    const product = await productService.updateProductStatusService(id, isActive);
-    res.json(product);
+  try {
+      const { id } = req.params;
+      const { isActive } = req.body;
+      const product = await productService.updateProductStatusService(id, isActive);
+      res.json(product);
+  } catch (error: any) {
+      await errorLogService.logError({
+        message: error.message || 'Failed to update product status',
+        stackTrace: error.stack,
+        metaData: { body: req.body, query: req.query, params: req.params },
+        userId: (req as any).userId as string,
+        ipAddress: req.ip || req.socket?.remoteAddress,
+        requestMethod: req.method,
+        requestPath: req.originalUrl || req.path,
+        statusCode: error.statusCode || 500,
+        errorCode: error.code || 'UPDATE_PRODUCT_STATUS_ERROR'
+      }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+      res.status(500).json({ error: 'Internal server error' });
+  }
 };
 
 /**
@@ -1027,13 +1229,24 @@ export const deleteVendorProduct = async (req: AuthenticatedRequest, res: Respon
     const vendorProduct = await productService.deleteVendorProduct(vendorProductId, requestingUserId, requestingUserRole, staffVendorId);
     res.json(vendorProduct);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to delete vendor product',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'DELETE_VENDOR_PRODUCT_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message.includes('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025' || error.message.includes('not found')) {
       return res.status(404).json({ error: 'Vendor product not found.' });
     }
-    console.error('Error deleting vendor product:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -1078,8 +1291,18 @@ export const getTrendingVendorProducts = async (req: Request, res: Response) => 
       { page, take }
     );
     res.json(result);
-  } catch (error) {
-    console.error('Error getting trending vendor products:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get trending vendor products',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_TRENDING_VENDOR_PRODUCTS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -1138,7 +1361,18 @@ export const getMyVendorProductsController = async (req: AuthenticatedRequest, r
     const products = await productService.getMyVendorProductsService(ownerId, vendorId, pagination);
     res.status(200).json(products);
   } catch (error: any) {
-    console.error('Error getting my vendor products:', error);
+    await errorLogService.logError({
+      message: error.message || 'Failed to get my vendor products',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_MY_VENDOR_PRODUCTS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message.includes('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
@@ -1205,6 +1439,18 @@ export const transferVendorProductsController = async (req: AuthenticatedRequest
     const result = await productService.transferVendorProductsService(ownerId, sourceVendorProductIds, targetVendorIds);
     res.status(200).json(result);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to transfer vendor products',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'TRANSFER_VENDOR_PRODUCTS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error.message.includes('Forbidden') || error.message.includes('Unauthorized')) {
       return res.status(403).json({ error: error.message });
     }

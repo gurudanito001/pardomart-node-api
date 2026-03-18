@@ -2,6 +2,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import * as deviceService from '../services/device.service';
+import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
@@ -52,6 +53,18 @@ export const registerDeviceController = async (req: AuthenticatedRequest, res: R
     const device = await deviceService.registerDevice(userId, fcmToken, platform);
     res.status(201).json(device);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to register device',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'REGISTER_DEVICE_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Failed to register device.' });
   }
 };
@@ -81,6 +94,18 @@ export const unregisterDeviceController = async (req: AuthenticatedRequest, res:
     await deviceService.unregisterDevice(fcmToken);
     res.status(204).send();
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to unregister device',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UNREGISTER_DEVICE_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Failed to unregister device.' });
   }
 };

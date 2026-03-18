@@ -5,6 +5,7 @@ import * as userService from '../services/user.service'
 import { generateVerificationCode, sendVerificationCode } from '../utils/verification'; // Create this file.
 import Timezones from '../utils/timezones';
 import { Prisma, PrismaClient } from '@prisma/client';
+import { errorLogService } from '../services/errorLog.service';
 
 const prisma = new PrismaClient();
 
@@ -68,6 +69,18 @@ export const registerUser = async (req: Request, res: Response) => {
 
     res.status(201).json({ message: 'Verification code sent' });
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to register user',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'USER_REGISTRATION_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2002') {
         // This is the Prisma error code for a unique constraint violation
@@ -76,7 +89,6 @@ export const registerUser = async (req: Request, res: Response) => {
         });
       }
     }
-    console.error('Error registering user:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -115,8 +127,19 @@ export const getTimeZones = async (req: Request, res: Response) => {
       utcs = [...utcs, ...zone.utc ];
     });
     res.status(200).json({ message: 'List of time zones', data: utcs });
-  } catch (error) {
-    console.error('Error getting timezones:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get time zones',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_TIME_ZONES_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -180,8 +203,19 @@ export const initiateLogin = async (req: Request, res: Response) => {
 
     // Return the actual role found for the user
     res.status(200).json({ success: true, role: user.role });
-  } catch (error) {
-    console.error('Error initiating login:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to initiate login',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'INITIATE_LOGIN_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -228,10 +262,21 @@ export const verifyCodeAndLogin = async (req: Request, res: Response) => {
     const result = await authService.verifyCodeAndLogin(mobileNumber, verificationCode, role);
     res.status(200).json(result);
   } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to verify code and login',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: (req as any).userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'VERIFY_LOGIN_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
     if (error instanceof authService.AuthError) {
       return res.status(401).json({ error: error.message });
     }
-    console.error('Error verifying code and logging in:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
