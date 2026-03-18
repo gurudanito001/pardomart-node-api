@@ -1106,9 +1106,10 @@ export const declineOrderService = async (
 
     // 2. Refund the customer by crediting their wallet and creating a REFUND transaction.
     if (orderToDecline.totalAmount > 0) {
-      await tx.wallet.update({
+      await tx.wallet.upsert({
         where: { userId: orderToDecline.userId },
-        data: { balance: { increment: orderToDecline.totalAmount } },
+        create: { userId: orderToDecline.userId, balance: orderToDecline.totalAmount },
+        update: { balance: { increment: orderToDecline.totalAmount } },
       });
 
       await tx.transaction.create({
@@ -1577,9 +1578,10 @@ export const verifyPickupOtpService = async (
     if (nextStatus === OrderStatus.picked_up_by_customer) {
       const vendorAmount = order.subtotal;
       if (vendorAmount > 0 && order.vendor.userId) {
-        await tx.wallet.updateMany({
+        await tx.wallet.upsert({
           where: { vendorId: order.vendorId },
-          data: { balance: { increment: vendorAmount } }
+          create: { vendorId: order.vendorId, balance: vendorAmount },
+          update: { balance: { increment: vendorAmount } }
         });
         await tx.transaction.create({
           data: {
@@ -1597,9 +1599,10 @@ export const verifyPickupOtpService = async (
 
       // Pay Shopper Tip (if applicable)
       if (order.shopperId && order.shopperTip && order.shopperTip > 0) {
-        await tx.wallet.update({
+        await tx.wallet.upsert({
           where: { userId: order.shopperId },
-          data: { balance: { increment: order.shopperTip } },
+          create: { userId: order.shopperId, balance: order.shopperTip },
+          update: { balance: { increment: order.shopperTip } },
         });
         await tx.transaction.create({
           data: {
@@ -1763,9 +1766,10 @@ export const adminUpdateOrderService = async (
       // 1. Pay Vendor
       const vendorAmount = order.subtotal;
       if (vendorAmount > 0 && order.vendor.userId) {
-        await tx.wallet.updateMany({
+        await tx.wallet.upsert({
           where: { vendorId: order.vendorId },
-          data: { balance: { increment: vendorAmount } },
+          create: { vendorId: order.vendorId, balance: vendorAmount },
+          update: { balance: { increment: vendorAmount } },
         });
         await transactionModel.createTransaction({
           vendorId: order.vendorId,
@@ -2069,9 +2073,10 @@ export const completeDeliveryService = async (
     // 1. Pay Vendor
     const vendorAmount = order.subtotal;
     if (vendorAmount > 0 && order.vendor.userId) {
-      await tx.wallet.update({
+      await tx.wallet.upsert({
         where: { vendorId: order.vendorId },
-        data: { balance: { increment: vendorAmount } }
+        create: { vendorId: order.vendorId, balance: vendorAmount },
+        update: { balance: { increment: vendorAmount } }
       });
       await tx.transaction.create({
         data: {
@@ -2089,9 +2094,10 @@ export const completeDeliveryService = async (
 
     // 2. Pay Shopper Tip
     if (order.shopperId && order.shopperTip && order.shopperTip > 0) {
-      await tx.wallet.update({
+      await tx.wallet.upsert({
         where: { userId: order.shopperId },
-        data: { balance: { increment: order.shopperTip } },
+        create: { userId: order.shopperId, balance: order.shopperTip },
+        update: { balance: { increment: order.shopperTip } }
       });
       await tx.transaction.create({
         data: {
@@ -2108,9 +2114,10 @@ export const completeDeliveryService = async (
 
     // 3. Pay Delivery Person Tip
     if (order.deliveryPersonId && order.deliveryPersonTip && order.deliveryPersonTip > 0) {
-      await tx.wallet.update({
+      await tx.wallet.upsert({
         where: { userId: order.deliveryPersonId },
-        data: { balance: { increment: order.deliveryPersonTip } },
+        create: { userId: order.deliveryPersonId, balance: order.deliveryPersonTip },
+        update: { balance: { increment: order.deliveryPersonTip } }
       });
       await tx.transaction.create({
         data: {
