@@ -940,17 +940,19 @@ export const getOrdersForVendorDashboard = async (
       where: {
         vendorId: vendorId,
         
-        shoppingMethod: ShoppingMethod.vendor, // Only show orders where this vendor is responsible for shopping
         ...(
           options?.status ? 
           { orderStatus: options.status } :
           { orderStatus: { in: defaultStatuses}}
         ),
-        // Filter by scheduledShoppingStartTime:
-        // Only show orders where shopping is due now or in the past, plus those due in the next 30 minutes.
-        shoppingStartTime: {
-          lte: dayjs().add(30, 'minutes').utc().toDate(), // Show overdue orders and scheduled orders up to 30 mins in future
-        },
+        OR: [
+          { shoppingStartTime: null }, // Include ASAP orders (null start times)
+          {
+            shoppingStartTime: {
+              lte: dayjs().add(30, 'minutes').utc().toDate(), // Show overdue and near-future scheduled orders
+            },
+          },
+        ],
       },
       include: {
         user: { select: { id: true, name: true, mobileNumber: true } }, // Customer details
