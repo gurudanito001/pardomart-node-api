@@ -56,10 +56,13 @@ describe('Rating Service', () => {
         const tx = { rating: { findUnique: jest.fn().mockResolvedValue(null) } } as any;
         mockRatingModel.createRating.mockResolvedValueOnce({
           id: 'rating-1',
-          ...createVendorRatingPayload,
+          rating: createVendorRatingPayload.rating,
+          type: createVendorRatingPayload.type,
           raterId,
           ratedVendorId: vendorId,
           ratedUserId: null,
+          ratedProductId: null,
+          orderId: createVendorRatingPayload.orderId ?? null,
           comment: createVendorRatingPayload.comment ?? null,
           createdAt: new Date(),
           updatedAt: new Date(),
