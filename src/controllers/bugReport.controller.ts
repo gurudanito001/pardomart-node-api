@@ -10,7 +10,7 @@ const prisma = new PrismaClient();
 export const createBugReportController = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.userId!;
-    const { description, orderId } = req.body;
+    const { title, category, description, orderId, productId, vendorId, meta } = req.body;
 
     if (!description) {
       return res.status(400).json({ error: 'Description is required.' });
@@ -21,9 +21,14 @@ export const createBugReportController = async (req: AuthenticatedRequest, res: 
 
     const bugReport = await bugReportService.createBugReportService({
       userId,
+      title,
+      category,
       description,
       imageUrl,
       orderId: orderId && orderId !== 'null' && orderId !== 'undefined' ? orderId : undefined,
+      productId: productId && productId !== 'null' && productId !== 'undefined' ? productId : undefined,
+      vendorId: vendorId && vendorId !== 'null' && vendorId !== 'undefined' ? vendorId : undefined,
+      meta: meta ? (typeof meta === 'string' ? JSON.parse(meta) : meta) : undefined,
     });
 
     // --- Start Notification Logic ---

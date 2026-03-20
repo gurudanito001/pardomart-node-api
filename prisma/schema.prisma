@@ -83,6 +83,8 @@ model Product {
   isAgeRestricted Boolean         @default(false)
   tags            Tag[]
   isActive        Boolean         @default(true)
+  ratings         Rating[]
+  bugReports      BugReport[]
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 }
@@ -342,6 +344,7 @@ model Vendor {
   wallet               Wallet?
 
   ratings       Rating[]
+  bugReports    BugReport[]
   ReturnRequest ReturnRequest[]
 }
 
@@ -385,8 +388,8 @@ model Setting {
 
 model Rating {
   id      String @id @default(uuid())
-  orderId String
-  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId String?
+  order   Order?  @relation(fields: [orderId], references: [id], onDelete: Cascade)
   raterId String // The customer who is giving the rating
   rater   User   @relation("RatingsGiven", fields: [raterId], references: [id], onDelete: Cascade)
 
@@ -396,13 +399,14 @@ model Rating {
   ratedUserId   String? // If rating a shopper or deliverer
   ratedUser     User?   @relation("RatingsReceived", fields: [ratedUserId], references: [id], onDelete: Cascade)
 
+  ratedProductId String?
+  ratedProduct   Product? @relation(fields: [ratedProductId], references: [id], onDelete: Cascade)
+
   rating    Int // The score (e.g., 1-5)
   comment   String?
   type      RatingType
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
-
-  @@unique([orderId, type])
 }
 
 model WishlistItem {
@@ -467,11 +471,18 @@ model Wallet {
 
 model BugReport {
   id          String  @id @default(uuid())
+  title       String?
+  category    BugCategory @default(OTHER)
   orderId     String? // Optional: if the bug report is related to a specific order
   order       Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  productId   String? // Optional: if the bug report is related to a specific product
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  vendorId    String? // Optional: if the bug report is related to a specific vendor/store
+  vendor      Vendor?  @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   description String  @db.Text
   imageUrl    String?
   isResolved  Boolean @default(false)
+  meta        Json?   // Flexible field to store device info, app version, logs, etc.
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
@@ -480,6 +491,7 @@ model BugReport {
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+  @@index([category])
 }
 
 model Faq {
@@ -766,6 +778,21 @@ enum RatingType {
   VENDOR
   SHOPPER
   DELIVERER
+  PRODUCT
+  ORDER
+  USER
+}
+
+enum BugCategory {
+  ORDER_ISSUE
+  PRODUCT_ISSUE
+  VENDOR_ISSUE
+  PAYMENT_ISSUE
+  APP_CRASH
+  APP_PERFORMANCE
+  UI_UX_ISSUE
+  ACCOUNT_ISSUE
+  OTHER
 }
 
 enum TicketCategory {

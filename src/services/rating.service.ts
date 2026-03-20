@@ -24,18 +24,20 @@ export const createRatingService = async (
   raterId: string,
   payload: Omit<ratingModel.CreateRatingPayload, 'raterId'>
 ): Promise<Rating> => {
-  const { orderId, type, rating } = payload;
+  const { orderId, type, rating, ratedProductId, ratedUserId, ratedVendorId } = payload;
 
-  // 1. Validate the order
-  const order = await orderModel.getOrderById(orderId);
-  if (!order) {
-    throw new RatingError('Order not found.', 404);
-  }
-  if (order.userId !== raterId) {
-    throw new RatingError('You are not authorized to rate this order.', 403);
-  }
-  if (order.orderStatus !== OrderStatus.delivered) {
-    throw new RatingError('Order must be delivered before it can be rated.', 400);
+  // 1. Validate the order if provided
+  if (orderId) {
+    const order = await orderModel.getOrderById(orderId);
+    if (!order) {
+      throw new RatingError('Order not found.', 404);
+    }
+    if (order.userId !== raterId) {
+      throw new RatingError('You are not authorized to rate this order.', 403);
+    }
+    if (order.orderStatus !== OrderStatus.delivered && order.orderStatus !== OrderStatus.picked_up_by_customer) {
+      throw new RatingError('Order must be completed before it can be rated.', 400);
+    }
   }
 
   // 2. Validate rating value
@@ -48,29 +50,69 @@ export const createRatingService = async (
 
   switch (type) {
     case RatingType.VENDOR:
-      ratingData.ratedVendorId = order.vendorId;
+      if (!ratedVendorId && !orderId) throw new RatingError('Vendor ID or Order ID is required to rate a vendor.', 400);
+      if (orderId) {
+        const order = await orderModel.getOrderById(orderId);
+        ratingData.ratedVendorId = order?.vendorId;
+      } else {
+        ratingData.ratedVendorId = ratedVendorId;
+      }
       break;
     case RatingType.SHOPPER:
-      if (!order.shopperId) throw new RatingError('This order does not have an assigned shopper to rate.', 400);
-      ratingData.ratedUserId = order.shopperId;
+      if (!orderId) throw new RatingError('Order ID is required to rate a shopper.', 400);
+      const orderShopper = await orderModel.getOrderById(orderId);
+      if (!orderShopper?.shopperId) throw new RatingError('This order does not have an assigned shopper to rate.', 400);
+      ratingData.ratedUserId = orderShopper.shopperId;
       break;
     case RatingType.DELIVERER:
-      if (!order.deliveryPersonId) throw new RatingError('This order does not have an assigned deliverer to rate.', 400);
-      ratingData.ratedUserId = order.deliveryPersonId;
+      if (!orderId) throw new RatingError('Order ID is required to rate a deliverer.', 400);
+      const orderDeliverer = await orderModel.getOrderById(orderId);
+      if (!orderDeliverer?.deliveryPersonId) throw new RatingError('This order does not have an assigned deliverer to rate.', 400);
+      ratingData.ratedUserId = orderDeliverer.deliveryPersonId;
+      break;
+    case RatingType.PRODUCT:
+      if (!ratedProductId) throw new RatingError('Product ID is required for a product rating.', 400);
+      ratingData.ratedProductId = ratedProductId;
+      // Optionally verify product was in order if orderId is provided
+      if (orderId) {
+         const orderProd = await orderModel.getOrderById(orderId);
+         const hasProduct = orderProd?.orderItems.some(item => 
+            item.vendorProductId === ratedProductId || 
+            item.vendorProduct?.productId === ratedProductId ||
+            item.chosenReplacementId === ratedProductId ||
+            item.chosenReplacement?.productId === ratedProductId
+         );
+         if (!hasProduct) throw new RatingError('This product was not part of the specified order.', 400);
+      }
+      break;
+    case RatingType.ORDER:
+      if (!orderId) throw new RatingError('Order ID is required for an order rating.', 400);
+      ratingData.orderId = orderId;
+      break;
+    case RatingType.USER:
+      if (!ratedUserId) throw new RatingError('User ID is required for a generic user rating.', 400);
+      ratingData.ratedUserId = ratedUserId;
       break;
     default:
       throw new RatingError('Invalid rating type specified.', 400);
   }
 
-  // 4. Use a transaction to ensure we don't create a duplicate rating
   try {
     return await prisma.$transaction(async (tx) => {
-      const existingRating = await tx.rating.findUnique({
-        where: { orderId_type: { orderId, type } },
+      // 4. Check for duplicate ratings using contextual properties
+      const existingRating = await tx.rating.findFirst({
+        where: { 
+          raterId,
+          type,
+          ...(ratingData.orderId ? { orderId: ratingData.orderId } : {}),
+          ...(ratingData.ratedVendorId ? { ratedVendorId: ratingData.ratedVendorId } : {}),
+          ...(ratingData.ratedProductId ? { ratedProductId: ratingData.ratedProductId } : {}),
+          ...(ratingData.ratedUserId ? { ratedUserId: ratingData.ratedUserId } : {})
+        },
       });
 
       if (existingRating) {
-        throw new RatingError(`A ${type.toLowerCase()} rating for this order already exists.`, 409);
+        throw new RatingError(`You have already submitted a ${type.toLowerCase()} rating for this target.`, 409);
       }
 
       return ratingModel.createRating(ratingData, tx);
@@ -135,9 +177,9 @@ export const deleteRatingService = async (id: string, raterId: string): Promise<
  * @param filters - Must contain either `ratedVendorId` or `ratedUserId`.
  * @returns An object with average rating and total count.
  */
-export const getAggregateRatingService = async (filters: { ratedVendorId?: string; ratedUserId?: string }): Promise<{ average: number; count: number }> => {
-  if (!filters.ratedVendorId && !filters.ratedUserId) {
-    throw new RatingError('A vendor ID or user ID must be provided to get aggregate ratings.', 400);
+export const getAggregateRatingService = async (filters: { ratedVendorId?: string; ratedUserId?: string; ratedProductId?: string }): Promise<{ average: number; count: number }> => {
+  if (!filters.ratedVendorId && !filters.ratedUserId && !filters.ratedProductId) {
+    throw new RatingError('A vendor ID, user ID, or product ID must be provided to get aggregate ratings.', 400);
   }
   return ratingModel.getAggregateRating(filters);
 };

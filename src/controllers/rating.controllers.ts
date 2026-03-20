@@ -22,7 +22,7 @@ interface AuthenticatedRequest extends Request {
  *     tags: [Rating]
  *     security:
  *       - bearerAuth: []
- *     description: Allows a customer to submit a rating for a completed order. The rating can be for a VENDOR, SHOPPER, or DELIVERER. A user can only submit one rating of each type per order.
+ *     description: Allows a customer to submit a rating. The rating can be for a VENDOR, USER (e.g. SHOPPER, DELIVERER), PRODUCT, or ORDER.
  *     requestBody:
  *       required: true
  *       content:
@@ -37,20 +37,20 @@ interface AuthenticatedRequest extends Request {
  *             schema:
  *               $ref: '#/components/schemas/Rating'
  *       400:
- *         description: Bad request (e.g., invalid rating value, order not delivered).
+ *         description: Bad request (e.g., invalid rating value).
  *       401:
  *         description: Unauthorized.
  *       403:
- *         description: Forbidden (user is not the customer for this order).
+ *         description: Forbidden.
  *       404:
- *         description: Order not found.
+ *         description: Entity not found.
  *       409:
- *         description: Conflict (a rating of this type already exists for this order).
+ *         description: Conflict.
  * components:
  *   schemas:
  *     RatingType:
  *       type: string
- *       enum: [VENDOR, SHOPPER, DELIVERER]
+ *       enum: [VENDOR, SHOPPER, DELIVERER, PRODUCT, ORDER, USER]
  *     UserSummary:
  *       type: object
  *       properties:
@@ -65,10 +65,11 @@ interface AuthenticatedRequest extends Request {
  *       type: object
  *       properties:
  *         id: { type: string, format: uuid }
- *         orderId: { type: string, format: uuid }
+ *         orderId: { type: string, format: uuid, nullable: true }
  *         raterId: { type: string, format: uuid }
  *         ratedVendorId: { type: string, format: uuid, nullable: true }
  *         ratedUserId: { type: string, format: uuid, nullable: true }
+ *         ratedProductId: { type: string, format: uuid, nullable: true }
  *         rating: { type: integer, minimum: 1, maximum: 5 }
  *         comment: { type: string, nullable: true }
  *         type: { $ref: '#/components/schemas/RatingType' }
@@ -87,17 +88,23 @@ interface AuthenticatedRequest extends Request {
  *             ratedVendor:
  *               $ref: '#/components/schemas/VendorSummary'
  *               nullable: true
+ *             ratedProduct:
+ *               type: object
+ *               properties:
+ *                 id: { type: string, format: uuid }
+ *                 name: { type: string }
+ *               nullable: true
  *     CreateRatingPayload:
  *       type: object
- *       required: [orderId, rating, type]
- *       description: "When creating a rating, either `ratedVendorId` or `ratedUserId` must be provided depending on the `type`."
+ *       required: [rating, type]
  *       properties:
- *         orderId: { type: string, format: uuid }
+ *         orderId: { type: string, format: uuid, nullable: true }
  *         rating: { type: integer, minimum: 1, maximum: 5, description: "The rating score from 1 to 5." }
  *         comment: { type: string, nullable: true }
  *         type: { $ref: '#/components/schemas/RatingType' }
  *         ratedVendorId: { type: string, format: uuid, description: "Required if type is VENDOR." }
  *         ratedUserId: { type: string, format: uuid, description: "Required if type is SHOPPER or DELIVERER." }
+ *         ratedProductId: { type: string, format: uuid, description: "Required if type is PRODUCT." }
  *     UpdateRatingPayload:
  *       type: object
  *       properties:
@@ -290,6 +297,10 @@ export const deleteRatingController = async (req: AuthenticatedRequest, res: Res
  *         schema: { type: string, format: uuid }
  *         description: Filter ratings for a specific user (shopper or deliverer).
  *       - in: query
+ *         name: ratedProductId
+ *         schema: { type: string, format: uuid }
+ *         description: Filter ratings for a specific product.
+ *       - in: query
  *         name: type
  *         schema: { $ref: '#/components/schemas/RatingType' }
  *         description: Filter by the type of rating.
@@ -305,12 +316,13 @@ export const deleteRatingController = async (req: AuthenticatedRequest, res: Res
  */
 export const getRatingsController = async (req: Request, res: Response) => {
   try {
-    const { orderId, raterId, ratedVendorId, ratedUserId, type } = req.query;
+    const { orderId, raterId, ratedVendorId, ratedUserId, ratedProductId, type } = req.query;
     const filters: GetRatingsFilters = {
       orderId: orderId as string | undefined,
       raterId: raterId as string | undefined,
       ratedVendorId: ratedVendorId as string | undefined,
       ratedUserId: ratedUserId as string | undefined,
+      ratedProductId: ratedProductId as string | undefined,
       type: type as RatingType | undefined,
     };
 
@@ -345,7 +357,7 @@ export const getRatingsController = async (req: Request, res: Response) => {
  *   get:
  *     summary: Get aggregate rating for a vendor or user
  *     tags: [Rating]
- *     description: Calculates the average rating and total count of ratings for a specific vendor, shopper, or deliverer.
+ *     description: Calculates the average rating and total count of ratings for a specific vendor, user, product, etc.
  *     parameters:
  *       - in: query
  *         name: ratedVendorId
@@ -355,6 +367,10 @@ export const getRatingsController = async (req: Request, res: Response) => {
  *         name: ratedUserId
  *         schema: { type: string, format: uuid }
  *         description: The ID of the user (shopper/deliverer) to get aggregate ratings for.
+ *       - in: query
+ *         name: ratedProductId
+ *         schema: { type: string, format: uuid }
+ *         description: The ID of the product to get aggregate ratings for.
  *     responses:
  *       200:
  *         description: The aggregate rating data.
@@ -371,14 +387,15 @@ export const getRatingsController = async (req: Request, res: Response) => {
  *                   type: integer
  *                   description: The total number of ratings.
  *       400:
- *         description: Bad request (e.g., neither ratedVendorId nor ratedUserId is provided).
+ *         description: Bad request (e.g., no target ID is provided).
  */
 export const getAggregateRatingController = async (req: Request, res: Response) => {
   try {
-    const { ratedVendorId, ratedUserId } = req.query;
+    const { ratedVendorId, ratedUserId, ratedProductId } = req.query;
     const filters = {
       ratedVendorId: ratedVendorId as string | undefined,
       ratedUserId: ratedUserId as string | undefined,
+      ratedProductId: ratedProductId as string | undefined,
     };
 
     const aggregate = await ratingService.getAggregateRatingService(filters);

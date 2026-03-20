@@ -42,19 +42,18 @@ const router = express.Router();
  *   schemas:
  *     RatingType:
  *       type: string
- *       enum: [VENDOR, SHOPPER, DELIVERER]
+ *       enum: [VENDOR, SHOPPER, DELIVERER, PRODUCT, ORDER, USER]
  *
  *     CreateRatingPayload:
  *       type: object
  *       required:
- *         - orderId
  *         - type
  *         - rating
  *       properties:
  *         orderId:
  *           type: string
  *           format: uuid
- *           description: The ID of the order being rated.
+ *           description: The ID of the order being rated (Optional depending on the rating type).
  *         type:
  *           $ref: '#/components/schemas/RatingType'
  *         rating:
@@ -65,6 +64,18 @@ const router = express.Router();
  *         comment:
  *           type: string
  *           description: An optional comment for the rating.
+ *         ratedVendorId:
+ *           type: string
+ *           format: uuid
+ *           description: Required if type is VENDOR.
+ *         ratedUserId:
+ *           type: string
+ *           format: uuid
+ *           description: Required if type is SHOPPER, DELIVERER, or USER.
+ *         ratedProductId:
+ *           type: string
+ *           format: uuid
+ *           description: Required if type is PRODUCT.
  *
  *     UpdateRatingPayload:
  *       type: object
@@ -95,6 +106,10 @@ const router = express.Router();
  *           format: uuid
  *           nullable: true
  *         ratedUserId:
+ *           type: string
+ *           format: uuid
+ *           nullable: true
+ *         ratedProductId:
  *           type: string
  *           format: uuid
  *           nullable: true

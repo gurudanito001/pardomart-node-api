@@ -3,13 +3,14 @@ import { PrismaClient, Prisma, Rating, RatingType } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export interface CreateRatingPayload {
-  orderId: string;
+  orderId?: string;
   raterId: string;
   rating: number;
   comment?: string;
   type: RatingType;
   ratedVendorId?: string;
   ratedUserId?: string;
+  ratedProductId?: string;
 }
 
 export interface UpdateRatingPayload {
@@ -22,6 +23,7 @@ export interface GetRatingsFilters {
   raterId?: string;
   ratedVendorId?: string;
   ratedUserId?: string;
+  ratedProductId?: string;
   type?: RatingType;
 }
 
@@ -61,6 +63,7 @@ export const getRatings = async (filters: GetRatingsFilters): Promise<Rating[]> 
       rater: { select: { id: true, name: true } },
       ratedUser: { select: { id: true, name: true } },
       ratedVendor: { select: { id: true, name: true } },
+      ratedProduct: { select: { id: true, name: true } },
     },
   });
 };
@@ -94,7 +97,7 @@ export const deleteRating = async (id: string): Promise<Rating> => {
  * @param filters - Must contain either `ratedVendorId` or `ratedUserId`.
  * @returns An object with the average rating and total number of ratings.
  */
-export const getAggregateRating = async (filters: { ratedVendorId?: string; ratedUserId?: string }): Promise<{ average: number; count: number }> => {
+export const getAggregateRating = async (filters: { ratedVendorId?: string; ratedUserId?: string; ratedProductId?: string }): Promise<{ average: number; count: number }> => {
   const { _avg, _count } = await prisma.rating.aggregate({
     where: filters,
     _avg: { rating: true },

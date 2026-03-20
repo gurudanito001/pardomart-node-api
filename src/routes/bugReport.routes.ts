@@ -30,6 +30,13 @@ const router = Router();
  *             type: object
  *             required: [description]
  *             properties:
+ *               title:
+ *                 type: string
+ *                 description: A short summary of the bug.
+ *               category:
+ *                 type: string
+ *                 enum: [ORDER_ISSUE, PRODUCT_ISSUE, VENDOR_ISSUE, PAYMENT_ISSUE, APP_CRASH, APP_PERFORMANCE, UI_UX_ISSUE, ACCOUNT_ISSUE, OTHER]
+ *                 description: The category of the bug.
  *               description:
  *                 type: string
  *                 description: A description of the bug.
@@ -37,6 +44,18 @@ const router = Router();
  *                 type: string
  *                 format: uuid
  *                 description: (Optional) The ID of the order related to the bug.
+ *               productId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: (Optional) The ID of the product related to the bug.
+ *               vendorId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: (Optional) The ID of the vendor related to the bug.
+ *               meta:
+ *                 type: string
+ *                 description: (Optional) Additional JSON metadata (e.g., device info, app version) passed as a JSON string.
+ *                 example: '{"os": "iOS 16.0", "appVersion": "1.2.0"}'
  *               image:
  *                 type: string
  *                 format: binary
