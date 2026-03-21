@@ -166,6 +166,50 @@ describe('Rating Service', () => {
         await expect(ratingService.createRatingService(raterId, shopperRatingPayload))
             .rejects.toThrow(new RatingError('This order does not have an assigned shopper to rate.', 400));
     });
+
+    it('should create a PRODUCT rating successfully using the exact payload', async () => {
+      // This is the exact payload provided in the request
+      const productPayload: Omit<ratingModel.CreateRatingPayload, 'raterId'> = {
+        type: RatingType.PRODUCT,
+        rating: 4,
+        comment: 'Okay for now',
+        ratedProductId: '7763e73e-e645-431f-9231-3b3ef0223171',
+      };
+
+      // Mock that it is a base Product ID, not a VendorProduct ID
+      prismaMock.vendorProduct.findUnique.mockResolvedValueOnce(null as any);
+
+      prismaMock.$transaction.mockImplementation(async (callback: any) => {
+        const tx = { rating: { findFirst: jest.fn().mockResolvedValue(null) } } as any;
+        mockRatingModel.createRating.mockResolvedValueOnce({
+          id: 'rating-product-1',
+          rating: productPayload.rating,
+          type: productPayload.type,
+          raterId,
+          ratedVendorId: null,
+          ratedUserId: null,
+          ratedProductId: productPayload.ratedProductId!,
+          orderId: null,
+          comment: productPayload.comment ?? null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+        return callback(tx);
+      });
+
+      const result = await ratingService.createRatingService(raterId, productPayload);
+
+      expect(mockRatingModel.createRating).toHaveBeenCalledWith(
+        expect.objectContaining({
+          raterId,
+          type: RatingType.PRODUCT,
+          ratedProductId: productPayload.ratedProductId,
+        }),
+        expect.anything()
+      );
+      expect(result.id).toBe('rating-product-1');
+      expect(result.rating).toBe(4);
+    });
   });
 
   describe('updateRatingService', () => {
@@ -205,7 +249,7 @@ describe('Rating Service', () => {
 
     it('should throw an error if no ID is provided', async () => {
         await expect(ratingService.getAggregateRatingService({}))
-            .rejects.toThrow(new RatingError('A vendor ID or user ID must be provided to get aggregate ratings.', 400));
+            .rejects.toThrow(new RatingError('A vendor ID, user ID, or product ID must be provided to get aggregate ratings.', 400));
     });
   });
 });

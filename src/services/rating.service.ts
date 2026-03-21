@@ -80,14 +80,27 @@ export const createRatingService = async (
       break;
     case RatingType.PRODUCT:
       if (!ratedProductId) throw new RatingError('Product ID is required for a product rating.', 400);
-      ratingData.ratedProductId = ratedProductId;
+      
+      // Auto-resolve VendorProduct to base Product if a VendorProduct ID was passed
+      const vendorProductCheck = await prisma.vendorProduct.findUnique({ 
+        where: { id: ratedProductId },
+        select: { productId: true, vendorId: true }
+      });
+
+      if (vendorProductCheck) {
+        ratingData.ratedProductId = vendorProductCheck.productId;
+        if (!ratingData.ratedVendorId) ratingData.ratedVendorId = vendorProductCheck.vendorId;
+      } else {
+        ratingData.ratedProductId = ratedProductId;
+      }
+
       // Verify product was in order if orderId is provided
       if (order) {
          const hasProduct = order.orderItems.some(item => 
             item.vendorProductId === ratedProductId || 
-            item.vendorProduct?.productId === ratedProductId ||
+            item.vendorProduct?.productId === ratingData.ratedProductId ||
             item.chosenReplacementId === ratedProductId ||
-            item.chosenReplacement?.productId === ratedProductId
+            item.chosenReplacement?.productId === ratingData.ratedProductId
          );
          if (!hasProduct) throw new RatingError('This product was not part of the specified order.', 400);
       }
@@ -128,10 +141,24 @@ export const createRatingService = async (
 
       return ratingModel.createRating(ratingData, tx);
     });
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof RatingError) throw error;
+
+    // Handle Foreign Key Violations gracefully and provide exact reasons
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      if (error.message.includes('ratedProductId')) {
+        throw new RatingError('The specified product does not exist.', 400);
+      }
+      if (error.message.includes('ratedVendorId')) {
+        throw new RatingError('The specified vendor does not exist.', 400);
+      }
+      if (error.message.includes('ratedUserId')) {
+        throw new RatingError('The specified user does not exist.', 400);
+      }
+    }
+
     console.error('Error creating rating:', error);
-    throw new RatingError('Could not create rating.', 500);
+    throw new RatingError(error?.message || 'Could not create rating.', 500);
   }
 };
 
