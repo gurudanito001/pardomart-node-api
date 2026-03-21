@@ -70,6 +70,19 @@ export const createBugReportController = async (req: AuthenticatedRequest, res: 
       errorCode: error.code || 'BUG_REPORT_CREATION_ERROR'
     }).catch((logErr: any) => console.error('Failed to log error:', logErr));
 
+    // Handle Foreign Key Violations gracefully
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      if (error.message.includes('productId')) {
+        return res.status(400).json({ error: 'The specified product does not exist.' });
+      }
+      if (error.message.includes('vendorId')) {
+        return res.status(400).json({ error: 'The specified vendor does not exist.' });
+      }
+      if (error.message.includes('orderId')) {
+        return res.status(400).json({ error: 'The specified order does not exist.' });
+      }
+    }
+
     res.status(500).json({ error: 'Failed to create bug report.', message: error.message });
   }
 };
