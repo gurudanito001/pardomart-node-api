@@ -4,15 +4,7 @@ import { RatingError } from '../services/rating.service';
 import { CreateRatingPayload, GetRatingsFilters, UpdateRatingPayload } from '../models/rating.model';
 import { RatingType } from '@prisma/client';
 import { errorLogService } from '../services/errorLog.service';
-
-// This interface is a placeholder for your actual authenticated request type.
-// It assumes an authentication middleware adds a `user` object to the request.
-interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    role: string;
-  };
-}
+import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 
 /**
  * @swagger
@@ -111,7 +103,7 @@ interface AuthenticatedRequest extends Request {
  */
 export const createRatingController = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const raterId = req.user?.id;
+    const raterId = req.userId;
     if (!raterId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -124,7 +116,7 @@ export const createRatingController = async (req: AuthenticatedRequest, res: Res
       message: error.message || 'Failed to create rating',
       stackTrace: error.stack,
       metaData: { body: req.body, query: req.query, params: req.params },
-      userId: req.user?.id as string,
+      userId: req.userId as string,
       ipAddress: req.ip || req.socket?.remoteAddress,
       requestMethod: req.method,
       requestPath: req.originalUrl || req.path,
@@ -180,7 +172,7 @@ export const createRatingController = async (req: AuthenticatedRequest, res: Res
  */
 export const updateRatingController = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const raterId = req.user?.id;
+    const raterId = req.userId;
     if (!raterId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -195,7 +187,7 @@ export const updateRatingController = async (req: AuthenticatedRequest, res: Res
       message: error.message || 'Failed to update rating',
       stackTrace: error.stack,
       metaData: { body: req.body, query: req.query, params: req.params },
-      userId: req.user?.id as string,
+      userId: req.userId as string,
       ipAddress: req.ip || req.socket?.remoteAddress,
       requestMethod: req.method,
       requestPath: req.originalUrl || req.path,
@@ -243,7 +235,7 @@ export const updateRatingController = async (req: AuthenticatedRequest, res: Res
  */
 export const deleteRatingController = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const raterId = req.user?.id;
+    const raterId = req.userId;
     if (!raterId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -255,7 +247,7 @@ export const deleteRatingController = async (req: AuthenticatedRequest, res: Res
       message: error.message || 'Failed to delete rating',
       stackTrace: error.stack,
       metaData: { body: req.body, query: req.query, params: req.params },
-      userId: req.user?.id as string,
+      userId: req.userId as string,
       ipAddress: req.ip || req.socket?.remoteAddress,
       requestMethod: req.method,
       requestPath: req.originalUrl || req.path,
@@ -316,12 +308,12 @@ export const getRatingsController = async (req: Request, res: Response) => {
   try {
     const { orderId, raterId, ratedVendorId, ratedUserId, ratedProductId, type } = req.query;
     const filters: GetRatingsFilters = {
-      orderId: orderId as string | undefined,
-      raterId: raterId as string | undefined,
-      ratedVendorId: ratedVendorId as string | undefined,
-      ratedUserId: ratedUserId as string | undefined,
-      ratedProductId: ratedProductId as string | undefined,
-      type: type as RatingType | undefined,
+      orderId: (orderId as string)?.trim() || undefined,
+      raterId: (raterId as string)?.trim() || undefined,
+      ratedVendorId: (ratedVendorId as string)?.trim() || undefined,
+      ratedUserId: (ratedUserId as string)?.trim() || undefined,
+      ratedProductId: (ratedProductId as string)?.trim() || undefined,
+      type: (type as RatingType) || undefined,
     };
 
     Object.keys(filters).forEach(key => {
@@ -337,7 +329,7 @@ export const getRatingsController = async (req: Request, res: Response) => {
       message: error.message || 'Failed to get ratings',
       stackTrace: error.stack,
       metaData: { body: req.body, query: req.query, params: req.params },
-      userId: (req as any).user?.id as string,
+      userId: (req as any).userId as string,
       ipAddress: req.ip || req.socket?.remoteAddress,
       requestMethod: req.method,
       requestPath: req.originalUrl || req.path,
@@ -391,9 +383,9 @@ export const getAggregateRatingController = async (req: Request, res: Response) 
   try {
     const { ratedVendorId, ratedUserId, ratedProductId } = req.query;
     const filters = {
-      ratedVendorId: ratedVendorId as string | undefined,
-      ratedUserId: ratedUserId as string | undefined,
-      ratedProductId: ratedProductId as string | undefined,
+      ratedVendorId: (ratedVendorId as string)?.trim() || undefined,
+      ratedUserId: (ratedUserId as string)?.trim() || undefined,
+      ratedProductId: (ratedProductId as string)?.trim() || undefined,
     };
 
     const aggregate = await ratingService.getAggregateRatingService(filters);
@@ -403,7 +395,7 @@ export const getAggregateRatingController = async (req: Request, res: Response) 
       message: error.message || 'Failed to get aggregate rating',
       stackTrace: error.stack,
       metaData: { body: req.body, query: req.query, params: req.params },
-      userId: (req as any).user?.id as string,
+      userId: (req as any).userId as string,
       ipAddress: req.ip || req.socket?.remoteAddress,
       requestMethod: req.method,
       requestPath: req.originalUrl || req.path,
@@ -455,7 +447,7 @@ export const getRatingByIdController = async (req: Request, res: Response) => {
       message: error.message || 'Failed to get rating by ID',
       stackTrace: error.stack,
       metaData: { body: req.body, query: req.query, params: req.params },
-      userId: (req as any).user?.id as string,
+      userId: (req as any).userId as string,
       ipAddress: req.ip || req.socket?.remoteAddress,
       requestMethod: req.method,
       requestPath: req.originalUrl || req.path,

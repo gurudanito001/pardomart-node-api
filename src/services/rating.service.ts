@@ -32,92 +32,92 @@ export const createRatingService = async (
 
   let order = null;
 
-  // 1. Fetch and validate the order if provided
-  if (orderId) {
-    order = await orderModel.getOrderById(orderId);
-    if (!order) {
-      throw new RatingError('Order not found.', 404);
-    }
-    if (order.userId !== raterId) {
-      throw new RatingError('You are not authorized to rate this order.', 403);
-    }
-    if (order.orderStatus !== OrderStatus.delivered && order.orderStatus !== OrderStatus.picked_up_by_customer) {
-      throw new RatingError('Order must be completed before it can be rated.', 400);
-    }
-  }
-
-  // 2. Validate rating value
-  if (rating < 1 || rating > 5) {
-    throw new RatingError('Rating must be between 1 and 5.', 400);
-  }
-
-  // 3. Prepare rating data based on type
-  const ratingData: ratingModel.CreateRatingPayload = { 
-    raterId, 
-    type, 
-    rating, 
-    comment,
-    ...(orderId ? { orderId } : {}),
-    ...(ratedProductId ? { ratedProductId } : {}),
-    ...(ratedUserId ? { ratedUserId } : {}),
-    ...(ratedVendorId ? { ratedVendorId } : {})
-  };
-
-  switch (type) {
-    case RatingType.VENDOR:
-      if (!ratedVendorId && !orderId) throw new RatingError('Vendor ID or Order ID is required to rate a vendor.', 400);
-      ratingData.ratedVendorId = order ? order.vendorId : ratedVendorId;
-      break;
-    case RatingType.SHOPPER:
-      if (!orderId) throw new RatingError('Order ID is required to rate a shopper.', 400);
-      if (!order?.shopperId) throw new RatingError('This order does not have an assigned shopper to rate.', 400);
-      ratingData.ratedUserId = order.shopperId;
-      break;
-    case RatingType.DELIVERER:
-      if (!orderId) throw new RatingError('Order ID is required to rate a deliverer.', 400);
-      if (!order?.deliveryPersonId) throw new RatingError('This order does not have an assigned deliverer to rate.', 400);
-      ratingData.ratedUserId = order.deliveryPersonId;
-      break;
-    case RatingType.PRODUCT:
-      if (!ratedProductId) throw new RatingError('Product ID is required for a product rating.', 400);
-      
-      // Auto-resolve VendorProduct to base Product if a VendorProduct ID was passed
-      const vendorProductCheck = await prisma.vendorProduct.findUnique({ 
-        where: { id: ratedProductId },
-        select: { productId: true, vendorId: true }
-      });
-
-      if (vendorProductCheck) {
-        ratingData.ratedProductId = vendorProductCheck.productId;
-        if (!ratingData.ratedVendorId) ratingData.ratedVendorId = vendorProductCheck.vendorId;
-      } else {
-        ratingData.ratedProductId = ratedProductId;
-      }
-
-      // Verify product was in order if orderId is provided
-      if (order) {
-         const hasProduct = order.orderItems.some(item => 
-            item.vendorProductId === ratedProductId || 
-            item.vendorProduct?.productId === ratingData.ratedProductId ||
-            item.chosenReplacementId === ratedProductId ||
-            item.chosenReplacement?.productId === ratingData.ratedProductId
-         );
-         if (!hasProduct) throw new RatingError('This product was not part of the specified order.', 400);
-      }
-      break;
-    case RatingType.ORDER:
-      if (!orderId) throw new RatingError('Order ID is required for an order rating.', 400);
-      ratingData.orderId = orderId;
-      break;
-    case RatingType.USER:
-      if (!ratedUserId) throw new RatingError('User ID is required for a generic user rating.', 400);
-      ratingData.ratedUserId = ratedUserId;
-      break;
-    default:
-      throw new RatingError('Invalid rating type specified.', 400);
-  }
-
   try {
+    // 1. Fetch and validate the order if provided
+    if (orderId) {
+      order = await orderModel.getOrderById(orderId);
+      if (!order) {
+        throw new RatingError('Order not found.', 404);
+      }
+      if (order.userId !== raterId) {
+        throw new RatingError('You are not authorized to rate this order.', 403);
+      }
+      if (order.orderStatus !== OrderStatus.delivered && order.orderStatus !== OrderStatus.picked_up_by_customer) {
+        throw new RatingError('Order must be completed before it can be rated.', 400);
+      }
+    }
+  
+    // 2. Validate rating value
+    if (rating < 1 || rating > 5) {
+      throw new RatingError('Rating must be between 1 and 5.', 400);
+    }
+  
+    // 3. Prepare rating data based on type
+    const ratingData: ratingModel.CreateRatingPayload = { 
+      raterId, 
+      type, 
+      rating, 
+      comment,
+      ...(orderId ? { orderId } : {}),
+      ...(ratedProductId ? { ratedProductId } : {}),
+      ...(ratedUserId ? { ratedUserId } : {}),
+      ...(ratedVendorId ? { ratedVendorId } : {})
+    };
+  
+    switch (type) {
+      case RatingType.VENDOR:
+        if (!ratedVendorId && !orderId) throw new RatingError('Vendor ID or Order ID is required to rate a vendor.', 400);
+        ratingData.ratedVendorId = order ? order.vendorId : ratedVendorId;
+        break;
+      case RatingType.SHOPPER:
+        if (!orderId) throw new RatingError('Order ID is required to rate a shopper.', 400);
+        if (!order?.shopperId) throw new RatingError('This order does not have an assigned shopper to rate.', 400);
+        ratingData.ratedUserId = order.shopperId;
+        break;
+      case RatingType.DELIVERER:
+        if (!orderId) throw new RatingError('Order ID is required to rate a deliverer.', 400);
+        if (!order?.deliveryPersonId) throw new RatingError('This order does not have an assigned deliverer to rate.', 400);
+        ratingData.ratedUserId = order.deliveryPersonId;
+        break;
+      case RatingType.PRODUCT:
+        if (!ratedProductId) throw new RatingError('Product ID is required for a product rating.', 400);
+        
+        // Auto-resolve VendorProduct to base Product if a VendorProduct ID was passed
+        const vendorProductCheck = await prisma.vendorProduct.findUnique({ 
+          where: { id: ratedProductId },
+          select: { productId: true, vendorId: true }
+        });
+  
+        if (vendorProductCheck) {
+          ratingData.ratedProductId = vendorProductCheck.productId;
+          if (!ratingData.ratedVendorId) ratingData.ratedVendorId = vendorProductCheck.vendorId;
+        } else {
+          ratingData.ratedProductId = ratedProductId;
+        }
+  
+        // Verify product was in order if orderId is provided
+        if (order) {
+           const hasProduct = order.orderItems.some(item => 
+              item.vendorProductId === ratedProductId || 
+              item.vendorProduct?.productId === ratingData.ratedProductId ||
+              item.chosenReplacementId === ratedProductId ||
+              item.chosenReplacement?.productId === ratingData.ratedProductId
+           );
+           if (!hasProduct) throw new RatingError('This product was not part of the specified order.', 400);
+        }
+        break;
+      case RatingType.ORDER:
+        if (!orderId) throw new RatingError('Order ID is required for an order rating.', 400);
+        ratingData.orderId = orderId;
+        break;
+      case RatingType.USER:
+        if (!ratedUserId) throw new RatingError('User ID is required for a generic user rating.', 400);
+        ratingData.ratedUserId = ratedUserId;
+        break;
+      default:
+        throw new RatingError('Invalid rating type specified.', 400);
+    }
+
     return await prisma.$transaction(async (tx) => {
       // 4. Check for duplicate ratings using contextual properties
       const existingRating = await tx.rating.findFirst({
@@ -191,7 +191,13 @@ export const updateRatingService = async (id: string, raterId: string, payload: 
   const rating = await ratingModel.getRatingById(id);
   if (!rating) throw new RatingError('Rating not found.', 404);
   if (rating.raterId !== raterId) throw new RatingError('You are not authorized to update this rating.', 403);
-  return ratingModel.updateRating(id, payload);
+  
+  // Sanitize payload to prevent mass-assignment vulnerability
+  const safePayload = {
+    ...(payload.rating !== undefined ? { rating: payload.rating } : {}),
+    ...(payload.comment !== undefined ? { comment: payload.comment } : {})
+  };
+  return ratingModel.updateRating(id, safePayload);
 };
 
 /**

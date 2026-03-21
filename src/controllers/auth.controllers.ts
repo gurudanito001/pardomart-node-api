@@ -119,7 +119,6 @@ export const registerUser = async (req: Request, res: Response) => {
  */
 export const getTimeZones = async (req: Request, res: Response) => {
   try {
-    await prisma.rating.deleteMany();
     const timezones = Timezones;
     let utcs: string[] = [];
     timezones.forEach( zone =>{
