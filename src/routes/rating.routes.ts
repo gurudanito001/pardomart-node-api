@@ -7,25 +7,8 @@ import {
   deleteRatingController,
   getAggregateRatingController,
 } from '../controllers/rating.controllers';
-
-// This is a placeholder for actual authentication middleware.
-// In a real application, this would verify a JWT or session and attach the user to the request.
-const isAuthenticated = (req: any, res: any, next: express.NextFunction) => {
-  // For demonstration, we'll mock a user.
-  // Replace this with your actual authentication logic.
-  if (!req.user) {
-    req.user = { id: 'a-mock-customer-id', role: 'customer' };
-  }
-  next();
-};
-
-// This is a placeholder for role-based authorization middleware.
-const isCustomer = (req: any, res: any, next: express.NextFunction) => {
-  if (req.user && req.user.role === 'customer') {
-    return next();
-  }
-  return res.status(403).json({ error: 'Forbidden: Customer access required.' });
-};
+import { authenticate, authorize } from '../middlewares/auth.middleware';
+import { Role } from '@prisma/client';
 
 const router = express.Router();
 
@@ -139,11 +122,11 @@ const router = express.Router();
  *                 name: { type: string }
  */
 
-router.post('/', isAuthenticated, isCustomer, createRatingController);
+router.post('/', authenticate, authorize([Role.customer]), createRatingController);
 router.get('/', getRatingsController);
 router.get('/aggregate', getAggregateRatingController);
 router.get('/:id', getRatingByIdController);
-router.patch('/:id', isAuthenticated, isCustomer, updateRatingController);
-router.delete('/:id', isAuthenticated, isCustomer, deleteRatingController);
+router.patch('/:id', authenticate, authorize([Role.customer]), updateRatingController);
+router.delete('/:id', authenticate, authorize([Role.customer]), deleteRatingController);
 
 export default router;
