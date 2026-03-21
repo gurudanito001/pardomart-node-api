@@ -3,6 +3,7 @@ import { Prisma, VendorProduct, Role } from '@prisma/client';
 import * as productModel from '../models/product.model';
 import * as vendorModel from '../models/vendor.model';
 import { uploadMedia } from './media.service';
+import { getAggregateRatingService } from './rating.service';
 
 /**
  * Uploads an array of base64 encoded images to Cloudinary.
@@ -93,7 +94,17 @@ export const createVendorProduct = async (payload: productModel.CreateVendorProd
 // The following are placeholders for other functions from your controller.
 
 export const createProduct = (payload: any) => productModel.createProduct(payload);
-export const getVendorProductById = (id: string) => productModel.getVendorProductById(id);
+
+export const getVendorProductById = async (id: string) => {
+  const vendorProduct = await productModel.getVendorProductById(id);
+  if (!vendorProduct) return null;
+
+  const rating = await getAggregateRatingService({ ratedProductId: vendorProduct.productId });
+  return {
+    ...vendorProduct,
+    rating: rating || { average: 5, count: 0 },
+  };
+};
 
 /**
  * Creates a vendor product from a barcode, handling image uploads.

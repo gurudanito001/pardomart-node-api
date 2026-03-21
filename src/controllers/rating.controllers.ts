@@ -18,11 +18,11 @@ interface AuthenticatedRequest extends Request {
  * @swagger
  * /ratings:
  *   post:
- *     summary: Create a new rating for an order
+ *     summary: Create or update a rating
  *     tags: [Rating]
  *     security:
  *       - bearerAuth: []
- *     description: Allows a customer to submit a rating. The rating can be for a VENDOR, USER (e.g. SHOPPER, DELIVERER), PRODUCT, or ORDER.
+ *     description: Allows a customer to submit a rating. If a rating of this type for this target already exists, it will be automatically updated instead. The rating can be for a VENDOR, USER, PRODUCT, or ORDER.
  *     requestBody:
  *       required: true
  *       content:
@@ -30,8 +30,8 @@ interface AuthenticatedRequest extends Request {
  *           schema:
  *             $ref: '#/components/schemas/CreateRatingPayload'
  *     responses:
- *       201:
- *         description: The created rating.
+ *       200:
+ *         description: The created or updated rating.
  *         content:
  *           application/json:
  *             schema:
@@ -44,8 +44,6 @@ interface AuthenticatedRequest extends Request {
  *         description: Forbidden.
  *       404:
  *         description: Entity not found.
- *       409:
- *         description: Conflict.
  * components:
  *   schemas:
  *     RatingType:
@@ -120,7 +118,7 @@ export const createRatingController = async (req: AuthenticatedRequest, res: Res
 
     const payload: Omit<CreateRatingPayload, 'raterId'> = req.body;
     const rating = await ratingService.createRatingService(raterId, payload);
-    res.status(201).json(rating);
+    res.status(200).json(rating);
   } catch (error: any) {
     await errorLogService.logError({
       message: error.message || 'Failed to create rating',

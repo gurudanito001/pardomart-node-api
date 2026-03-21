@@ -72,10 +72,12 @@ export const getRatings = async (filters: GetRatingsFilters): Promise<Rating[]> 
  * Updates an existing rating.
  * @param id - The ID of the rating to update.
  * @param payload - The data to update.
+ * @param tx - Optional Prisma transaction client.
  * @returns The updated rating.
  */
-export const updateRating = async (id: string, payload: UpdateRatingPayload): Promise<Rating> => {
-  return prisma.rating.update({
+export const updateRating = async (id: string, payload: UpdateRatingPayload, tx?: Prisma.TransactionClient): Promise<Rating> => {
+  const db = tx || prisma;
+  return db.rating.update({
     where: { id },
     data: payload,
   });
@@ -138,6 +140,35 @@ export const getAggregateRatingsForVendors = async (vendorIds: string[]): Promis
       ratingsMap.set(agg.ratedVendorId, {
         average: agg._avg.rating || 0,
         count: agg._count.ratedVendorId,
+      });
+    }
+  }
+  return ratingsMap;
+};
+
+export const getAggregateRatingsForProducts = async (productIds: string[]): Promise<Map<string, { average: number; count: number }>> => {
+  if (productIds.length === 0) {
+    return new Map();
+  }
+
+  const aggregates = await prisma.rating.groupBy({
+    by: ['ratedProductId'],
+    where: {
+      ratedProductId: {
+        in: productIds,
+      },
+      type: RatingType.PRODUCT,
+    },
+    _avg: { rating: true },
+    _count: { ratedProductId: true },
+  });
+
+  const ratingsMap = new Map<string, { average: number; count: number }>();
+  for (const agg of aggregates) {
+    if (agg.ratedProductId) {
+      ratingsMap.set(agg.ratedProductId, {
+        average: agg._avg.rating || 0,
+        count: agg._count.ratedProductId,
       });
     }
   }

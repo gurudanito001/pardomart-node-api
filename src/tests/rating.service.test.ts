@@ -53,7 +53,7 @@ describe('Rating Service', () => {
 
       // Mock the Prisma transaction to simulate a successful database operation
       prismaMock.$transaction.mockImplementation(async (callback: any) => {
-        const tx = { rating: { findUnique: jest.fn().mockResolvedValue(null) } } as any;
+        const tx = { rating: { findFirst: jest.fn().mockResolvedValue(null) } } as any;
         mockRatingModel.createRating.mockResolvedValueOnce({
           id: 'rating-1',
           rating: createVendorRatingPayload.rating,
@@ -112,17 +112,32 @@ describe('Rating Service', () => {
         .rejects.toThrow(new RatingError('Rating must be between 1 and 5.', 400));
     });
 
-    it('should throw a 409 error if a rating of the same type already exists', async () => {
+    it('should update the rating if a rating of the same type already exists', async () => {
       mockOrderModel.getOrderById.mockResolvedValue(mockOrder);
       
       // Mock transaction to simulate finding an existing rating
       prismaMock.$transaction.mockImplementation(async (callback: any) => {
-        const tx = { rating: { findUnique: jest.fn().mockResolvedValue({ id: 'existing-rating' }) } } as any;
+        const tx = { rating: { findFirst: jest.fn().mockResolvedValue({ id: 'existing-rating' }) } } as any;
+        mockRatingModel.updateRating.mockResolvedValueOnce({
+          id: 'existing-rating',
+          rating: createVendorRatingPayload.rating,
+          type: createVendorRatingPayload.type,
+          raterId,
+          ratedVendorId: vendorId,
+          ratedUserId: null,
+          ratedProductId: null,
+          orderId: createVendorRatingPayload.orderId ?? null,
+          comment: createVendorRatingPayload.comment ?? null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
         return callback(tx);
       });
 
-      await expect(ratingService.createRatingService(raterId, createVendorRatingPayload))
-        .rejects.toThrow(new RatingError('A vendor rating for this order already exists.', 409));
+      const result = await ratingService.createRatingService(raterId, createVendorRatingPayload);
+      expect(mockRatingModel.updateRating).toHaveBeenCalledWith('existing-rating', { rating: 5, comment: 'Great service!' }, expect.anything());
+      expect(result).toBeDefined();
+      expect(result.id).toBe('existing-rating');
     });
 
     it('should correctly assign ratedUserId for a SHOPPER rating', async () => {
@@ -130,7 +145,7 @@ describe('Rating Service', () => {
         mockOrderModel.getOrderById.mockResolvedValue(mockOrder);
         
         prismaMock.$transaction.mockImplementation(async (callback: any) => {
-            const tx = { rating: { findUnique: jest.fn().mockResolvedValue(null) } } as any;
+            const tx = { rating: { findFirst: jest.fn().mockResolvedValue(null) } } as any;
             return callback(tx);
         });
 

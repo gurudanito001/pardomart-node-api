@@ -33,7 +33,7 @@ const router = express.Router();
  * @swagger
  * tags:
  *   name: Rating
- *   description: API for managing ratings for orders, vendors, shoppers, and deliverers.
+ *   description: API for managing ratings for products, orders, vendors, shoppers, and deliverers.
  */
 
 /**

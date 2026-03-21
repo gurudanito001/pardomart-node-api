@@ -110,6 +110,11 @@ import { errorLogService } from '../services/errorLog.service';
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/TagSummary'
+ *             rating:
+ *               type: object
+ *               properties:
+ *                 average: { type: number, format: float }
+ *                 count: { type: integer }
  *     CreateProductPayload:
  *       type: object
  *       required: [barcode, name, categoryIds]

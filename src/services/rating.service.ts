@@ -26,9 +26,11 @@ export const createRatingService = async (
 ): Promise<Rating> => {
   const { orderId, type, rating, ratedProductId, ratedUserId, ratedVendorId } = payload;
 
-  // 1. Validate the order if provided
+  let order = null;
+
+  // 1. Fetch and validate the order if provided
   if (orderId) {
-    const order = await orderModel.getOrderById(orderId);
+    order = await orderModel.getOrderById(orderId);
     if (!order) {
       throw new RatingError('Order not found.', 404);
     }
@@ -51,32 +53,24 @@ export const createRatingService = async (
   switch (type) {
     case RatingType.VENDOR:
       if (!ratedVendorId && !orderId) throw new RatingError('Vendor ID or Order ID is required to rate a vendor.', 400);
-      if (orderId) {
-        const order = await orderModel.getOrderById(orderId);
-        ratingData.ratedVendorId = order?.vendorId;
-      } else {
-        ratingData.ratedVendorId = ratedVendorId;
-      }
+      ratingData.ratedVendorId = order ? order.vendorId : ratedVendorId;
       break;
     case RatingType.SHOPPER:
       if (!orderId) throw new RatingError('Order ID is required to rate a shopper.', 400);
-      const orderShopper = await orderModel.getOrderById(orderId);
-      if (!orderShopper?.shopperId) throw new RatingError('This order does not have an assigned shopper to rate.', 400);
-      ratingData.ratedUserId = orderShopper.shopperId;
+      if (!order?.shopperId) throw new RatingError('This order does not have an assigned shopper to rate.', 400);
+      ratingData.ratedUserId = order.shopperId;
       break;
     case RatingType.DELIVERER:
       if (!orderId) throw new RatingError('Order ID is required to rate a deliverer.', 400);
-      const orderDeliverer = await orderModel.getOrderById(orderId);
-      if (!orderDeliverer?.deliveryPersonId) throw new RatingError('This order does not have an assigned deliverer to rate.', 400);
-      ratingData.ratedUserId = orderDeliverer.deliveryPersonId;
+      if (!order?.deliveryPersonId) throw new RatingError('This order does not have an assigned deliverer to rate.', 400);
+      ratingData.ratedUserId = order.deliveryPersonId;
       break;
     case RatingType.PRODUCT:
       if (!ratedProductId) throw new RatingError('Product ID is required for a product rating.', 400);
       ratingData.ratedProductId = ratedProductId;
-      // Optionally verify product was in order if orderId is provided
-      if (orderId) {
-         const orderProd = await orderModel.getOrderById(orderId);
-         const hasProduct = orderProd?.orderItems.some(item => 
+      // Verify product was in order if orderId is provided
+      if (order) {
+         const hasProduct = order.orderItems.some(item => 
             item.vendorProductId === ratedProductId || 
             item.vendorProduct?.productId === ratedProductId ||
             item.chosenReplacementId === ratedProductId ||
@@ -112,16 +106,17 @@ export const createRatingService = async (
       });
 
       if (existingRating) {
-        throw new RatingError(`You have already submitted a ${type.toLowerCase()} rating for this target.`, 409);
+        // Update the existing rating instead of throwing an error
+        return ratingModel.updateRating(existingRating.id, {
+          rating: ratingData.rating,
+          comment: ratingData.comment,
+        }, tx);
       }
 
       return ratingModel.createRating(ratingData, tx);
     });
   } catch (error) {
     if (error instanceof RatingError) throw error;
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      throw new RatingError(`A ${type.toLowerCase()} rating for this order already exists.`, 409);
-    }
     console.error('Error creating rating:', error);
     throw new RatingError('Could not create rating.', 500);
   }
@@ -192,4 +187,14 @@ export const getAggregateRatingService = async (filters: { ratedVendorId?: strin
 export const getAggregateRatingsForVendorsService = async (vendorIds: string[]): Promise<Map<string, { average: number; count: number }>> => {
   if (vendorIds.length === 0) return new Map();
   return ratingModel.getAggregateRatingsForVendors(vendorIds);
+};
+
+/**
+ * Gets aggregate ratings for a list of product IDs.
+ * @param productIds - An array of product IDs.
+ * @returns A Map where keys are product IDs and values are their aggregate rating.
+ */
+export const getAggregateRatingsForProductsService = async (productIds: string[]): Promise<Map<string, { average: number; count: number }>> => {
+  if (productIds.length === 0) return new Map();
+  return ratingModel.getAggregateRatingsForProducts(productIds);
 };
