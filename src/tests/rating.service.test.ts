@@ -154,7 +154,6 @@ describe('Rating Service', () => {
         expect(mockRatingModel.createRating).toHaveBeenCalledWith(
             expect.objectContaining({
                 ratedUserId: mockOrder.shopperId,
-                ratedVendorId: undefined,
             }),
             expect.anything()
         );

@@ -24,7 +24,11 @@ export const createRatingService = async (
   raterId: string,
   payload: Omit<ratingModel.CreateRatingPayload, 'raterId'>
 ): Promise<Rating> => {
-  const { orderId, type, rating, ratedProductId, ratedUserId, ratedVendorId } = payload;
+  const orderId = payload.orderId?.trim() || undefined;
+  const ratedProductId = payload.ratedProductId?.trim() || undefined;
+  const ratedUserId = payload.ratedUserId?.trim() || undefined;
+  const ratedVendorId = payload.ratedVendorId?.trim() || undefined;
+  const { type, rating, comment } = payload;
 
   let order = null;
 
@@ -48,7 +52,16 @@ export const createRatingService = async (
   }
 
   // 3. Prepare rating data based on type
-  const ratingData: ratingModel.CreateRatingPayload = { ...payload, raterId };
+  const ratingData: ratingModel.CreateRatingPayload = { 
+    raterId, 
+    type, 
+    rating, 
+    comment,
+    ...(orderId ? { orderId } : {}),
+    ...(ratedProductId ? { ratedProductId } : {}),
+    ...(ratedUserId ? { ratedUserId } : {}),
+    ...(ratedVendorId ? { ratedVendorId } : {})
+  };
 
   switch (type) {
     case RatingType.VENDOR:
