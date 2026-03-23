@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createBugReportController, updateBugReportStatusController } from '../controllers/bugReport.controller';
+import { createBugReportController, updateBugReportStatusController, getMyBugReportsController, getBugReportByIdController } from '../controllers/bugReport.controller';
 import { authenticate, authorize } from '../middlewares/auth.middleware';
 import { upload } from '../middlewares/upload.middleware';
 import { Role } from '@prisma/client';
@@ -65,6 +65,47 @@ const router = Router();
  *         description: Bug report created successfully.
  */
 router.post('/', authenticate, upload.single('image'), createBugReportController);
+
+/**
+ * @swagger
+ * /bug-reports/me:
+ *   get:
+ *     summary: Get my bug reports
+ *     tags: [BugReport]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Retrieves all bug reports submitted by the authenticated user, sorted by most recent.
+ *     responses:
+ *       200:
+ *         description: A list of the user's bug reports.
+ */
+router.get('/me', authenticate, getMyBugReportsController);
+
+/**
+ * @swagger
+ * /bug-reports/{id}:
+ *   get:
+ *     summary: Get a specific bug report
+ *     tags: [BugReport]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the bug report to retrieve.
+ *     responses:
+ *       200:
+ *         description: The requested bug report details.
+ *       403:
+ *         description: Forbidden. You do not have permission to view this report.
+ *       404:
+ *         description: Bug report not found.
+ */
+router.get('/:id', authenticate, getBugReportByIdController);
 
 /**
  * @swagger

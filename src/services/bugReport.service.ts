@@ -1,4 +1,4 @@
-import { PrismaClient, BugCategory, Prisma } from '@prisma/client';
+import { PrismaClient, BugCategory, Prisma, Role } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -30,6 +30,34 @@ export const createBugReportService = async (payload: CreateBugReportPayload) =>
       meta,
     },
   });
+
+  return bugReport;
+};
+
+export const getBugReportsByUserService = async (userId: string) => {
+  return prisma.bugReport.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+  });
+};
+
+export const getBugReportByIdService = async (bugReportId: string, requestingUserId: string, requestingUserRole: Role) => {
+  const bugReport = await prisma.bugReport.findUnique({
+    where: { id: bugReportId },
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      product: { select: { id: true, name: true } },
+      vendor: { select: { id: true, name: true } },
+    }
+  });
+
+  if (!bugReport) {
+    return null;
+  }
+
+  if (bugReport.userId !== requestingUserId && requestingUserRole !== Role.admin) {
+    throw new Error('Forbidden: You are not authorized to view this bug report.');
+  }
 
   return bugReport;
 };

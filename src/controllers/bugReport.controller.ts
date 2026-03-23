@@ -87,6 +87,62 @@ export const createBugReportController = async (req: AuthenticatedRequest, res: 
   }
 };
 
+export const getMyBugReportsController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.userId!;
+    const bugReports = await bugReportService.getBugReportsByUserService(userId);
+    
+    res.status(200).json(bugReports);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to retrieve user bug reports',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_MY_BUG_REPORTS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
+    res.status(500).json({ error: 'Failed to retrieve bug reports.', message: error.message });
+  }
+};
+
+export const getBugReportByIdController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.userId!;
+    const userRole = req.userRole as Role;
+
+    const bugReport = await bugReportService.getBugReportByIdService(id, userId, userRole);
+
+    if (!bugReport) {
+      return res.status(404).json({ error: 'Bug report not found.' });
+    }
+
+    res.status(200).json(bugReport);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to retrieve bug report by ID',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_BUG_REPORT_BY_ID_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
+    if (error.message.includes('Forbidden')) {
+      return res.status(403).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Failed to retrieve bug report.', message: error.message });
+  }
+};
+
 export const updateBugReportStatusController = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
