@@ -19,11 +19,7 @@ import Stripe from 'stripe';
 import { Role, TransactionStatus } from '@prisma/client';
 import * as transactionService from '../services/transaction.service';
 import { errorLogService } from '../services/errorLog.service';
-
-
-/* const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-08-27.basil',
-}); */
+import { stripe } from '../services/transaction.service';
 
 /**
  * @swagger
@@ -51,6 +47,9 @@ import { errorLogService } from '../services/errorLog.service';
  *               orderId:
  *                 type: string
  *                 format: uuid
+ *               paymentType:
+ *                 type: string
+ *                 enum: [card, ebt]
  *     responses:
  *       200:
  *         description: Payment Intent created successfully.
@@ -59,6 +58,8 @@ import { errorLogService } from '../services/errorLog.service';
  *             schema:
  *               type: object
  *               properties:
+ *                 success:
+ *                   type: boolean
  *                 clientSecret:
  *                   type: string
  *       400:
@@ -110,9 +111,9 @@ import { errorLogService } from '../services/errorLog.service';
 export const createPaymentIntentController = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.userId as string;
-    const { orderId } = req.body;
+    const { orderId, paymentType } = req.body;
 
-    const paymentIntent = await createPaymentIntentService(userId, orderId);
+    const paymentIntent = await createPaymentIntentService(userId, orderId, paymentType);
     res.status(200).json(paymentIntent);
   } catch (error: any) {
     await errorLogService.logError({
@@ -362,7 +363,7 @@ export const listVendorTransactionsController = async (req: AuthenticatedRequest
 };
 
 export const stripeWebhookController = async (req: Request, res: Response) => {
-  /* const sig = req.headers['stripe-signature'] as string;
+  const sig = req.headers['stripe-signature'] as string;
   let event: Stripe.Event;
 
   try {
@@ -373,12 +374,12 @@ export const stripeWebhookController = async (req: Request, res: Response) => {
   }
 
   try {
-    await handleStripeWebhook(event);
+    await transactionService.handleStripeWebhook(event);
   } catch (error) {
     console.error('Error handling webhook event:', error);
     // Return a 200 to Stripe even if our internal processing fails
     // to prevent Stripe from retrying indefinitely. We should have internal monitoring for this.
-  } */
+  }
 
   res.status(200).json({ received: true });
 };

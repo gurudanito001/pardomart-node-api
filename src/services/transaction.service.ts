@@ -5,9 +5,9 @@ import * as transactionModel from '../models/transaction.model';
 
 import { sendEmail } from '../utils/email.util';
 const prisma = new PrismaClient();
-/* const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-08-27.basil',
-}); */
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2025-08-27.basil', // Standard stable Stripe API Version
+});
 
 /**
  * Finds a user's Stripe Customer ID, or creates a new Stripe Customer if one doesn't exist.
@@ -15,7 +15,7 @@ const prisma = new PrismaClient();
  * @returns The Stripe Customer ID.
  */
 const findOrCreateStripeCustomer = async (user: User): Promise<string> => {
-  /* if (user.stripeCustomerId) {
+  if (user.stripeCustomerId) {
     return user.stripeCustomerId;
   }
 
@@ -29,17 +29,17 @@ const findOrCreateStripeCustomer = async (user: User): Promise<string> => {
     where: { id: user.id },
     data: { stripeCustomerId: customer.id },
   });
-  return customer.id; */
-  return 'mock_stripe_customer_id';
+  return customer.id;
 };
 
 /**
  * Creates a Stripe Payment Intent for a given order.
  * @param userId The ID of the user making the payment.
  * @param orderId The ID of the order to be paid for.
+ * @param paymentType Optional payment type (e.g., 'card', 'ebt')
  * @returns An object containing the client_secret for the Payment Intent.
  */
-export const createPaymentIntentService = async (userId: string, orderId: string) => {
+export const createPaymentIntentService = async (userId: string, orderId: string, paymentType?: string) => {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) {
     throw new OrderCreationError('User not found.', 404);
@@ -54,25 +54,31 @@ export const createPaymentIntentService = async (userId: string, orderId: string
     throw new OrderCreationError('You are not authorized to pay for this order.', 403);
   }
 
-  if (order.paymentStatus === 'paid') {
+  if (order.paymentStatus === PaymentStatus.paid) {
     throw new OrderCreationError('This order has already been paid for.', 409);
   }
 
-  /* const stripeCustomerId = await findOrCreateStripeCustomer(user);
+  const stripeCustomerId = await findOrCreateStripeCustomer(user);
   const amountInCents = Math.round(order.totalAmount * 100);
 
-  const paymentIntent = await stripe.paymentIntents.create({
+  const intentParams: Stripe.PaymentIntentCreateParams = {
     amount: amountInCents,
     currency: 'usd',
     customer: stripeCustomerId,
-    automatic_payment_methods: {
-      enabled: true,
-    },
     metadata: {
       orderId: order.id,
       userId: user.id,
     },
-  });
+  };
+
+  if (paymentType === 'ebt') {
+    // specific configuration required for EBT processing if Stripe account is approved for it
+    intentParams.payment_method_types = ['card']; // Update this array when EBT is enabled on your Stripe account
+  } else {
+    intentParams.automatic_payment_methods = { enabled: true };
+  }
+
+  const paymentIntent = await stripe.paymentIntents.create(intentParams);
 
   // Create a transaction record to track the payment intent
   // We use upsert to handle cases where a user might try to pay for the same order again
@@ -89,9 +95,9 @@ export const createPaymentIntentService = async (userId: string, orderId: string
     meta: {
       client_secret: paymentIntent.client_secret,
     },
-  }); */
+  });
 
-  return { clientSecret: 'mock_client_secret' };
+  return { success: true, clientSecret: paymentIntent.client_secret };
 };
 
 /**
@@ -105,7 +111,7 @@ export const createSetupIntentService = async (userId: string) => {
     throw new OrderCreationError('User not found.', 404);
   }
 
-  /* const stripeCustomerId = await findOrCreateStripeCustomer(user);
+  const stripeCustomerId = await findOrCreateStripeCustomer(user);
 
   const setupIntent = await stripe.setupIntents.create({
     customer: stripeCustomerId,
@@ -114,9 +120,9 @@ export const createSetupIntentService = async (userId: string) => {
     metadata: {
       userId: user.id,
     },
-  }); */
+  });
 
-  return { clientSecret: 'mock_setup_secret' };
+  return { success: true, clientSecret: setupIntent.client_secret };
 };
 
 /**
@@ -124,7 +130,7 @@ export const createSetupIntentService = async (userId: string) => {
  * @param event The Stripe event object.
  */
 export const handleStripeWebhook = async (event: Stripe.Event) => {
-  /* switch (event.type) {
+  switch (event.type) {
     case 'payment_intent.succeeded':
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
       const orderId = paymentIntent.metadata.orderId;
@@ -141,7 +147,7 @@ export const handleStripeWebhook = async (event: Stripe.Event) => {
         // Update the order itself
         await prisma.order.update({
           where: { id: orderId },
-          data: { paymentStatus: 'paid' },
+          data: { paymentStatus: PaymentStatus.paid },
         });
 
         console.log(`✅ Payment for order ${orderId} succeeded.`);
@@ -210,8 +216,7 @@ export const handleStripeWebhook = async (event: Stripe.Event) => {
     }
     default:
       console.log(`Unhandled event type ${event.type}`);
-  } */
-  console.log('Stripe webhook handling is currently disabled.');
+  }
 };
 
 /**
@@ -259,7 +264,7 @@ export const detachPaymentMethodService = async (userId: string, stripePaymentMe
     throw new OrderCreationError('User or Stripe customer not found.', 404);
   }
 
-  /* const savedMethod = await prisma.savedPaymentMethod.findFirst({
+  const savedMethod = await prisma.savedPaymentMethod.findFirst({
     where: {
       userId: userId,
       stripePaymentMethodId: stripePaymentMethodId,
@@ -297,8 +302,7 @@ export const detachPaymentMethodService = async (userId: string, stripePaymentMe
         data: { isDefault: true },
       });
     }
-  } */
-  console.log('Detach payment method is currently disabled.');
+  }
 };
 
 
