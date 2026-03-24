@@ -150,6 +150,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         pickupOtp: { type: string, nullable: true }
  *         subtotal: { type: number, format: float }
  *         totalAmount: { type: number, format: float }
+ *         budgetAmount: { type: number, format: float, nullable: true }
  *         deliveryFee: { type: number, format: float, nullable: true }
  *         serviceFee: { type: number, format: float, nullable: true }
  *         shoppingFee: { type: number, format: float, nullable: true }
@@ -181,6 +182,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         pickupOtp: { type: string, nullable: true }
  *         subtotal: { type: number, format: float }
  *         totalAmount: { type: number, format: float }
+ *         budgetAmount: { type: number, format: float, nullable: true }
  *         deliveryFee: { type: number, format: float, nullable: true }
  *         serviceFee: { type: number, format: float, nullable: true }
  *         shoppingFee: { type: number, format: float, nullable: true }
@@ -285,6 +287,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         shoppingMethod: { $ref: '#/components/schemas/ShoppingMethod' }
  *         deliveryMethod: { $ref: '#/components/schemas/DeliveryMethod' }
  *         scheduledDeliveryTime: { type: string, format: date-time, nullable: true }
+ *         useMaxPricesForBudget: { type: boolean, description: "Opt-in flag to calculate the order's total authorized amount based on the maximum priced replacements." }
  *     UpdateOrderStatusPayload:
  *       type: object
  *       required: [status]

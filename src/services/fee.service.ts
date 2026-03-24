@@ -210,6 +210,7 @@ interface OrderItemInput {
   vendorProductId: string;
   quantity: number;
   price?: number; // Optional historical price lock
+  replacementIds?: string[]; // Optional replacement IDs for budget calculation
 }
 
 // Interface for the input payload to the service
@@ -219,6 +220,7 @@ interface CalculateFeesPayload {
   deliveryAddressId?: string;
   deliveryType?: DeliveryMethod;
   skipAvailabilityCheck?: boolean; // Use true to bypass strict checks during recalculations
+  useMaxPricesForBudget?: boolean; // Calculate subtotal and fees using the highest price among the item and its replacements
 }
 
 // Interface for the returned fees calculation
@@ -298,14 +300,20 @@ export const calculateOrderFeesService = async (
       }
     }
     
-    // Get all unique vendor product IDs from the order items
-    const uniqueVendorProductIds = orderItems.map((item) => item.vendorProductId);
+    // Get all unique vendor product IDs from the order items (including replacements if needed)
+    const uniqueVendorProductIds = new Set<string>();
+    orderItems.forEach((item) => {
+      uniqueVendorProductIds.add(item.vendorProductId);
+      if (payload.useMaxPricesForBudget && item.replacementIds) {
+        item.replacementIds.forEach((id) => uniqueVendorProductIds.add(id));
+      }
+    });
 
     // Fetch all vendor products in a single query for efficiency
     const vendorProducts = await prismaClient.vendorProduct.findMany({
       where: {
         id: {
-          in: uniqueVendorProductIds,
+          in: Array.from(uniqueVendorProductIds),
         },
       },
       select: {
@@ -342,21 +350,33 @@ export const calculateOrderFeesService = async (
 
     for (const item of orderItems) {
       const productDetails = productDetailsMap.get(item.vendorProductId);
-      let itemPrice = item.price;
+      let baseItemPrice = item.price;
 
       // Use current catalog price if historical price wasn't explicitly provided
-      if (itemPrice === undefined) {
+      if (baseItemPrice === undefined) {
         if (!productDetails) throw new Error(`Price not found for vendor product ID: ${item.vendorProductId}`);
-        itemPrice = productDetails.price;
+        baseItemPrice = productDetails.price;
       }
       
+      let effectivePrice = baseItemPrice;
+
+      // If we are calculating the max budget, check all replacement prices and take the highest
+      if (payload.useMaxPricesForBudget && item.replacementIds && item.replacementIds.length > 0) {
+        for (const repId of item.replacementIds) {
+          const repDetails = productDetailsMap.get(repId);
+          if (repDetails && repDetails.price > effectivePrice) {
+            effectivePrice = repDetails.price;
+          }
+        }
+      }
+
       // Check availability only if we are doing a strict checkout (skipAvailabilityCheck = false)
       if (!payload.skipAvailabilityCheck && productDetails && !productDetails.isAvailable) {
         throw new Error(`Product ID ${item.vendorProductId} is not available.`);
       }
       
-      itemPrices.push({ vendorProductId: item.vendorProductId, price: itemPrice });
-      subtotal += itemPrice * item.quantity;
+      itemPrices.push({ vendorProductId: item.vendorProductId, price: baseItemPrice }); // Always return the true base price to lock in
+      subtotal += effectivePrice * item.quantity; // Calculate the subtotal using the max budget price
       totalItemCount += item.quantity;
     }
 

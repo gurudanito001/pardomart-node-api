@@ -10,6 +10,7 @@ export interface CreateOrderPayload {
   orderCode: string;
   subtotal: number;
   totalAmount: number;
+  budgetAmount?: number;
   deliveryFee?: number;
   serviceFee?: number;
   shoppingFee?: number;
@@ -99,6 +100,7 @@ export const getOrdersByUserId = async (userId: string): Promise<Order[]> => {
 export interface UpdateOrderPayload {
   subtotal?: number;
   totalAmount?: number;
+  budgetAmount?: number;
   deliveryFee?: number;
   serviceFee?: number;
   shoppingFee?: number;

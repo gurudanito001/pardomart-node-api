@@ -209,6 +209,7 @@ model Order {
   shopperTip              Float?
   deliveryPersonTip       Float?
   totalAmount             Float
+  budgetAmount            Float?
   paymentMethod           PaymentMethods           @default(credit_card)
   paymentStatus           PaymentStatus            @default(pending)
   orderStatus             OrderStatus              @default(pending)
@@ -673,6 +674,8 @@ enum TransactionType {
   REFUND
   VENDOR_PAYOUT
   TIP_PAYOUT
+  DELIVERY_PAYOUT
+  PLATFORM_FEE_COLLECTED
 
   CREDIT
   DEBIT

@@ -136,3 +136,39 @@ export const debitWallet = async ({ userId, amount, description, meta }: DebitWa
     meta: meta || {},
   });
 };
+
+/**
+ * Submits a request to withdraw funds from the wallet to a bank account.
+ * @param userId The ID of the user.
+ * @param amount The amount to withdraw.
+ * @returns The created withdrawal transaction.
+ */
+export const requestWithdrawalService = async (userId: string, amount: number): Promise<Transaction> => {
+  if (amount <= 0) throw new WalletError('Withdrawal amount must be greater than zero.');
+
+  return prisma.$transaction(async (tx) => {
+    const wallet = await findOrCreateWalletByUserId(userId, tx);
+    
+    if (wallet.balance < amount) {
+      throw new WalletError('Insufficient funds for this withdrawal.', 400);
+    }
+
+    // Deduct the requested amount immediately so it can't be withdrawn twice
+    await tx.wallet.update({
+      where: { id: wallet.id },
+      data: { balance: { decrement: amount } }
+    });
+
+    return tx.transaction.create({
+      data: {
+        userId,
+        walletId: wallet.id,
+        amount: -amount, // Negative for a debit/withdrawal
+        type: TransactionType.DEBIT,
+        source: TransactionSource.BANK_TRANSFER,
+        status: TransactionStatus.PENDING, // Remains pending until admin/Stripe Connect processes it
+        description: 'Withdrawal to bank account',
+      }
+    });
+  });
+};

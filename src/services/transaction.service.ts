@@ -1,4 +1,4 @@
-import { PrismaClient, User, SavedPaymentMethod, Transaction, TransactionStatus, TransactionType, TransactionSource, PaymentStatus, Prisma, Role, OrderStatus } from '@prisma/client';
+import { PrismaClient, User, SavedPaymentMethod, Transaction, TransactionStatus, TransactionType, TransactionSource, PaymentStatus, Prisma, Role, OrderStatus, PaymentMethods } from '@prisma/client';
 import Stripe from 'stripe';
 import { OrderCreationError } from './order.service';
 import * as transactionModel from '../models/transaction.model';
@@ -59,7 +59,8 @@ export const createPaymentIntentService = async (userId: string, orderId: string
   }
 
   const stripeCustomerId = await findOrCreateStripeCustomer(user);
-  const amountInCents = Math.round(order.totalAmount * 100);
+  // Strictly charge the maximum authorized budget, falling back to totalAmount for older orders
+  const amountInCents = Math.round((order.budgetAmount ?? order.totalAmount) * 100);
 
   const intentParams: Stripe.PaymentIntentCreateParams = {
     amount: amountInCents,
@@ -85,7 +86,7 @@ export const createPaymentIntentService = async (userId: string, orderId: string
   // before the first payment is complete. This updates the existing transaction record.
   await transactionModel.createTransaction({
     userId: user.id,
-    amount: -order.totalAmount, // Debiting the customer
+    amount: -(order.budgetAmount ?? order.totalAmount), // Debiting the exact budgeted amount
     type: TransactionType.ORDER_PAYMENT,
     source: TransactionSource.STRIPE,
     status: TransactionStatus.PENDING,
@@ -135,22 +136,28 @@ export const handleStripeWebhook = async (event: Stripe.Event) => {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
       const orderId = paymentIntent.metadata.orderId;
       if (orderId) {
-        // Update our internal transaction record
-        await prisma.transaction.updateMany({
-          where: { externalId: paymentIntent.id },
+        // Idempotency: Use updateMany with a status check to ensure we only process this once
+        const updateResult = await prisma.transaction.updateMany({
+          where: { 
+            externalId: paymentIntent.id, 
+            status: { not: TransactionStatus.COMPLETED } 
+          },
           data: { 
             status: TransactionStatus.COMPLETED,
-            meta: paymentIntent.payment_method_options ? { payment_method_details: JSON.stringify(paymentIntent.payment_method_options) } : undefined,
+            meta: paymentIntent.payment_method_options ? { payment_method_details: JSON.stringify(paymentIntent.payment_method_options) } : Prisma.DbNull,
           },
         });
 
-        // Update the order itself
-        await prisma.order.update({
-          where: { id: orderId },
-          data: { paymentStatus: PaymentStatus.paid },
-        });
-
-        console.log(`✅ Payment for order ${orderId} succeeded.`);
+        if (updateResult.count > 0) {
+          // Update the order itself
+          await prisma.order.update({
+            where: { id: orderId },
+            data: { paymentStatus: PaymentStatus.paid },
+          });
+          console.log(`✅ Payment for order ${orderId} succeeded.`);
+        } else {
+          console.log(`⏭️ Webhook event ${event.id} ignored: Transaction already completed.`);
+        }
       }
       break;
 
@@ -159,11 +166,21 @@ export const handleStripeWebhook = async (event: Stripe.Event) => {
       const failedOrderId = failedPaymentIntent.metadata.orderId;
 
       if (failedOrderId) {
-        await prisma.transaction.updateMany({
-          where: { externalId: failedPaymentIntent.id },
+        const updateResult = await prisma.transaction.updateMany({
+          where: { 
+            externalId: failedPaymentIntent.id,
+            status: { not: TransactionStatus.FAILED } 
+          },
           data: { status: TransactionStatus.FAILED },
         });
-        console.log(`❌ Payment for order ${failedOrderId} failed.`);
+        
+        if (updateResult.count > 0) {
+          await prisma.order.update({
+            where: { id: failedOrderId },
+            data: { paymentStatus: PaymentStatus.failed },
+          });
+          console.log(`❌ Payment for order ${failedOrderId} failed.`);
+        }
       }
       break;
 
@@ -737,7 +754,7 @@ export const simulatePaymentService = async (userId: string, orderId: string) =>
   // Create completed transaction
   const transaction = await transactionModel.createTransaction({
     userId: user.id,
-    amount: order.totalAmount,
+    amount: order.budgetAmount ?? order.totalAmount,
     type: TransactionType.ORDER_PAYMENT,
     source: TransactionSource.SYSTEM, // Using SYSTEM to indicate internal/mock
     status: TransactionStatus.COMPLETED,
@@ -761,4 +778,51 @@ export const simulatePaymentService = async (userId: string, orderId: string) =>
   }
 
   return transaction;
+};
+
+/**
+ * Universal helper function to cleanly process either a direct Stripe refund or a Wallet refund.
+ * Includes mathematical guardrails to prevent over-refunding an order.
+ */
+export const processRefundService = async (tx: Prisma.TransactionClient, order: any, refundAmount: number, description: string) => {
+  if (refundAmount <= 0) return;
+
+  // Guardrail: Prevent Over-Refunding by calculating existing refunds for this order
+  const existingRefunds = await tx.transaction.aggregate({
+    where: { orderId: order.id, type: TransactionType.REFUND, status: TransactionStatus.COMPLETED },
+    _sum: { amount: true }
+  });
+  const totalRefundedSoFar = existingRefunds._sum.amount || 0;
+  const maxRefundable = order.budgetAmount ?? order.totalAmount;
+
+  if (totalRefundedSoFar + refundAmount > maxRefundable) {
+    throw new Error(`Cannot process refund of $${refundAmount}. Only $${(maxRefundable - totalRefundedSoFar).toFixed(2)} remains refundable on this order.`);
+  }
+
+  if (order.paymentMethod === PaymentMethods.credit_card) {
+    const paymentTx = await tx.transaction.findFirst({
+      where: { orderId: order.id, type: TransactionType.ORDER_PAYMENT, status: TransactionStatus.COMPLETED }
+    });
+    
+    if (!paymentTx?.externalId) {
+      throw new Error(`CRITICAL: Cannot process Stripe refund. No completed payment transaction found for Order #${order.orderCode}.`);
+    }
+
+    // Process the actual Stripe Refund
+    await stripe.refunds.create({ payment_intent: paymentTx.externalId, amount: Math.round(refundAmount * 100) });
+
+    await tx.transaction.create({
+      data: { userId: order.userId, amount: refundAmount, type: TransactionType.REFUND, source: TransactionSource.STRIPE, status: TransactionStatus.COMPLETED, description, orderId: order.id },
+    });
+  } else if (order.paymentMethod === PaymentMethods.wallet) {
+    await tx.wallet.upsert({
+      where: { userId: order.userId },
+      create: { userId: order.userId, balance: refundAmount },
+      update: { balance: { increment: refundAmount } }
+    });
+
+    await tx.transaction.create({
+      data: { userId: order.userId, amount: refundAmount, type: TransactionType.REFUND, source: TransactionSource.WALLET, status: TransactionStatus.COMPLETED, description, orderId: order.id },
+    });
+  }
 };

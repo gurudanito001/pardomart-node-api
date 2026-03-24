@@ -13,6 +13,7 @@ import { getIO } from '../socket';
 import { getAggregateRatingService } from './rating.service';
 import * as notificationService from './notification.service';
 import * as transactionModel from '../models/transaction.model';
+import { processRefundService } from './transaction.service';
 import Stripe from 'stripe';
 import { Or } from '@prisma/client/runtime/library';
 import { uploadMedia } from './media.service';
@@ -50,7 +51,6 @@ const calculateDistance = (
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c; // Distance in km
 };
-
 
 
 // --- Order Service Functions ---
@@ -168,7 +168,7 @@ export const recalculateOrderTotal = async (orderId: string, tx?: Prisma.Transac
     } else if (item.status === OrderItemStatus.REPLACED) {
       if (item.isReplacementApproved && item.chosenReplacementId) {
         const repPrices = (item.replacementPrices as Record<string, number>) || {};
-        const lockedRepPrice = repPrices[item.chosenReplacementId];
+        const lockedRepPrice = item.chosenReplacementId ? repPrices[item.chosenReplacementId] : undefined;
 
         activeItems.push({
           vendorProductId: item.chosenReplacementId,
@@ -315,6 +315,7 @@ interface CreateOrderFromClientPayload {
   scheduledDeliveryTime?: Date;
   shopperTip?: number;
   deliveryPersonTip?: number;
+  useMaxPricesForBudget?: boolean; // Added for opt-in budget calculation
 }
 
 export const createOrderFromClient = async (userId: string, payload: CreateOrderFromClientPayload) => {
@@ -331,6 +332,7 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
     scheduledDeliveryTime,
     shopperTip,
     deliveryPersonTip,
+    useMaxPricesForBudget,
   } = payload;
 
   let shoppingStartTime: Date | undefined;
@@ -409,6 +411,7 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
     vendorId,
     deliveryAddressId: shippingAddressId!,
     deliveryType: deliveryMethod,
+    useMaxPricesForBudget,
   });
 
   const { subtotal, deliveryFee, serviceFee, shoppingFee } = fees;
@@ -421,36 +424,9 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
     (shopperTip || 0) +
     (deliveryPersonTip || 0);
 
-  // --- 4. Handle Stripe Payment Intent ---
-  let clientSecret: string | undefined;
-  let paymentIntentId: string | undefined;
-
-  if (paymentMethod === PaymentMethods.credit_card) {
-    /* // Prepare base PaymentIntent parameters
-    const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
-      amount: Math.round(finalTotalAmount * 100), // Stripe expects amount in cents
-      currency: 'usd', // Adjust currency as needed
-      metadata: { vendorId, userId },
-      automatic_payment_methods: {
-        enabled: true,
-      },
-    };
-
-    // If a specific payment method ID is provided (e.g. saved card), confirm immediately.
-    // Otherwise, we just create the intent and let the client confirm it (e.g. using Payment Element).
-    if (stripePaymentMethodId) {
-      paymentIntentParams.payment_method = stripePaymentMethodId;
-      paymentIntentParams.confirm = true;
-      paymentIntentParams.automatic_payment_methods = { enabled: true, allow_redirects: 'never' };
-    }
-
-    const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
-
-    clientSecret = paymentIntent.client_secret || undefined;
-    paymentIntentId = paymentIntent.id; */
-    clientSecret = 'mock_client_secret';
-  }
-
+  // Note: Stripe Payment Intent is now handled entirely by the /transactions/create-payment-intent endpoint
+  // to enforce strict budget maximums after order creation.
+  
   // --- Transactional Block ---
   return prisma.$transaction(async (tx) => {
     const orderCode = await generateUniqueOrderCode(tx);
@@ -464,6 +440,7 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
       pickupOtp,
       subtotal,
       totalAmount: finalTotalAmount,
+      budgetAmount: finalTotalAmount,
       deliveryFee, serviceFee, shoppingFee,
       shopperTip, deliveryPersonTip,
       paymentMethod, shoppingMethod, deliveryMethod, scheduledDeliveryTime,
@@ -512,23 +489,6 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
       });
     }
 
-    // --- 7. Create Transaction Record for Stripe ---
-    if (paymentMethod === PaymentMethods.credit_card && paymentIntentId) {
-      await tx.transaction.create({
-        data: {
-          userId,
-          vendorId,
-          orderId: newOrder.id,
-          amount: finalTotalAmount,
-          type: TransactionType.ORDER_PAYMENT,
-          source: TransactionSource.STRIPE,
-          status: TransactionStatus.PENDING, // Status is pending until webhook confirms or client finishes 3DS
-          externalId: paymentIntentId,
-          description: `Payment for Order #${orderCode}`,
-        },
-      });
-    }
-
     // --- 7. Return the complete order with all relations ---
     const finalOrder = await orderModel.getOrderById(newOrder.id, tx);
     if (!finalOrder) {
@@ -563,8 +523,8 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
     // --- End Notification Logic ---
 
 
-    // Return the order along with the clientSecret so the frontend can complete the payment flow
-    return { ...finalOrder, clientSecret };
+    // Return the final order (the frontend will use order.id to generate the Stripe PaymentIntent separately)
+    return finalOrder;
   });
 };
 
@@ -624,7 +584,13 @@ export const updateOrderTipService = async (
     });
 
     // 5. Trigger a full recalculation to guarantee totals are mathematically perfect
-    return recalculateOrderTotal(orderId, tx);
+    const recalculatedOrder = await recalculateOrderTotal(orderId, tx);
+
+    if (recalculatedOrder.budgetAmount !== null && recalculatedOrder.totalAmount > recalculatedOrder.budgetAmount) {
+      throw new OrderCreationError("The new tip causes the order to exceed your pre-paid budget. Please lower the tip amount.");
+    }
+
+    return recalculatedOrder;
   });
 };
 
@@ -1195,24 +1161,9 @@ export const declineOrderService = async (
       throw new OrderCreationError('Order not found or cannot be declined in its current state/by this vendor.', 404);
     }
 
-    // 2. Refund the customer by crediting their wallet and creating a REFUND transaction.
-    if (orderToDecline.totalAmount > 0) {
-      await tx.wallet.upsert({
-        where: { userId: orderToDecline.userId },
-        create: { userId: orderToDecline.userId, balance: orderToDecline.totalAmount },
-        update: { balance: { increment: orderToDecline.totalAmount } },
-      });
-
-      await tx.transaction.create({
-        data: {
-          userId: orderToDecline.userId,
-          amount: orderToDecline.totalAmount, // Positive amount for a credit
-          type: TransactionType.REFUND,
-          source: TransactionSource.SYSTEM,
-          description: `Refund for declined order #${orderId.substring(0, 8)}`,
-          orderId: orderId,
-        },
-      });
+    // 2. Refund the customer via original payment method
+    if (orderToDecline.paymentStatus === PaymentStatus.paid) {
+      await processRefundService(tx, orderToDecline, orderToDecline.totalAmount, `Refund for declined order #${orderToDecline.orderCode}`);
     }
 
     // 4. Update the order status to declined
@@ -1404,8 +1355,10 @@ export const updateOrderItemShoppingStatusService = async (
 
     // Handle ad-hoc replacement via barcode or explicit ID
     let newReplacementPrice: number | undefined;
-    if (status === OrderItemStatus.REPLACED) {
-      if (!chosenReplacementId && replacementBarcode) {
+    let actualChosenReplacementId = chosenReplacementId;
+
+    if (actualChosenReplacementId || replacementBarcode) {
+      if (!actualChosenReplacementId && replacementBarcode) {
         const vendorProduct = await tx.vendorProduct.findFirst({
           where: { vendorId: order.vendorId, product: { barcode: replacementBarcode } },
           select: { id: true, price: true }
@@ -1414,12 +1367,12 @@ export const updateOrderItemShoppingStatusService = async (
         if (!vendorProduct) {
           throw new OrderCreationError(`No product found with barcode ${replacementBarcode} in this store.`);
         }
-        chosenReplacementId = vendorProduct.id;
+        actualChosenReplacementId = vendorProduct.id;
         newReplacementPrice = vendorProduct.price;
-      } else if (chosenReplacementId) {
+      } else if (actualChosenReplacementId) {
         // The shopper selected the ID directly (or the frontend sent a pre-selected fallback)
         const vendorProduct = await tx.vendorProduct.findUnique({
-          where: { id: chosenReplacementId },
+          where: { id: actualChosenReplacementId },
           select: { price: true }
         });
         if (!vendorProduct) throw new OrderCreationError(`Replacement product not found.`);
@@ -1428,19 +1381,39 @@ export const updateOrderItemShoppingStatusService = async (
     }
 
     // Retrieve existing replacement prices to merge in any new ad-hoc suggestions
-    const currentItem = await tx.orderItem.findUnique({ where: { id: itemId } });
+    const currentItem = await tx.orderItem.findUnique({ 
+      where: { id: itemId },
+      include: { replacements: { select: { id: true } } } 
+    });
     let updatedReplacementPrices = (currentItem?.replacementPrices && typeof currentItem.replacementPrices === 'object') ? (currentItem.replacementPrices as Record<string, number>) : {};
-    if (chosenReplacementId && newReplacementPrice !== undefined) {
-      updatedReplacementPrices = { ...updatedReplacementPrices, [chosenReplacementId]: newReplacementPrice };
+    
+    let isPreApproved = false;
+    if (actualChosenReplacementId && currentItem?.replacements) {
+      const preSelectedIds = currentItem.replacements.map(r => r.id);
+      if (preSelectedIds.includes(actualChosenReplacementId)) {
+        isPreApproved = true;
+      }
+    }
+
+    if (actualChosenReplacementId && !isPreApproved && newReplacementPrice !== undefined) {
+      updatedReplacementPrices = { ...updatedReplacementPrices, [actualChosenReplacementId]: newReplacementPrice };
+    }
+
+    // Enforce strict State Machine for replacements
+    let finalStatus = status;
+    if (actualChosenReplacementId) {
+      finalStatus = isPreApproved ? OrderItemStatus.REPLACED : OrderItemStatus.NOT_FOUND;
+    } else if (status === OrderItemStatus.REPLACED && !actualChosenReplacementId) {
+      finalStatus = OrderItemStatus.NOT_FOUND; // Failsafe
     }
   
     const item = await tx.orderItem.update({
       where: { id: itemId }, 
       data: {
-        status,
+        status: finalStatus,
         quantityFound,
-        chosenReplacementId,
-        isReplacementApproved: chosenReplacementId ? null : undefined, // Reset approval status if a new replacement is suggested
+        chosenReplacementId: actualChosenReplacementId,
+        isReplacementApproved: actualChosenReplacementId ? (isPreApproved ? true : null) : undefined, 
         replacementPrices: Object.keys(updatedReplacementPrices).length > 0 ? updatedReplacementPrices : undefined,
       },
       include: {
@@ -1451,6 +1424,12 @@ export const updateOrderItemShoppingStatusService = async (
 
     // Recalculate totals since an item state changed
     const recalculatedOrder = await recalculateOrderTotal(orderId, tx);
+
+    // Enforce the Strict Budget Barrier
+    if (recalculatedOrder.budgetAmount !== null && recalculatedOrder.totalAmount > recalculatedOrder.budgetAmount) {
+      throw new OrderCreationError("This replacement exceeds the customer's pre-paid budget.");
+    }
+
     return { updatedItem: item, updatedOrder: recalculatedOrder };
   });
 
@@ -1531,6 +1510,12 @@ export const respondToReplacementService = async (
     });
 
     const recalculatedOrder = await recalculateOrderTotal(orderId, tx);
+
+    // Enforce the Strict Budget Barrier
+    if (recalculatedOrder.budgetAmount !== null && recalculatedOrder.totalAmount > recalculatedOrder.budgetAmount) {
+      throw new OrderCreationError("This replacement exceeds the customer's pre-paid budget.");
+    }
+
     return { updatedItem: item, updatedOrder: recalculatedOrder };
   });
 
@@ -1711,7 +1696,7 @@ export const verifyPickupOtpService = async (
             amount: vendorAmount,
             type: TransactionType.VENDOR_PAYOUT,
             source: TransactionSource.SYSTEM,
-            status: 'COMPLETED',
+            status: TransactionStatus.COMPLETED,
             description: `Payment for order #${order.orderCode}`,
             orderId: order.id,
           },
@@ -1731,11 +1716,36 @@ export const verifyPickupOtpService = async (
             amount: finalOrder.shopperTip,
             type: TransactionType.TIP_PAYOUT,
             source: TransactionSource.SYSTEM,
-            status: 'COMPLETED',
+            status: TransactionStatus.COMPLETED,
             description: `Tip for order #${order.orderCode}`,
             orderId: order.id,
           },
         });
+      }
+
+      // Record Platform Fees (Customer Pickup = No Delivery Fee)
+      const platformRevenue = (finalOrder.serviceFee || 0) + (finalOrder.shoppingFee || 0);
+      if (platformRevenue > 0) {
+        await tx.transaction.create({
+          data: {
+            userId: order.userId, // Tagging the customer who paid the fee
+            amount: platformRevenue,
+            type: TransactionType.PLATFORM_FEE_COLLECTED,
+            source: TransactionSource.SYSTEM,
+            status: TransactionStatus.COMPLETED,
+            description: `Platform fees collected for order #${order.orderCode}`,
+            orderId: order.id,
+          },
+        });
+      }
+
+      // Automated Partial Refund (Post-Delivery Reconciliation)
+      const initialPaidAmount = finalOrder.budgetAmount ?? order.totalAmount;
+      const overpayment = initialPaidAmount - finalOrder.totalAmount;
+
+      // Only refund overpayments if the order was paid upfront digitally
+      if (overpayment > 0 && order.paymentStatus === PaymentStatus.paid) {
+        await processRefundService(tx, order, overpayment, `Overpayment Refund for order #${order.orderCode}`);
       }
     }
 
@@ -1895,19 +1905,120 @@ export const adminUpdateOrderService = async (
           create: { vendorId: order.vendorId, balance: vendorAmount },
           update: { balance: { increment: vendorAmount } },
         });
-        await transactionModel.createTransaction({
-          vendorId: order.vendorId,
-          userId: order.vendor.userId,
-          amount: vendorAmount,
-          type: TransactionType.VENDOR_PAYOUT,
-          source: TransactionSource.SYSTEM,
-          status: 'COMPLETED',
-          description: `Payout for order #${order.orderCode}`,
-          orderId: order.id,
-        }, tx);
+        await tx.transaction.create({
+          data: {
+            vendorId: order.vendorId,
+            userId: order.vendor.userId,
+            amount: vendorAmount,
+            type: TransactionType.VENDOR_PAYOUT,
+            source: TransactionSource.SYSTEM,
+            status: TransactionStatus.COMPLETED,
+            description: `Payout for order #${order.orderCode}`,
+            orderId: order.id,
+          }
+        });
       }
 
-      // TODO: Add logic for Shopper and Delivery Person tip payouts if applicable, similar to updateOrderStatusService
+      // 2. Pay Shopper Tip
+      if (finalOrder.shopperId && finalOrder.shopperTip && finalOrder.shopperTip > 0) {
+        await tx.wallet.upsert({
+          where: { userId: finalOrder.shopperId },
+          create: { userId: finalOrder.shopperId, balance: finalOrder.shopperTip },
+          update: { balance: { increment: finalOrder.shopperTip } }
+        });
+        await tx.transaction.create({
+          data: {
+            userId: finalOrder.shopperId,
+            amount: finalOrder.shopperTip,
+            type: TransactionType.TIP_PAYOUT,
+            source: TransactionSource.SYSTEM,
+            status: TransactionStatus.COMPLETED,
+            description: `Tip for order #${order.orderCode}`,
+            orderId: order.id,
+          },
+        });
+      }
+
+      // 3. Pay Delivery Person Tip & Delivery Fee Share
+      const driverShare = Number(((finalOrder.deliveryFee || 0) * 0.8).toFixed(2));
+      const platformDeliveryShare = Number(((finalOrder.deliveryFee || 0) - driverShare).toFixed(2));
+      const driverTotalPayout = (finalOrder.deliveryPersonTip || 0) + driverShare;
+
+      if (finalOrder.deliveryPersonId && driverTotalPayout > 0) {
+        await tx.wallet.upsert({
+          where: { userId: finalOrder.deliveryPersonId },
+          create: { userId: finalOrder.deliveryPersonId, balance: driverTotalPayout },
+          update: { balance: { increment: driverTotalPayout } }
+        });
+        
+        if (finalOrder.deliveryPersonTip && finalOrder.deliveryPersonTip > 0) {
+          await tx.transaction.create({
+            data: {
+              userId: finalOrder.deliveryPersonId,
+              amount: finalOrder.deliveryPersonTip,
+              type: TransactionType.TIP_PAYOUT,
+              source: TransactionSource.SYSTEM,
+              status: TransactionStatus.COMPLETED,
+              description: `Tip for order #${order.orderCode}`,
+              orderId: order.id,
+            },
+          });
+        }
+
+        if (driverShare > 0) {
+          await tx.transaction.create({
+            data: {
+              userId: finalOrder.deliveryPersonId,
+              amount: driverShare,
+              type: TransactionType.DELIVERY_PAYOUT,
+              source: TransactionSource.SYSTEM,
+              status: TransactionStatus.COMPLETED,
+              description: `Delivery fee for order #${order.orderCode}`,
+              orderId: order.id,
+            },
+          });
+        }
+      }
+
+      // 4. Record Platform Fees
+      const platformRevenue = (finalOrder.serviceFee || 0) + (finalOrder.shoppingFee || 0) + platformDeliveryShare;
+      if (platformRevenue > 0) {
+        await tx.transaction.create({
+          data: {
+            userId: order.userId,
+            amount: platformRevenue,
+            type: TransactionType.PLATFORM_FEE_COLLECTED,
+            source: TransactionSource.SYSTEM,
+            status: TransactionStatus.COMPLETED,
+            description: `Platform fees collected for order #${order.orderCode}`,
+            orderId: order.id,
+          },
+        });
+      }
+
+      // Automated Partial Refund (Post-Delivery Reconciliation)
+      const initialPaidAmount = finalOrder.budgetAmount ?? order.totalAmount;
+      const overpayment = initialPaidAmount - finalOrder.totalAmount;
+
+      // Only refund overpayments if the order was paid upfront digitally
+      if (overpayment > 0 && order.paymentMethod !== PaymentMethods.cash && order.paymentStatus === PaymentStatus.paid) {
+        await tx.wallet.upsert({
+          where: { userId: order.userId },
+          create: { userId: order.userId, balance: overpayment },
+          update: { balance: { increment: overpayment } }
+        });
+        await tx.transaction.create({
+          data: {
+            userId: order.userId,
+            amount: overpayment,
+            type: TransactionType.REFUND,
+            source: TransactionSource.SYSTEM,
+            status: TransactionStatus.COMPLETED,
+            description: `Overpayment Refund for order #${order.orderCode}`,
+            orderId: order.id,
+          },
+        });
+      }
 
       // 2. Update the order with all the admin's changes
       // If status changed, log it
@@ -1925,13 +2036,11 @@ export const adminUpdateOrderService = async (
   }
 
   // For any other status change or field update, perform a direct update.
-  // Note: If cancelling, you might need to add refund logic here as well.
   if (
     (updates.orderStatus === OrderStatus.cancelled_by_customer || updates.orderStatus === OrderStatus.declined_by_vendor) &&
     order.paymentStatus === PaymentStatus.paid
   ) {
-    // TODO: Implement refund logic here. For now, we just update the status.
-    // This would involve crediting the user's wallet or initiating a Stripe refund.
+    await processRefundService(prisma, order, order.totalAmount, `Refund for cancelled order #${order.orderCode}`);
     updates.paymentStatus = PaymentStatus.refunded;
   }
 
@@ -2212,54 +2321,100 @@ export const completeDeliveryService = async (
           amount: vendorAmount,
           type: TransactionType.VENDOR_PAYOUT,
           source: TransactionSource.SYSTEM,
-          status: 'COMPLETED',
-          description: `Payment for order #${order.id.substring(0, 8)}`,
+          status: TransactionStatus.COMPLETED,
+          description: `Payment for order #${order.orderCode}`,
           orderId: order.id,
         },
       });
     }
 
     // 2. Pay Shopper Tip
-    if (order.shopperId && order.shopperTip && order.shopperTip > 0) {
+    if (finalOrder.shopperId && finalOrder.shopperTip && finalOrder.shopperTip > 0) {
       await tx.wallet.upsert({
-        where: { userId: order.shopperId },
-        create: { userId: order.shopperId, balance: order.shopperTip },
-        update: { balance: { increment: order.shopperTip } }
+        where: { userId: finalOrder.shopperId },
+        create: { userId: finalOrder.shopperId, balance: finalOrder.shopperTip },
+        update: { balance: { increment: finalOrder.shopperTip } }
       });
       await tx.transaction.create({
         data: {
-          userId: order.shopperId,
-          amount: order.shopperTip,
+          userId: finalOrder.shopperId,
+          amount: finalOrder.shopperTip,
           type: TransactionType.TIP_PAYOUT,
           source: TransactionSource.SYSTEM,
-          status: 'COMPLETED',
-          description: `Tip for order #${order.id.substring(0, 8)}`,
+          status: TransactionStatus.COMPLETED,
+          description: `Tip for order #${order.orderCode}`,
           orderId: order.id,
         },
       });
     }
 
-    // 3. Pay Delivery Person Tip
-    if (order.deliveryPersonId && order.deliveryPersonTip && order.deliveryPersonTip > 0) {
+    // 3. Pay Delivery Person Tip & Delivery Fee Share
+    const driverShare = Number(((finalOrder.deliveryFee || 0) * 0.8).toFixed(2));
+    const platformDeliveryShare = Number(((finalOrder.deliveryFee || 0) - driverShare).toFixed(2));
+    const driverTotalPayout = (finalOrder.deliveryPersonTip || 0) + driverShare;
+
+    if (finalOrder.deliveryPersonId && driverTotalPayout > 0) {
       await tx.wallet.upsert({
-        where: { userId: order.deliveryPersonId },
-        create: { userId: order.deliveryPersonId, balance: order.deliveryPersonTip },
-        update: { balance: { increment: order.deliveryPersonTip } }
+        where: { userId: finalOrder.deliveryPersonId },
+        create: { userId: finalOrder.deliveryPersonId, balance: driverTotalPayout },
+        update: { balance: { increment: driverTotalPayout } }
       });
+      
+      if (finalOrder.deliveryPersonTip && finalOrder.deliveryPersonTip > 0) {
+        await tx.transaction.create({
+          data: {
+            userId: finalOrder.deliveryPersonId,
+            amount: finalOrder.deliveryPersonTip,
+            type: TransactionType.TIP_PAYOUT,
+            source: TransactionSource.SYSTEM,
+            status: TransactionStatus.COMPLETED,
+            description: `Tip for order #${order.orderCode}`,
+            orderId: order.id,
+          },
+        });
+      }
+
+      if (driverShare > 0) {
+        await tx.transaction.create({
+          data: {
+            userId: finalOrder.deliveryPersonId,
+            amount: driverShare,
+            type: TransactionType.DELIVERY_PAYOUT,
+            source: TransactionSource.SYSTEM,
+            status: TransactionStatus.COMPLETED,
+            description: `Delivery fee for order #${order.orderCode}`,
+            orderId: order.id,
+          },
+        });
+      }
+    }
+
+    // 4. Record Platform Fees
+    const platformRevenue = (finalOrder.serviceFee || 0) + (finalOrder.shoppingFee || 0) + platformDeliveryShare;
+    if (platformRevenue > 0) {
       await tx.transaction.create({
         data: {
-          userId: order.deliveryPersonId,
-          amount: order.deliveryPersonTip,
-          type: TransactionType.TIP_PAYOUT,
+          userId: order.userId, // Tagging the customer who paid the fee
+          amount: platformRevenue, 
+          type: TransactionType.PLATFORM_FEE_COLLECTED,
           source: TransactionSource.SYSTEM,
-          status: 'COMPLETED',
-          description: `Tip for order #${order.id.substring(0, 8)}`,
+          status: TransactionStatus.COMPLETED,
+          description: `Platform fees collected for order #${order.orderCode}`,
           orderId: order.id,
         },
       });
     }
 
-    // 4. Update Order and History
+    // 5. Automated Partial Refund (Post-Delivery Reconciliation)
+    const initialPaidAmount = finalOrder.budgetAmount ?? order.totalAmount;
+    const overpayment = initialPaidAmount - finalOrder.totalAmount;
+
+    // Only refund overpayments if the order was paid upfront digitally
+    if (overpayment > 0 && order.paymentStatus === PaymentStatus.paid) {
+      await processRefundService(tx, order, overpayment, `Overpayment Refund for order #${order.orderCode}`);
+    }
+
+    // 6. Update Order and History
     await orderHistoryModel.createOrderHistory({
       orderId: order.id,
       status: OrderStatus.delivered,

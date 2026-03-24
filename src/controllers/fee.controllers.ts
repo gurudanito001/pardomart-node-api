@@ -101,6 +101,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         vendorId: { type: string, format: uuid }
  *         deliveryAddressId: { type: string, format: uuid, nullable: true, description: "Required if deliveryType is not 'customer_pickup'." }
  *         deliveryType: { $ref: '#/components/schemas/DeliveryMethod', description: "Defaults to delivery if not provided." }
+ *         useMaxPricesForBudget: { type: boolean, description: "Opt-in flag. If true, calculates the subtotal and fees using the highest price among each item and its selected replacements." }
  *     CalculateFeesResponse:
  *       type: object
  *       properties:
@@ -427,7 +428,7 @@ export const getCurrentFeesController = async (req: Request, res: Response) => {
  */
 export const calculateFeesController = async (req: Request, res: Response) => {
   try {
-    const { orderItems, vendorId, deliveryAddressId, deliveryType } = req.body;
+    const { orderItems, vendorId, deliveryAddressId, deliveryType, useMaxPricesForBudget } = req.body;
 
     // Call the service to calculate fees
     const feesResult = await calculateOrderFeesService({
@@ -435,6 +436,7 @@ export const calculateFeesController = async (req: Request, res: Response) => {
       vendorId,
       deliveryAddressId,
       deliveryType,
+      useMaxPricesForBudget,
     });
 
     res.status(200).json(feesResult);

@@ -2,6 +2,7 @@ import { PrismaClient, ReturnStatus, Role, NotificationType, NotificationCategor
 import { OrderCreationError } from './order.service';
 import * as walletService from './wallet.service';
 import * as notificationService from './notification.service';
+import { processRefundService } from './transaction.service';
 
 const prisma = new PrismaClient();
 
@@ -104,17 +105,20 @@ export const createReturnRequestService = async (userId: string, payload: Create
  */
 export const updateReturnRequestStatusService = async (requestId: string, status: ReturnStatus, userId: string, userRole: Role) => {
   return await prisma.$transaction(async (tx) => {
-    const returnRequest = await tx.returnRequest.findUnique({ where: { id: requestId } });
+    const returnRequest = await tx.returnRequest.findUnique({ 
+      where: { id: requestId },
+      include: { order: true } 
+    });
     if (!returnRequest) throw new OrderCreationError('Return request not found.', 404);
 
-    // If approving refund, process wallet transaction
+    // If approving refund, process universal refund (Stripe or Wallet)
     if (status === ReturnStatus.REFUNDED && returnRequest.status !== ReturnStatus.REFUNDED) {
-      await walletService.creditWallet({
-        userId: returnRequest.userId,
-        amount: returnRequest.refundAmount,
-        description: `Refund for Return Request #${returnRequest.id.substring(0, 8)}`,
-        meta: { returnRequestId: returnRequest.id, orderId: returnRequest.orderId }
-      }, tx as any); // Type cast if necessary depending on walletService signature
+      await processRefundService(
+        tx, 
+        returnRequest.order, 
+        returnRequest.refundAmount, 
+        `Refund for Return Request #${returnRequest.id.substring(0, 8)}`
+      );
     }
 
     return await tx.returnRequest.update({
