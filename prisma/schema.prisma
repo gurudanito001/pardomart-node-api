@@ -157,6 +157,8 @@ model OrderItem {
   vendorProduct   VendorProduct   @relation("originalProduct", fields: [vendorProductId], references: [id])
   quantity        Int
   instructions    String?
+  purchasedPrice  Float?          // The locked-in price at the time of order creation
+  replacementPrices Json?         // The locked-in prices of pre-selected and suggested replacements { "vendorProductId": price }
   replacements    VendorProduct[] @relation("replacementFor")
 
   // Fields for live shopping

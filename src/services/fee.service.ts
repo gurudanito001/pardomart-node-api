@@ -209,6 +209,7 @@ export const getCurrentFees = async (type?: FeeType): Promise<Fee | Fee[] | null
 interface OrderItemInput {
   vendorProductId: string;
   quantity: number;
+  price?: number; // Optional historical price lock
 }
 
 // Interface for the input payload to the service
@@ -217,6 +218,7 @@ interface CalculateFeesPayload {
   vendorId: string;
   deliveryAddressId?: string;
   deliveryType?: DeliveryMethod;
+  skipAvailabilityCheck?: boolean; // Use true to bypass strict checks during recalculations
 }
 
 // Interface for the returned fees calculation
@@ -226,6 +228,7 @@ interface FeeCalculationResult {
   deliveryFee: number;
   serviceFee: number;
   totalEstimatedCost: number;
+  itemPrices: { vendorProductId: string; price: number }[];
 }
 
 /**
@@ -335,16 +338,25 @@ export const calculateOrderFeesService = async (
     // And validate product availability
     let subtotal = 0;
     let totalItemCount = 0;
+    const itemPrices: { vendorProductId: string; price: number }[] = [];
 
     for (const item of orderItems) {
       const productDetails = productDetailsMap.get(item.vendorProductId);
-      if (!productDetails) {
-        throw new Error(`Price not found for vendor product ID: ${item.vendorProductId}`);
+      let itemPrice = item.price;
+
+      // Use current catalog price if historical price wasn't explicitly provided
+      if (itemPrice === undefined) {
+        if (!productDetails) throw new Error(`Price not found for vendor product ID: ${item.vendorProductId}`);
+        itemPrice = productDetails.price;
       }
-      if (!productDetails.isAvailable) {
+      
+      // Check availability only if we are doing a strict checkout (skipAvailabilityCheck = false)
+      if (!payload.skipAvailabilityCheck && productDetails && !productDetails.isAvailable) {
         throw new Error(`Product ID ${item.vendorProductId} is not available.`);
       }
-      subtotal += productDetails.price * item.quantity;
+      
+      itemPrices.push({ vendorProductId: item.vendorProductId, price: itemPrice });
+      subtotal += itemPrice * item.quantity;
       totalItemCount += item.quantity;
     }
 
@@ -417,10 +429,10 @@ export const calculateOrderFeesService = async (
       deliveryFee,
       serviceFee,
       totalEstimatedCost: parseFloat(totalEstimatedCost.toFixed(2)),
+      itemPrices,
     };
   } catch (error: any) {
     console.error('Error calculating order fees:', error);
     throw new Error(`Failed to calculate fees: ${error.message}`);
   }
 };
-

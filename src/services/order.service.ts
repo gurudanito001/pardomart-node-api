@@ -145,6 +145,72 @@ export const getOrderByIdService = async (
 };
 
 /**
+ * Recalculates the order's subtotal, fees, and total amount based on the current
+ * status of its order items (safely handling NOT_FOUND and REPLACED items).
+ * @param orderId The ID of the order.
+ * @param tx Optional Prisma transaction client.
+ * @returns The updated Order object.
+ */
+export const recalculateOrderTotal = async (orderId: string, tx?: Prisma.TransactionClient): Promise<Order> => {
+  const db = tx || prisma;
+  const order = await db.order.findUnique({
+    where: { id: orderId },
+    include: { orderItems: true }
+  });
+
+  if (!order) throw new OrderCreationError('Order not found for recalculation.', 404);
+
+  const activeItems: { vendorProductId: string; quantity: number, price?: number}[] = [];
+
+  for (const item of order.orderItems) {
+    if (item.status === OrderItemStatus.NOT_FOUND) {
+      continue; // Skip items that weren't found
+    } else if (item.status === OrderItemStatus.REPLACED) {
+      if (item.isReplacementApproved && item.chosenReplacementId) {
+        const repPrices = (item.replacementPrices as Record<string, number>) || {};
+        const lockedRepPrice = repPrices[item.chosenReplacementId];
+
+        activeItems.push({
+          vendorProductId: item.chosenReplacementId,
+          quantity: item.quantityFound ?? item.quantity,
+          price: lockedRepPrice // Use the locked replacement price from the JSON map
+        });
+      }
+      // If REPLACED but rejected or pending approval, we omit it to prevent overcharging
+    } else {
+      // FOUND or PENDING. Use quantityFound if they updated it, otherwise fallback to initial requested quantity
+      activeItems.push({
+        vendorProductId: item.vendorProductId,
+        quantity: item.quantityFound ?? item.quantity,
+        price: item.purchasedPrice ?? undefined // Pass the locked price back to the fee service
+      });
+    }
+  }
+
+  // Recalculate all fees exactly as we do during order creation
+  const feesResult = activeItems.length > 0 ? await calculateOrderFeesService({
+    orderItems: activeItems,
+    vendorId: order.vendorId,
+    deliveryAddressId: order.deliveryAddressId || undefined,
+    deliveryType: order.deliveryMethod || undefined,
+    skipAvailabilityCheck: true, // Prevent mid-shopping catalog stock changes from crashing the recalculation
+  }, db) : { subtotal: 0, shoppingFee: 0, deliveryFee: 0, serviceFee: 0 };
+
+  const finalTotalAmount = feesResult.subtotal + feesResult.shoppingFee + feesResult.deliveryFee + feesResult.serviceFee + (order.shopperTip || 0) + (order.deliveryPersonTip || 0);
+
+  return db.order.update({
+    where: { id: orderId },
+    data: {
+      subtotal: feesResult.subtotal,
+      shoppingFee: feesResult.shoppingFee,
+      deliveryFee: feesResult.deliveryFee,
+      serviceFee: feesResult.serviceFee,
+      totalAmount: finalTotalAmount,
+    }
+  });
+};
+
+/**
  * Retrieves the history of an order.
  * @param orderId - The ID of the order.
  * @param requestingUserId - The ID of the user requesting the history.
@@ -320,6 +386,22 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
     } */
   }
 
+  // --- Pre-fetch prices for all customer-suggested replacements ---
+  const allReplacementIds = new Set<string>();
+  orderItems.forEach(item => {
+    if (item.replacementIds) {
+      item.replacementIds.forEach(id => allReplacementIds.add(id));
+    }
+  });
+  const replacementPriceMap = new Map<string, number>();
+  if (allReplacementIds.size > 0) {
+    const replacementProducts = await prisma.vendorProduct.findMany({
+      where: { id: { in: Array.from(allReplacementIds) } },
+      select: { id: true, price: true }
+    });
+    replacementProducts.forEach(p => replacementPriceMap.set(p.id, p.price));
+  }
+
   // --- 3. Calculate Fees (Moved outside transaction to support Stripe call) ---
   // We calculate fees before the transaction to get the total amount for the PaymentIntent.
   const fees = await calculateOrderFeesService({
@@ -396,15 +478,29 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
       notes: 'Order placed'
     }, tx);
 
+    // --- Extract the prices returned from the fee service to lock them in ---
+    const priceMap = new Map(fees.itemPrices.map(ip => [ip.vendorProductId, ip.price]));
+
     // --- 6. Create the OrderItem records ---
     for (const item of orderItems) {
       if (item.quantity <= 0) {
         throw new OrderCreationError(`Quantity for product ${item.vendorProductId} must be positive.`);
       }
+
+      let replacementPrices: Record<string, number> = {};
+      if (item.replacementIds) {
+        item.replacementIds.forEach(id => {
+          const price = replacementPriceMap.get(id);
+          if (price !== undefined) replacementPrices[id] = price;
+        });
+      }
+
       await tx.orderItem.create({
         data: {
           orderId: newOrder.id,
           vendorProductId: item.vendorProductId,
+          purchasedPrice: priceMap.get(item.vendorProductId), // Lock in the historical price
+          replacementPrices: Object.keys(replacementPrices).length > 0 ? replacementPrices : undefined,
           quantity: item.quantity,
           instructions: item.instructions,
           replacements: item.replacementIds
@@ -515,25 +611,20 @@ export const updateOrderTipService = async (
       throw new OrderCreationError('Delivery person tip cannot be negative.');
     }
 
-    // 4. Calculate the difference in tips to adjust the total amount
-    const oldShopperTip = existingOrder.shopperTip || 0;
-    const oldDeliveryPersonTip = existingOrder.deliveryPersonTip || 0;
-    const newShopperTip = payload.shopperTip ?? oldShopperTip;
-    const newDeliveryPersonTip = payload.deliveryPersonTip ?? oldDeliveryPersonTip;
-    const tipDifference = newShopperTip - oldShopperTip + (newDeliveryPersonTip - oldDeliveryPersonTip);
+    // 4. Update the order with new tips
+    const newShopperTip = payload.shopperTip ?? existingOrder.shopperTip;
+    const newDeliveryPersonTip = payload.deliveryPersonTip ?? existingOrder.deliveryPersonTip;
 
-    // 5. Update the order with new tips and recalculated total amount
-    // NOTE: A full implementation would also handle payment adjustments here (e.g., capture more funds).
-    return tx.order.update({
+    await tx.order.update({
       where: { id: orderId },
       data: {
         shopperTip: newShopperTip,
         deliveryPersonTip: newDeliveryPersonTip,
-        totalAmount: {
-          increment: tipDifference,
-        },
       },
     });
+
+    // 5. Trigger a full recalculation to guarantee totals are mathematically perfect
+    return recalculateOrderTotal(orderId, tx);
   });
 };
 
@@ -1291,56 +1382,76 @@ export const updateOrderItemShoppingStatusService = async (
     throw new OrderCreationError('You are not authorized to update this order item.', 403);
   }
 
-  // Automatically update order status to currently_shopping if it isn't already
-  if (order.orderStatus !== OrderStatus.currently_shopping) {
-    await prisma.order.update({
-      where: { id: orderId },
-      data: { orderStatus: OrderStatus.currently_shopping },
-    });
-    await orderHistoryModel.createOrderHistory({
-      orderId,
-      status: OrderStatus.currently_shopping,
-      changedBy: shopperId,
-      notes: 'Shopping started automatically via item update',
-    });
-  }
-
   // Validate payload logic
   if (status === 'FOUND' && quantityFound === undefined) {
     throw new OrderCreationError('quantityFound is required when status is FOUND.');
   }
 
-  // Handle ad-hoc replacement via barcode
-  if (status === OrderItemStatus.REPLACED && !chosenReplacementId && replacementBarcode) {
-    const vendorProduct = await prisma.vendorProduct.findFirst({
-      where: {
-        vendorId: order.vendorId,
-        product: {
-          barcode: replacementBarcode
-        }
-      },
-      select: { id: true }
-    });
-
-    if (!vendorProduct) {
-      throw new OrderCreationError(`No product found with barcode ${replacementBarcode} in this store.`);
+  const { updatedItem, updatedOrder } = await prisma.$transaction(async (tx) => {
+    // Automatically update order status to currently_shopping if it isn't already
+    if (order.orderStatus !== OrderStatus.currently_shopping) {
+      await tx.order.update({
+        where: { id: orderId },
+        data: { orderStatus: OrderStatus.currently_shopping },
+      });
+      await orderHistoryModel.createOrderHistory({
+        orderId,
+        status: OrderStatus.currently_shopping,
+        changedBy: shopperId,
+        notes: 'Shopping started automatically via item update',
+      }, tx);
     }
 
-    chosenReplacementId = vendorProduct.id;
-  }
+    // Handle ad-hoc replacement via barcode or explicit ID
+    let newReplacementPrice: number | undefined;
+    if (status === OrderItemStatus.REPLACED) {
+      if (!chosenReplacementId && replacementBarcode) {
+        const vendorProduct = await tx.vendorProduct.findFirst({
+          where: { vendorId: order.vendorId, product: { barcode: replacementBarcode } },
+          select: { id: true, price: true }
+        });
+    
+        if (!vendorProduct) {
+          throw new OrderCreationError(`No product found with barcode ${replacementBarcode} in this store.`);
+        }
+        chosenReplacementId = vendorProduct.id;
+        newReplacementPrice = vendorProduct.price;
+      } else if (chosenReplacementId) {
+        // The shopper selected the ID directly (or the frontend sent a pre-selected fallback)
+        const vendorProduct = await tx.vendorProduct.findUnique({
+          where: { id: chosenReplacementId },
+          select: { price: true }
+        });
+        if (!vendorProduct) throw new OrderCreationError(`Replacement product not found.`);
+        newReplacementPrice = vendorProduct.price;
+      }
+    }
 
-  const updatedItem = await prisma.orderItem.update({
-    where: { id: itemId, orderId: orderId }, // Ensure item belongs to the order
-    data: {
-      status,
-      quantityFound,
-      chosenReplacementId,
-      isReplacementApproved: chosenReplacementId ? null : undefined, // Reset approval status if a new replacement is suggested
-    },
-    include: {
-      vendorProduct: { include: { product: true } },
-      chosenReplacement: { include: { product: true } },
-    },
+    // Retrieve existing replacement prices to merge in any new ad-hoc suggestions
+    const currentItem = await tx.orderItem.findUnique({ where: { id: itemId } });
+    let updatedReplacementPrices = (currentItem?.replacementPrices && typeof currentItem.replacementPrices === 'object') ? (currentItem.replacementPrices as Record<string, number>) : {};
+    if (chosenReplacementId && newReplacementPrice !== undefined) {
+      updatedReplacementPrices = { ...updatedReplacementPrices, [chosenReplacementId]: newReplacementPrice };
+    }
+  
+    const item = await tx.orderItem.update({
+      where: { id: itemId }, 
+      data: {
+        status,
+        quantityFound,
+        chosenReplacementId,
+        isReplacementApproved: chosenReplacementId ? null : undefined, // Reset approval status if a new replacement is suggested
+        replacementPrices: Object.keys(updatedReplacementPrices).length > 0 ? updatedReplacementPrices : undefined,
+      },
+      include: {
+        vendorProduct: { include: { product: true } },
+        chosenReplacement: { include: { product: true } },
+      },
+    });
+
+    // Recalculate totals since an item state changed
+    const recalculatedOrder = await recalculateOrderTotal(orderId, tx);
+    return { updatedItem: item, updatedOrder: recalculatedOrder };
   });
 
   // Emit real-time update to the customer
@@ -1348,6 +1459,7 @@ export const updateOrderItemShoppingStatusService = async (
     const io = getIO();
     // The room is the orderId. The customer and shopper should be in this room.
     io.to(orderId).emit('order_item_updated', updatedItem);
+    io.to(orderId).emit('order_total_updated', updatedOrder);
   } catch (error: any) {
     if (error.message === 'Socket.IO not initialized!') {
       console.warn('Socket.IO warning: Real-time update not sent. Socket.IO is not initialized.');
@@ -1405,22 +1517,28 @@ export const respondToReplacementService = async (
     throw new OrderCreationError('No replacement has been suggested for this item.', 400);
   }
 
-  const updatedItem = await prisma.orderItem.update({
-    where: { id: itemId },
-    data: {
-      isReplacementApproved: approved,
-      status: approved ? OrderItemStatus.REPLACED : itemToUpdate.status, // If approved, status becomes REPLACED. If not, it stays as it was (e.g., NOT_FOUND).
-    },
-    include: {
-      vendorProduct: { include: { product: true } },
-      chosenReplacement: { include: { product: true } },
-    },
+  const { updatedItem, updatedOrder } = await prisma.$transaction(async (tx) => {
+    const item = await tx.orderItem.update({
+      where: { id: itemId },
+      data: {
+        isReplacementApproved: approved,
+        status: approved ? OrderItemStatus.REPLACED : OrderItemStatus.NOT_FOUND,
+      },
+      include: {
+        vendorProduct: { include: { product: true } },
+        chosenReplacement: { include: { product: true } },
+      },
+    });
+
+    const recalculatedOrder = await recalculateOrderTotal(orderId, tx);
+    return { updatedItem: item, updatedOrder: recalculatedOrder };
   });
 
   // Emit real-time update to the shopper/vendor
   try {
     const io = getIO();
     io.to(orderId).emit('replacement_responded', updatedItem);
+    io.to(orderId).emit('order_total_updated', updatedOrder);
   } catch (error: any) {
     if (error.message === 'Socket.IO not initialized!') {
       console.warn('Socket.IO warning: Real-time update not sent. Socket.IO is not initialized.');
@@ -1576,7 +1694,10 @@ export const verifyPickupOtpService = async (
 
     // Handle payouts if picked up by customer (Terminal State)
     if (nextStatus === OrderStatus.picked_up_by_customer) {
-      const vendorAmount = order.subtotal;
+      // Recalculate one final time to guarantee absolute accuracy based on the delivered cart reality
+      const finalOrder = await recalculateOrderTotal(orderId, tx);
+
+      const vendorAmount = finalOrder.subtotal;
       if (vendorAmount > 0 && order.vendor.userId) {
         await tx.wallet.upsert({
           where: { vendorId: order.vendorId },
@@ -1598,16 +1719,16 @@ export const verifyPickupOtpService = async (
       }
 
       // Pay Shopper Tip (if applicable)
-      if (order.shopperId && order.shopperTip && order.shopperTip > 0) {
+      if (finalOrder.shopperId && finalOrder.shopperTip && finalOrder.shopperTip > 0) {
         await tx.wallet.upsert({
-          where: { userId: order.shopperId },
-          create: { userId: order.shopperId, balance: order.shopperTip },
-          update: { balance: { increment: order.shopperTip } },
+          where: { userId: finalOrder.shopperId },
+          create: { userId: finalOrder.shopperId, balance: finalOrder.shopperTip },
+          update: { balance: { increment: finalOrder.shopperTip } },
         });
         await tx.transaction.create({
           data: {
-            userId: order.shopperId,
-            amount: order.shopperTip,
+            userId: finalOrder.shopperId,
+            amount: finalOrder.shopperTip,
             type: TransactionType.TIP_PAYOUT,
             source: TransactionSource.SYSTEM,
             status: 'COMPLETED',
@@ -1763,8 +1884,11 @@ export const adminUpdateOrderService = async (
     updates.actualDeliveryTime = new Date(); // Set delivery time
 
     return prisma.$transaction(async (tx) => {
+      // Recalculate one final time to guarantee payout accuracy
+      const finalOrder = await recalculateOrderTotal(orderId, tx);
+      
       // 1. Pay Vendor
-      const vendorAmount = order.subtotal;
+      const vendorAmount = finalOrder.subtotal;
       if (vendorAmount > 0 && order.vendor.userId) {
         await tx.wallet.upsert({
           where: { vendorId: order.vendorId },
@@ -2070,8 +2194,11 @@ export const completeDeliveryService = async (
   };
 
   const completedOrder = await prisma.$transaction(async (tx) => {
+    // Recalculate one final time to ensure absolute payout accuracy based on the delivered cart reality
+    const finalOrder = await recalculateOrderTotal(orderId, tx);
+    
     // 1. Pay Vendor
-    const vendorAmount = order.subtotal;
+    const vendorAmount = finalOrder.subtotal;
     if (vendorAmount > 0 && order.vendor.userId) {
       await tx.wallet.upsert({
         where: { vendorId: order.vendorId },

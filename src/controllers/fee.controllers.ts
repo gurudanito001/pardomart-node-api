@@ -109,6 +109,13 @@ import { errorLogService } from '../services/errorLog.service';
  *         deliveryFee: { type: number, format: float }
  *         serviceFee: { type: number, format: float }
  *         totalEstimatedCost: { type: number, format: float }
+        itemPrices:
+          type: array
+          items:
+            type: object
+            properties:
+              vendorProductId: { type: string, format: uuid }
+              price: { type: number, format: float }
  */
 export const createFeeController = async (req: Request, res: Response) => {
   try {
