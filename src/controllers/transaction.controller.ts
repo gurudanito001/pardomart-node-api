@@ -33,6 +33,7 @@ import { stripe } from '../services/transaction.service';
  * /transactions/create-payment-intent:
  *   post:
  *     summary: Create a Payment Intent for an order
+ *     description: Initializes a Stripe PaymentIntent for a specific order. Accepts an optional `paymentType` to configure the intent for specialized payment methods like EBT. Returns a `clientSecret` that the frontend uses to securely render the Stripe PaymentSheet and complete the transaction.
  *     tags: [Transaction]
  *     security:
  *       - bearerAuth: []
@@ -50,6 +51,7 @@ import { stripe } from '../services/transaction.service';
  *               paymentType:
  *                 type: string
  *                 enum: [card, ebt]
+ *                 description: "Optional. Specifies the type of payment. Use 'ebt' to configure the intent for EBT processing, otherwise defaults to standard automatic payment methods."
  *     responses:
  *       200:
  *         description: Payment Intent created successfully.
@@ -60,8 +62,10 @@ import { stripe } from '../services/transaction.service';
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 clientSecret:
  *                   type: string
+ *                   description: "The Stripe client secret required by the frontend SDK."
  *       400:
  *         description: Bad Request (e.g., order already paid).
  *       403:
@@ -362,6 +366,24 @@ export const listVendorTransactionsController = async (req: AuthenticatedRequest
     }
 };
 
+/**
+ * @swagger
+ * /transactions/stripe-webhook:
+ *   post:
+ *     summary: Stripe Webhook Endpoint
+ *     tags: [Transaction]
+ *     description: Receives asynchronous webhook events directly from Stripe (e.g., `payment_intent.succeeded`, `setup_intent.succeeded`). Verifies the Stripe signature and updates order payment statuses or saved payment methods in the database.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object }
+ *     responses:
+ *       200:
+ *         description: Webhook received and processed successfully.
+ *       400:
+ *         description: Webhook signature verification failed.
+ */
 export const stripeWebhookController = async (req: Request, res: Response) => {
   const sig = req.headers['stripe-signature'] as string;
   let event: Stripe.Event;
@@ -509,6 +531,7 @@ export const getTransactionOverviewController = async (req: Request, res: Respon
  * /transactions/simulate-payment:
  *   post:
  *     summary: Simulate a payment (Dev/Test)
+ *     description: Simulates a successful payment for an order without hitting the Stripe API. It creates a mock completed transaction and updates the order status to paid. This is strictly intended for development and testing environments.
  *     tags: [Transaction]
  *     security:
  *       - bearerAuth: []
