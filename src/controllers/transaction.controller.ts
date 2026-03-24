@@ -389,16 +389,35 @@ export const stripeWebhookController = async (req: Request, res: Response) => {
   let event: Stripe.Event;
 
   try {
+    // With our new middleware setup, req.body is explicitly the raw Buffer that Stripe expects!
     event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET!);
   } catch (err: any) {
-    console.error(`❌ Webhook signature verification failed.`, err.message);
+    await errorLogService.logError({
+      message: `Webhook signature verification failed: ${err.message}`,
+      stackTrace: err.stack,
+      metaData: { headers: req.headers }, // Avoid logging raw buffer body
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: 400,
+      errorCode: 'STRIPE_WEBHOOK_SIGNATURE_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
   try {
     await transactionService.handleStripeWebhook(event);
-  } catch (error) {
-    console.error('Error handling webhook event:', error);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Error handling webhook event',
+      stackTrace: error.stack,
+      metaData: { eventType: event.type, eventId: event.id },
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: 500,
+      errorCode: 'STRIPE_WEBHOOK_HANDLING_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
     // Return a 200 to Stripe even if our internal processing fails
     // to prevent Stripe from retrying indefinitely. We should have internal monitoring for this.
   }

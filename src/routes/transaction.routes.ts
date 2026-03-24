@@ -6,7 +6,7 @@ import { Role } from '@prisma/client';
 
 const router = Router();
 
-// The webhook needs to receive the raw request body for signature verification
+// Webhook endpoint for Stripe: parsed uniquely as a raw Buffer for signature verification
 router.post(
   '/stripe-webhook',
   raw({ type: 'application/json' }),

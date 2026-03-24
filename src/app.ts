@@ -29,7 +29,15 @@ const port = 5000; // Port number
 app.use(cors()); // Enable CORS
 app.use(helmet()); // Enable Helmet
 app.use(morgan('dev')); // Enable Morgan
-app.use(express.json({ limit: '50mb' }));
+
+// Apply express.json() conditionally, skipping the webhook route so it remains raw
+app.use((req, res, next) => {
+  if (req.originalUrl.includes('/stripe-webhook')) {
+    next();
+  } else {
+    express.json()(req, res, next);
+  }
+});
 app.use(express.urlencoded({ extended: true }));
 
 

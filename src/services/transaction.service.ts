@@ -6,7 +6,7 @@ import * as transactionModel from '../models/transaction.model';
 import { sendEmail } from '../utils/email.util';
 const prisma = new PrismaClient();
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-08-27.basil', // Standard stable Stripe API Version
+  apiVersion: '2025-12-15.clover', // Standard stable Stripe API Version
 });
 
 /**
