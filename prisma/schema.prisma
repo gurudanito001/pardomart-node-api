@@ -96,9 +96,9 @@ model VendorProduct {
   product                Product        @relation("baseProduct", fields: [productId], references: [id], onDelete: Cascade)
   productId              String
   price                  Float
+  discountedPrice        Float?
   name                   String
   description            String?
-  discountedPrice        Float?
   images                 String[]
   weight                 Float?
   weightUnit             String?

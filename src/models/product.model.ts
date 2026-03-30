@@ -8,10 +8,15 @@ export interface CreateProductPayload {
   name: string;
   description?: string;
   images?: string[];
+  weight?: number;
+  weightUnit?: string;
   attributes?: any;
   meta?: any;
   categoryIds: string[];
   tagIds?: string[];
+  isAlcohol?: boolean;
+  isAgeRestricted?: boolean;
+  id?: string;
 }
 
 export interface CreateVendorProductPayload {
@@ -62,11 +67,15 @@ export interface UpdateProductBasePayload {
   name?: string;
   description?: string;
   images?: string[];
+  weight?: number;
+  weightUnit?: string;
   attributes?: any;
   meta?: any;
   categoryIds?: string[];
   tagIds?: string[];
   isActive?: boolean;
+  isAlcohol?: boolean;
+  isAgeRestricted?: boolean;
 }
 
 export interface AdminGetAllProductsFilters {
@@ -588,16 +597,17 @@ export const getTrendingVendorProducts = async (
 
 
 export const updateProductBase = async (payload: UpdateProductBasePayload): Promise<Product> => {
+  const { id, categoryIds, tagIds, ...data } = payload;
   return prisma.product.update({
-    where: { id: payload.id },
+    where: { id },
     data: {
-      ...payload,
-      categories: {
-        set: payload.categoryIds?.map((id) => ({ id })),
-      },
+      ...data,
+      ...(categoryIds && { categories: { set: categoryIds.map((catId) => ({ id: catId })) } }),
+      ...(tagIds && { tags: { set: tagIds.map((tagId) => ({ id: tagId })) } }),
     },
     include: {
       categories: true,
+      tags: true,
       vendorProducts: true,
     },
   });

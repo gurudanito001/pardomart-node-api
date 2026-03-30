@@ -122,36 +122,45 @@ export const createVendorProductWithBarcode = async (payload: any, ownerId: stri
 
   const { images, barcode, ...productData } = payload;
   let productId: string;
+  let processedImageUrls: string[] = [];
 
   // 2. Find or create the base product
   const existingProduct = await productModel.getProductByBarcode(payload.barcode);
 
+  const { v4: uuidv4 } = await import('uuid');
+  const vendorProductId = uuidv4(); // Generate vendor product ID upfront
+
   if (!existingProduct) {
+    // If creating a new product, upload images for it. These will also be used by the vendor product.
+    if (images && images.length > 0) {
+      // Use vendorProductId as reference for consistency, as these images are for the first listing
+      processedImageUrls = await uploadImages(images, vendorProductId);
+    }
+
     const newProduct = await productModel.createProduct({
       barcode: payload.barcode,
-      name: payload.name || 'Default Product Name',
+      name: payload.name,
       description: payload.description,
-      images: [], // Images will be handled for the VendorProduct
+      images: processedImageUrls,
+      weight: payload.weight,
+      weightUnit: payload.weightUnit,
+      isAlcohol: payload.isAlcohol,
+      isAgeRestricted: payload.isAgeRestricted,
       attributes: payload.attributes,
+      meta: payload.meta,
       categoryIds: payload.categoryIds || [],
       tagIds: payload.tagIds || [],
     });
     productId = newProduct.id;
   } else {
     productId = existingProduct.id;
+    // If product exists, vendor can still provide their own images for their own listing.
+    if (images && images.length > 0) {
+      processedImageUrls = await uploadImages(images, vendorProductId);
+    }
   }
 
-  // 3. Generate a new UUID for the vendor product using dynamic import.
-  const { v4: uuidv4 } = await import('uuid');
-  const vendorProductId = uuidv4();
-
-  // 4. Upload images to Cloudinary
-  let processedImageUrls: string[] = [];
-  if (images && images.length > 0) {
-    processedImageUrls = await uploadImages(images, vendorProductId);
-  }
-
-  // 5. Create the VendorProduct with the processed image URLs
+  // 3. Create the VendorProduct with the processed image URLs
   const vendorProductPayload: productModel.CreateVendorProductPayload = {
     ...productData,
     id: vendorProductId, // Use the pre-generated ID
@@ -337,4 +346,76 @@ export const transferVendorProductsService = async (
     skippedTransfers,
     details: results,
   };
+};
+
+/**
+ * (Temporary) One-time script to backfill base product details from their first vendor product.
+ * This function iterates through all base products, finds the first associated vendor product,
+ * and copies specified fields from the vendor product to the base product.
+ * @returns A summary of the operation.
+ */
+export const backfillBaseProductsFromVendorProducts = async () => {
+  console.log('Starting base product backfill process...');
+
+  // 1. Get all base products
+  const allProducts = await productModel.getAllProducts();
+  console.log(`Found ${allProducts.length} base products to process.`);
+
+  let updatedCount = 0;
+  let skippedCount = 0;
+  const errors: { productId: string; error: string }[] = [];
+
+  for (const product of allProducts) {
+    try {
+      // 2. Find the first vendor product for the current base product
+      const vendorProductList = await productModel.getVendorProductsForProduct(product.id, { page: '1', size: '1' });
+
+      if (vendorProductList.data && vendorProductList.data.length > 0) {
+        const firstVendorProductInfo = vendorProductList.data[0];
+        // getVendorProductsForProduct doesn't return full details, so we fetch it fully
+        const firstVendorProduct = await productModel.getVendorProductById(firstVendorProductInfo.id);
+
+        if (!firstVendorProduct) {
+          console.log(`Skipping product ${product.id}: Could not fetch full details for vendor product ${firstVendorProductInfo.id}.`);
+          skippedCount++;
+          continue;
+        }
+
+        // 3. Prepare the update payload for the base product
+        const updatePayload: productModel.UpdateProductBasePayload = {
+          id: product.id,
+          name: firstVendorProduct.name,
+          description: firstVendorProduct.description ?? undefined,
+          images: firstVendorProduct.images,
+          weight: firstVendorProduct.weight ?? undefined,
+          weightUnit: firstVendorProduct.weightUnit ?? undefined,
+          isAlcohol: firstVendorProduct.isAlcohol,
+          isAgeRestricted: firstVendorProduct.isAgeRestricted,
+          attributes: firstVendorProduct.attributes,
+          meta: firstVendorProduct.meta,
+          categoryIds: firstVendorProduct.categories.map((c) => c.id),
+          tagIds: firstVendorProduct.tags.map((t) => t.id),
+        };
+
+        // 4. Save the updated base product
+        await productModel.updateProductBase(updatePayload);
+        updatedCount++;
+        console.log(`Successfully updated product ${product.id} ('${product.name}') with data from vendor product ${firstVendorProduct.id}.`);
+      } else {
+        console.log(`Skipping product ${product.id} ('${product.name}'): No associated vendor products found.`);
+        skippedCount++;
+      }
+    } catch (error: any) {
+      console.error(`Failed to process product ${product.id}: ${error.message}`);
+      errors.push({ productId: product.id, error: error.message });
+      skippedCount++;
+    }
+  }
+
+  const summary = `Backfill complete. Updated: ${updatedCount}, Skipped: ${skippedCount}, Errors: ${errors.length}.`;
+  console.log(summary);
+  if (errors.length > 0) {
+    console.error('Errors occurred for the following products:', errors);
+  }
+  return { message: summary, updated: updatedCount, skipped: skippedCount, errors };
 };
