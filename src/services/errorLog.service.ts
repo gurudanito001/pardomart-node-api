@@ -43,7 +43,7 @@ export class ErrorLogService {
           requestMethod: params.requestMethod || null,
           requestPath: params.requestPath || null,
           statusCode: params.statusCode || 500,
-          errorCode: params.errorCode || 'UNKNOWN_ERROR',
+          errorCode: params.errorCode ? String(params.errorCode) : 'UNKNOWN_ERROR',
           message: params.message,
           stackTrace: params.stackTrace || null,
           metaData: sanitizedMeta,
