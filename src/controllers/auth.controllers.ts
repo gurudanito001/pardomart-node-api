@@ -64,7 +64,7 @@ export const registerUser = async (req: Request, res: Response) => {
 
       const verificationCode = generateVerificationCode();
       await authService.storeVerificationCode(newUser?.mobileNumber, verificationCode, tx);
-      await sendVerificationCode(newUser?.mobileNumber, verificationCode, newUser?.email);
+      //await sendVerificationCode(newUser?.mobileNumber, verificationCode, newUser?.email);
     });
 
     res.status(201).json({ message: 'Verification code sent' });
