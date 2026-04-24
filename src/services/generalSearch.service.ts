@@ -1,5 +1,16 @@
 import {  searchByProductName, searchByStoreName, searchByCategoryName, searchStoreProducts, searchByCategoryId, StoreWithProducts as ModelStoreWithProducts } from '../models/generalSearch.model';
 import { getAggregateRatingsForVendorsService } from './rating.service';
+import { VendorProduct } from '@prisma/client';
+
+/**
+ * Helper to inject effectivePrice into vendor product objects.
+ */
+const mapEffectivePrice = (products: VendorProduct[]) => {
+  return products.map(p => ({
+    ...p,
+    effectivePrice: p.discountedPrice ?? p.price,
+  }));
+};
 
 type StoreWithRating = ModelStoreWithProducts & {
   vendor: ModelStoreWithProducts['vendor'] & {
@@ -17,6 +28,7 @@ const attachRatingsToStores = async (stores: ModelStoreWithProducts[]): Promise<
 
   return stores.map(store => ({
     ...store,
+    products: mapEffectivePrice(store.products),
     vendor: {
       ...store.vendor, 
       rating: ratingsMap.get(store.vendor.id) || { average: 5, count: 0 },
@@ -63,7 +75,18 @@ export const searchStoreProductsService = async (
 ) => {
   try {
     const result = await searchStoreProducts(storeId, searchTerm, categoryId);
-    return result;
+    if (!result) return null;
+
+    if (Array.isArray(result) && (result.length === 0 || 'id' in result[0])) {
+      // It's a flat list of VendorProduct
+      return mapEffectivePrice(result as VendorProduct[]);
+    }
+    
+    // It's grouped SearchStoreProductsResult[]
+    return (result as any[]).map(group => ({
+      ...group,
+      products: mapEffectivePrice(group.products)
+    }));
   } catch (error: any) {
     // Handle errors (e.g., logging, specific error types)
     console.error('Error in searchStoreProductsService:', error);

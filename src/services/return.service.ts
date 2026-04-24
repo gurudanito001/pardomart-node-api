@@ -62,12 +62,13 @@ export const createReturnRequestService = async (userId: string, payload: Create
       throw new OrderCreationError(`Return quantity for ${orderItem.vendorProduct.name} exceeds ordered quantity.`, 400);
     }
 
-    refundAmount += orderItem.vendorProduct.price * item.quantity;
+    const itemPrice = orderItem.vendorProduct.discountedPrice ?? orderItem.vendorProduct.price;
+    refundAmount += itemPrice * item.quantity;
     returnItemsData.push({
       vendorProductId: item.vendorProductId,
       name: orderItem.vendorProduct.name,
       quantity: item.quantity,
-      price: orderItem.vendorProduct.price,
+      price: itemPrice,
       reason: item.reason
     });
   }

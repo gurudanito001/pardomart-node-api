@@ -16,6 +16,13 @@ import { errorLogService } from '../services/errorLog.service';
 
 /**
  * @swagger
+ * tags:
+ *   name: Fee
+ *   description: Fee management and calculation
+ */
+
+/**
+ * @swagger
  * /fees:
  *   post:
  *     summary: Create a new fee
@@ -39,6 +46,10 @@ import { errorLogService } from '../services/errorLog.service';
  *         description: Bad request, invalid payload.
  *       500:
  *         description: Internal server error.
+ */
+
+/**
+ * @swagger
  * components:
  *   schemas:
  *     DeliveryMethod:
@@ -116,7 +127,7 @@ import { errorLogService } from '../services/errorLog.service';
  *             type: object
  *             properties:
  *               vendorProductId: { type: string, format: uuid }
- *               price: { type: number, format: float }
+ *               price: { type: number, format: float, description: "The unit price used for calculation, prioritizing discountedPrice if available." }
  */
 export const createFeeController = async (req: Request, res: Response) => {
   try {

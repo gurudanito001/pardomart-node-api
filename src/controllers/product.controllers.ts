@@ -195,6 +195,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         price: { type: number, format: float }
  *         name: { type: string }
  *         description: { type: string, nullable: true }
+ *         effectivePrice: { type: number, format: float, description: "The actual price to be paid (prioritizes discountedPrice)." }
  *         discountedPrice: { type: number, format: float, nullable: true }
  *         images: { type: array, items: { type: string, format: uri } }
  *         weight: { type: number, format: float, nullable: true }

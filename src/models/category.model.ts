@@ -5,11 +5,17 @@ const prisma = new PrismaClient();
 
 interface CreateCategoryPayload {
   name: string;
+  description?: string;
+  imageUrl?: string;
+  parentId?: string;
 }
 
 interface UpdateCategoryPayload {
   id: string;
   name?: string;
+  description?: string;
+  imageUrl?: string;
+  parentId?: string;
 }
 
 /**

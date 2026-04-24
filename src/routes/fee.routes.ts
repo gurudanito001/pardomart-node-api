@@ -1,4 +1,4 @@
-// routes/tag.routes.ts
+// routes/fee.routes.ts
 import express from 'express';
 import * as feeController from '../controllers/fee.controllers';
 import {

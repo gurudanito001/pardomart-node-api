@@ -399,9 +399,9 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
   if (allReplacementIds.size > 0) {
     const replacementProducts = await prisma.vendorProduct.findMany({
       where: { id: { in: Array.from(allReplacementIds) } },
-      select: { id: true, price: true }
+      select: { id: true, price: true, discountedPrice: true }
     });
-    replacementProducts.forEach(p => replacementPriceMap.set(p.id, p.price));
+    replacementProducts.forEach(p => replacementPriceMap.set(p.id, p.discountedPrice ?? p.price));
   }
 
   // --- 3. Calculate Fees (Moved outside transaction to support Stripe call) ---
@@ -1361,22 +1361,22 @@ export const updateOrderItemShoppingStatusService = async (
       if (!actualChosenReplacementId && replacementBarcode) {
         const vendorProduct = await tx.vendorProduct.findFirst({
           where: { vendorId: order.vendorId, product: { barcode: replacementBarcode } },
-          select: { id: true, price: true }
+          select: { id: true, price: true, discountedPrice: true }
         });
     
         if (!vendorProduct) {
           throw new OrderCreationError(`No product found with barcode ${replacementBarcode} in this store.`);
         }
         actualChosenReplacementId = vendorProduct.id;
-        newReplacementPrice = vendorProduct.price;
+        newReplacementPrice = vendorProduct.discountedPrice ?? vendorProduct.price;
       } else if (actualChosenReplacementId) {
         // The shopper selected the ID directly (or the frontend sent a pre-selected fallback)
         const vendorProduct = await tx.vendorProduct.findUnique({
           where: { id: actualChosenReplacementId },
-          select: { price: true }
+          select: { price: true, discountedPrice: true }
         });
         if (!vendorProduct) throw new OrderCreationError(`Replacement product not found.`);
-        newReplacementPrice = vendorProduct.price;
+        newReplacementPrice = vendorProduct.discountedPrice ?? vendorProduct.price;
       }
     }
 

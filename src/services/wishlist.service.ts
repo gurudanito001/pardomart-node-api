@@ -40,7 +40,14 @@ export const addToWishlistService = async (userId: string, vendorProductId: stri
  * @returns A list of wishlist items.
  */
 export const getWishlistService = async (userId: string): Promise<WishlistItem[]> => {
-  return wishlistModel.getWishlistByUserId(userId);
+  const items = await wishlistModel.getWishlistByUserId(userId);
+  return items.map(item => ({
+    ...item,
+    vendorProduct: item.vendorProduct ? {
+      ...item.vendorProduct,
+      effectivePrice: item.vendorProduct.discountedPrice ?? item.vendorProduct.price,
+    } : null
+  })) as any;
 };
 
 /**

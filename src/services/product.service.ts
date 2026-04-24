@@ -6,6 +6,20 @@ import { uploadMedia } from './media.service';
 import { getAggregateRatingService } from './rating.service';
 
 /**
+ * Helper to inject effectivePrice into a vendor product object.
+ */
+const mapEffectivePrice = <T extends { price: number; discountedPrice?: number | null }>(vp: T) => {
+  return {
+    ...vp,
+    effectivePrice: vp.discountedPrice ?? vp.price,
+  };
+};
+
+const mapEffectivePriceList = <T extends { price: number; discountedPrice?: number | null }>(list: T[]) => {
+  return list.map(mapEffectivePrice);
+};
+
+/**
  * Uploads an array of base64 encoded images to Cloudinary.
  *
  * @param images - An array of base64 image strings.
@@ -86,7 +100,8 @@ export const createVendorProduct = async (payload: productModel.CreateVendorProd
     images: processedImageUrls,
   };
 
-  return productModel.createVendorProduct(finalPayload);
+  const created = await productModel.createVendorProduct(finalPayload);
+  return mapEffectivePrice(created) as any;
 };
 
 // Keep other service functions from the original file if they exist.
@@ -102,6 +117,7 @@ export const getVendorProductById = async (id: string) => {
   const rating = await getAggregateRatingService({ ratedProductId: vendorProduct.productId });
   return {
     ...vendorProduct,
+    effectivePrice: vendorProduct.discountedPrice ?? vendorProduct.price,
     rating: rating || { average: 5, count: 0 },
   };
 };
@@ -168,7 +184,8 @@ export const createVendorProductWithBarcode = async (payload: any, ownerId: stri
     images: processedImageUrls,
   };
 
-  return productModel.createVendorProduct(vendorProductPayload);
+  const created = await productModel.createVendorProduct(vendorProductPayload);
+  return mapEffectivePrice(created) as any;
 };
 
 /**
@@ -202,7 +219,11 @@ export const getVendorProductsForProductService = async (
   productId: string,
   pagination: { page: string; size: string }
 ) => {
-  return productModel.getVendorProductsForProduct(productId, pagination);
+  const result = await productModel.getVendorProductsForProduct(productId, pagination);
+  return {
+    ...result,
+    data: mapEffectivePriceList(result.data)
+  };
 };
 
 /**
@@ -236,22 +257,52 @@ export const getMyVendorProductsService = async (ownerId: string, vendorId?: str
   }
 
   // Now, call the model with the owner's ID and the validated (or undefined) vendorId.
-  return productModel.getVendorProductsByOwnerId(ownerId, vendorId, pagination);
+  const result = await productModel.getVendorProductsByOwnerId(ownerId, vendorId, pagination);
+  return {
+    ...result,
+    data: mapEffectivePriceList(result.data)
+  };
 };
 
-
 export const getProductByBarcode = (barcode: string) => productModel.getProductByBarcode(barcode);
-export const getVendorProductByBarcode = (barcode: string, vendorId: string) => productModel.getVendorProductByBarcode(barcode, vendorId);
+export const getVendorProductByBarcode = async (barcode: string, vendorId: string) => {
+  const vp = await productModel.getVendorProductByBarcode(barcode, vendorId);
+  return vp ? mapEffectivePrice(vp) : null;
+};
 export const getProductsByTagIds = (tagIds: string[]) => productModel.getProductsByTagIds(tagIds);
-export const getVendorProductsByTagIds = (tagIds: string[]) => productModel.getVendorProductsByTagIds(tagIds);
+export const getVendorProductsByTagIds = async (tagIds: string[]) => {
+  const products = await productModel.getVendorProductsByTagIds(tagIds);
+  return mapEffectivePriceList(products);
+};
 export const updateProductBase = (payload: any) => productModel.updateProductBase(payload);
-export const updateVendorProduct = (payload: any) => productModel.updateVendorProduct(payload);
+export const updateVendorProduct = async (payload: any) => {
+  const vp = await productModel.updateVendorProduct(payload);
+  return mapEffectivePrice(vp);
+};
 export const getAllProducts = () => productModel.getAllProducts();
-export const getAllVendorProducts = (filters: any, pagination: any) => productModel.getAllVendorProducts(filters, pagination);
-export const getVendorProductsByCategory = (vendorId: string, categoryId: string) => productModel.getVendorProductsByCategory(vendorId, categoryId);
-export const getVendorProductsByUser = (userId: string) => productModel.getVendorProductsByUserId(userId);
+export const getAllVendorProducts = async (filters: any, pagination: any) => {
+  const result = await productModel.getAllVendorProducts(filters, pagination);
+  return {
+    ...result,
+    data: mapEffectivePriceList(result.data)
+  };
+};
+export const getVendorProductsByCategory = async (vendorId: string, categoryId: string) => {
+  const products = await productModel.getVendorProductsByCategory(vendorId, categoryId);
+  return mapEffectivePriceList(products);
+};
+export const getVendorProductsByUser = async (userId: string) => {
+  const products = await productModel.getVendorProductsByUserId(userId);
+  return mapEffectivePriceList(products);
+};
 export const deleteProduct = (id: string) => productModel.deleteProduct(id);
-export const getTrendingVendorProductsService = (filters: any, pagination: any) => productModel.getTrendingVendorProducts(filters, pagination);
+export const getTrendingVendorProductsService = async (filters: any, pagination: any) => {
+  const result = await productModel.getTrendingVendorProducts(filters, pagination);
+  return {
+    ...result,
+    data: mapEffectivePriceList(result.data)
+  };
+};
 
 /**
  * Deletes a vendor-specific product, ensuring the user has ownership.

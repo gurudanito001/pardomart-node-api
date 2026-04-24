@@ -319,13 +319,17 @@ export const calculateOrderFeesService = async (
       select: {
         id: true,
         price: true,
+        discountedPrice: true,
         isAvailable: true,
       },
     });
 
     // Create a map for quick price lookup
     const productDetailsMap = new Map<string, { price: number; isAvailable: boolean; }>();
-    vendorProducts.forEach((vp) => productDetailsMap.set(vp.id, { price: vp.price, isAvailable: vp.isAvailable }));
+    vendorProducts.forEach((vp) => productDetailsMap.set(vp.id, { 
+      price: vp.discountedPrice ?? vp.price, 
+      isAvailable: vp.isAvailable 
+    }));
 
     // Fetch active fee configurations
     const activeFees = await prismaClient.fee.findMany({

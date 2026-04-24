@@ -1,4 +1,4 @@
-import { PrismaClient, WishlistItem } from '@prisma/client';
+import { PrismaClient, VendorProduct, WishlistItem } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -22,7 +22,11 @@ export const addToWishlist = async (userId: string, vendorProductId: string): Pr
  * @param userId - The ID of the user.
  * @returns A list of wishlist items with product details.
  */
-export const getWishlistByUserId = async (userId: string): Promise<WishlistItem[]> => {
+
+interface WishlistItemPayload extends WishlistItem {
+  vendorProduct: VendorProduct | null;
+}
+export const getWishlistByUserId = async (userId: string): Promise<WishlistItemPayload[]> => {
   return prisma.wishlistItem.findMany({
     where: { userId },
     include: {

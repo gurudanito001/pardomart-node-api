@@ -18,6 +18,29 @@ import { errorLogService } from '../services/errorLog.service';
  *         totalSubCategories:
  *           type: integer
  *           description: "The total number of categories that are children of another category."
+ *     CreateCategoryPayload:
+ *       type: object
+ *       required: [name]
+ *       properties:
+ *         name: { type: string }
+ *         description: { type: string, nullable: true }
+ *         imageUrl: { type: string, description: "Image URL or base64 encoded string", nullable: true }
+ *         parentId: { type: string, format: uuid, nullable: true }
+ *     UpdateCategoryPayload:
+ *       type: object
+ *       properties:
+ *         name: { type: string }
+ *         description: { type: string, nullable: true }
+ *         imageUrl: { type: string, description: "Image URL or base64 encoded string", nullable: true }
+ *         parentId: { type: string, format: uuid, nullable: true }
+ *     CreateCategoriesBulkPayload:
+ *       type: object
+ *       required: [categories]
+ *       properties:
+ *         categories:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/CreateCategoryPayload'
  */
 
 /**
@@ -199,7 +222,7 @@ export const createCategoriesBulk = async (req: Request, res: Response) => {
  *     tags: [Category]
  *     security:
  *       - bearerAuth: []
- *     description: Creates a new category. To create a parent category, omit the `parentId`. To create a sub-category, provide the `parentId` of an existing category.
+ *     description: Creates a new category. To create a parent category, omit the `parentId`. To create a sub-category, provide the `parentId` of an existing category. The `imageUrl` supports both standard secure URLs and base64 encoded image strings.
  *     requestBody:
  *       required: true
  *       content:
@@ -222,7 +245,13 @@ export const createCategoriesBulk = async (req: Request, res: Response) => {
  */
 export const createCategory = async (req: Request, res: Response) => {
   try {
-    const category = await categoryService.createCategory(req.body);
+    const payload = { ...req.body };
+
+    if (payload.imageUrl && payload.imageUrl.startsWith('data:')) {
+      payload.imageUrl = payload.imageUrl.split(',')[1];
+    }
+
+    const category = await categoryService.createCategory(payload);
     res.status(201).json(category);
   } catch (error: any) {
     await errorLogService.logError({
@@ -371,6 +400,7 @@ export const getAllCategories = async (req: Request, res: Response) => {
  *       Updates a category's details. This can be used to change its name, description, or move it within the hierarchy.
  *       - To change a sub-category's parent, provide a new `parentId`.
  *       - To promote a sub-category to a parent category, set `parentId` to `null`.
+ *       - The `imageUrl` can be updated with either a standard secure URL or a base64 encoded image string.
  *     parameters:
  *       - in: path
  *         name: id
@@ -397,7 +427,13 @@ export const getAllCategories = async (req: Request, res: Response) => {
  */
 export const updateCategory = async (req: Request, res: Response) => {
   try {
-    const category = await categoryService.updateCategory({ id: req.params.id, ...req.body });
+    const payload = { id: req.params.id, ...req.body };
+
+    if (payload.imageUrl && payload.imageUrl.startsWith('data:')) {
+      payload.imageUrl = payload.imageUrl.split(',')[1];
+    }
+
+    const category = await categoryService.updateCategory(payload);
     res.json(category);
   } catch (error: any) {
     await errorLogService.logError({

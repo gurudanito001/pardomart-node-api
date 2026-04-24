@@ -16,6 +16,24 @@ export class CartError extends Error {
 
 const prisma = new PrismaClient();
 
+/**
+ * Helper to inject effectivePrice into cart items' vendor product.
+ */
+const mapCartPrice = (cart: Cart | null) => {
+  if (!cart) return null;
+  const items = (cart as any).items || [];
+  return {
+    ...cart,
+    items: items.map((item: any) => ({
+      ...item,
+      vendorProduct: item.vendorProduct ? {
+        ...item.vendorProduct,
+        effectivePrice: item.vendorProduct.discountedPrice ?? item.vendorProduct.price,
+      } : null
+    }))
+  };
+};
+
 // --- Cart Service Functions ---
 
 /**
@@ -34,7 +52,8 @@ export const createCartService = async (userId: string, vendorId: string): Promi
  * @returns The cart, or null if not found.
  */
 export const getCartByIdService = async (id: string): Promise<Cart | null> => {
-  return cartModel.getCartById(id);
+  const cart = await cartModel.getCartById(id);
+  return mapCartPrice(cart) as any;
 };
 
 /**
@@ -43,11 +62,13 @@ export const getCartByIdService = async (id: string): Promise<Cart | null> => {
  * @returns An array of the user's carts.
  */
 export const getCartsByUserIdService = async (userId: string): Promise<Cart[]> => {
-  return cartModel.getCartsByUserId(userId);
+  const carts = await cartModel.getCartsByUserId(userId);
+  return carts.map(c => mapCartPrice(c)) as any;
 };
 
 export const getCartByUserIdAndVendorIdService = async (userId: string, vendorId: string): Promise<Cart | null> => {
-  return cartModel.getCartByUserIdAndVendorId(userId, vendorId);
+  const cart = await cartModel.getCartByUserIdAndVendorId(userId, vendorId);
+  return mapCartPrice(cart) as any;
 };
 
 /**

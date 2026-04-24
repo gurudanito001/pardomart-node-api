@@ -1,6 +1,8 @@
 // services/category.service.ts
 import * as categoryModel from '../models/category.model';
 import { Category } from '@prisma/client';
+import { uploadMedia } from './media.service';
+import { Readable } from 'stream';
 
 /**
  * Retrieves an overview of category counts.
@@ -30,7 +32,31 @@ export const createCategoriesBulk = async (categories: { name: string; descripti
 };
 
 export const createCategory = async (payload: any): Promise<Category> => {
-  return categoryModel.createCategory(payload);
+  const { imageUrl, ...categoryData } = payload;
+  const category = await categoryModel.createCategory(categoryData);
+
+  if (imageUrl && !imageUrl.startsWith('http')) {
+    try {
+      const imageBuffer = Buffer.from(imageUrl, 'base64');
+      const mockFile: Express.Multer.File = {
+        fieldname: 'image',
+        originalname: `${category.id}-category-image.jpg`,
+        encoding: '7bit',
+        mimetype: 'image/jpeg',
+        buffer: imageBuffer,
+        size: imageBuffer.length,
+        stream: new Readable(),
+        destination: '',
+        filename: '',
+        path: '',
+      };
+      const uploadResult = await uploadMedia(mockFile, category.id, 'category_image' as any);
+      return await categoryModel.updateCategory({ id: category.id, imageUrl: uploadResult.cloudinaryResult.secure_url });
+    } catch (error) {
+      console.error('Error uploading category image:', error);
+    }
+  }
+  return category;
 };
 
 export const getCategoryById = async (id: string): Promise<Category | null> => {
@@ -42,6 +68,28 @@ export const getAllCategories = async (filters: categoryModel.CategoryFilters): 
 };
 
 export const updateCategory = async (payload: any): Promise<Category> => {
+  if (payload.imageUrl && !payload.imageUrl.startsWith('http')) {
+    try {
+      const imageBuffer = Buffer.from(payload.imageUrl, 'base64');
+      const mockFile: Express.Multer.File = {
+        fieldname: 'image',
+        originalname: `${payload.id}-category-image.jpg`,
+        encoding: '7bit',
+        mimetype: 'image/jpeg',
+        buffer: imageBuffer,
+        size: imageBuffer.length,
+        stream: new Readable(),
+        destination: '',
+        filename: '',
+        path: '',
+      };
+      const uploadResult = await uploadMedia(mockFile, payload.id, 'category_image' as any);
+      payload.imageUrl = uploadResult.cloudinaryResult.secure_url;
+    } catch (error) {
+      console.error('Error uploading category image during update:', error);
+      delete payload.imageUrl;
+    }
+  }
   return categoryModel.updateCategory(payload);
 };
 

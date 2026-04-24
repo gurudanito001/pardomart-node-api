@@ -116,8 +116,8 @@ import { errorLogService } from '../services/errorLog.service';
  *         instructions: { type: string, nullable: true }
  *         status: { $ref: '#/components/schemas/OrderItemStatus' }
  *         quantityFound: { type: integer, nullable: true }
- *         purchasedPrice: { type: number, format: float, nullable: true }
- *         replacementPrices: { type: object, nullable: true, description: "Key-value map of vendorProductId to locked price" }
+ *         purchasedPrice: { type: number, format: float, nullable: true, description: "The effective unit price locked at the time of purchase." }
+ *         replacementPrices: { type: object, nullable: true, description: "Key-value map of vendorProductId to locked effective prices." }
  *         chosenReplacementId: { type: string, format: uuid, nullable: true }
  *         isReplacementApproved: { type: boolean, nullable: true }
  *         createdAt: { type: string, format: date-time }

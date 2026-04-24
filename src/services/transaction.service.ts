@@ -553,16 +553,18 @@ export const sendReceiptService = async (transactionId: string): Promise<{ messa
 
   // 2. Format the receipt data into an HTML string.
   const itemsHtml = order.orderItems
-    .map(
-      (item) => `
+    .map((item) => {
+      const displayPrice = item.vendorProduct.discountedPrice ?? item.vendorProduct.price;
+      const total = item.quantity * displayPrice;
+      return `
     <tr>
       <td>${item.vendorProduct.name}</td>
       <td>${item.quantity}</td>
-      <td>$${item.vendorProduct.price.toFixed(2)}</td>
-      <td>$${(item.quantity * item.vendorProduct.price).toFixed(2)}</td>
+      <td>$${displayPrice.toFixed(2)}</td>
+      <td>$${total.toFixed(2)}</td>
     </tr>
-  `
-    )
+  `;
+    })
     .join('');
 
   const receiptHtml = `
@@ -643,13 +645,17 @@ export const downloadReceiptService = async (transactionId: string): Promise<str
 
   const { order, user } = transaction;
 
-  const itemsHtml = order.orderItems.map(item => `
+  const itemsHtml = order.orderItems.map(item => {
+    const displayPrice = item.vendorProduct.discountedPrice ?? item.vendorProduct.price;
+    const total = item.quantity * displayPrice;
+    return `
     <tr>
       <td>${item.vendorProduct.name}</td>
       <td>${item.quantity}</td>
-      <td>$${item.vendorProduct.price.toFixed(2)}</td>
-      <td>$${(item.quantity * item.vendorProduct.price).toFixed(2)}</td>
-    </tr>`).join('');
+      <td>$${displayPrice.toFixed(2)}</td>
+      <td>$${total.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
 
   return `
     <html>

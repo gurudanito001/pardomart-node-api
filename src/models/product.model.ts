@@ -474,6 +474,7 @@ export interface vendorProductWithRelations extends VendorProduct {
   vendor: Vendor
   categories: Category[]
   tags: Tag[]
+  effectivePrice?: number
 }
   
 export const getVendorProductById = async (vendorProductId: string): Promise<vendorProductWithRelations | null> =>{
