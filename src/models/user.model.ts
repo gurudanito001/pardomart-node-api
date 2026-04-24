@@ -96,6 +96,7 @@ export interface CreateUserPayload {
   referralCode?: string;
   replacementPreference?: ReplacementPreference;
   measurementUnit?: MeasurementUnit;
+  biometricEnabled?: boolean;
 }
 
 export const createUser = async (payload: CreateUserPayload, tx: Prisma.TransactionClient | undefined): Promise<User> => {
@@ -115,6 +116,7 @@ export const createUser = async (payload: CreateUserPayload, tx: Prisma.Transact
       referralCode: payload.referralCode,
       replacementPreference: payload.replacementPreference || 'send_request',
       measurementUnit: payload.measurementUnit || 'metric',
+      biometricEnabled: payload.biometricEnabled ?? false,
     },
   });
 };
@@ -133,6 +135,7 @@ export interface UpdateUserPayload {
   referralCode?: string;
   replacementPreference?: ReplacementPreference;
   measurementUnit?: MeasurementUnit;
+  biometricEnabled?: boolean;
 }
 
 export const updateUser = async (id: string, payload: Prisma.UserUpdateInput): Promise<User> => {

@@ -128,6 +128,7 @@ export const updateUserSettings = async (
   payload: {
     replacementPreference?: ReplacementPreference;
     measurementUnit?: MeasurementUnit;
+    biometricEnabled?: boolean;
   }
 ) => {
   const user = await userModel.getUserById(userId);

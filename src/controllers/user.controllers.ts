@@ -109,6 +109,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         updatedAt: { type: string, format: date-time }
  *         replacementPreference: { type: string, enum: [dont_replace, send_request], default: send_request }
  *         measurementUnit: { type: string, enum: [imperial, metric], default: metric }
+ *         biometricEnabled: { type: boolean, default: false }
  *     PaginatedUsers:
  *       type: object
  *       properties:
@@ -136,6 +137,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         referralCode: { type: string }
  *         replacementPreference: { type: string, enum: [dont_replace, send_request], default: send_request }
  *         measurementUnit: { type: string, enum: [imperial, metric], default: metric }
+ *         biometricEnabled: { type: boolean, default: false }
  */
 export const getAllUsers = async (req: Request, res: Response) => {
   // express-validator has already sanitized and converted types
@@ -633,6 +635,10 @@ export const deleteUser = async (req: Request, res: Response) => {
  *                 enum: [imperial, metric]
  *                 default: metric
  *                 description: User's preferred measurement unit.
+ *               biometricEnabled:
+ *                 type: boolean
+ *                 default: false
+ *                 description: Whether FaceID/Biometrics is enabled for login.
  *     responses:
  *       200:
  *         description: User settings updated successfully.
@@ -650,11 +656,12 @@ export const deleteUser = async (req: Request, res: Response) => {
 export const updateUserSettingsController = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.userId as string;
-    const { replacementPreference, measurementUnit } = req.body;
+    const { replacementPreference, measurementUnit, biometricEnabled } = req.body;
 
     const updatedUser = await userService.updateUserSettings(userId, {
       replacementPreference: replacementPreference as ReplacementPreference,
       measurementUnit: measurementUnit as MeasurementUnit,
+      biometricEnabled: biometricEnabled !== undefined ? Boolean(biometricEnabled) : undefined,
     });
 
     res.status(200).json(updatedUser);
