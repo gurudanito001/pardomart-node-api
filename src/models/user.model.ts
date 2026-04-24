@@ -1,4 +1,4 @@
-import { Prisma, User, Role, Verification } from '@prisma/client'; // Assuming you're using @prisma/client
+import { Prisma, User, Role, Verification, ReplacementPreference, MeasurementUnit } from '@prisma/client'; // Assuming you're using @prisma/client
 import { prisma } from '../config/prisma';
 
 
@@ -90,6 +90,8 @@ export interface CreateUserPayload {
   language?: string;
   notification?: any;
   referralCode?: string;
+  replacementPreference?: ReplacementPreference;
+  measurementUnit?: MeasurementUnit;
 }
 
 export const createUser = async (payload: CreateUserPayload, tx: Prisma.TransactionClient | undefined): Promise<User> => {
@@ -107,6 +109,8 @@ export const createUser = async (payload: CreateUserPayload, tx: Prisma.Transact
       language: payload.language,
       notification: payload.notification,
       referralCode: payload.referralCode,
+      replacementPreference: payload.replacementPreference || 'send_request',
+      measurementUnit: payload.measurementUnit || 'metric',
     },
   });
 };
@@ -123,6 +127,8 @@ export interface UpdateUserPayload {
   language?: string;
   notification?: any;
   referralCode?: string;
+  replacementPreference?: ReplacementPreference;
+  measurementUnit?: MeasurementUnit;
 }
 
 export const updateUser = async (id: string, payload: Prisma.UserUpdateInput): Promise<User> => {

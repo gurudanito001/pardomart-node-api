@@ -127,7 +127,13 @@ export const getOrderByIdService = async (
         order.vendor.latitude,
         order.vendor.longitude
       );
-      distance = parseFloat(calculatedDistance.toFixed(2));
+      
+      // Integrate Measurement Units: Convert to miles if user prefers imperial
+      if (order.measurementUnit === 'imperial') {
+        distance = parseFloat((calculatedDistance * 0.621371).toFixed(2));
+      } else {
+        distance = parseFloat(calculatedDistance.toFixed(2));
+      }
     }
   }
 
@@ -335,6 +341,9 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
     useMaxPricesForBudget,
   } = payload;
 
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new OrderCreationError('User not found.', 404);
+
   let shoppingStartTime: Date | undefined;
 
   // --- 2. Validate scheduled time against vendor hours ---
@@ -442,6 +451,9 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
       totalAmount: finalTotalAmount,
       budgetAmount: finalTotalAmount,
       deliveryFee, serviceFee, shoppingFee,
+      // Snapshot user preferences
+      replacementPreference: user.replacementPreference,
+      measurementUnit: user.measurementUnit,
       shopperTip, deliveryPersonTip,
       paymentMethod, shoppingMethod, deliveryMethod, scheduledDeliveryTime,
       shoppingStartTime, deliveryAddressId: shippingAddressId, deliveryInstructions,
@@ -1306,7 +1318,7 @@ export const updateOrderItemShoppingStatusService = async (
   const [order, requestingUser] = await Promise.all([
     prisma.order.findUnique({
       where: { id: orderId },
-      select: { shopperId: true, deliveryPersonId: true, userId: true, vendorId: true, shoppingMethod: true, orderStatus: true },
+      select: { shopperId: true, deliveryPersonId: true, userId: true, vendorId: true, shoppingMethod: true, orderStatus: true, replacementPreference: true },
     }),
     prisma.user.findUnique({
       where: { id: shopperId },
@@ -1392,6 +1404,15 @@ export const updateOrderItemShoppingStatusService = async (
       const preSelectedIds = currentItem.replacements.map(r => r.id);
       if (preSelectedIds.includes(actualChosenReplacementId)) {
         isPreApproved = true;
+      }
+    }
+
+    // Integrate Replacement Preference logic
+    if (order.replacementPreference === 'dont_replace' && actualChosenReplacementId) {
+      const isPreApproved = currentItem?.replacements.some(r => r.id === actualChosenReplacementId);
+      // If the user said "don't replace", we only allow items they pre-selected during checkout
+      if (!isPreApproved) {
+        throw new OrderCreationError("This customer has selected 'Do not replace'. You cannot suggest new replacements.");
       }
     }
 

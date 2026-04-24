@@ -28,6 +28,7 @@ export const findUserForLogin = async (mobileNumber: string, role: Role): Promis
 
   return prisma.user.findFirst({
     where: {
+      deletedAt: null,
       mobileNumber,
       role: {
         in: rolesToSearch,
@@ -84,7 +85,7 @@ export const verifyCodeAndLogin = async (mobileNumber: string, verificationCode:
     },
   });
 
-  if (!user) {
+  if (!user || user.deletedAt) {
     throw new AuthError('User not found for the specified role.');
   }
 

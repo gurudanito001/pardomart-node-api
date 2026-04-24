@@ -1,9 +1,10 @@
 // user.service.ts
 import * as userModel from '../models/user.model'; // Import functions from user.model.ts
-import { Prisma, PrismaClient, Role } from '@prisma/client';
+import { Prisma, PrismaClient, Role, ReplacementPreference, MeasurementUnit, User } from '@prisma/client';
 import { GetUserFilters, CreateUserPayload, UpdateUserPayload } from '../models/user.model';
 import { uploadMedia } from './media.service'; // Assuming you have a media.service.ts file
 import { Readable } from 'stream';
+import * as emailVerificationService from './emailVerification.service';
 
 const prisma = new PrismaClient();
 
@@ -17,7 +18,9 @@ export const getAllUsers = async (filters: GetUserFilters & { search?: string },
   const { mobileVerified, active, role, language, search, online } = filters;
   const skip = (pagination.page - 1) * pagination.take;
 
-  const where: Prisma.UserWhereInput = {};
+  const where: Prisma.UserWhereInput = {
+    deletedAt: null,
+  };
 
   if (mobileVerified !== undefined) where.mobileVerified = mobileVerified;
   if (active !== undefined) where.active = active;
@@ -93,8 +96,94 @@ export const updateUser = async (id: string, payload: UpdateUserPayload) => {
   return userModel.updateUser(id, payload);
 };
 
+/**
+ * Deletes a user account.
+ * Checks for active orders before allowing deletion to prevent orphaned deliveries or shopping sessions.
+ */
 export const deleteUser = async (userId: string) => {
+  const activeOrdersCount = await prisma.order.count({
+    where: {
+      userId: userId,
+      orderStatus: {
+        notIn: ['delivered', 'picked_up_by_customer', 'cancelled_by_customer', 'declined_by_vendor']
+      }
+    }
+  });
+
+  if (activeOrdersCount > 0) {
+    throw new Error('Cannot delete account while you have active orders. Please cancel or wait for them to complete.');
+  }
+
   return userModel.deleteUser(userId);
+};
+
+/**
+ * Updates user settings such as replacement preference and measurement units.
+ * @param userId The ID of the user whose settings are being updated.
+ * @param payload The settings to update.
+ * @returns The updated user object.
+ */
+export const updateUserSettings = async (
+  userId: string,
+  payload: {
+    replacementPreference?: ReplacementPreference;
+    measurementUnit?: MeasurementUnit;
+  }
+) => {
+  const user = await userModel.getUserById(userId);
+  if (!user) {
+    throw new Error('User not found.');
+  }
+
+  return userModel.updateUser(userId, payload);
+};
+
+/**
+ * Initiates the account deletion process by sending an OTP to the user's email.
+ * @param userId The ID of the user requesting deletion.
+ */
+export const initiateAccountDeletion = async (userId: string): Promise<void> => {
+  const user = await userModel.getUserById(userId);
+  if (!user || !user.email) {
+    throw new Error('User not found or email not registered.');
+  }
+
+  const emailBodyTemplate = (otp: string) => `
+    <p>Hello ${user.name},</p>
+    <p>You have requested to delete your Pardomart account. To confirm this action, please use the following One-Time Password (OTP):</p>
+    <h3>${otp}</h3>
+    <p>This OTP is valid for 10 minutes. If you did not request this, please ignore this email.</p>
+    <p>Thank you,</p>
+    <p>The Pardomart Team</p>
+  `;
+
+  await emailVerificationService.generateAndStoreEmailOtp(
+    user.email,
+    'account_deletion',
+    'Pardomart Account Deletion OTP',
+    emailBodyTemplate
+  );
+};
+
+/**
+ * Confirms account deletion using an OTP and performs a soft delete.
+ * @param userId The ID of the user confirming deletion.
+ * @param otp The OTP received by the user.
+ * @returns The soft-deleted user object.
+ */
+export const confirmAccountDeletion = async (userId: string, otp: string): Promise<User> => {
+  const user = await userModel.getUserById(userId);
+  if (!user || !user.email) {
+    throw new Error('User not found or email not registered.');
+  }
+
+  await emailVerificationService.verifyEmailOtp(user.email, otp, 'account_deletion');
+
+  // Delete the OTP record after successful verification
+  await prisma.emailVerification.delete({ where: { email: user.email } });
+
+  // Perform the soft delete (which includes the active order check)
+  return deleteUser(userId);
 };
 
 export const getAdminStatsService = async () => {

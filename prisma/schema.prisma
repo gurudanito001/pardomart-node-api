@@ -46,6 +46,10 @@ model User {
   carts             Cart[]
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
+  deletedAt         DateTime?
+
+  replacementPreference ReplacementPreference @default(send_request)
+  measurementUnit       MeasurementUnit       @default(metric)
 
   // New fields for ratings
   ratingsGiven        Rating[]             @relation("RatingsGiven")
@@ -214,6 +218,8 @@ model Order {
   paymentStatus           PaymentStatus            @default(pending)
   orderStatus             OrderStatus              @default(pending)
   reasonForDecline        String?
+  replacementPreference   ReplacementPreference    @default(send_request)
+  measurementUnit         MeasurementUnit          @default(metric)
   deliveryAddressId       String?
   deliveryAddress         DeliveryAddress?         @relation(fields: [deliveryAddressId], references: [id])
   deliveryInstructions    String?
@@ -681,6 +687,15 @@ enum TransactionType {
   DEBIT
 }
 
+model EmailVerification {
+  email     String   @id
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  attempts  Int      @default(0)
+  purpose   String   // e.g., "account_deletion", "password_reset"
+}
+
 enum Role {
   customer
   vendor
@@ -688,6 +703,16 @@ enum Role {
   store_shopper
   delivery_person
   admin
+}
+
+enum ReplacementPreference {
+  dont_replace
+  send_request
+}
+
+enum MeasurementUnit {
+  imperial
+  metric
 }
 
 enum Days {

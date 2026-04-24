@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import * as userService from '../services/user.service'; // Assuming you have a user.service.ts file
-import { User, Role } from '@prisma/client'; // Import User type
+import { User, Role, ReplacementPreference, MeasurementUnit } from '@prisma/client'; // Import User type
 import { GetUserFilters } from '../models/user.model';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import { errorLogService } from '../services/errorLog.service';
@@ -107,6 +107,8 @@ import { errorLogService } from '../services/errorLog.service';
  *         vendorId: { type: string, format: uuid, nullable: true }
  *         createdAt: { type: string, format: date-time }
  *         updatedAt: { type: string, format: date-time }
+ *         replacementPreference: { type: string, enum: [dont_replace, send_request], default: send_request }
+ *         measurementUnit: { type: string, enum: [imperial, metric], default: metric }
  *     PaginatedUsers:
  *       type: object
  *       properties:
@@ -132,6 +134,8 @@ import { errorLogService } from '../services/errorLog.service';
  *         language: { type: string }
  *         notification: { type: object }
  *         referralCode: { type: string }
+ *         replacementPreference: { type: string, enum: [dont_replace, send_request] }
+ *         measurementUnit: { type: string, enum: [imperial, metric] }
  */
 export const getAllUsers = async (req: Request, res: Response) => {
   // express-validator has already sanitized and converted types
@@ -548,6 +552,11 @@ export const updateUser = async (req: AuthenticatedRequest, res: Response) => {
  *   delete:
  *     summary: Delete a user
  *     tags: [User]
+ *     description: >
+ *       Permanently deletes the user account. 
+ *       This operation will fail if the user has active orders (orders not in a terminal state).
+ *       For administrative deletion of other users, admin privileges are required. 
+ *       For self-deletion, use the authenticated route.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -557,12 +566,16 @@ export const updateUser = async (req: AuthenticatedRequest, res: Response) => {
  *         schema:
  *           type: string
  *           format: uuid
- *         description: The ID of the user to delete.
+ *         description: The ID of the user to delete. (Must match authenticated user ID unless admin).
  *     responses:
  *       200:
  *         description: The deleted user.
+ *       400:
+ *         description: Bad Request (e.g., active orders exist).
  *       404:
  *         description: User not found.
+ *       500:
+ *         description: Internal server error.
  */
 export const deleteUser = async (req: Request, res: Response) => {
   try {
@@ -582,8 +595,183 @@ export const deleteUser = async (req: Request, res: Response) => {
       errorCode: error.code || 'DELETE_USER_ERROR'
     }).catch((logErr: any) => console.error('Failed to log error:', logErr));
 
+    if (error.message.includes('active orders')) {
+      return res.status(400).json({ error: error.message });
+    }
+
     if (error?.code === 'P2025') { // Prisma's error code for record not found on delete
       return res.status(404).json({ error: 'User not found' });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
+ * /users/me/settings:
+ *   patch:
+ *     summary: Update authenticated user's settings
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               replacementPreference:
+ *                 type: string
+ *                 enum: [dont_replace, send_request]
+ *                 description: User's preference for product replacements during shopping.
+ *               measurementUnit:
+ *                 type: string
+ *                 enum: [imperial, metric]
+ *                 description: User's preferred measurement unit.
+ *     responses:
+ *       200:
+ *         description: User settings updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized.
+ *       404:
+ *         description: User not found.
+ *       500:
+ *         description: Internal server error.
+ */
+export const updateUserSettingsController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.userId as string;
+    const { replacementPreference, measurementUnit } = req.body;
+
+    const updatedUser = await userService.updateUserSettings(userId, {
+      replacementPreference: replacementPreference as ReplacementPreference,
+      measurementUnit: measurementUnit as MeasurementUnit,
+    });
+
+    res.status(200).json(updatedUser);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to update user settings',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'UPDATE_USER_SETTINGS_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
+    if (error.message.includes('User not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
+ * /users/me/delete-account/initiate:
+ *   post:
+ *     summary: Initiate account deletion for the authenticated user
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Sends an OTP to the authenticated user's registered email address to confirm account deletion.
+ *     responses:
+ *       200:
+ *         description: OTP sent successfully to your email.
+ *       401:
+ *         description: Unauthorized.
+ *       404:
+ *         description: User not found or email not registered.
+ *       500:
+ *         description: Internal server error.
+ */
+export const initiateAccountDeletionController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.userId as string;
+    await userService.initiateAccountDeletion(userId);
+    res.status(200).json({ message: 'OTP sent successfully to your email. Please check your inbox to confirm account deletion.' });
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to initiate account deletion',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'INITIATE_ACCOUNT_DELETION_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
+    if (error.message.includes('User not found') || error.message.includes('email not registered')) {
+      return res.status(404).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
+ * /users/me/delete-account/confirm:
+ *   post:
+ *     summary: Confirm account deletion for the authenticated user
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Confirms account deletion using an OTP sent to the user's email, performing a soft delete upon successful verification.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [otp]
+ *             properties:
+ *               otp: { type: string, description: "The OTP received via email." }
+ *     responses:
+ *       200:
+ *         description: Account soft-deleted successfully.
+ *       400:
+ *         description: Invalid or expired OTP, or active orders exist.
+ *       401:
+ *         description: Unauthorized.
+ *       404:
+ *         description: User not found or email not registered.
+ *       500:
+ *         description: Internal server error.
+ */
+export const confirmAccountDeletionController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.userId as string;
+    const { otp } = req.body;
+    const deletedUser = await userService.confirmAccountDeletion(userId, otp);
+    res.status(200).json({ message: 'Account soft-deleted successfully.', user: deletedUser });
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to confirm account deletion',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      userId: req.userId as string,
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'CONFIRM_ACCOUNT_DELETION_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
+    if (error.message.includes('Invalid or expired OTP') || error.message.includes('active orders')) {
+      return res.status(400).json({ error: error.message });
+    }
+    if (error.message.includes('User not found') || error.message.includes('email not registered')) {
+      return res.status(404).json({ error: error.message });
     }
     res.status(500).json({ error: 'Internal server error' });
   }

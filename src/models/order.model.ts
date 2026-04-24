@@ -1,4 +1,4 @@
-import { PrismaClient, Order, Cart, CartItem, PaymentMethods, PaymentStatus, OrderStatus, ShoppingMethod, DeliveryMethod, Prisma } from '@prisma/client';
+import { PrismaClient, Order, Cart, CartItem, PaymentMethods, PaymentStatus, OrderStatus, ShoppingMethod, DeliveryMethod, Prisma, ReplacementPreference, MeasurementUnit } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -20,6 +20,8 @@ export interface CreateOrderPayload {
   paymentMethod?: PaymentMethods;
   deliveryAddressId?: string | null;
   deliveryInstructions?: string;
+  replacementPreference?: ReplacementPreference;
+  measurementUnit?: MeasurementUnit;
   shoppingMethod?: ShoppingMethod;
   deliveryMethod?: DeliveryMethod;
   shoppingStartTime?: Date;
