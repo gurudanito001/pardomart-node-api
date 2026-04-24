@@ -68,7 +68,7 @@ import { errorLogService } from '../services/errorLog.service';
  *   schemas:
  *     Role:
  *       type: string
- *       enum: [admin, vendor, store_shopper, delivery, customer, shopper]
+ *       enum: [customer, vendor, store_admin, store_shopper, delivery_person, admin]
  *     Verification:
  *       type: object
  *       properties:
@@ -127,15 +127,15 @@ import { errorLogService } from '../services/errorLog.service';
  *         email: { type: string, format: email }
  *         mobileNumber: { type: string }
  *         image: { type: string, description: "Base64 encoded image or URL" }
- *         role: { $ref: '#/components/schemas/Role' }
+ *         role: { type: string, enum: [customer, vendor, store_admin, store_shopper, delivery_person, admin] }
  *         mobileVerified: { type: boolean }
  *         active: { type: boolean }
  *         online: { type: boolean }
  *         language: { type: string }
  *         notification: { type: object }
  *         referralCode: { type: string }
- *         replacementPreference: { type: string, enum: [dont_replace, send_request] }
- *         measurementUnit: { type: string, enum: [imperial, metric] }
+ *         replacementPreference: { type: string, enum: [dont_replace, send_request], default: send_request }
+ *         measurementUnit: { type: string, enum: [imperial, metric], default: metric }
  */
 export const getAllUsers = async (req: Request, res: Response) => {
   // express-validator has already sanitized and converted types
@@ -611,6 +611,8 @@ export const deleteUser = async (req: Request, res: Response) => {
  * /users/me/settings:
  *   patch:
  *     summary: Update authenticated user's settings
+ *     description: >
+ *       Allows users to manage their preferences, such as how product replacements are handled and their preferred unit system.
  *     tags: [User]
  *     security:
  *       - bearerAuth: []
@@ -624,10 +626,12 @@ export const deleteUser = async (req: Request, res: Response) => {
  *               replacementPreference:
  *                 type: string
  *                 enum: [dont_replace, send_request]
+ *                 default: send_request
  *                 description: User's preference for product replacements during shopping.
  *               measurementUnit:
  *                 type: string
  *                 enum: [imperial, metric]
+ *                 default: metric
  *                 description: User's preferred measurement unit.
  *     responses:
  *       200:
@@ -682,7 +686,10 @@ export const updateUserSettingsController = async (req: AuthenticatedRequest, re
  *     tags: [User]
  *     security:
  *       - bearerAuth: []
- *     description: Sends an OTP to the authenticated user's registered email address to confirm account deletion.
+ *     description: >
+ *       Starts the account deletion process by sending a 6-digit One-Time Password (OTP) 
+ *       to the user's registered email address. This OTP must be used in the confirmation endpoint.
+ *       The request will fail if the user has no registered email.
  *     responses:
  *       200:
  *         description: OTP sent successfully to your email.
@@ -726,7 +733,10 @@ export const initiateAccountDeletionController = async (req: AuthenticatedReques
  *     tags: [User]
  *     security:
  *       - bearerAuth: []
- *     description: Confirms account deletion using an OTP sent to the user's email, performing a soft delete upon successful verification.
+ *     description: >
+ *       Completes the account deletion process using the email OTP. 
+ *       Upon success, the account is soft-deleted (active: false). 
+ *       Note: This will fail if the user has active, incomplete orders.
  *     requestBody:
  *       required: true
  *       content:

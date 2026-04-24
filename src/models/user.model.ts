@@ -10,6 +10,7 @@ export interface CheckUserFilters {
 export const checkUserExistence = async (filters: CheckUserFilters): Promise<User | null> => {
   return prisma.user.findFirst({
     where: {
+      deletedAt: null,
       mobileNumber: filters.mobileNumber,
       role: filters.role
     },
@@ -37,6 +38,7 @@ export const getAllUsers = async (filters: GetUserFilters, pagination: { page: n
   const takeVal = pagination.take;
   const users = await prisma.user.findMany({
     where: {
+      deletedAt: null,
       ...(filters.mobileVerified !== undefined && { mobileVerified: filters.mobileVerified }), // Assuming mobileVerified maps to verified filter
       ...(filters.active !== undefined && { active: filters.active }),
       ...(filters.online !== undefined && { online: filters.online }),
@@ -53,6 +55,7 @@ export const getAllUsers = async (filters: GetUserFilters, pagination: { page: n
 
   const totalCount = await prisma.user.count({
     where: {
+      deletedAt: null,
       ...(filters.mobileVerified !== undefined && { mobileVerified: filters.mobileVerified }), // Assuming mobileVerified maps to verified filter
       ...(filters.active !== undefined && { active: filters.active }),
       ...(filters.online !== undefined && { online: filters.online }),
@@ -71,9 +74,10 @@ export const getAllVerificationCodes = async (): Promise<Verification[]> => {
 };
 
 export const getUserById = async (userId: string): Promise<User | null> => {
-  return prisma.user.findUnique({
+  return prisma.user.findFirst({
     where: {
       id: userId,
+      deletedAt: null,
     },
   });
 };
@@ -139,9 +143,13 @@ export const updateUser = async (id: string, payload: Prisma.UserUpdateInput): P
 };
 
 export const deleteUser = async (userId: string): Promise<User> => {
-  return prisma.user.delete({
+  return prisma.user.update({
     where: {
       id: userId,
+    },
+    data: {
+      active: false,
+      deletedAt: new Date(),
     },
   });
 };
