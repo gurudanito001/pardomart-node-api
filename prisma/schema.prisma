@@ -219,6 +219,7 @@ model Order {
   paymentStatus           PaymentStatus            @default(pending)
   orderStatus             OrderStatus              @default(pending)
   reasonForDecline        String?
+  reasonForNoItemsFound   String?
   replacementPreference   ReplacementPreference    @default(send_request)
   measurementUnit         MeasurementUnit          @default(metric)
   deliveryAddressId       String?
@@ -585,6 +586,7 @@ model Transaction {
   type        TransactionType
   source      TransactionSource
   status      TransactionStatus @default(COMPLETED)
+  refundType  RefundType?
   description String?
 
   // Optional fields for linking and external references
@@ -739,6 +741,12 @@ enum PaymentStatus {
   refunded
 }
 
+enum RefundType {
+  FULL_REVERSAL
+  PARTIAL_REFUND
+  // Add other types as needed, e.g., CUSTOMER_CANCELLATION_REFUND
+}
+
 enum OrderStatus {
   // Initial state
   pending // Order placed, awaiting vendor action.
@@ -770,6 +778,7 @@ enum OrderStatus {
   // Terminal Failure/Cancellation States
   declined_by_vendor
   cancelled_by_customer
+  no_items_found
 }
 
 enum ReturnStatus {
@@ -868,6 +877,7 @@ enum NotificationType {
   DELIVERED
   COMPLETED
   ORDER_CANCELLED
+  ORDER_SHOPPING_FAILED
 
   // Order related for Vendor/Staff
   NEW_ORDER_PLACED

@@ -2,7 +2,7 @@ import { Request, Response, Router } from 'express';
 import * as orderModel from '../models/order.model';
 import * as orderHistoryModel from '../models/orderHistory.model';
 import * as vendorModel from '../models/vendor.model'; // Add this import for vendorModel
-import { PrismaClient, Order, OrderItem, Role, ShoppingMethod, OrderStatus, DeliveryMethod, VendorProduct, Product, DeliveryAddress, Prisma, PaymentMethods, OrderItemStatus, PaymentStatus, TransactionType, TransactionSource, TransactionStatus, NotificationCategory, NotificationType, ReferenceType } from '@prisma/client';
+import { PrismaClient, Order, OrderItem, Role, ShoppingMethod, OrderStatus, DeliveryMethod, VendorProduct, Product, DeliveryAddress, Prisma, PaymentMethods, OrderItemStatus, PaymentStatus, TransactionType, TransactionSource, TransactionStatus, NotificationCategory, NotificationType, ReferenceType, RefundType } from '@prisma/client';
 import dayjs from 'dayjs';
 import { calculateOrderFeesService } from './fee.service';
 import { getVendorById } from './vendor.service';
@@ -1175,7 +1175,7 @@ export const declineOrderService = async (
 
     // 2. Refund the customer via original payment method
     if (orderToDecline.paymentStatus === PaymentStatus.paid) {
-      await processRefundService(tx, orderToDecline, orderToDecline.totalAmount, `Refund for declined order #${orderToDecline.orderCode}`);
+      await processRefundService(tx, orderToDecline, orderToDecline.totalAmount, `Refund for declined order #${orderToDecline.orderCode}`, RefundType.FULL_REVERSAL);
     }
 
     // 4. Update the order status to declined
@@ -1297,6 +1297,112 @@ export interface UpdateOrderItemShoppingStatusPayload {
   chosenReplacementId?: string;
   replacementBarcode?: string;
 }
+
+/**
+ * Internal helper to check if every item in the order has been marked as NOT_FOUND.
+ */
+const areAllOrderItemsNotFound = async (orderId: string, tx: Prisma.TransactionClient): Promise<boolean> => {
+  const items = await tx.orderItem.findMany({
+    where: { orderId },
+    select: { status: true }
+  });
+
+  if (items.length === 0) return false;
+
+  return items.every(item => item.status === OrderItemStatus.NOT_FOUND);
+};
+
+/**
+ * Terminal failure flow when shopping yields zero items.
+ * Resets fees, handles refunds, and updates order to a closed failure state.
+ */
+const handleNoItemsFoundOrder = async (orderId: string, shopperId: string, tx: Prisma.TransactionClient): Promise<Order> => {
+  const order = await tx.order.findUnique({
+    where: { id: orderId },
+    include: { vendor: true }
+  });
+
+  if (!order) throw new OrderCreationError('Order not found for terminal failure handling.', 404);
+
+  // Determine the amount to refund: In a terminal failure, we refund the full BUDGETED amount
+  // that was captured/authorized, as the current totalAmount has likely been recalculated to zero.
+  const fullReversalAmount = order.budgetAmount ?? order.totalAmount;
+
+  // 1. Process Refund/Cancellation if payment was already paid
+  if (order.paymentStatus === PaymentStatus.paid) {
+    // Process a full reversal for digital payments (Stripe or Wallet)
+    await processRefundService(tx, order, fullReversalAmount, `Refund for order #${order.orderCode} - No items found during shopping.`, RefundType.FULL_REVERSAL);
+  }
+
+  // 2. Update Order to terminal failure state with zeroed fees and tips
+  const updatedOrder = await tx.order.update({
+    where: { id: orderId },
+    data: {
+      orderStatus: OrderStatus.no_items_found,
+      // If it was paid, processRefundService handles the transaction record; we update status here for consistency.
+      paymentStatus: order.paymentStatus === PaymentStatus.paid ? PaymentStatus.refunded : order.paymentStatus,
+      subtotal: 0,
+      totalAmount: 0,
+      deliveryFee: 0,
+      serviceFee: 0,
+      shoppingFee: 0,
+      shopperTip: 0,
+      deliveryPersonTip: 0,
+      // Unassign staff as the order is no longer actionable
+      shopperId: null, 
+      deliveryPersonId: null,
+    }
+  });
+
+  // 3. Create Terminal History Entry
+  await orderHistoryModel.createOrderHistory({
+    orderId,
+    status: OrderStatus.no_items_found,
+    changedBy: shopperId,
+    notes: 'Shopping completed: No items were available in the store.'
+  }, tx);
+
+  // 4. Send Notifications
+  const meta = { orderId };
+
+  // Notify Customer
+  await notificationService.createNotification({
+    userId: order.userId,
+    type: NotificationType.ORDER_SHOPPING_FAILED,
+    category: NotificationCategory.ORDER,
+    title: 'Order Unfulfilled',
+    body: `We're sorry, but none of the items in your order #${order.orderCode} were available. Any pending charges have been reversed.`,
+    meta
+  });
+
+  // Notify Vendor Owner/Admin
+  if (order.vendor.userId) {
+    await notificationService.createNotification({
+      userId: order.vendor.userId,
+      type: NotificationType.ORDER_SHOPPING_FAILED,
+      category: NotificationCategory.ORDER,
+      title: 'Shopping Failed (No Items)',
+      body: `Shopping for order #${order.orderCode} was completed with no items found. The order has been closed.`,
+      meta
+    });
+  }
+
+  // If a delivery person was assigned, notify them of cancellation
+  if (order.deliveryPersonId) {
+    await notificationService.createNotification({
+      userId: order.deliveryPersonId,
+      type: NotificationType.ORDER_CANCELLED,
+      category: NotificationCategory.ORDER,
+      title: 'Delivery Cancelled',
+      body: `The delivery for order #${order.orderCode} was cancelled because no items were found.`,
+      meta
+    });
+  }
+
+  return updatedOrder;
+};
+
+
 
 /**
  * Updates the shopping status of an order item.
@@ -1444,11 +1550,17 @@ export const updateOrderItemShoppingStatusService = async (
     });
 
     // Recalculate totals since an item state changed
-    const recalculatedOrder = await recalculateOrderTotal(orderId, tx);
+    let recalculatedOrder = await recalculateOrderTotal(orderId, tx);
 
     // Enforce the Strict Budget Barrier
     if (recalculatedOrder.budgetAmount !== null && recalculatedOrder.totalAmount > recalculatedOrder.budgetAmount) {
       throw new OrderCreationError("This replacement exceeds the customer's pre-paid budget.");
+    }
+
+    // Check if everything is now "NOT_FOUND" to trigger terminal failure flow
+    const allNotFound = await areAllOrderItemsNotFound(orderId, tx);
+    if (allNotFound) {
+      recalculatedOrder = await handleNoItemsFoundOrder(orderId, shopperId, tx);
     }
 
     return { updatedItem: item, updatedOrder: recalculatedOrder };
@@ -1766,7 +1878,7 @@ export const verifyPickupOtpService = async (
 
       // Only refund overpayments if the order was paid upfront digitally
       if (overpayment > 0 && order.paymentStatus === PaymentStatus.paid) {
-        await processRefundService(tx, order, overpayment, `Overpayment Refund for order #${order.orderCode}`);
+        await processRefundService(tx, order, overpayment, `Overpayment Refund for order #${order.orderCode}`, RefundType.PARTIAL_REFUND);
       }
     }
 
@@ -2060,8 +2172,8 @@ export const adminUpdateOrderService = async (
   if (
     (updates.orderStatus === OrderStatus.cancelled_by_customer || updates.orderStatus === OrderStatus.declined_by_vendor) &&
     order.paymentStatus === PaymentStatus.paid
-  ) {
-    await processRefundService(prisma, order, order.totalAmount, `Refund for cancelled order #${order.orderCode}`);
+  ) { // This is a full reversal
+    await processRefundService(prisma, order, order.totalAmount, `Refund for cancelled order #${order.orderCode}`, RefundType.FULL_REVERSAL);
     updates.paymentStatus = PaymentStatus.refunded;
   }
 
@@ -2432,7 +2544,7 @@ export const completeDeliveryService = async (
 
     // Only refund overpayments if the order was paid upfront digitally
     if (overpayment > 0 && order.paymentStatus === PaymentStatus.paid) {
-      await processRefundService(tx, order, overpayment, `Overpayment Refund for order #${order.orderCode}`);
+        await processRefundService(tx, order, overpayment, `Overpayment Refund for order #${order.orderCode}`, RefundType.PARTIAL_REFUND);
     }
 
     // 6. Update Order and History

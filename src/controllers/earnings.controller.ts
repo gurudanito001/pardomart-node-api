@@ -120,6 +120,7 @@ export const getTotalEarningsController = async (req: AuthenticatedRequest, res:
     const totalEarnings = await earningsService.getTotalEarningsService(requestingUserId, period);
     res.status(200).json({ totalEarnings });
   } catch (error: any) {
+    // The earnings service should implicitly handle orders with 'no_items_found' status by having a totalAmount of 0.
     await errorLogService.logError({
       message: error.message || 'Failed to get total earnings',
       stackTrace: error.stack,

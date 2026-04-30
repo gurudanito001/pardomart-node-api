@@ -74,7 +74,7 @@ import { errorLogService } from '../services/errorLog.service';
  *       enum: [pending, paid, failed, refunded]
  *     OrderStatus:
  *       type: string
- *       enum: [pending, accepted_for_shopping, accepted_for_delivery, currently_shopping, completed_bagging, ready_for_pickup, ready_for_delivery, en_route_to_pickup, arrived_at_store, en_route_to_delivery, arrived_at_customer_location, en_route_to_return_pickup, arrived_at_return_pickup_location, en_route_to_return_to_store, returned_to_store, delivered, picked_up_by_customer, declined_by_vendor, cancelled_by_customer]
+ *       enum: [pending, accepted_for_shopping, accepted_for_delivery, currently_shopping, completed_bagging, ready_for_pickup, ready_for_delivery, en_route_to_pickup, arrived_at_store, en_route_to_delivery, arrived_at_customer_location, en_route_to_return_pickup, arrived_at_return_pickup_location, en_route_to_return_to_store, returned_to_store, delivered, picked_up_by_customer, declined_by_vendor, cancelled_by_customer, no_items_found]
  *     ShoppingMethod:
  *       type: string
  *       enum: [vendor, delivery_person]
@@ -150,7 +150,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         pickupOtp: { type: string, nullable: true }
  *         subtotal: { type: number, format: float }
  *         totalAmount: { type: number, format: float }
- *         budgetAmount: { type: number, format: float, nullable: true }
+ *         budgetAmount: { type: number, format: float, nullable: true, description: "The maximum amount authorized by the customer. Acts as a strict barrier during shopping updates." }
  *         deliveryFee: { type: number, format: float, nullable: true }
  *         serviceFee: { type: number, format: float, nullable: true }
  *         shoppingFee: { type: number, format: float, nullable: true }
@@ -159,6 +159,8 @@ import { errorLogService } from '../services/errorLog.service';
  *         paymentMethod: { $ref: '#/components/schemas/PaymentMethods' }
  *         paymentStatus: { $ref: '#/components/schemas/PaymentStatus' }
  *         orderStatus: { $ref: '#/components/schemas/OrderStatus' }
+ *         replacementPreference: { type: string, enum: [dont_replace, send_request], description: "Snapshot of customer preference at checkout." }
+ *         measurementUnit: { type: string, enum: [imperial, metric], description: "Snapshot of customer units at checkout." }
  *         deliveryAddressId: { type: string, format: uuid, nullable: true }
  *         deliveryInstructions: { type: string, nullable: true }
  *         shopperId: { type: string, format: uuid, nullable: true }
@@ -191,6 +193,8 @@ import { errorLogService } from '../services/errorLog.service';
  *         paymentMethod: { $ref: '#/components/schemas/PaymentMethods' }
  *         paymentStatus: { $ref: '#/components/schemas/PaymentStatus' }
  *         orderStatus: { $ref: '#/components/schemas/OrderStatus' }
+ *         replacementPreference: { type: string, enum: [dont_replace, send_request] }
+ *         measurementUnit: { type: string, enum: [imperial, metric] }
  *         deliveryAddressId: { type: string, format: uuid, nullable: true }
  *         deliveryInstructions: { type: string, nullable: true }
  *         shopperId: { type: string, format: uuid, nullable: true }
@@ -773,7 +777,7 @@ export const updateOrderItemShoppingStatusController = async (req: Authenticated
       errorCode: error.code || 'UPDATE_ITEM_SHOPPING_STATUS_ERROR'
     }).catch((logErr: any) => console.error('Failed to log error:', logErr));
 
-    if (error instanceof OrderCreationError) {
+    if (error instanceof OrderCreationError || error.message.includes('not found') || error.message.includes('cannot update item')) {
       return res.status(error.statusCode).json({ error: error.message });
     }
     res.status(500).json({ error: error.message || 'Internal server error' });

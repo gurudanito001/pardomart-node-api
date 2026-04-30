@@ -54,6 +54,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         - ACCOUNT_UPDATE
  *         - BUG_REPORT_RECEIVED
  *         - BUG_REPORT_RESOLVED
+ *         - ORDER_SHOPPING_FAILED
  *     Notification:
  *       type: object
  *       properties:

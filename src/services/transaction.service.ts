@@ -4,6 +4,7 @@ import { OrderCreationError } from './order.service';
 import * as transactionModel from '../models/transaction.model';
 
 import { sendEmail } from '../utils/email.util';
+import { RefundType } from '@prisma/client';
 const prisma = new PrismaClient();
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-08-27.basil', // Standard stable Stripe API Version
@@ -790,7 +791,7 @@ export const simulatePaymentService = async (userId: string, orderId: string) =>
  * Universal helper function to cleanly process either a direct Stripe refund or a Wallet refund.
  * Includes mathematical guardrails to prevent over-refunding an order.
  */
-export const processRefundService = async (tx: Prisma.TransactionClient, order: any, refundAmount: number, description: string) => {
+export const processRefundService = async (tx: Prisma.TransactionClient, order: any, refundAmount: number, description: string, refundType?: RefundType) => {
   if (refundAmount <= 0) return;
 
   // Guardrail: Prevent Over-Refunding by calculating existing refunds for this order
@@ -807,28 +808,58 @@ export const processRefundService = async (tx: Prisma.TransactionClient, order: 
 
   if (order.paymentMethod === PaymentMethods.credit_card) {
     const paymentTx = await tx.transaction.findFirst({
-      where: { orderId: order.id, type: TransactionType.ORDER_PAYMENT, status: TransactionStatus.COMPLETED }
+      where: { 
+        orderId: order.id, 
+        type: TransactionType.ORDER_PAYMENT, 
+        status: TransactionStatus.COMPLETED,
+        source: TransactionSource.STRIPE 
+      }
     });
     
     if (!paymentTx?.externalId) {
       throw new Error(`CRITICAL: Cannot process Stripe refund. No completed payment transaction found for Order #${order.orderCode}.`);
     }
 
-    // Process the actual Stripe Refund
-    await stripe.refunds.create({ payment_intent: paymentTx.externalId, amount: Math.round(refundAmount * 100) });
+    // 1. Process the actual Stripe Refund (converting to cents)
+    const stripeRefund = await stripe.refunds.create({ 
+      payment_intent: paymentTx.externalId, 
+      amount: Math.round(refundAmount * 100) 
+    });
 
+    // 2. Record the refund transaction with the external ID for audit trails
     await tx.transaction.create({
-      data: { userId: order.userId, amount: refundAmount, type: TransactionType.REFUND, source: TransactionSource.STRIPE, status: TransactionStatus.COMPLETED, description, orderId: order.id },
+      data: { 
+        userId: order.userId, 
+        amount: refundAmount, 
+        type: TransactionType.REFUND, 
+        source: TransactionSource.STRIPE, 
+        status: TransactionStatus.COMPLETED, 
+        description, 
+        orderId: order.id, 
+        refundType,
+        externalId: stripeRefund.id 
+      },
     });
   } else if (order.paymentMethod === PaymentMethods.wallet) {
+    // 1. Return funds to the user's internal wallet balance
     await tx.wallet.upsert({
       where: { userId: order.userId },
       create: { userId: order.userId, balance: refundAmount },
       update: { balance: { increment: refundAmount } }
     });
 
+    // 2. Record the internal wallet refund transaction
     await tx.transaction.create({
-      data: { userId: order.userId, amount: refundAmount, type: TransactionType.REFUND, source: TransactionSource.WALLET, status: TransactionStatus.COMPLETED, description, orderId: order.id },
+      data: { 
+        userId: order.userId, 
+        amount: refundAmount, 
+        type: TransactionType.REFUND, 
+        source: TransactionSource.WALLET, 
+        status: TransactionStatus.COMPLETED, 
+        description,
+        refundType,
+        orderId: order.id 
+      },
     });
   }
 };

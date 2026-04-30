@@ -67,7 +67,10 @@ export const getDashboardCardsData = async (req: Request, res: Response) => {
     const [totalUsers, totalStores, totalOrders, totalDelivered] = await Promise.all([
       prisma.user.count(),
       prisma.vendor.count(),
-      prisma.order.count(),
+      prisma.order.count({
+        // Exclude orders that were created but had no items found
+        where: { orderStatus: { not: 'no_items_found' } }
+      }),
       prisma.order.count({ where: { orderStatus: { in: ['delivered', 'picked_up_by_customer'] } } }),
     ]);
 
@@ -167,7 +170,7 @@ export const getDashboardTimeframeStats = async (req: Request, res: Response) =>
       prisma.order.findMany({
         where: {
           createdAt: { gte: startDate },
-          orderStatus: { not: "cancelled_by_customer" }
+          orderStatus: { notIn: ["cancelled_by_customer", "no_items_found"] } // Exclude failed shopping orders
         },
         include: {
           orderItems: true
@@ -334,7 +337,7 @@ export const getDashboardAverageOrderValue = async (req: Request, res: Response)
     const orders = await prisma.order.findMany({
       where: {
         createdAt: { gte: startDate },
-        orderStatus: { not: 'cancelled_by_customer' }
+        orderStatus: { notIn: ['cancelled_by_customer', 'no_items_found'] } // Exclude failed shopping orders
       },
       select: { totalAmount: true }
     });

@@ -74,6 +74,22 @@ import { stripe } from '../services/transaction.service';
  *         description: Order or User not found.
  * components:
  *   schemas:
+ *     TransactionType:
+ *       type: string
+ *       enum: [ORDER_PAYMENT, REFUND, VENDOR_PAYOUT, DELIVERY_PAYOUT, TIP_PAYOUT, PLATFORM_FEE_COLLECTED, WALLET_TOP_UP, DEBIT, CREDIT]
+ *     TransactionSource:
+ *       type: string
+ *       enum: [STRIPE, WALLET, SYSTEM, BANK_TRANSFER, CASH]
+ *     TransactionStatus:
+ *       type: string
+ *       enum: [PENDING, COMPLETED, FAILED, CANCELLED]
+ *     RefundType:
+ *       type: string
+ *       enum: [FULL_REVERSAL, PARTIAL_REFUND]
+ *       description: >
+ *         Categorizes the reason for a refund to the frontend:
+ *         - `FULL_REVERSAL`: Entire budgeted amount returned (e.g. order cancelled, declined, or no items found).
+ *         - `PARTIAL_REFUND`: Refund for price differences after shopping or partial returns.
  *     Transaction:
  *       type: object
  *       properties:
@@ -83,10 +99,16 @@ import { stripe } from '../services/transaction.service';
  *         type: { $ref: '#/components/schemas/TransactionType' }
  *         source: { $ref: '#/components/schemas/TransactionSource' }
  *         status: { $ref: '#/components/schemas/TransactionStatus' }
- *         description: { type: string, nullable: true }
+ *         description: { type: string, nullable: true, description: "A human-readable reason for the transaction, e.g., 'Overpayment Refund for order #ABC123'." }
+ *         refundType:
+ *           $ref: '#/components/schemas/RefundType'
+ *           nullable: true
  *         orderId: { type: string, format: uuid }
  *         externalId: { type: string, nullable: true, description: "ID from the external payment provider (e.g., Stripe Payment Intent ID)." }
- *         meta: { type: object, nullable: true, description: "Additional metadata, such as payment details from Stripe." }
+ *         meta:
+ *           type: object
+ *           nullable: true
+ *           description: "Additional technical metadata. For refunds, display the `description` field to the user."
  *         createdAt: { type: string, format: date-time }
  *         updatedAt: { type: string, format: date-time }
  *     TransactionWithRelations:
