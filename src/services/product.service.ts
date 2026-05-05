@@ -81,6 +81,14 @@ export const createVendorProduct = async (payload: productModel.CreateVendorProd
     throw new Error('Unauthorized: You do not own this vendor.');
   }
 
+  // Inherit EBT eligibility from base product if not provided
+  if (payload.isEbtEligible === undefined) {
+    const baseProduct = await productModel.getProductById(payload.productId);
+    if (baseProduct) {
+      payload.isEbtEligible = baseProduct.isEbtEligible;
+    }
+  }
+
   const { images, ...productData } = payload;
   let processedImageUrls: string[] = [];
 
@@ -164,6 +172,7 @@ export const createVendorProductWithBarcode = async (payload: any, ownerId: stri
       isAgeRestricted: payload.isAgeRestricted,
       attributes: payload.attributes,
       meta: payload.meta,
+      isEbtEligible: payload.isEbtEligible,
       categoryIds: payload.categoryIds || [],
       tagIds: payload.tagIds || [],
     });

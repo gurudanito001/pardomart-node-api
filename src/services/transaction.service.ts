@@ -1,6 +1,6 @@
 import { PrismaClient, User, SavedPaymentMethod, Transaction, TransactionStatus, TransactionType, TransactionSource, PaymentStatus, Prisma, Role, OrderStatus, PaymentMethods } from '@prisma/client';
 import Stripe from 'stripe';
-import { OrderCreationError } from './order.service';
+import { OrderCreationError, recalculateOrderTotal } from './order.service';
 import * as transactionModel from '../models/transaction.model';
 
 import { sendEmail } from '../utils/email.util';
@@ -40,7 +40,7 @@ const findOrCreateStripeCustomer = async (user: User): Promise<string> => {
  * @param paymentType Optional payment type (e.g., 'card', 'ebt')
  * @returns An object containing the client_secret for the Payment Intent.
  */
-export const createPaymentIntentService = async (userId: string, orderId: string, paymentType?: string) => {
+export const createPaymentIntentService = async (userId: string, orderId: string, paymentType?: string, amount?: number) => {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) {
     throw new OrderCreationError('User not found.', 404);
@@ -60,8 +60,27 @@ export const createPaymentIntentService = async (userId: string, orderId: string
   }
 
   const stripeCustomerId = await findOrCreateStripeCustomer(user);
-  // Strictly charge the maximum authorized budget, falling back to totalAmount for older orders
-  const amountInCents = Math.round((order.budgetAmount ?? order.totalAmount) * 100);
+  
+  // Recalculate order totals to get the current ebtEligibleSubtotal
+  const recalculatedOrder = await recalculateOrderTotal(order.id);
+  
+  // Use provided amount (partial payment) or full budget (from recalculated order)
+  const chargeAmount = amount ?? (recalculatedOrder.budgetAmount ?? recalculatedOrder.totalAmount);
+  
+  // Validation check for card payments
+  if (paymentType === 'card') {
+    const nonEbtAmountRequired = recalculatedOrder.totalAmount - recalculatedOrder.ebtEligibleSubtotal;
+    // Use a small tolerance for floating point comparisons
+    if (chargeAmount < nonEbtAmountRequired - 0.01) {
+      throw new OrderCreationError(`Card payment amount must cover all non-EBT eligible items, fees, and tips. Required: $${nonEbtAmountRequired.toFixed(2)}`, 400);
+    }
+  } else if (paymentType === 'ebt') {
+    // EBT payment amount should not exceed the ebtEligibleSubtotal
+    if (chargeAmount > recalculatedOrder.ebtEligibleSubtotal + 0.01) {
+      throw new OrderCreationError(`EBT payment amount cannot exceed the EBT eligible subtotal. Max: $${recalculatedOrder.ebtEligibleSubtotal.toFixed(2)}`, 400);
+    }
+  }
+  const amountInCents = Math.round(chargeAmount * 100);
 
   const intentParams: Stripe.PaymentIntentCreateParams = {
     amount: amountInCents,
@@ -70,6 +89,7 @@ export const createPaymentIntentService = async (userId: string, orderId: string
     metadata: {
       orderId: order.id,
       userId: user.id,
+      paymentType: paymentType || 'card'
     },
   };
 
@@ -87,7 +107,7 @@ export const createPaymentIntentService = async (userId: string, orderId: string
   // before the first payment is complete. This updates the existing transaction record.
   await transactionModel.createTransaction({
     userId: user.id,
-    amount: -(order.budgetAmount ?? order.totalAmount), // Debiting the exact budgeted amount
+    amount: -chargeAmount, 
     type: TransactionType.ORDER_PAYMENT,
     source: TransactionSource.STRIPE,
     status: TransactionStatus.PENDING,
@@ -96,6 +116,7 @@ export const createPaymentIntentService = async (userId: string, orderId: string
     externalId: paymentIntent.id,
     meta: {
       client_secret: paymentIntent.client_secret,
+      paymentType: paymentType || 'card',
     },
   });
 
@@ -150,11 +171,23 @@ export const handleStripeWebhook = async (event: Stripe.Event) => {
         });
 
         if (updateResult.count > 0) {
-          // Update the order itself
-          await prisma.order.update({
-            where: { id: orderId },
-            data: { paymentStatus: PaymentStatus.paid },
-          });
+          // --- COLLATING PARTIAL PAYMENTS ---
+          const order = await prisma.order.findUnique({ where: { id: orderId } });
+          if (order) {
+            const successfulTxs = await prisma.transaction.findMany({
+              where: { orderId: order.id, status: TransactionStatus.COMPLETED, type: TransactionType.ORDER_PAYMENT }
+            });
+            
+            const totalPaid = successfulTxs.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+            const amountNeeded = order.budgetAmount ?? order.totalAmount;
+
+            if (totalPaid >= amountNeeded - 0.01) { // Floating point tolerance
+              await prisma.order.update({
+                where: { id: orderId },
+                data: { paymentStatus: PaymentStatus.paid },
+              });
+            }
+          }
           console.log(`✅ Payment for order ${orderId} succeeded.`);
         } else {
           console.log(`⏭️ Webhook event ${event.id} ignored: Transaction already completed.`);
@@ -791,7 +824,14 @@ export const simulatePaymentService = async (userId: string, orderId: string) =>
  * Universal helper function to cleanly process either a direct Stripe refund or a Wallet refund.
  * Includes mathematical guardrails to prevent over-refunding an order.
  */
-export const processRefundService = async (tx: Prisma.TransactionClient, order: any, refundAmount: number, description: string, refundType?: RefundType) => {
+export const processRefundService = async (
+  tx: Prisma.TransactionClient, 
+  order: any, 
+  refundAmount: number, 
+  description: string, 
+  refundType?: RefundType, 
+  paymentType: string = 'card'
+) => {
   if (refundAmount <= 0) return;
 
   // Guardrail: Prevent Over-Refunding by calculating existing refunds for this order
@@ -807,14 +847,30 @@ export const processRefundService = async (tx: Prisma.TransactionClient, order: 
   }
 
   if (order.paymentMethod === PaymentMethods.credit_card) {
-    const paymentTx = await tx.transaction.findFirst({
+    let paymentTx = await tx.transaction.findFirst({
       where: { 
         orderId: order.id, 
         type: TransactionType.ORDER_PAYMENT, 
         status: TransactionStatus.COMPLETED,
-        source: TransactionSource.STRIPE 
+        source: TransactionSource.STRIPE,
+        meta: {
+          path: ['paymentType'],
+          equals: paymentType
+        }
       }
     });
+
+    // Fallback for older orders where paymentType wasn't stored in meta
+    if (!paymentTx && paymentType === 'card') {
+      paymentTx = await tx.transaction.findFirst({
+        where: { 
+          orderId: order.id, 
+          type: TransactionType.ORDER_PAYMENT, 
+          status: TransactionStatus.COMPLETED,
+          source: TransactionSource.STRIPE 
+        }
+      });
+    }
     
     if (!paymentTx?.externalId) {
       throw new Error(`CRITICAL: Cannot process Stripe refund. No completed payment transaction found for Order #${order.orderCode}.`);

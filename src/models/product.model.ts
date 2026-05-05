@@ -16,6 +16,7 @@ export interface CreateProductPayload {
   tagIds?: string[];
   isAlcohol?: boolean;
   isAgeRestricted?: boolean;
+  isEbtEligible?: boolean;
   id?: string;
 }
 
@@ -36,6 +37,7 @@ export interface CreateVendorProductPayload {
   weight?: number;
   weightUnit?: string;
   isAlcohol?: boolean;
+  isEbtEligible?: boolean;
   isAgeRestricted?: boolean;
   meta?: any;
 }
@@ -58,6 +60,7 @@ export interface UpdateVendorProductPayload {
   weightUnit?: string;
   isAlcohol?: boolean;
   isAgeRestricted?: boolean;
+  isEbtEligible?: boolean;
   meta?: any;
 }
 
@@ -75,6 +78,7 @@ export interface UpdateProductBasePayload {
   tagIds?: string[];
   isActive?: boolean;
   isAlcohol?: boolean;
+  isEbtEligible?: boolean;
   isAgeRestricted?: boolean;
 }
 
@@ -141,6 +145,16 @@ export const getProductByBarcode = async (barcode: string): Promise<Product | nu
     },
   });
 };
+
+export const getProductById = async (id: string): Promise<Product | null> => {
+  return prisma.product.findUnique({
+    where: { id },
+    include: {
+      categories: true,
+      tags: true
+    },
+  });
+}
 
 export const getVendorProductByBarcode = async (barcode: string, vendorId: string): Promise<VendorProduct | null> => {
   return prisma.vendorProduct.findFirst({

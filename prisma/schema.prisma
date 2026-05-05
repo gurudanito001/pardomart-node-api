@@ -87,6 +87,7 @@ model Product {
   isAlcohol       Boolean         @default(false)
   isAgeRestricted Boolean         @default(false)
   tags            Tag[]
+  isEbtEligible   Boolean         @default(false)
   isActive        Boolean         @default(true)
   ratings         Rating[]
   bugReports      BugReport[]
@@ -120,6 +121,7 @@ model VendorProduct {
   cartItems              CartItem[]
   orderItems             OrderItem[]    @relation("originalProduct")
   replacementFor         OrderItem[]    @relation("replacementFor")
+  isEbtEligible          Boolean        @default(false)
   wishlistItems          WishlistItem[]
   chosenAsReplacementFor OrderItem[]    @relation("chosenReplacement")
   createdAt              DateTime       @default(now())
@@ -164,6 +166,7 @@ model OrderItem {
   instructions    String?
   purchasedPrice  Float?          // The locked-in price at the time of order creation
   replacementPrices Json?         // The locked-in prices of pre-selected and suggested replacements { "vendorProductId": price }
+  isEbtEligible   Boolean         @default(false)
   replacements    VendorProduct[] @relation("replacementFor")
 
   // Fields for live shopping
@@ -199,6 +202,8 @@ model Device {
 
   @@index([userId])
 }
+
+  
 
 model Order {
   id                      String                   @id @default(uuid())
@@ -357,6 +362,8 @@ model Vendor {
   ratings       Rating[]
   bugReports    BugReport[]
   ReturnRequest ReturnRequest[]
+
+  @@unique([name, address], name: "name_address_unique")
 }
 
 model VendorOpeningHours {

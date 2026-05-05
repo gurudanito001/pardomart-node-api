@@ -210,6 +210,7 @@ interface OrderItemInput {
   vendorProductId: string;
   quantity: number;
   price?: number; // Optional historical price lock
+  isEbtEligible?: boolean; // Optional historical eligibility lock
   replacementIds?: string[]; // Optional replacement IDs for budget calculation
 }
 
@@ -230,7 +231,8 @@ interface FeeCalculationResult {
   deliveryFee: number;
   serviceFee: number;
   totalEstimatedCost: number;
-  itemPrices: { vendorProductId: string; price: number }[];
+  ebtEligibleSubtotal: number;
+  itemPrices: { vendorProductId: string; price: number; isEbtEligible: boolean }[];
 }
 
 /**
@@ -280,8 +282,8 @@ export const calculateOrderFeesService = async (
 
     // --- 2. Fetch Necessary Data ---
     // Fetch vendor location
-    const vendor = await prismaClient.vendor.findUnique({
-      where: { id: vendorId },
+    const vendor = await prismaClient.vendor.findFirst({
+      where: { id: vendorId, isPublished: true },
       select: { latitude: true, longitude: true },
     });
     if (!vendor || vendor.latitude === null || vendor.longitude === null) {
@@ -315,20 +317,23 @@ export const calculateOrderFeesService = async (
         id: {
           in: Array.from(uniqueVendorProductIds),
         },
+        published: true, // Ensure only published products are considered for pricing and availability
       },
       select: {
         id: true,
         price: true,
         discountedPrice: true,
         isAvailable: true,
+        isEbtEligible: true,
       },
     });
 
     // Create a map for quick price lookup
-    const productDetailsMap = new Map<string, { price: number; isAvailable: boolean; }>();
+    const productDetailsMap = new Map<string, { price: number; isAvailable: boolean; isEbtEligible: boolean; }>();
     vendorProducts.forEach((vp) => productDetailsMap.set(vp.id, { 
       price: vp.discountedPrice ?? vp.price, 
-      isAvailable: vp.isAvailable 
+      isAvailable: vp.isAvailable,
+      isEbtEligible: vp.isEbtEligible ?? false
     }));
 
     // Fetch active fee configurations
@@ -349,17 +354,23 @@ export const calculateOrderFeesService = async (
     // --- 3. Calculate Subtotal & Total Item Count ---
     // And validate product availability
     let subtotal = 0;
+    let ebtEligibleSubtotal = 0;
     let totalItemCount = 0;
-    const itemPrices: { vendorProductId: string; price: number }[] = [];
+    const itemPrices: { vendorProductId: string; price: number; isEbtEligible: boolean }[] = [];
 
     for (const item of orderItems) {
       const productDetails = productDetailsMap.get(item.vendorProductId);
       let baseItemPrice = item.price;
+      let baseIsEbtEligible = item.isEbtEligible;
 
       // Use current catalog price if historical price wasn't explicitly provided
       if (baseItemPrice === undefined) {
         if (!productDetails) throw new Error(`Price not found for vendor product ID: ${item.vendorProductId}`);
         baseItemPrice = productDetails.price;
+      }
+
+      if (baseIsEbtEligible === undefined) {
+        baseIsEbtEligible = productDetails?.isEbtEligible ?? false;
       }
       
       let effectivePrice = baseItemPrice;
@@ -379,8 +390,16 @@ export const calculateOrderFeesService = async (
         throw new Error(`Product ID ${item.vendorProductId} is not available.`);
       }
       
-      itemPrices.push({ vendorProductId: item.vendorProductId, price: baseItemPrice }); // Always return the true base price to lock in
+      itemPrices.push({ 
+        vendorProductId: item.vendorProductId, 
+        price: baseItemPrice, 
+        isEbtEligible: baseIsEbtEligible
+      }); // Always return the true base price to lock in
       subtotal += effectivePrice * item.quantity; // Calculate the subtotal using the max budget price
+      
+      if (baseIsEbtEligible) {
+        ebtEligibleSubtotal += effectivePrice * item.quantity;
+      }
       totalItemCount += item.quantity;
     }
 
@@ -453,6 +472,7 @@ export const calculateOrderFeesService = async (
       deliveryFee,
       serviceFee,
       totalEstimatedCost: parseFloat(totalEstimatedCost.toFixed(2)),
+      ebtEligibleSubtotal: parseFloat(ebtEligibleSubtotal.toFixed(2)),
       itemPrices,
     };
   } catch (error: any) {

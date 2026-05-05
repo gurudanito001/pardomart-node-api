@@ -157,7 +157,7 @@ export const getOrderByIdService = async (
  * @param tx Optional Prisma transaction client.
  * @returns The updated Order object.
  */
-export const recalculateOrderTotal = async (orderId: string, tx?: Prisma.TransactionClient): Promise<Order> => {
+export const recalculateOrderTotal = async (orderId: string, tx?: Prisma.TransactionClient): Promise<Order & { ebtEligibleSubtotal: number }> => {
   const db = tx || prisma;
   const order = await db.order.findUnique({
     where: { id: orderId },
@@ -166,7 +166,7 @@ export const recalculateOrderTotal = async (orderId: string, tx?: Prisma.Transac
 
   if (!order) throw new OrderCreationError('Order not found for recalculation.', 404);
 
-  const activeItems: { vendorProductId: string; quantity: number, price?: number}[] = [];
+  const activeItems: { vendorProductId: string; quantity: number; price?: number; isEbtEligible?: boolean }[] = [];
 
   for (const item of order.orderItems) {
     if (item.status === OrderItemStatus.NOT_FOUND) {
@@ -179,7 +179,8 @@ export const recalculateOrderTotal = async (orderId: string, tx?: Prisma.Transac
         activeItems.push({
           vendorProductId: item.chosenReplacementId,
           quantity: item.quantityFound ?? item.quantity,
-          price: lockedRepPrice // Use the locked replacement price from the JSON map
+          price: lockedRepPrice, // Use the locked replacement price from the JSON map
+          isEbtEligible: item.isEbtEligible
         });
       }
       // If REPLACED but rejected or pending approval, we omit it to prevent overcharging
@@ -188,7 +189,8 @@ export const recalculateOrderTotal = async (orderId: string, tx?: Prisma.Transac
       activeItems.push({
         vendorProductId: item.vendorProductId,
         quantity: item.quantityFound ?? item.quantity,
-        price: item.purchasedPrice ?? undefined // Pass the locked price back to the fee service
+        price: item.purchasedPrice ?? undefined, // Pass the locked price back to the fee service
+        isEbtEligible: item.isEbtEligible
       });
     }
   }
@@ -200,11 +202,11 @@ export const recalculateOrderTotal = async (orderId: string, tx?: Prisma.Transac
     deliveryAddressId: order.deliveryAddressId || undefined,
     deliveryType: order.deliveryMethod || undefined,
     skipAvailabilityCheck: true, // Prevent mid-shopping catalog stock changes from crashing the recalculation
-  }, db) : { subtotal: 0, shoppingFee: 0, deliveryFee: 0, serviceFee: 0 };
+  }, db) : { subtotal: 0, shoppingFee: 0, deliveryFee: 0, serviceFee: 0, ebtEligibleSubtotal: 0 };
 
   const finalTotalAmount = feesResult.subtotal + feesResult.shoppingFee + feesResult.deliveryFee + feesResult.serviceFee + (order.shopperTip || 0) + (order.deliveryPersonTip || 0);
 
-  return db.order.update({
+  const updatedOrder = await db.order.update({
     where: { id: orderId },
     data: {
       subtotal: feesResult.subtotal,
@@ -214,6 +216,8 @@ export const recalculateOrderTotal = async (orderId: string, tx?: Prisma.Transac
       totalAmount: finalTotalAmount,
     }
   });
+
+  return { ...updatedOrder, ebtEligibleSubtotal: feesResult.ebtEligibleSubtotal };
 };
 
 /**
@@ -360,7 +364,7 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
       shoppingStartTime = parsedScheduledDeliveryTime.subtract(1, 'hour').toDate();
     }
 
-    const vendor = await getVendorById(vendorId);
+    const vendor = await getVendorById(vendorId, undefined, undefined, true);
     if (!vendor) throw new OrderCreationError('Vendor not found.', 404);
     if (!vendor.timezone) console.warn(`Vendor ${vendorId} does not have a timezone set. Skipping time validation.`);
 
@@ -407,7 +411,7 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
   const replacementPriceMap = new Map<string, number>();
   if (allReplacementIds.size > 0) {
     const replacementProducts = await prisma.vendorProduct.findMany({
-      where: { id: { in: Array.from(allReplacementIds) } },
+      where: { id: { in: Array.from(allReplacementIds) }, published: true }, // Ensure only published replacements are considered
       select: { id: true, price: true, discountedPrice: true }
     });
     replacementProducts.forEach(p => replacementPriceMap.set(p.id, p.discountedPrice ?? p.price));
@@ -421,6 +425,9 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
     deliveryAddressId: shippingAddressId!,
     deliveryType: deliveryMethod,
     useMaxPricesForBudget,
+    // IMPORTANT: The calculateOrderFeesService (in fee.service.ts) must also be updated
+    // to ensure that it only considers 'published: true' products when validating
+    // the initial orderItems and fetching their prices.
   });
 
   const { subtotal, deliveryFee, serviceFee, shoppingFee } = fees;
@@ -468,7 +475,9 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
     }, tx);
 
     // --- Extract the prices returned from the fee service to lock them in ---
-    const priceMap = new Map(fees.itemPrices.map(ip => [ip.vendorProductId, ip.price]));
+    const itemDetailsMap = new Map(
+      fees.itemPrices.map((ip) => [ip.vendorProductId, { price: ip.price, isEbtEligible: ip.isEbtEligible }])
+    );
 
     // --- 6. Create the OrderItem records ---
     for (const item of orderItems) {
@@ -484,11 +493,14 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
         });
       }
 
+      const details = itemDetailsMap.get(item.vendorProductId);
+
       await tx.orderItem.create({
         data: {
           orderId: newOrder.id,
           vendorProductId: item.vendorProductId,
-          purchasedPrice: priceMap.get(item.vendorProductId), // Lock in the historical price
+          purchasedPrice: details?.price, // Lock in the historical price
+          isEbtEligible: details?.isEbtEligible ?? false, // Lock in EBT eligibility
           replacementPrices: Object.keys(replacementPrices).length > 0 ? replacementPrices : undefined,
           quantity: item.quantity,
           instructions: item.instructions,
@@ -875,7 +887,7 @@ export const getAvailableDeliverySlots = async (
   vendorId: string,
   deliveryMethod: DeliveryMethod
 ): Promise<TimeSlot[]> => {
-  const vendor = await getVendorById(vendorId);
+  const vendor = await getVendorById(vendorId, undefined, undefined, true);
   if (!vendor || !vendor.openingHours || vendor.openingHours.length === 0) {
     throw new OrderCreationError('Vendor not found or has no opening hours defined.', 404);
   }
@@ -1175,7 +1187,13 @@ export const declineOrderService = async (
 
     // 2. Refund the customer via original payment method
     if (orderToDecline.paymentStatus === PaymentStatus.paid) {
-      await processRefundService(tx, orderToDecline, orderToDecline.totalAmount, `Refund for declined order #${orderToDecline.orderCode}`, RefundType.FULL_REVERSAL);
+      const successfulTxs = await tx.transaction.findMany({
+        where: { orderId: orderToDecline.id, status: TransactionStatus.COMPLETED, type: TransactionType.ORDER_PAYMENT }
+      });
+      for (const t of successfulTxs) {
+        const tPaymentType = (t.meta as any)?.paymentType || 'card';
+        await processRefundService(tx, orderToDecline, Math.abs(t.amount), `Refund for declined order #${orderToDecline.orderCode}`, RefundType.FULL_REVERSAL, tPaymentType);
+      }
     }
 
     // 4. Update the order status to declined
@@ -1316,7 +1334,7 @@ const areAllOrderItemsNotFound = async (orderId: string, tx: Prisma.TransactionC
  * Terminal failure flow when shopping yields zero items.
  * Resets fees, handles refunds, and updates order to a closed failure state.
  */
-const handleNoItemsFoundOrder = async (orderId: string, shopperId: string, tx: Prisma.TransactionClient): Promise<Order> => {
+const handleNoItemsFoundOrder = async (orderId: string, shopperId: string, tx: Prisma.TransactionClient): Promise<Order & { ebtEligibleSubtotal: number }> => {
   const order = await tx.order.findUnique({
     where: { id: orderId },
     include: { vendor: true }
@@ -1324,14 +1342,18 @@ const handleNoItemsFoundOrder = async (orderId: string, shopperId: string, tx: P
 
   if (!order) throw new OrderCreationError('Order not found for terminal failure handling.', 404);
 
-  // Determine the amount to refund: In a terminal failure, we refund the full BUDGETED amount
-  // that was captured/authorized, as the current totalAmount has likely been recalculated to zero.
-  const fullReversalAmount = order.budgetAmount ?? order.totalAmount;
-
   // 1. Process Refund/Cancellation if payment was already paid
   if (order.paymentStatus === PaymentStatus.paid) {
-    // Process a full reversal for digital payments (Stripe or Wallet)
-    await processRefundService(tx, order, fullReversalAmount, `Refund for order #${order.orderCode} - No items found during shopping.`, RefundType.FULL_REVERSAL);
+    // Find all successful payment transactions for this order to perform a full reversal on each
+    const successfulTxs = await tx.transaction.findMany({
+      where: { orderId: order.id, status: TransactionStatus.COMPLETED, type: TransactionType.ORDER_PAYMENT }
+    });
+
+    for (const t of successfulTxs) {
+      const tPaymentType = (t.meta as any)?.paymentType || 'card';
+      // Refund each transaction individually to its original source (EBT or Card)
+      await processRefundService(tx, order, Math.abs(t.amount), `Full reversal for order #${order.orderCode} (No items found during shopping)`, RefundType.FULL_REVERSAL, tPaymentType);
+    }
   }
 
   // 2. Update Order to terminal failure state with zeroed fees and tips
@@ -1399,7 +1421,7 @@ const handleNoItemsFoundOrder = async (orderId: string, shopperId: string, tx: P
     });
   }
 
-  return updatedOrder;
+  return { ...updatedOrder, ebtEligibleSubtotal: 0 };
 };
 
 
@@ -1435,6 +1457,21 @@ export const updateOrderItemShoppingStatusService = async (
   if (!order) { throw new OrderCreationError('Order not found.', 404); }
   if (!requestingUser) { throw new OrderCreationError('Requesting user not found.', 404); }
 
+  // Check for terminal status - cannot update items once shopping is finalized or order is closed.
+  const terminalStatuses = [
+    OrderStatus.ready_for_pickup,
+    OrderStatus.ready_for_delivery,
+    OrderStatus.delivered,
+    OrderStatus.picked_up_by_customer,
+    OrderStatus.declined_by_vendor,
+    OrderStatus.cancelled_by_customer,
+    OrderStatus.no_items_found
+  ] as OrderStatus[];
+  
+  if (terminalStatuses.includes(order.orderStatus)) {
+    throw new OrderCreationError(`Cannot update items for an order with status '${order.orderStatus}'.`, 403);
+  }
+
   // 2. Authorize the request
   const isAssignedShopperByVendor = order.shoppingMethod === 'vendor' && order.shopperId === shopperId;
   const isAssignedShopperAsDeliveryPerson = order.shoppingMethod === 'delivery_person' && order.shopperId === shopperId;
@@ -1456,7 +1493,7 @@ export const updateOrderItemShoppingStatusService = async (
     throw new OrderCreationError('quantityFound is required when status is FOUND.');
   }
 
-  const { updatedItem, updatedOrder } = await prisma.$transaction(async (tx) => {
+  const { updatedItem, updatedOrder, shouldNotifyOriginalFound } = await prisma.$transaction(async (tx) => {
     // Automatically update order status to currently_shopping if it isn't already
     if (order.orderStatus !== OrderStatus.currently_shopping) {
       await tx.order.update({
@@ -1473,13 +1510,14 @@ export const updateOrderItemShoppingStatusService = async (
 
     // Handle ad-hoc replacement via barcode or explicit ID
     let newReplacementPrice: number | undefined;
+    let newReplacementEbtEligible: boolean | undefined;
     let actualChosenReplacementId = chosenReplacementId;
 
     if (actualChosenReplacementId || replacementBarcode) {
       if (!actualChosenReplacementId && replacementBarcode) {
         const vendorProduct = await tx.vendorProduct.findFirst({
-          where: { vendorId: order.vendorId, product: { barcode: replacementBarcode } },
-          select: { id: true, price: true, discountedPrice: true }
+          where: { vendorId: order.vendorId, product: { barcode: replacementBarcode }, published: true }, // Only allow published products as replacements
+          select: { id: true, price: true, discountedPrice: true, isEbtEligible: true }
         });
     
         if (!vendorProduct) {
@@ -1487,23 +1525,30 @@ export const updateOrderItemShoppingStatusService = async (
         }
         actualChosenReplacementId = vendorProduct.id;
         newReplacementPrice = vendorProduct.discountedPrice ?? vendorProduct.price;
+        newReplacementEbtEligible = vendorProduct.isEbtEligible;
       } else if (actualChosenReplacementId) {
         // The shopper selected the ID directly (or the frontend sent a pre-selected fallback)
-        const vendorProduct = await tx.vendorProduct.findUnique({
-          where: { id: actualChosenReplacementId },
-          select: { price: true, discountedPrice: true }
+        const vendorProduct = await tx.vendorProduct.findFirst({ // Changed to findFirst to allow adding 'published' to where clause
+          where: { id: actualChosenReplacementId, published: true }, // Only allow published products as replacements
+          select: { price: true, discountedPrice: true, isEbtEligible: true }
         });
         if (!vendorProduct) throw new OrderCreationError(`Replacement product not found.`);
         newReplacementPrice = vendorProduct.discountedPrice ?? vendorProduct.price;
+        newReplacementEbtEligible = vendorProduct.isEbtEligible;
       }
     }
 
     // Retrieve existing replacement prices to merge in any new ad-hoc suggestions
     const currentItem = await tx.orderItem.findUnique({ 
       where: { id: itemId },
-      include: { replacements: { select: { id: true } } } 
+      include: { 
+        replacements: { select: { id: true } },
+        vendorProduct: { select: { isEbtEligible: true } }
+      } 
     });
     let updatedReplacementPrices = (currentItem?.replacementPrices && typeof currentItem.replacementPrices === 'object') ? (currentItem.replacementPrices as Record<string, number>) : {};
+
+    const wasPreviouslyMissing = currentItem?.status === OrderItemStatus.NOT_FOUND || currentItem?.status === OrderItemStatus.REPLACED;
     
     let isPreApproved = false;
     if (actualChosenReplacementId && currentItem?.replacements) {
@@ -1534,13 +1579,19 @@ export const updateOrderItemShoppingStatusService = async (
       finalStatus = OrderItemStatus.NOT_FOUND; // Failsafe
     }
   
+    // If finding the original item, we must clear any previous replacement data and restore original EBT status
+    const isFindingOriginal = finalStatus === OrderItemStatus.FOUND || finalStatus === OrderItemStatus.PENDING;
+
     const item = await tx.orderItem.update({
       where: { id: itemId }, 
       data: {
         status: finalStatus,
         quantityFound,
-        chosenReplacementId: actualChosenReplacementId,
-        isReplacementApproved: actualChosenReplacementId ? (isPreApproved ? true : null) : undefined, 
+        chosenReplacementId: actualChosenReplacementId ?? (isFindingOriginal ? null : undefined),
+        isReplacementApproved: actualChosenReplacementId ? (isPreApproved ? true : null) : (isFindingOriginal ? null : undefined),
+        isEbtEligible: (actualChosenReplacementId && isPreApproved && newReplacementEbtEligible !== undefined) 
+          ? newReplacementEbtEligible 
+          : (isFindingOriginal ? (currentItem?.vendorProduct?.isEbtEligible ?? false) : undefined),
         replacementPrices: Object.keys(updatedReplacementPrices).length > 0 ? updatedReplacementPrices : undefined,
       },
       include: {
@@ -1563,7 +1614,11 @@ export const updateOrderItemShoppingStatusService = async (
       recalculatedOrder = await handleNoItemsFoundOrder(orderId, shopperId, tx);
     }
 
-    return { updatedItem: item, updatedOrder: recalculatedOrder };
+    return { 
+      updatedItem: item, 
+      updatedOrder: recalculatedOrder, 
+      shouldNotifyOriginalFound: wasPreviouslyMissing && isFindingOriginal 
+    };
   });
 
   // Emit real-time update to the customer
@@ -1572,6 +1627,17 @@ export const updateOrderItemShoppingStatusService = async (
     // The room is the orderId. The customer and shopper should be in this room.
     io.to(orderId).emit('order_item_updated', updatedItem);
     io.to(orderId).emit('order_total_updated', updatedOrder);
+
+    if (shouldNotifyOriginalFound) {
+      await notificationService.createNotification({
+        userId: order.userId,
+        type: NotificationType.ACCOUNT_UPDATE,
+        category: NotificationCategory.ORDER,
+        title: 'Original Item Found!',
+        body: `Good news! Your shopper found the original item: ${updatedItem.vendorProduct.name}.`,
+        meta: { orderId, itemId }
+      });
+    }
   } catch (error: any) {
     if (error.message === 'Socket.IO not initialized!') {
       console.warn('Socket.IO warning: Real-time update not sent. Socket.IO is not initialized.');
@@ -1815,7 +1881,21 @@ export const verifyPickupOtpService = async (
       // Recalculate one final time to guarantee absolute accuracy based on the delivered cart reality
       const finalOrder = await recalculateOrderTotal(orderId, tx);
 
+      // --- CALCULATE PAYMENT SPLIT ---
+      const successfulTxs = await tx.transaction.findMany({
+        where: { orderId: order.id, status: TransactionStatus.COMPLETED, type: TransactionType.ORDER_PAYMENT }
+      });
+
+      const ebtPaid = successfulTxs.filter(t => (t.meta as any)?.paymentType === 'ebt').reduce((sum, t) => sum + Math.abs(t.amount), 0);
+      const cardPaid = successfulTxs.filter(t => (t.meta as any)?.paymentType !== 'ebt').reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+      const ebtRequired = finalOrder.ebtEligibleSubtotal;
+      const ebtAmountUsed = Math.min(ebtPaid, ebtRequired);
+      
       const vendorAmount = finalOrder.subtotal;
+      const vendorEbtPortion = ebtAmountUsed;
+      const vendorCardPortion = parseFloat((vendorAmount - vendorEbtPortion).toFixed(2));
+
       if (vendorAmount > 0 && order.vendor.userId) {
         await tx.wallet.upsert({
           where: { vendorId: order.vendorId },
@@ -1832,6 +1912,11 @@ export const verifyPickupOtpService = async (
             status: TransactionStatus.COMPLETED,
             description: `Payment for order #${order.orderCode}`,
             orderId: order.id,
+            meta: {
+              ebtPortion: vendorEbtPortion,
+              cardPortion: vendorCardPortion,
+              paymentType: vendorEbtPortion > 0 ? (vendorCardPortion > 0 ? 'split' : 'ebt') : 'card'
+            }
           },
         });
       }
@@ -1872,13 +1957,19 @@ export const verifyPickupOtpService = async (
         });
       }
 
-      // Automated Partial Refund (Post-Delivery Reconciliation)
-      const initialPaidAmount = finalOrder.budgetAmount ?? order.totalAmount;
-      const overpayment = initialPaidAmount - finalOrder.totalAmount;
+      // --- SPLIT OVERPAYMENT RECONCILIATION ---
+      if (order.paymentStatus === PaymentStatus.paid && order.paymentMethod !== PaymentMethods.cash) {
+        const cardRequired = parseFloat((finalOrder.totalAmount - ebtAmountUsed).toFixed(2));
 
-      // Only refund overpayments if the order was paid upfront digitally
-      if (overpayment > 0 && order.paymentStatus === PaymentStatus.paid) {
-        await processRefundService(tx, order, overpayment, `Overpayment Refund for order #${order.orderCode}`, RefundType.PARTIAL_REFUND);
+        const ebtOverpayment = parseFloat((ebtPaid - ebtAmountUsed).toFixed(2));
+        const cardOverpayment = parseFloat((cardPaid - cardRequired).toFixed(2));
+
+        if (ebtOverpayment > 0.01) {
+          await processRefundService(tx, order, ebtOverpayment, `Overpayment Refund (EBT) for order #${order.orderCode}`, RefundType.PARTIAL_REFUND, 'ebt');
+        }
+        if (cardOverpayment > 0.01) {
+          await processRefundService(tx, order, cardOverpayment, `Overpayment Refund (Card) for order #${order.orderCode}`, RefundType.PARTIAL_REFUND, 'card');
+        }
       }
     }
 
@@ -2030,8 +2121,22 @@ export const adminUpdateOrderService = async (
       // Recalculate one final time to guarantee payout accuracy
       const finalOrder = await recalculateOrderTotal(orderId, tx);
       
-      // 1. Pay Vendor
+      // --- CALCULATE PAYMENT SPLIT ---
+      const successfulTxs = await tx.transaction.findMany({
+        where: { orderId: order.id, status: TransactionStatus.COMPLETED, type: TransactionType.ORDER_PAYMENT }
+      });
+
+      const ebtPaid = successfulTxs.filter(t => (t.meta as any)?.paymentType === 'ebt').reduce((sum, t) => sum + Math.abs(t.amount), 0);
+      const cardPaid = successfulTxs.filter(t => (t.meta as any)?.paymentType !== 'ebt').reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+      const ebtRequired = finalOrder.ebtEligibleSubtotal;
+      const ebtAmountUsed = Math.min(ebtPaid, ebtRequired);
+
       const vendorAmount = finalOrder.subtotal;
+      const vendorEbtPortion = ebtAmountUsed;
+      const vendorCardPortion = parseFloat((vendorAmount - vendorEbtPortion).toFixed(2));
+
+      // 1. Pay Vendor
       if (vendorAmount > 0 && order.vendor.userId) {
         await tx.wallet.upsert({
           where: { vendorId: order.vendorId },
@@ -2048,6 +2153,11 @@ export const adminUpdateOrderService = async (
             status: TransactionStatus.COMPLETED,
             description: `Payout for order #${order.orderCode}`,
             orderId: order.id,
+            meta: {
+              ebtPortion: vendorEbtPortion,
+              cardPortion: vendorCardPortion,
+              paymentType: vendorEbtPortion > 0 ? (vendorCardPortion > 0 ? 'split' : 'ebt') : 'card'
+            }
           }
         });
       }
@@ -2068,6 +2178,7 @@ export const adminUpdateOrderService = async (
             status: TransactionStatus.COMPLETED,
             description: `Tip for order #${order.orderCode}`,
             orderId: order.id,
+            meta: { paymentType: 'card' } // Tips are always from Card/Cash
           },
         });
       }
@@ -2094,6 +2205,7 @@ export const adminUpdateOrderService = async (
               status: TransactionStatus.COMPLETED,
               description: `Tip for order #${order.orderCode}`,
               orderId: order.id,
+              meta: { paymentType: 'card' }
             },
           });
         }
@@ -2108,6 +2220,7 @@ export const adminUpdateOrderService = async (
               status: TransactionStatus.COMPLETED,
               description: `Delivery fee for order #${order.orderCode}`,
               orderId: order.id,
+              meta: { paymentType: 'card' }
             },
           });
         }
@@ -2125,34 +2238,26 @@ export const adminUpdateOrderService = async (
             status: TransactionStatus.COMPLETED,
             description: `Platform fees collected for order #${order.orderCode}`,
             orderId: order.id,
+            meta: { paymentType: 'card' }
           },
         });
       }
 
-      // Automated Partial Refund (Post-Delivery Reconciliation)
-      const initialPaidAmount = finalOrder.budgetAmount ?? order.totalAmount;
-      const overpayment = initialPaidAmount - finalOrder.totalAmount;
+      // --- SPLIT OVERPAYMENT RECONCILIATION ---
+      if (order.paymentStatus === PaymentStatus.paid && order.paymentMethod !== PaymentMethods.cash) {
+        const cardRequired = parseFloat((finalOrder.totalAmount - ebtAmountUsed).toFixed(2));
 
-      // Only refund overpayments if the order was paid upfront digitally
-      if (overpayment > 0 && order.paymentMethod !== PaymentMethods.cash && order.paymentStatus === PaymentStatus.paid) {
-        await tx.wallet.upsert({
-          where: { userId: order.userId },
-          create: { userId: order.userId, balance: overpayment },
-          update: { balance: { increment: overpayment } }
-        });
-        await tx.transaction.create({
-          data: {
-            userId: order.userId,
-            amount: overpayment,
-            type: TransactionType.REFUND,
-            source: TransactionSource.SYSTEM,
-            status: TransactionStatus.COMPLETED,
-            description: `Overpayment Refund for order #${order.orderCode}`,
-            orderId: order.id,
-          },
-        });
+        const ebtOverpayment = parseFloat((ebtPaid - ebtAmountUsed).toFixed(2));
+        const cardOverpayment = parseFloat((cardPaid - cardRequired).toFixed(2));
+
+        if (ebtOverpayment > 0.01) {
+          await processRefundService(tx, order, ebtOverpayment, `Overpayment Refund (EBT) for order #${order.orderCode}`, RefundType.PARTIAL_REFUND, 'ebt');
+        }
+        if (cardOverpayment > 0.01) {
+          await processRefundService(tx, order, cardOverpayment, `Overpayment Refund (Card) for order #${order.orderCode}`, RefundType.PARTIAL_REFUND, 'card');
+        }
       }
-
+      
       // 2. Update the order with all the admin's changes
       // If status changed, log it
       if (updates.orderStatus) {
@@ -2173,7 +2278,13 @@ export const adminUpdateOrderService = async (
     (updates.orderStatus === OrderStatus.cancelled_by_customer || updates.orderStatus === OrderStatus.declined_by_vendor) &&
     order.paymentStatus === PaymentStatus.paid
   ) { // This is a full reversal
-    await processRefundService(prisma, order, order.totalAmount, `Refund for cancelled order #${order.orderCode}`, RefundType.FULL_REVERSAL);
+    const successfulTxs = await prisma.transaction.findMany({
+      where: { orderId: order.id, status: TransactionStatus.COMPLETED, type: TransactionType.ORDER_PAYMENT }
+    });
+    for (const t of successfulTxs) {
+      const tPaymentType = (t.meta as any)?.paymentType || 'card';
+      await processRefundService(prisma, order, Math.abs(t.amount), `Refund for order #${order.orderCode} (Admin/Customer Action)`, RefundType.FULL_REVERSAL, tPaymentType);
+    }
     updates.paymentStatus = PaymentStatus.refunded;
   }
 
@@ -2439,8 +2550,22 @@ export const completeDeliveryService = async (
     // Recalculate one final time to ensure absolute payout accuracy based on the delivered cart reality
     const finalOrder = await recalculateOrderTotal(orderId, tx);
     
-    // 1. Pay Vendor
+    // --- CALCULATE PAYMENT SPLIT ---
+    const successfulTxs = await tx.transaction.findMany({
+      where: { orderId: order.id, status: TransactionStatus.COMPLETED, type: TransactionType.ORDER_PAYMENT }
+    });
+
+    const ebtPaid = successfulTxs.filter(t => (t.meta as any)?.paymentType === 'ebt').reduce((sum, t) => sum + Math.abs(t.amount), 0);
+    const cardPaid = successfulTxs.filter(t => (t.meta as any)?.paymentType !== 'ebt').reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+    const ebtRequired = finalOrder.ebtEligibleSubtotal;
+    const ebtAmountUsed = Math.min(ebtPaid, ebtRequired);
+
     const vendorAmount = finalOrder.subtotal;
+    const vendorEbtPortion = ebtAmountUsed;
+    const vendorCardPortion = parseFloat((vendorAmount - vendorEbtPortion).toFixed(2));
+
+    // 1. Pay Vendor
     if (vendorAmount > 0 && order.vendor.userId) {
       await tx.wallet.upsert({
         where: { vendorId: order.vendorId },
@@ -2457,6 +2582,11 @@ export const completeDeliveryService = async (
           status: TransactionStatus.COMPLETED,
           description: `Payment for order #${order.orderCode}`,
           orderId: order.id,
+          meta: {
+            ebtPortion: vendorEbtPortion,
+            cardPortion: vendorCardPortion,
+            paymentType: vendorEbtPortion > 0 ? (vendorCardPortion > 0 ? 'split' : 'ebt') : 'card'
+          }
         },
       });
     }
@@ -2477,6 +2607,7 @@ export const completeDeliveryService = async (
           status: TransactionStatus.COMPLETED,
           description: `Tip for order #${order.orderCode}`,
           orderId: order.id,
+          meta: { paymentType: 'card' }
         },
       });
     }
@@ -2503,6 +2634,7 @@ export const completeDeliveryService = async (
             status: TransactionStatus.COMPLETED,
             description: `Tip for order #${order.orderCode}`,
             orderId: order.id,
+            meta: { paymentType: 'card' }
           },
         });
       }
@@ -2517,6 +2649,7 @@ export const completeDeliveryService = async (
             status: TransactionStatus.COMPLETED,
             description: `Delivery fee for order #${order.orderCode}`,
             orderId: order.id,
+            meta: { paymentType: 'card' }
           },
         });
       }
@@ -2534,17 +2667,24 @@ export const completeDeliveryService = async (
           status: TransactionStatus.COMPLETED,
           description: `Platform fees collected for order #${order.orderCode}`,
           orderId: order.id,
+          meta: { paymentType: 'card' }
         },
       });
     }
 
-    // 5. Automated Partial Refund (Post-Delivery Reconciliation)
-    const initialPaidAmount = finalOrder.budgetAmount ?? order.totalAmount;
-    const overpayment = initialPaidAmount - finalOrder.totalAmount;
+    // --- SPLIT OVERPAYMENT RECONCILIATION ---
+    if (order.paymentStatus === PaymentStatus.paid && order.paymentMethod !== PaymentMethods.cash) {
+      const cardRequired = parseFloat((finalOrder.totalAmount - ebtAmountUsed).toFixed(2));
 
-    // Only refund overpayments if the order was paid upfront digitally
-    if (overpayment > 0 && order.paymentStatus === PaymentStatus.paid) {
-        await processRefundService(tx, order, overpayment, `Overpayment Refund for order #${order.orderCode}`, RefundType.PARTIAL_REFUND);
+      const ebtOverpayment = parseFloat((ebtPaid - ebtAmountUsed).toFixed(2));
+      const cardOverpayment = parseFloat((cardPaid - cardRequired).toFixed(2));
+
+      if (ebtOverpayment > 0.01) {
+        await processRefundService(tx, order, ebtOverpayment, `Overpayment Refund (EBT) for order #${order.orderCode}`, RefundType.PARTIAL_REFUND, 'ebt');
+      }
+      if (cardOverpayment > 0.01) {
+        await processRefundService(tx, order, cardOverpayment, `Overpayment Refund (Card) for order #${order.orderCode}`, RefundType.PARTIAL_REFUND, 'card');
+      }
     }
 
     // 6. Update Order and History

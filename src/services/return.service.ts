@@ -1,4 +1,4 @@
-import { PrismaClient, ReturnStatus, Role, NotificationType, NotificationCategory } from '@prisma/client';
+import { PrismaClient, ReturnStatus, Role, NotificationType, NotificationCategory, RefundType } from '@prisma/client';
 import { OrderCreationError } from './order.service';
 import * as walletService from './wallet.service';
 import * as notificationService from './notification.service';
@@ -62,13 +62,15 @@ export const createReturnRequestService = async (userId: string, payload: Create
       throw new OrderCreationError(`Return quantity for ${orderItem.vendorProduct.name} exceeds ordered quantity.`, 400);
     }
 
-    const itemPrice = orderItem.vendorProduct.discountedPrice ?? orderItem.vendorProduct.price;
+    // Use snapshotted purchasedPrice and isEbtEligible from the OrderItem
+    const itemPrice = orderItem.purchasedPrice ?? (orderItem.vendorProduct.discountedPrice ?? orderItem.vendorProduct.price);
     refundAmount += itemPrice * item.quantity;
     returnItemsData.push({
       vendorProductId: item.vendorProductId,
       name: orderItem.vendorProduct.name,
       quantity: item.quantity,
       price: itemPrice,
+      isEbtEligible: orderItem.isEbtEligible, // Snapshot eligibility in return metadata
       reason: item.reason
     });
   }
@@ -114,12 +116,25 @@ export const updateReturnRequestStatusService = async (requestId: string, status
 
     // If approving refund, process universal refund (Stripe or Wallet)
     if (status === ReturnStatus.REFUNDED && returnRequest.status !== ReturnStatus.REFUNDED) {
-      await processRefundService(
-        tx, 
-        returnRequest.order, 
-        returnRequest.refundAmount, 
-        `Refund for Return Request #${returnRequest.id.substring(0, 8)}`
-      );
+      const items = returnRequest.items as any[];
+      let ebtTotal = 0;
+      let cardTotal = 0;
+
+      // Calculate the split based on the metadata stored during creation
+      items.forEach(item => {
+        if (item.isEbtEligible) {
+          ebtTotal += item.price * item.quantity;
+        } else {
+          cardTotal += item.price * item.quantity;
+        }
+      });
+
+      if (ebtTotal > 0) {
+        await processRefundService(tx, returnRequest.order, ebtTotal, `EBT Refund for Return #${returnRequest.id.substring(0, 8)}`, RefundType.PARTIAL_REFUND, 'ebt');
+      }
+      if (cardTotal > 0) {
+        await processRefundService(tx, returnRequest.order, cardTotal, `Card Refund for Return #${returnRequest.id.substring(0, 8)}`, RefundType.PARTIAL_REFUND, 'card');
+      }
     }
 
     return await tx.returnRequest.update({

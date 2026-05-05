@@ -1,6 +1,7 @@
 // services/vendor.service.ts
 import * as vendorModel from '../models/vendor.model';
 import * as userModel from '../models/user.model';
+import { Prisma } from '@prisma/client';
 import { Vendor, User, Role, OrderStatus } from '@prisma/client';
 import { uploadMedia } from './media.service';
 import { getAggregateRatingService, getAggregateRatingsForVendorsService } from './rating.service';
@@ -49,58 +50,73 @@ const sanitizeUser = (user: User): Omit<User, 'rememberToken'> => {
 export const createVendor = async (payload: vendorModel.CreateVendorPayload): Promise<Vendor> => {
   const { image, ...vendorData } = payload;
 
-  // Use a transaction to ensure both vendor and wallet are created or neither.
-  const newVendor = await prisma.$transaction(async (tx) => {
-    // 1. Create the Vendor using the existing model function, but within the transaction
-    const vendor = await vendorModel.createVendor(vendorData, tx);
+  try {
+    // Use a transaction to ensure both vendor and wallet are created or neither.
+    const newVendor = await prisma.$transaction(async (tx) => {
+      // 1. Create the Vendor using the existing model function, but within the transaction
+      const vendor = await vendorModel.createVendor(vendorData, tx);
 
-    // 2. Create a Wallet and link it to the new Vendor
-    await tx.wallet.create({
-      data: {
-        vendorId: vendor.id,
-      },
+      // 2. Create a Wallet and link it to the new Vendor
+      await tx.wallet.create({
+        data: {
+          vendorId: vendor.id,
+        },
+      });
+
+      return vendor;
     });
 
-    return vendor;
-  });
+    // 3. Handle image upload outside the main transaction.
+    // If this fails, the vendor and wallet still exist, which is acceptable.
+    if (image) {
+      try {
+        const imageBuffer = Buffer.from(image, 'base64');
+        const mockFile: Express.Multer.File = {
+          fieldname: 'image',
+          originalname: `${newVendor.id}-store-image.jpg`,
+          encoding: '7bit',
+          mimetype: 'image/jpeg',
+          buffer: imageBuffer,
+          size: imageBuffer.length,
+          stream: new (require('stream').Readable)(),
+          destination: '',
+          filename: '',
+          path: '',
+        };
 
-  // 3. Handle image upload outside the main transaction.
-  // If this fails, the vendor and wallet still exist, which is acceptable.
-  if (image) {
-    try {
-      const imageBuffer = Buffer.from(image, 'base64');
-      const mockFile: Express.Multer.File = {
-        fieldname: 'image',
-        originalname: `${newVendor.id}-store-image.jpg`,
-        encoding: '7bit',
-        mimetype: 'image/jpeg',
-        buffer: imageBuffer,
-        size: imageBuffer.length,
-        stream: new (require('stream').Readable)(),
-        destination: '',
-        filename: '',
-        path: '',
-      };
+        const uploadResult = await uploadMedia(mockFile, newVendor.id, 'store_image');
 
-      const uploadResult = await uploadMedia(mockFile, newVendor.id, 'store_image');
-
-      // Update the vendor with the final image URL
-      return vendorModel.updateVendor(newVendor.id, { image: uploadResult.cloudinaryResult.secure_url });
-    } catch (error) {
-      console.error('Error uploading vendor image after creation:', error);
-      // The vendor was created, but image upload failed. Return the vendor without the image.
+        // Update the vendor with the final image URL
+        return vendorModel.updateVendor(newVendor.id, { image: uploadResult.cloudinaryResult.secure_url });
+      } catch (error) {
+        console.error('Error uploading vendor image after creation:', error);
+        // The vendor was created, but image upload failed. Return the vendor without the image.
+      }
     }
-  }
 
-  // 4. Fetch and return the complete vendor data with relations.
-  // This ensures the final object is consistent, whether the image was uploaded or not.
-  return (await getVendorById(newVendor.id)) as Vendor;
+    // 4. Fetch and return the complete vendor data with relations.
+    // This ensures the final object is consistent, whether the image was uploaded or not.
+    return (await getVendorById(newVendor.id)) as Vendor;
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        // Handle unique constraint violation for name and address
+        throw new Error('A store with this name and address already exists.');
+      }
+    }
+    throw error; // Re-throw other errors
+  }
 };
 
-export const getVendorById = async (id: string, latitude?: string, longitude?: string): Promise<(vendorModel.VendorWithRelations & { distance?: number; productCount?: number; documentCount?: number; rating?: { average: number; count: number; } }) | null> => {
+export const getVendorById = async (
+  id: string, 
+  latitude?: string, 
+  longitude?: string,
+  onlyPublished: boolean = false
+): Promise<(vendorModel.VendorWithRelations & { distance?: number; productCount?: number; documentCount?: number; rating?: { average: number; count: number; } }) | null> => {
   const vendor = await vendorModel.getVendorById(id);
 
-  if (!vendor) {
+  if (!vendor || (onlyPublished && !vendor.isPublished)) {
     return null;
   }
 
@@ -145,6 +161,7 @@ export const getVendorById = async (id: string, latitude?: string, longitude?: s
 
 export const getAllVendors = async (filters: vendorModel.getVendorsFilters, pagination: {page: string, take: string}) => { // Updated signature
   const { latitude, longitude, ...modelFilters } = filters;
+  modelFilters.isPublished = true;
   const isLocationSearch = latitude && longitude;
 
   // If filtering by location, we must fetch all vendors matching other criteria first,
@@ -274,6 +291,31 @@ export const publishVendor = async (vendorId: string, userId: string): Promise<V
   // 2. Perform the update.
   return vendorModel.updateVendor(vendorId, {
     isPublished: true,
+  });
+};
+
+/**
+ * Unpublishes a vendor's store, making it invisible to the public.
+ *
+ * @param vendorId The ID of the vendor to unpublish.
+ * @param userId The ID of the user attempting to unpublish the store.
+ * @returns The updated vendor object.
+ * @throws Error if the vendor is not found or if the user is not authorized.
+ */
+export const unpublishVendor = async (vendorId: string, userId: string): Promise<Vendor> => {
+  // 1. Authorization: Verify the user owns the vendor.
+  const vendor = await vendorModel.getVendorById(vendorId);
+  if (!vendor) {
+    throw new Error('Vendor not found');
+  }
+
+  if (vendor.userId !== userId) {
+    throw new Error('Forbidden: You do not have permission to unpublish this store.');
+  }
+
+  // 2. Perform the update.
+  return vendorModel.updateVendor(vendorId, {
+    isPublished: false,
   });
 };
 
