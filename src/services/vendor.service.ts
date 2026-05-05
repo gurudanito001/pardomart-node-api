@@ -161,7 +161,6 @@ export const getVendorById = async (
 
 export const getAllVendors = async (filters: vendorModel.getVendorsFilters, pagination: {page: string, take: string}) => { // Updated signature
   const { latitude, longitude, ...modelFilters } = filters;
-  modelFilters.isPublished = true;
   const isLocationSearch = latitude && longitude;
 
   // If filtering by location, we must fetch all vendors matching other criteria first,

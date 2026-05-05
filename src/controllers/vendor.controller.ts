@@ -391,8 +391,8 @@ export const getAllVendors = async (req: AuthenticatedRequest, res: Response) =>
   const take = req?.query?.size?.toString() || "20"; 
   try {
     const parseBoolean = (value: any): boolean | undefined => {
-      if (value === 'true') return true;
-      if (value === 'false') return false;
+      if (value === 'true' || value === '1' || value === 1 || value === true) return true;
+      if (value === 'false' || value === '0' || value === 0 || value === false) return false;
       return undefined;
     };
 
