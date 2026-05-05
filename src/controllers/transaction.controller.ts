@@ -45,6 +45,11 @@ import { stripe } from '../services/transaction.service';
  *             type: object
  *             required: [orderId]
  *             properties:
+ *               amount:
+ *                 type: number
+ *                 format: float
+ *                 nullable: true
+ *                 description: "Optional. The specific amount to charge for this payment intent. If not provided, the full order budget will be used. Useful for partial payments (e.g., EBT)."
  *               orderId:
  *                 type: string
  *                 format: uuid
@@ -91,6 +96,11 @@ import { stripe } from '../services/transaction.service';
  *         - `FULL_REVERSAL`: Entire budgeted amount returned (e.g. order cancelled, declined, or no items found).
  *         - `PARTIAL_REFUND`: Refund for price differences after shopping or partial returns.
  *     Transaction:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         userId: { type: string, format: uuid }
+ *         amount: { type: number, format: float }
  *       type: object
  *       properties:
  *         id: { type: string, format: uuid }

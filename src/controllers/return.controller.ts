@@ -36,9 +36,10 @@ import { errorLogService } from '../services/errorLog.service';
  *                   type: object
  *                   required: [vendorProductId, quantity]
  *                   properties:
- *                     vendorProductId: { type: string, format: uuid }
- *                     quantity: { type: integer }
- *                     reason: { type: string }
+ *                     vendorProductId: { type: string, format: uuid, description: "The ID of the vendor product being returned." }
+ *                     quantity: { type: integer, description: "The quantity of the product being returned." }
+ *                     reason: { type: string, description: "Optional reason for returning this specific item." }
+ *                     isEbtEligible: { type: boolean, description: "Whether the item was EBT eligible at the time of purchase (snapshotted)." }
  *     responses:
  *       201:
  *         description: Return request created.

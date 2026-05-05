@@ -118,6 +118,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         quantityFound: { type: integer, nullable: true }
  *         purchasedPrice: { type: number, format: float, nullable: true, description: "The effective unit price locked at the time of purchase." }
  *         replacementPrices: { type: object, nullable: true, description: "Key-value map of vendorProductId to locked effective prices." }
+ *         isEbtEligible: { type: boolean, description: "Whether the item was EBT eligible at the time of purchase (snapshotted)." }
  *         chosenReplacementId: { type: string, format: uuid, nullable: true }
  *         isReplacementApproved: { type: boolean, nullable: true }
  *         createdAt: { type: string, format: date-time }
@@ -130,6 +131,7 @@ import { errorLogService } from '../services/errorLog.service';
  *             vendorProduct: { $ref: '#/components/schemas/VendorProductWithProduct' }
  *             chosenReplacement:
  *               $ref: '#/components/schemas/VendorProductWithProduct'
+ *             isEbtEligible: { type: boolean, description: "Whether the item was EBT eligible at the time of purchase (snapshotted)." }
  *             replacements:
  *               type: array
  *               items:

@@ -129,6 +129,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         tagIds: { type: array, items: { type: string, format: uuid }, description: "Array of tag IDs to associate with the product." }
  *         isAlcohol: { type: boolean, default: false }
  *         isAgeRestricted: { type: boolean, default: false }
+ *         isEbtEligible: { type: boolean, default: false }
  *         isActive: { type: boolean, default: true }
  *     CreateVendorProductPayload:
  *       type: object
@@ -148,6 +149,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         published: { type: boolean, default: false }
  *         isAlcohol: { type: boolean, default: false }
  *         isAgeRestricted: { type: boolean, default: false }
+ *         isEbtEligible: { type: boolean, default: false }
  *         weight: { type: number, format: float, nullable: true }
  *         weightUnit: { type: string, nullable: true }
  *         attributes: { type: object, nullable: true }
@@ -188,6 +190,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         tagIds: { type: array, items: { type: string, format: uuid } }
  *         isAlcohol: { type: boolean }
  *         isAgeRestricted: { type: boolean }
+ *         isEbtEligible: { type: boolean }
  *         isActive: { type: boolean }
  *     UpdateVendorProductPayload:
  *       type: object
@@ -205,6 +208,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         published: { type: boolean }
  *         isAlcohol: { type: boolean }
  *         isAgeRestricted: { type: boolean }
+ *         isEbtEligible: { type: boolean }
  *         attributes: { type: object, nullable: true }
  *         meta: { type: object, nullable: true }
  *         categoryIds: { type: array, items: { type: string, format: uuid } }
