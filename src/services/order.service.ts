@@ -1284,8 +1284,7 @@ export const startShoppingService = async (
         id: orderId,
         orderStatus: OrderStatus.accepted_for_shopping, // Corrected: Can only start shopping for an accepted order.
         shoppingMethod: ShoppingMethod.vendor, // Only if vendor is responsible
-        // Optional stricter check: only assigned shopper can start shopping (if roles allow VENDOR_ADMIN too, this needs adjustment)
-        // OR: shoppingHandlerId: shoppingHandlerUserId,
+        shopperId: shoppingHandlerUserId, // Ensure the person starting is the one who accepted
       },
       data: {
         orderStatus: OrderStatus.currently_shopping, // Transition to shopping
