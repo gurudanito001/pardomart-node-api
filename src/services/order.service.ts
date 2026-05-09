@@ -888,8 +888,11 @@ export const getAvailableDeliverySlots = async (
   deliveryMethod: DeliveryMethod
 ): Promise<TimeSlot[]> => {
   const vendor = await getVendorById(vendorId, undefined, undefined, true);
-  if (!vendor || !vendor.openingHours || vendor.openingHours.length === 0) {
-    throw new OrderCreationError('Vendor not found or has no opening hours defined.', 404);
+  if (!vendor) {
+    throw new OrderCreationError('Vendor not found.', 404);
+  }
+  if (!vendor.openingHours || vendor.openingHours.length === 0) {
+    throw new OrderCreationError('Vendor has no opening hours defined.', 400);
   }
 
   const vendorTimezone = vendor.timezone || 'UTC';

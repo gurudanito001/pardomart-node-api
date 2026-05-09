@@ -464,6 +464,18 @@ export const calculateFeesController = async (req: Request, res: Response) => {
       errorCode: error.code || 'CALCULATE_FEES_ERROR'
     }).catch((logErr: any) => console.error('Failed to log error:', logErr));
 
+    // Differentiate between Client Errors (400) and Server Errors (500)
+    if (
+      error.message.includes('calculate fees') ||
+      error.message.includes('not found') ||
+      error.message.includes('available') ||
+      error.message.includes('stock') ||
+      error.message.includes('required') ||
+      error.message.includes('cannot be empty')
+    ) {
+      return res.status(400).json({ error: error.message });
+    }
+
     res.status(500).json({ error: error.message || 'Internal server error during fee calculation.' });
   }
 };

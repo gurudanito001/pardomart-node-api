@@ -317,7 +317,6 @@ export const calculateOrderFeesService = async (
         id: {
           in: Array.from(uniqueVendorProductIds),
         },
-        published: true, // Ensure only published products are considered for pricing and availability
       },
       select: {
         id: true,
@@ -325,15 +324,17 @@ export const calculateOrderFeesService = async (
         discountedPrice: true,
         isAvailable: true,
         isEbtEligible: true,
+        published: true,
       },
     });
 
     // Create a map for quick price lookup
-    const productDetailsMap = new Map<string, { price: number; isAvailable: boolean; isEbtEligible: boolean; }>();
+    const productDetailsMap = new Map<string, { price: number; isAvailable: boolean; isEbtEligible: boolean; published: boolean }>();
     vendorProducts.forEach((vp) => productDetailsMap.set(vp.id, { 
       price: vp.discountedPrice ?? vp.price, 
       isAvailable: vp.isAvailable,
-      isEbtEligible: vp.isEbtEligible ?? false
+      isEbtEligible: vp.isEbtEligible ?? false,
+      published: vp.published,
     }));
 
     // Fetch active fee configurations
@@ -363,14 +364,33 @@ export const calculateOrderFeesService = async (
       let baseItemPrice = item.price;
       let baseIsEbtEligible = item.isEbtEligible;
 
-      // Use current catalog price if historical price wasn't explicitly provided
-      if (baseItemPrice === undefined) {
-        if (!productDetails) throw new Error(`Price not found for vendor product ID: ${item.vendorProductId}`);
-        baseItemPrice = productDetails.price;
-      }
+      if (!productDetails) {
+        // Item is missing from the catalog (e.g. hard deleted). 
+        // We rely on historical data passed in the payload during recalculations.
+        if (baseItemPrice === undefined) {
+          throw new Error(`Product price not found or item removed from catalog: ${item.vendorProductId}`);
+        }
+        if (baseIsEbtEligible === undefined) {
+          baseIsEbtEligible = false;
+        }
+      } else {
+        // Use current catalog values if historical data wasn't explicitly provided
+        if (baseItemPrice === undefined) {
+          baseItemPrice = productDetails.price;
+        }
+        if (baseIsEbtEligible === undefined) {
+          baseIsEbtEligible = productDetails.isEbtEligible;
+        }
 
-      if (baseIsEbtEligible === undefined) {
-        baseIsEbtEligible = productDetails?.isEbtEligible ?? false;
+        // Check availability only if we are doing a strict checkout (skipAvailabilityCheck = false)
+        if (!payload.skipAvailabilityCheck) {
+          if (!productDetails.published) {
+            throw new Error(`Product is no longer available: ${item.vendorProductId}`);
+          }
+          if (!productDetails.isAvailable) {
+            throw new Error(`Product is currently out of stock: ${item.vendorProductId}`);
+          }
+        }
       }
       
       let effectivePrice = baseItemPrice;
@@ -387,7 +407,7 @@ export const calculateOrderFeesService = async (
 
       // Check availability only if we are doing a strict checkout (skipAvailabilityCheck = false)
       if (!payload.skipAvailabilityCheck && productDetails && !productDetails.isAvailable) {
-        throw new Error(`Product ID ${item.vendorProductId} is not available.`);
+        throw new Error(`Product is currently out of stock: ${item.vendorProductId}`);
       }
       
       itemPrices.push({ 
@@ -476,7 +496,11 @@ export const calculateOrderFeesService = async (
       itemPrices,
     };
   } catch (error: any) {
-    console.error('Error calculating order fees:', error);
+    // If it's already a descriptive error we threw (not found, availability, etc.), pass it up directly
+    if (error.message.toLowerCase().includes('not found') || error.message.includes('available') || error.message.includes('stock')) {
+      throw error;
+    }
+    console.error('Unexpected error calculating order fees:', error);
     throw new Error(`Failed to calculate fees: ${error.message}`);
   }
 };

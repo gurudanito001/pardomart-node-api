@@ -353,8 +353,19 @@ export const createOrderController = async (req: AuthenticatedRequest, res: Resp
     }).catch((logErr: any) => console.error('Failed to log error:', logErr));
 
     if (error instanceof OrderCreationError) {
-      return res.status(error.statusCode).json({ error: error.message });
+      return res.status(error.statusCode || 400).json({ error: error.message });
     }
+
+    // Differentiate between Client/Validation Errors and actual Server Errors
+    if (
+      error.message.includes('Failed to calculate fees') ||
+      error.message.includes('not found') ||
+      error.message.includes('available') ||
+      error.message.includes('stock')
+    ) {
+      return res.status(400).json({ error: error.message });
+    }
+
     res.status(500).json({ error: error.message || 'Internal server error during order creation.' });
   }
 };
@@ -409,7 +420,7 @@ export const getOrderByIdController = async (req: AuthenticatedRequest, res: Res
       errorCode: error.code || 'GET_ORDER_BY_ID_ERROR'
     }).catch((logErr: any) => console.error('Failed to log error:', logErr));
 
-    res.status(500).json({ error: 'Failed to retrieve order: ' + error.message });
+    res.status(error.statusCode || 500).json({ error: 'Failed to retrieve order: ' + error.message });
   }
 };
 
@@ -456,7 +467,7 @@ export const getOrderHistoryController = async (req: AuthenticatedRequest, res: 
     }).catch((logErr: any) => console.error('Failed to log error:', logErr));
 
     if (error instanceof OrderCreationError) {
-      return res.status(error.statusCode).json({ error: error.message });
+      return res.status(error.statusCode || 404).json({ error: error.message });
     }
     res.status(500).json({ error: 'Failed to retrieve order history: ' + error.message });
   }
@@ -598,7 +609,7 @@ export const updateOrderStatusController = async (req: AuthenticatedRequest, res
     }).catch((logErr: any) => console.error('Failed to log error:', logErr));
 
     if (error instanceof OrderCreationError) {
-      return res.status(error.statusCode).json({ error: error.message });
+      return res.status(error.statusCode || 400).json({ error: error.message });
     }
     if (error.message.includes('not found')) {
       return res.status(404).json({ error: error.message });
@@ -779,8 +790,15 @@ export const updateOrderItemShoppingStatusController = async (req: Authenticated
       errorCode: error.code || 'UPDATE_ITEM_SHOPPING_STATUS_ERROR'
     }).catch((logErr: any) => console.error('Failed to log error:', logErr));
 
-    if (error instanceof OrderCreationError || error.message.includes('not found') || error.message.includes('cannot update item')) {
-      return res.status(error.statusCode).json({ error: error.message });
+    if (
+      error instanceof OrderCreationError || 
+      error.message.includes('calculate fees') ||
+      error.message.includes('not found') || 
+      error.message.includes('available') || 
+      error.message.includes('stock') ||
+      error.message.includes('cannot update item')
+    ) {
+      return res.status(error.statusCode || 400).json({ error: error.message });
     }
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
@@ -842,7 +860,7 @@ export const respondToReplacementController = async (req: AuthenticatedRequest, 
     }).catch((logErr: any) => console.error('Failed to log error:', logErr));
 
     if (error instanceof OrderCreationError) {
-      return res.status(error.statusCode).json({ error: error.message });
+      return res.status(error.statusCode || 400).json({ error: error.message });
     }
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
@@ -961,6 +979,9 @@ export const getAvailableDeliverySlotsController = async (req: AuthenticatedRequ
       errorCode: error.code || 'GET_DELIVERY_SLOTS_ERROR'
     }).catch((logErr: any) => console.error('Failed to log error:', logErr));
 
+    if (error instanceof OrderCreationError) {
+      return res.status(error.statusCode || 400).json({ error: error.message });
+    }
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
@@ -1201,7 +1222,7 @@ export const getOrdersForVendor = async (req: AuthenticatedRequest, res: Respons
     }).catch((logErr: any) => console.error('Failed to log error:', logErr));
 
     if (error instanceof OrderCreationError) {
-      return res.status(error.statusCode).json({ error: error.message });
+      return res.status(error.statusCode || 400).json({ error: error.message });
     }
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -1266,7 +1287,7 @@ export const verifyPickupOtp = async (req: AuthenticatedRequest, res: Response) 
     }).catch((logErr: any) => console.error('Failed to log error:', logErr));
 
     if (error instanceof OrderCreationError) {
-      return res.status(error.statusCode).json({ error: error.message });
+      return res.status(error.statusCode || 400).json({ error: error.message });
     }
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -1467,7 +1488,7 @@ export const acceptOrderForDeliveryController = async (req: AuthenticatedRequest
     }).catch((logErr: any) => console.error('Failed to log error:', logErr));
 
     if (error instanceof OrderCreationError) {
-      return res.status(error.statusCode).json({ error: error.message });
+      return res.status(error.statusCode || 400).json({ error: error.message });
     }
     res.status(500).json({ error: 'Internal server error.' });
   }
@@ -1541,7 +1562,7 @@ export const completeDeliveryController = async (req: AuthenticatedRequest, res:
     }).catch((logErr: any) => console.error('Failed to log error:', logErr));
 
     if (error instanceof OrderCreationError) {
-      return res.status(error.statusCode).json({ error: error.message });
+      return res.status(error.statusCode || 400).json({ error: error.message });
     }
     res.status(500).json({ error: 'Internal server error.' });
   }
@@ -1600,7 +1621,7 @@ export const adminUpdateOrderController = async (req: Request, res: Response) =>
     }).catch((logErr: any) => console.error('Failed to log error:', logErr));
 
     if (error instanceof OrderCreationError) {
-      return res.status(error.statusCode).json({ error: error.message });
+      return res.status(error.statusCode || 400).json({ error: error.message });
     }
     res.status(500).json({ error: 'An unexpected error occurred while updating the order.' });
   }
