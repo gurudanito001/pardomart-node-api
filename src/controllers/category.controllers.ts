@@ -9,6 +9,16 @@ import { errorLogService } from '../services/errorLog.service';
  * @swagger
  * components:
  *   schemas:
+ *     Category:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         name: { type: string }
+ *         description: { type: string, nullable: true }
+ *         imageUrl: { type: string, nullable: true }
+ *         parentId: { type: string, format: uuid, nullable: true }
+ *         createdAt: { type: string, format: date-time, nullable: true }
+ *         updatedAt: { type: string, format: date-time, nullable: true }
  *     CategoryOverview:
  *       type: object
  *       properties:
@@ -353,6 +363,12 @@ export const getCategoryById = async (req: Request, res: Response) => {
  *         schema:
  *           type: string
  *         description: Filter categories by name (case-insensitive search).
+ *       - in: query
+ *         name: vendorId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter categories that have products associated with a specific vendor.
  *     responses:
  *       200:
  *         description: A list of categories.
@@ -364,11 +380,10 @@ export const getCategoryById = async (req: Request, res: Response) => {
  *                 $ref: '#/components/schemas/Category'
  */
 export const getAllCategories = async (req: Request, res: Response) => {
-  //let parentId: string | undefined;
-  const {parentId, type, name}: CategoryFilters  = req?.query;
+  const {parentId, type, name, vendorId}: CategoryFilters  = req?.query;
 
   try {
-    const categories = await categoryService.getAllCategories({ parentId, type, name });
+    const categories = await categoryService.getAllCategories({ parentId, type, name, vendorId });
     res.json(categories);
   } catch (error: any) {
     await errorLogService.logError({

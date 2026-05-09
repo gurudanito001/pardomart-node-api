@@ -32,10 +32,12 @@ export const createCategoriesBulk = async (categories: { name: string; descripti
 };
 
 export const createCategory = async (payload: any): Promise<Category> => {
-  const { imageUrl, ...categoryData } = payload;
-  const category = await categoryModel.createCategory(categoryData);
-
-  if (imageUrl && !imageUrl.startsWith('http')) {
+  // If imageUrl is base64 (doesn't start with http), we must create the category first
+  // to get an ID for the media upload reference.
+  if (payload.imageUrl && !payload.imageUrl.startsWith('http')) {
+    const { imageUrl, ...categoryData } = payload;
+    const category = await categoryModel.createCategory(categoryData);
+    
     try {
       const imageBuffer = Buffer.from(imageUrl, 'base64');
       const mockFile: Express.Multer.File = {
@@ -54,9 +56,12 @@ export const createCategory = async (payload: any): Promise<Category> => {
       return await categoryModel.updateCategory({ id: category.id, imageUrl: uploadResult.cloudinaryResult.secure_url });
     } catch (error) {
       console.error('Error uploading category image:', error);
+      return category;
     }
   }
-  return category;
+
+  // If imageUrl is already a URL or is missing, just create the category directly.
+  return categoryModel.createCategory(payload);
 };
 
 export const getCategoryById = async (id: string): Promise<Category | null> => {
