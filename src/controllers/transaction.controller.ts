@@ -101,11 +101,6 @@ import { stripe } from '../services/transaction.service';
  *         id: { type: string, format: uuid }
  *         userId: { type: string, format: uuid }
  *         amount: { type: number, format: float }
- *       type: object
- *       properties:
- *         id: { type: string, format: uuid }
- *         userId: { type: string, format: uuid }
- *         amount: { type: number, format: float }
  *         type: { $ref: '#/components/schemas/TransactionType' }
  *         source: { $ref: '#/components/schemas/TransactionSource' }
  *         status: { $ref: '#/components/schemas/TransactionStatus' }

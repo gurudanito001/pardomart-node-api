@@ -112,6 +112,8 @@ export const createTag = async (req: Request, res: Response) => {
  *                 $ref: '#/components/schemas/Tag'
  *       400:
  *         description: Bad request, names array is missing or empty.
+ *       500:
+ *         description: Internal server error.
  */
 export const createTagsBulk = async (req: Request, res: Response) => {
   try {
@@ -163,6 +165,8 @@ export const createTagsBulk = async (req: Request, res: Response) => {
  *               $ref: '#/components/schemas/Tag'
  *       404:
  *         description: Tag not found.
+ *       500:
+ *         description: Internal server error.
  */
 export const getTagById = async (req: Request, res: Response) => {
   try {
@@ -209,6 +213,8 @@ export const getTagById = async (req: Request, res: Response) => {
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/Tag'
+ *       500:
+ *         description: Internal server error.
  */
 export const getAllTags = async (req: Request, res: Response) => {
   const {name}: TagFilters = req?.query;
@@ -263,6 +269,8 @@ export const getAllTags = async (req: Request, res: Response) => {
  *               $ref: '#/components/schemas/Tag'
  *       404:
  *         description: Tag not found.
+ *       500:
+ *         description: Internal server error.
  */
 export const updateTag = async (req: Request, res: Response) => {
   try {
@@ -313,6 +321,8 @@ export const updateTag = async (req: Request, res: Response) => {
  *               $ref: '#/components/schemas/Tag'
  *       404:
  *         description: Tag not found.
+ *       500:
+ *         description: Internal server error.
  */
 export const deleteTag = async (req: Request, res: Response) => {
   try {
