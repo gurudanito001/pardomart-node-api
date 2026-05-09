@@ -308,6 +308,52 @@ const getDayEnumFromDayjs = (dayjsDayIndex: number): string => {
     return days[dayjsDayIndex];
 };
 
+/**
+ * Internal helper to resolve UTC operating boundaries for a vendor on a specific date.
+ */
+const getVendorBusinessHoursForDate = (
+  vendor: { openingHours: any[]; timezone?: string | null },
+  dateInVendorTZ: dayjs.Dayjs
+) => {
+  const dayOfWeek = getDayEnumFromDayjs(dateInVendorTZ.day());
+  const openingHours = vendor.openingHours.find((h) => h.day === dayOfWeek);
+
+  if (!openingHours || !openingHours.open || !openingHours.close) {
+    return null;
+  }
+
+  const [openHour, openMinute] = openingHours.open.split(':').map(Number);
+  const [closeHour, closeMinute] = openingHours.close.split(':').map(Number);
+
+  // Construct times relative to the vendor's local day then convert back to UTC
+  const vendorLocalDate = dateInVendorTZ.startOf('day');
+  const openTimeUTC = vendorLocalDate.hour(openHour).minute(openMinute).second(0).millisecond(0).utc();
+  let closeTimeUTC = vendorLocalDate.hour(closeHour).minute(closeMinute).second(0).millisecond(0).utc();
+
+  // Handle operating hours that cross over midnight
+  if (closeTimeUTC.isBefore(openTimeUTC)) {
+    closeTimeUTC = closeTimeUTC.add(1, 'day');
+  }
+
+  return { openTimeUTC, closeTimeUTC, rawHours: openingHours };
+};
+
+/**
+ * Internal helper to resolve delivery method specific constraints.
+ */
+const getDeliveryRequirements = (deliveryMethod: DeliveryMethod, closeTimeUTC: dayjs.Dayjs) => {
+  if (deliveryMethod === DeliveryMethod.customer_pickup) {
+    return {
+      bufferMinutes: 60, // 1 hour prep
+      latestPossibleEndUTC: closeTimeUTC.subtract(1, 'hour'),
+    };
+  }
+  return {
+    bufferMinutes: 90, // 1.5 hour prep
+    latestPossibleEndUTC: closeTimeUTC,
+  };
+};
+
 interface CreateOrderFromClientPayload {
   vendorId: string;
   paymentMethod: PaymentMethods; // Consider using an enum if you have fixed payment methods
@@ -352,53 +398,53 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
 
   // --- 2. Validate scheduled time against vendor hours ---
   if (scheduledDeliveryTime) {
+    const nowUTC = dayjs.utc();
     const parsedScheduledDeliveryTime = dayjs.utc(scheduledDeliveryTime);
     if (!parsedScheduledDeliveryTime.isValid()) {
       throw new OrderCreationError('Invalid scheduled delivery time format.');
     }
 
-    // Calculate scheduledShoppingStartTime based on delivery time and method
+    if (parsedScheduledDeliveryTime.isBefore(nowUTC)) {
+      throw new OrderCreationError('Scheduled delivery time cannot be in the past.');
+    }
+
+    const vendor = await getVendorById(vendorId, undefined, undefined, true);
+    if (!vendor) throw new OrderCreationError('Vendor not found.', 404);
+
+    const vendorTimezone = vendor.timezone || 'UTC';
+    // Identify which local business day the requested time falls into
+    const deliveryInVendorTZ = parsedScheduledDeliveryTime.tz(vendorTimezone);
+
+    const boundaries = getVendorBusinessHoursForDate(vendor, deliveryInVendorTZ);
+
+    if (!boundaries) {
+      throw new OrderCreationError(`Vendor is closed or has no defined hours for the selected day.`);
+    }
+
+    const { bufferMinutes, latestPossibleEndUTC } = getDeliveryRequirements(deliveryMethod, boundaries.closeTimeUTC);
+
+    const earliestPossibleStartUTC = nowUTC.add(bufferMinutes, 'minutes');
+    const requestedSlotEndUTC = parsedScheduledDeliveryTime.add(1, 'hour');
+
+    // Perform strict boundary validation
+    if (parsedScheduledDeliveryTime.isBefore(boundaries.openTimeUTC) || requestedSlotEndUTC.isAfter(boundaries.closeTimeUTC)) {
+      throw new OrderCreationError(`Scheduled time must be within vendor business hours (${boundaries.rawHours.open} - ${boundaries.rawHours.close} local time).`);
+    }
+
+    if (parsedScheduledDeliveryTime.isBefore(earliestPossibleStartUTC)) {
+      throw new OrderCreationError(`Scheduled time is too soon. Please allow at least ${bufferMinutes} minutes for preparation.`);
+    }
+
+    if (requestedSlotEndUTC.isAfter(latestPossibleEndUTC)) {
+      throw new OrderCreationError(`Selected time is too close to closing for ${deliveryMethod === DeliveryMethod.customer_pickup ? 'pickup' : 'delivery'}.`);
+    }
+
+    // Calculate target shoppingStartTime for internal tracking
     if (deliveryMethod === DeliveryMethod.delivery_person) {
       shoppingStartTime = parsedScheduledDeliveryTime.subtract(2, 'hour').toDate();
     } else if (deliveryMethod === DeliveryMethod.customer_pickup) {
       shoppingStartTime = parsedScheduledDeliveryTime.subtract(1, 'hour').toDate();
     }
-
-    const vendor = await getVendorById(vendorId, undefined, undefined, true);
-    if (!vendor) throw new OrderCreationError('Vendor not found.', 404);
-    if (!vendor.timezone) console.warn(`Vendor ${vendorId} does not have a timezone set. Skipping time validation.`);
-
-    const deliveryLocalDayjs = parsedScheduledDeliveryTime.tz(vendor.timezone || 'UTC');
-    const dayOfWeek = getDayEnumFromDayjs(deliveryLocalDayjs.day());
-    const openingHoursToday = vendor.openingHours.find((h) => h.day === dayOfWeek);
-
-    if (!openingHoursToday || !openingHoursToday.open || !openingHoursToday.close) {
-      throw new OrderCreationError(`Vendor is closed or has no defined hours for ${dayOfWeek}.`);
-    }
-    const [openHours, openMinutes] = openingHoursToday.open.split(':').map(Number);
-    const [closeHours, closeMinutes] = openingHoursToday.close.split(':').map(Number);
-
-    let vendorOpenTimeUTC = deliveryLocalDayjs.hour(openHours).minute(openMinutes).second(0).millisecond(0).utc();
-    let vendorCloseTimeUTC = deliveryLocalDayjs.hour(closeHours).minute(closeMinutes).second(0).millisecond(0).utc();
-
-    if (vendorCloseTimeUTC.isBefore(vendorOpenTimeUTC)) {
-      vendorCloseTimeUTC = vendorCloseTimeUTC.add(1, 'day');
-    }
-
-    // Allow delivery up to 30 minutes before the store closes.
-    const lastDeliveryTimeUTC = vendorCloseTimeUTC.subtract(30, 'minutes');
-
-    /* if (parsedScheduledDeliveryTime.isBefore(vendorOpenTimeUTC) || parsedScheduledDeliveryTime.isAfter(lastDeliveryTimeUTC)) {
-      throw new OrderCreationError(`Scheduled delivery time must be between ${openingHoursToday.open} and ${lastDeliveryTimeUTC.tz(vendor.timezone || 'UTC').format('HH:mm')} vendor local time.`);
-    }
-
-    if (parsedScheduledDeliveryTime.isBefore(dayjs.utc())) {
-      throw new OrderCreationError('Scheduled delivery time cannot be in the past.');
-    }
-
-    if (shoppingStartTime && dayjs.utc(shoppingStartTime).isBefore(vendorOpenTimeUTC)) {
-      throw new OrderCreationError(`Calculated shopping start time is before the vendor opens. Please choose a later delivery time.`);
-    } */
   }
 
   // --- Pre-fetch prices for all customer-suggested replacements ---
@@ -897,77 +943,62 @@ export const getAvailableDeliverySlots = async (
 
   const vendorTimezone = vendor.timezone || 'UTC';
   const availableSlotsByDay: TimeSlot[] = [];
-  const nowInVendorTimezone = dayjs().tz(vendorTimezone);
 
-  // Generate slots for today and the next 3 days
-  for (let i = 0; i <= 3; i++) {
-    const currentDay = nowInVendorTimezone.add(i, 'day');
-    const dayOfWeek = getDayEnumFromDayjs(currentDay.day());
-    const openingHoursToday = vendor.openingHours.find((h) => h.day === dayOfWeek);
+  // 1. Anchor 'now' to UTC for absolute comparisons
+  const nowUTC = dayjs.utc();
+  // 2. Identify 'now' in vendor timezone to determine which business day we are in
+  const nowInVendorTZ = nowUTC.tz(vendorTimezone);
 
-    // Skip day if store is closed
-    if (!openingHoursToday || !openingHoursToday.open || !openingHoursToday.close) {
-      continue;
+  // Generate slots for the next 7 days
+  for (let i = 0; i < 7; i++) {
+    // Get the vendor's local date for this iteration
+    const vendorLocalDate = nowInVendorTZ.add(i, 'day');
+    const boundaries = getVendorBusinessHoursForDate(vendor, vendorLocalDate);
+
+    if (!boundaries) continue;
+
+    const { bufferMinutes, latestPossibleEndUTC } = getDeliveryRequirements(deliveryMethod, boundaries.closeTimeUTC);
+    const earliestPossibleStartUTC = nowUTC.add(bufferMinutes, 'minutes');
+    
+    // Determine the first moment we can start showing slots for this specific day
+    let firstAvailableTimeUTC = boundaries.openTimeUTC;
+    if (i === 0 && earliestPossibleStartUTC.isAfter(boundaries.openTimeUTC)) {
+      firstAvailableTimeUTC = earliestPossibleStartUTC;
     }
 
-    const [openHour, openMinute] = openingHoursToday.open.split(':').map(Number);
-    const [closeHour, closeMinute] = openingHoursToday.close.split(':').map(Number);
-
-    const openTime = currentDay.hour(openHour).minute(openMinute).second(0);
-    const closeTime = currentDay.hour(closeHour).minute(closeMinute).second(0);
-
-    let earliestSlotStartTime: dayjs.Dayjs;
-    let latestSlotEndTime: dayjs.Dayjs;
-
-    if (deliveryMethod === DeliveryMethod.customer_pickup) {
-      // For pickup, the earliest time is 1 hour from now.
-      earliestSlotStartTime = nowInVendorTimezone.add(1, 'hour');
-      // The latest time a customer can choose is 1 hour before the store closes.
-      latestSlotEndTime = closeTime.subtract(1, 'hour');
-    } else { // delivery_person
-      // For delivery, the earliest time is 1.5 hours from now.
-      earliestSlotStartTime = nowInVendorTimezone.add(90, 'minutes');
-      // The latest time is the store's closing time.
-      latestSlotEndTime = closeTime;
-      // TODO: The latest delivery time should be adjusted based on the distance
-      // between the store and the customer's address to ensure the delivery
-      // person can complete the delivery before the store closes.
-    }
-
-    // For future days, the earliest slot can start right when the store opens.
-    // For today, it must be after the calculated `earliestSlotStartTime`.
-    let firstAvailableTime = openTime;
-    if (i === 0 && earliestSlotStartTime.isAfter(openTime)) {
-      firstAvailableTime = earliestSlotStartTime;
-    }
-
-    // Align to the start of the next hour for clean slots.
-    let firstSlotStart = firstAvailableTime;
-    if (firstSlotStart.minute() > 0 || firstSlotStart.second() > 0 || firstSlotStart.millisecond() > 0) {
-      firstSlotStart = firstSlotStart.add(1, 'hour').startOf('hour');
+    // Align to the start of the next hour for clean slots (e.g., 10:00, 11:00)
+    let currentSlotStartUTC = firstAvailableTimeUTC;
+    if (currentSlotStartUTC.minute() > 0 || currentSlotStartUTC.second() > 0 || currentSlotStartUTC.millisecond() > 0) {
+      currentSlotStartUTC = currentSlotStartUTC.add(1, 'hour').startOf('hour');
     }
 
     const timeSlots: TimeSlot['timeSlots'] = [];
-    let currentSlotStart = firstSlotStart;
 
-    // Generate 1-hour slots until the start of the next slot is past the latest end time.
-    while (currentSlotStart.isBefore(latestSlotEndTime)) {
-      const slotEnd = currentSlotStart.add(1, 'hour');
-      // Ensure the entire slot is within the allowed time.
-      if (slotEnd.isAfter(latestSlotEndTime)) {
+    // Generate 1-hour slots until the end of the next slot is past the latest end time.
+    while (currentSlotStartUTC.isBefore(latestPossibleEndUTC)) {
+      const slotEndUTC = currentSlotStartUTC.add(1, 'hour');
+
+      // Ensure the entire slot is within the allowed business window
+      if (slotEndUTC.isAfter(latestPossibleEndUTC)) {
         break;
       }
+
+      // Calculate local strings for user display using vendor's timezone
+      const localStart = currentSlotStartUTC.tz(vendorTimezone);
+      const localEnd = slotEndUTC.tz(vendorTimezone);
+
+
       timeSlots.push({
-        start: currentSlotStart.utc().toISOString(),
-        end: slotEnd.utc().toISOString(),
-        display: `${currentSlotStart.format('h:mma')} - ${slotEnd.format('h:mma')}`.toLowerCase(),
+        start: currentSlotStartUTC.toISOString(),
+        end: slotEndUTC.toISOString(),
+        display: `${localStart.format('h:mma')} - ${localEnd.format('h:mma')}`.toLowerCase(),
       });
-      currentSlotStart = currentSlotStart.add(1, 'hour');
+      currentSlotStartUTC = slotEndUTC;
     }
 
     if (timeSlots.length > 0) {
       availableSlotsByDay.push({
-        date: currentDay.format('DD-MM-YYYY'),
+        date: vendorLocalDate.format('DD-MM-YYYY'),
         timeSlots,
       });
     }

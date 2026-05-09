@@ -282,7 +282,7 @@ export const calculateOrderFeesService = async (
 
     // --- 2. Fetch Necessary Data ---
     // Fetch vendor location
-    const vendor = await prismaClient.vendor.findFirst({
+    const vendor = await prismaClient.vendor.findUnique({
       where: { id: vendorId, isPublished: true },
       select: { latitude: true, longitude: true },
     });
@@ -317,6 +317,7 @@ export const calculateOrderFeesService = async (
         id: {
           in: Array.from(uniqueVendorProductIds),
         },
+        vendorId: vendorId, // Security: Ensure products belong to the specified vendor
       },
       select: {
         id: true,
@@ -436,11 +437,11 @@ export const calculateOrderFeesService = async (
 
     // Delivery Fee (based on distance)
     const deliveryFeeConfig = feeConfigMap.get(FeeType.delivery);
-    // Only calculate delivery fee if it's not customer pickup and the necessary data is available
-    if (deliveryType !== 'customer_pickup' && deliveryFeeConfig && deliveryFeeConfig.method === FeeCalculationMethod.per_distance && deliveryAddress) {
+    if (deliveryType !== 'customer_pickup' && deliveryFeeConfig) {
+      if (deliveryFeeConfig.method === FeeCalculationMethod.per_distance && deliveryAddress) {
         // Calculate distance in meters using geolib's getDistance
         const distanceMeters = getDistance(
-          { latitude: vendor.latitude!, longitude: vendor.longitude! },
+          { latitude: Number(vendor.latitude), longitude: Number(vendor.longitude) },
           { latitude: deliveryAddress.latitude!, longitude: deliveryAddress.longitude! }
         );
 
@@ -456,24 +457,31 @@ export const calculateOrderFeesService = async (
         }
 
         deliveryFee = distanceInConfigUnit * deliveryFeeConfig.amount;
-
-        // Apply minThreshold if set
-        if (deliveryFeeConfig.minThreshold !== null && deliveryFee < deliveryFeeConfig.minThreshold) {
-          deliveryFee = deliveryFeeConfig.minThreshold;
-        }
+      } else if (deliveryFeeConfig.method === FeeCalculationMethod.flat) {
+        deliveryFee = deliveryFeeConfig.amount;
       }
 
+      // Apply thresholds to delivery fee (e.g., Minimum delivery charge or cap)
+      if (deliveryFeeConfig.minThreshold !== null && deliveryFee < deliveryFeeConfig.minThreshold) {
+        deliveryFee = deliveryFeeConfig.minThreshold;
+      }
+      if (deliveryFeeConfig.maxThreshold !== null && deliveryFee > deliveryFeeConfig.maxThreshold) {
+        deliveryFee = deliveryFeeConfig.maxThreshold;
+      }
+    }
 
-       // Service Fee (based on total cost of items purchased - subtotal)
+    // Service Fee (based on total cost of items purchased - subtotal)
     const serviceFeeConfig = feeConfigMap.get(FeeType.service);
-    if (serviceFeeConfig && serviceFeeConfig.method === FeeCalculationMethod.percentage) {
-      // Check if subtotal meets the minThreshold for service fee
-      if (serviceFeeConfig.minThreshold === null || subtotal >= serviceFeeConfig.minThreshold) {
-        serviceFee = subtotal * serviceFeeConfig.amount;
-      }
-    } else if (serviceFeeConfig && serviceFeeConfig.method === FeeCalculationMethod.flat) {
-       if (serviceFeeConfig.minThreshold === null || subtotal >= serviceFeeConfig.minThreshold) {
-        serviceFee = serviceFeeConfig.amount;
+    if (serviceFeeConfig) {
+      const meetsMin = serviceFeeConfig.minThreshold === null || subtotal >= serviceFeeConfig.minThreshold;
+      const meetsMax = serviceFeeConfig.maxThreshold === null || subtotal <= serviceFeeConfig.maxThreshold;
+
+      if (meetsMin && meetsMax) {
+        if (serviceFeeConfig.method === FeeCalculationMethod.percentage) {
+          serviceFee = subtotal * serviceFeeConfig.amount;
+        } else if (serviceFeeConfig.method === FeeCalculationMethod.flat) {
+          serviceFee = serviceFeeConfig.amount;
+        }
       }
     }
 
