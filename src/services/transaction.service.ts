@@ -94,8 +94,9 @@ export const createPaymentIntentService = async (userId: string, orderId: string
   };
 
   if (paymentType === 'ebt') {
-    // specific configuration required for EBT processing if Stripe account is approved for it
-    intentParams.payment_method_types = ['card']; // Update this array when EBT is enabled on your Stripe account
+    // For online EBT SNAP payments, the payment method type must be 'ebt_snap'.
+    // This ensures the Stripe Payment Sheet displays the correct fields for EBT card entry.
+    intentParams.payment_method_types = ['ebt_snap'];
   } else {
     intentParams.automatic_payment_methods = { enabled: true };
   }

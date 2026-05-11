@@ -142,9 +142,9 @@ import { stripe } from '../services/transaction.service';
 export const createPaymentIntentController = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.userId as string;
-    const { orderId, paymentType } = req.body;
+    const { orderId, paymentType, amount } = req.body;
 
-    const paymentIntent = await createPaymentIntentService(userId, orderId, paymentType);
+    const paymentIntent = await createPaymentIntentService(userId, orderId, paymentType, amount);
     res.status(200).json(paymentIntent);
   } catch (error: any) {
     await errorLogService.logError({
