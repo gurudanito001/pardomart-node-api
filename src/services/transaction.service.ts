@@ -64,8 +64,21 @@ export const createPaymentIntentService = async (userId: string, orderId: string
   // Recalculate order totals to get the current ebtEligibleSubtotal
   const recalculatedOrder = await recalculateOrderTotal(order.id);
   
-  // Use provided amount (partial payment) or full budget (from recalculated order)
-  const chargeAmount = amount ?? (recalculatedOrder.budgetAmount ?? recalculatedOrder.totalAmount);
+  // Determine the amount to charge based on the payment type and provided amount
+  let chargeAmount: number;
+  if (amount !== undefined) {
+    chargeAmount = amount;
+  } else if (paymentType === 'ebt') {
+    // Default to the maximum EBT-eligible amount if not specified
+    chargeAmount = recalculatedOrder.ebtEligibleSubtotal;
+  } else {
+    // Default to the full order total for standard card payments
+    chargeAmount = (recalculatedOrder.budgetAmount ?? recalculatedOrder.totalAmount);
+  }
+
+  if (chargeAmount <= 0) {
+    throw new OrderCreationError(paymentType === 'ebt' ? 'No EBT-eligible items found in this order.' : 'Payment amount must be greater than zero.', 400);
+  }
   
   // Validation check for card payments
   if (paymentType === 'card') {
