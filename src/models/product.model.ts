@@ -315,6 +315,8 @@ export const getAllVendorProducts = async (
   pagination: { page: string, take: string },
   requestor?: { userId?: string; userRole?: Role; staffVendorId?: string }
 ) => {
+
+  console.log('getAllVendorProducts called with filters:', filters, 'pagination:', pagination, 'requestor:', requestor);
   const skip = ((parseInt(pagination.page)) - 1) * parseInt(pagination.take)
   const takeVal = parseInt(pagination.take)
 
