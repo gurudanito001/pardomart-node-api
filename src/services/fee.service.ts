@@ -1,6 +1,7 @@
 import { PrismaClient, Prisma, Fee, FeeType, FeeCalculationMethod, DeliveryMethod } from '@prisma/client';
 import { getDistance } from 'geolib';
 
+import { OrderCreationError } from './order.service';
 const prisma = new PrismaClient();
 
 // --- Interfaces for Payloads ---
@@ -221,6 +222,7 @@ interface CalculateFeesPayload {
   deliveryAddressId?: string;
   deliveryType?: DeliveryMethod;
   skipAvailabilityCheck?: boolean; // Use true to bypass strict checks during recalculations
+  allowUnpublishedVendor?: boolean; // Allow fee calculation for active orders even if vendor is draft/unpublished
   useMaxPricesForBudget?: boolean; // Calculate subtotal and fees using the highest price among the item and its replacements
 }
 
@@ -282,14 +284,22 @@ export const calculateOrderFeesService = async (
 
     // --- 2. Fetch Necessary Data ---
     // Fetch vendor location
-    const vendor = await prismaClient.vendor.findUnique({
-      where: { id: vendorId, isPublished: true },
-      select: { latitude: true, longitude: true },
-    });
-    if (!vendor || vendor.latitude === null || vendor.longitude === null) {
-      throw new Error('Vendor location not found or invalid.');
+    const vendorWhere: Prisma.VendorWhereInput = { id: vendorId };
+    if (!payload.allowUnpublishedVendor) {
+      vendorWhere.isPublished = true;
     }
 
+    const vendor = await prismaClient.vendor.findUnique({
+      where: vendorWhere as Prisma.VendorWhereUniqueInput,
+      select: { latitude: true, longitude: true },
+    });
+    if (!vendor) {
+      throw new OrderCreationError('Vendor is unavailable or has invalid location data. Please contact support.', 400);
+    }
+    // If vendor is found but location is null, it's an invalid state.
+    if (vendor.latitude === null || vendor.longitude === null) {
+      throw new OrderCreationError('Vendor location data is missing or invalid. Please contact support.', 400);
+    }
     // Fetch delivery address details only if needed for delivery
     let deliveryAddress = null;
     if (deliveryType !== 'customer_pickup' && deliveryAddressId) {
@@ -506,7 +516,7 @@ export const calculateOrderFeesService = async (
   } catch (error: any) {
     // If it's already a descriptive error we threw (not found, availability, etc.), pass it up directly
     if (error.message.toLowerCase().includes('not found') || error.message.includes('available') || error.message.includes('stock')) {
-      throw error;
+      throw new OrderCreationError(error.message, error.statusCode || 400);
     }
     console.error('Unexpected error calculating order fees:', error);
     throw new Error(`Failed to calculate fees: ${error.message}`);

@@ -172,8 +172,22 @@ export const findOrdersForVendors = async (filters: GetOrdersForVendorFilters): 
   // An order is eligible for a vendor if:
   // 1. The shopping is done by the vendor ('vendor' shopping method).
   // 2. Or, if shopping is done by a delivery person, it's eligible when it is ready for delivery.
+  // 3. AND the order must be fully paid (or using cash method).
+  const paymentCondition: Prisma.OrderWhereInput = {
+    OR: [
+      { paymentStatus: PaymentStatus.paid },
+      { paymentMethod: PaymentMethods.cash },
+      { orderStatus: { in: [
+        OrderStatus.declined_by_vendor,
+        OrderStatus.cancelled_by_customer,
+        OrderStatus.no_items_found
+      ] } }
+    ],
+  };
+
   where.AND = [
-    ...(where.AND as Prisma.OrderWhereInput[] || []), // preserve existing AND conditions if any
+    ...(where.AND as Prisma.OrderWhereInput[] || []),
+    paymentCondition,
     {
       OR: [
         { shoppingMethod: ShoppingMethod.vendor },
@@ -183,7 +197,10 @@ export const findOrdersForVendors = async (filters: GetOrdersForVendorFilters): 
             in: [
               //OrderStatus.completed_bagging, 
               OrderStatus.ready_for_delivery, 
-              //OrderStatus.ready_for_pickup
+              // Allow terminal states tied to the vendor to be visible
+              OrderStatus.declined_by_vendor,
+              OrderStatus.cancelled_by_customer,
+              OrderStatus.no_items_found,
             ] 
           } 
         }

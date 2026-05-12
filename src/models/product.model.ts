@@ -1,5 +1,5 @@
 // models/product.model.ts
-import { PrismaClient, Product, VendorProduct, Prisma, Vendor, Category, Tag } from '@prisma/client';
+import { PrismaClient, Product, VendorProduct, Prisma, Vendor, Category, Tag, Role } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -17,6 +17,7 @@ export interface CreateProductPayload {
   isAlcohol?: boolean;
   isAgeRestricted?: boolean;
   isEbtEligible?: boolean;
+  isPerishable?: boolean;
   id?: string;
 }
 
@@ -39,6 +40,7 @@ export interface CreateVendorProductPayload {
   isAlcohol?: boolean;
   isEbtEligible?: boolean;
   isAgeRestricted?: boolean;
+  isPerishable?: boolean;
   meta?: any;
 }
 
@@ -61,6 +63,7 @@ export interface UpdateVendorProductPayload {
   isAlcohol?: boolean;
   isAgeRestricted?: boolean;
   isEbtEligible?: boolean;
+  isPerishable?: boolean;
   meta?: any;
 }
 
@@ -80,6 +83,7 @@ export interface UpdateProductBasePayload {
   isAlcohol?: boolean;
   isEbtEligible?: boolean;
   isAgeRestricted?: boolean;
+  isPerishable?: boolean;
 }
 
 export interface AdminGetAllProductsFilters {
@@ -87,6 +91,7 @@ export interface AdminGetAllProductsFilters {
   categoryId?: string;
   isAlcohol?: boolean;
   isAgeRestricted?: boolean;
+  isPerishable?: boolean;
 }
 
 
@@ -221,6 +226,10 @@ export const adminGetAllProducts = async (
     where.isAgeRestricted = filters.isAgeRestricted;
   }
 
+  if (filters.isPerishable !== undefined) {
+    where.isPerishable = filters.isPerishable;
+  }
+
   const [products, totalCount] = await prisma.$transaction([
     prisma.product.findMany({
       where,
@@ -298,9 +307,14 @@ export interface getVendorProductsFilters {
   tagIds?: string[],
   categoryIds?: string[],
   name?: string,
+  isPerishable?: boolean,
 }
 
-export const getAllVendorProducts = async (filters: getVendorProductsFilters, pagination: { page: string, take: string }) => {
+export const getAllVendorProducts = async (
+  filters: getVendorProductsFilters, 
+  pagination: { page: string, take: string },
+  requestor?: { userId?: string; userRole?: Role; staffVendorId?: string }
+) => {
   const skip = ((parseInt(pagination.page)) - 1) * parseInt(pagination.take)
   const takeVal = parseInt(pagination.take)
 
@@ -339,8 +353,29 @@ export const getAllVendorProducts = async (filters: getVendorProductsFilters, pa
     where.vendorId = filters.vendorId;
   }
 
+  if (filters?.isPerishable !== undefined) {
+    where.isPerishable = filters.isPerishable;
+  }
+
   if (filters?.productId) {
     where.productId = filters.productId;
+  }
+
+  // Filter by published status based on role and store ownership
+  if (requestor?.userRole !== Role.admin) {
+    let isPrivilegedForStore = false;
+    if (filters.vendorId) {
+      const vendor = await prisma.vendor.findUnique({ where: { id: filters.vendorId } });
+      isPrivilegedForStore = vendor?.userId === requestor?.userId || requestor?.staffVendorId === filters.vendorId;
+    }
+
+    if (!isPrivilegedForStore) {
+      where.published = true;
+      where.vendor = {
+        ...(where.vendor as object),
+        isPublished: true
+      };
+    }
   }
 
   const vendorProducts = await prisma.vendorProduct.findMany({
@@ -540,7 +575,8 @@ export const getVendorProductsByUserId = async (userId: string): Promise<VendorP
  */
 export const getTrendingVendorProducts = async (
   filters: { vendorId?: string },
-  pagination: { page: string; take: string }
+  pagination: { page: string; take: string },
+  requestor?: { userId?: string; userRole?: Role; staffVendorId?: string }
 ): Promise<{ data: (VendorProduct & { orderCount: number })[], total: number, page: number, size: number }> => {
   const { vendorId } = filters;
   const pageNum = parseInt(pagination.page, 10) || 1;
@@ -553,6 +589,25 @@ export const getTrendingVendorProducts = async (
     orderItemWhere.vendorProduct = {
       vendorId: vendorId,
     };
+  }
+
+  // Apply published filters for non-privileged users
+  if (requestor?.userRole !== Role.admin) {
+    let isPrivilegedForStore = false;
+    if (vendorId) {
+      const vendor = await prisma.vendor.findUnique({ where: { id: vendorId } });
+      isPrivilegedForStore = vendor?.userId === requestor?.userId || requestor?.staffVendorId === vendorId;
+    }
+
+    if (!isPrivilegedForStore) {
+      orderItemWhere.vendorProduct = {
+        ...(orderItemWhere.vendorProduct as object),
+        published: true,
+        vendor: {
+          isPublished: true
+        }
+      };
+    }
   }
 
   // 1. Aggregate OrderItems to get the count for each vendorProductId and paginate
@@ -717,6 +772,7 @@ export const transferVendorProducts = async (
         published: sourceProduct.published,
         isAlcohol: sourceProduct.isAlcohol,
         isAgeRestricted: sourceProduct.isAgeRestricted,
+        isPerishable: sourceProduct.isPerishable,
         attributes: sourceProduct.attributes ?? Prisma.JsonNull,
         meta: sourceProduct.meta ?? Prisma.JsonNull,
         categories: {

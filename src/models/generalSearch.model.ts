@@ -1,4 +1,4 @@
-import { VendorProduct, Vendor, Category, Prisma } from '@prisma/client';
+import { VendorProduct, Vendor, Category, Prisma, Role } from '@prisma/client';
 import getDistance from 'geolib/es/getPreciseDistance';
 import { prisma } from '../config/prisma';
 
@@ -21,8 +21,10 @@ export const searchByProductName = async (
     // 1. Find vendors that have products matching the search term.
     const vendors = await prisma.vendor.findMany({
       where: {
+        isPublished: true,
         vendorProducts: {
           some: {
+            published: true,
             product: {
               name: {
                 contains: searchTerm,
@@ -45,6 +47,7 @@ export const searchByProductName = async (
           prisma.vendorProduct.findMany({
             where: {
               vendorId: vendor.id,
+              published: true,
               product: {
                 name: {
                   contains: searchTerm,
@@ -57,6 +60,7 @@ export const searchByProductName = async (
           prisma.vendorProduct.count({
             where: {
               vendorId: vendor.id,
+              published: true,
               product: {
                 name: {
                   contains: searchTerm,
@@ -99,6 +103,7 @@ export const searchByStoreName = async (
     // 1. Find vendors whose name matches the search term.
     const vendors = await prisma.vendor.findMany({
       where: {
+        isPublished: true,
         name: {
           contains: searchTerm,
           mode: 'insensitive',
@@ -127,12 +132,12 @@ export const searchByStoreName = async (
       vendorsWithDistance.map(async (vendor) => {
         const [products, totalProducts] = await prisma.$transaction([
           prisma.vendorProduct.findMany({
-            where: { vendorId: vendor.id },
+            where: { vendorId: vendor.id, published: true },
             take: 10,
             orderBy: { createdAt: 'desc' },
           }),
           prisma.vendorProduct.count({
-            where: { vendorId: vendor.id },
+            where: { vendorId: vendor.id, published: true },
           }),
         ]);
 
@@ -182,8 +187,10 @@ export const searchByCategoryName = async (
     // 3. Find vendors that have products in any of the matched categories.
     const vendorsWithProducts = await prisma.vendor.findMany({
       where: {
+        isPublished: true,
         vendorProducts: {
           some: {
+            published: true,
             categories: {
               some: {
                 id: { in: allCategoryIds },
@@ -195,6 +202,7 @@ export const searchByCategoryName = async (
       include: {
         vendorProducts: {
           where: {
+            published: true,
             categories: { some: { id: { in: allCategoryIds } } },
           },
           take: 10,
@@ -215,6 +223,7 @@ export const searchByCategoryName = async (
         const totalProducts = await prisma.vendorProduct.count({
           where: {
             vendorId: vendor.id,
+            published: true,
             categories: { some: { id: { in: allCategoryIds } } },
           },
         });
@@ -282,8 +291,10 @@ export const searchByCategoryId = async (
     // Find vendors that have products in any of the matched categories.
     const vendors = await prisma.vendor.findMany({
       where: {
+        isPublished: true,
         vendorProducts: {
           some: {
+            published: true,
             categories: {
               some: {
                 id: { in: allCategoryIds },
@@ -305,6 +316,7 @@ export const searchByCategoryId = async (
           prisma.vendorProduct.findMany({
             where: {
               vendorId: vendor.id,
+              published: true,
               categories: {
                 some: { id: { in: allCategoryIds } },
               },
@@ -315,6 +327,7 @@ export const searchByCategoryId = async (
           prisma.vendorProduct.count({
             where: {
               vendorId: vendor.id,
+              published: true,
               categories: {
                 some: { id: { in: allCategoryIds } },
               },
@@ -397,6 +410,7 @@ export const vendorCategoryWithProducts = async (
       const products = await prisma.vendorProduct.findMany({
         where: {
           vendorId: vendorId,
+          published: true,
           categories: {
             some: {
               id: { in: categoryIdsToFetch }
@@ -447,16 +461,23 @@ interface SearchStoreProductsResult {
 export const searchStoreProducts = async (
   storeId: string,
   searchTerm?: string,
-  categoryId?: string
+  categoryId?: string,
+  requestor?: { userId?: string; userRole?: Role; staffVendorId?: string }
 ): Promise<(SearchStoreProductsResult[] | VendorProduct[]) | null> => {
   const vendor = await prisma.vendor.findUnique({ where: { id: storeId } });
   if (!vendor) {
     return null; // Service layer will handle the 404
   }
 
+  // Authorization: Differentiate between customer/guest and store owners/staff
+  const isPrivileged = requestor?.userRole === Role.admin || 
+                       vendor.userId === requestor?.userId || 
+                       requestor?.staffVendorId === storeId;
+
   const where: Prisma.VendorProductWhereInput = {
     vendorId: storeId,
     isAvailable: true,
+    ...(!isPrivileged && { published: true }),
   };
 
   if (searchTerm) {

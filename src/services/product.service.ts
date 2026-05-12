@@ -89,6 +89,14 @@ export const createVendorProduct = async (payload: productModel.CreateVendorProd
     }
   }
 
+  // Inherit Perishable status from base product if not provided
+  if (payload.isPerishable === undefined) {
+    const baseProduct = await productModel.getProductById(payload.productId);
+    if (baseProduct) {
+      payload.isPerishable = baseProduct.isPerishable;
+    }
+  }
+
   const { images, ...productData } = payload;
   let processedImageUrls: string[] = [];
 
@@ -173,6 +181,7 @@ export const createVendorProductWithBarcode = async (payload: any, ownerId: stri
       attributes: payload.attributes,
       meta: payload.meta,
       isEbtEligible: payload.isEbtEligible,
+      isPerishable: payload.isPerishable,
       categoryIds: payload.categoryIds || [],
       tagIds: payload.tagIds || [],
     });
@@ -289,8 +298,12 @@ export const updateVendorProduct = async (payload: any) => {
   return mapEffectivePrice(vp);
 };
 export const getAllProducts = () => productModel.getAllProducts();
-export const getAllVendorProducts = async (filters: any, pagination: any) => {
-  const result = await productModel.getAllVendorProducts(filters, pagination);
+export const getAllVendorProducts = async (
+  filters: any, 
+  pagination: any,
+  requestor?: { userId?: string; userRole?: Role; staffVendorId?: string }
+) => {
+  const result = await productModel.getAllVendorProducts(filters, pagination, requestor);
   return {
     ...result,
     data: mapEffectivePriceList(result.data)
@@ -305,8 +318,12 @@ export const getVendorProductsByUser = async (userId: string) => {
   return mapEffectivePriceList(products);
 };
 export const deleteProduct = (id: string) => productModel.deleteProduct(id);
-export const getTrendingVendorProductsService = async (filters: any, pagination: any) => {
-  const result = await productModel.getTrendingVendorProducts(filters, pagination);
+export const getTrendingVendorProductsService = async (
+  filters: any, 
+  pagination: any,
+  requestor?: { userId?: string; userRole?: Role; staffVendorId?: string }
+) => {
+  const result = await productModel.getTrendingVendorProducts(filters, pagination, requestor);
   return {
     ...result,
     data: mapEffectivePriceList(result.data)
@@ -453,6 +470,7 @@ export const backfillBaseProductsFromVendorProducts = async () => {
           isAgeRestricted: firstVendorProduct.isAgeRestricted,
           attributes: firstVendorProduct.attributes,
           meta: firstVendorProduct.meta,
+          isPerishable: firstVendorProduct.isPerishable,
           categoryIds: firstVendorProduct.categories.map((c) => c.id),
           tagIds: firstVendorProduct.tags.map((t) => t.id),
         };

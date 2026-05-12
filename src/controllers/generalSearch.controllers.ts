@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { searchProductsService, searchStoreService, searchByCategoryService, searchStoreProductsService, searchByCategoryIdService } from '../services/generalSearch.service';
 import { errorLogService } from '../services/errorLog.service';
+import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 
 /**
  * @swagger
@@ -473,12 +474,18 @@ export const searchByCategoryIdController = async (req: Request, res: Response) 
  *       500:
  *         description: Internal server error.
  */
-export const searchStoreProductsController = async (req: Request, res: Response) => {
+export const searchStoreProductsController = async (req: AuthenticatedRequest, res: Response) => {
   const { storeId } = req.params;
   const { searchTerm, categoryId } = req.query;
+  const { userId, userRole, vendorId: staffVendorId } = req;
 
   try {
-    const result = await searchStoreProductsService(storeId, searchTerm as string | undefined, categoryId as string | undefined);
+    const result = await searchStoreProductsService(
+      storeId, 
+      searchTerm as string | undefined, 
+      categoryId as string | undefined,
+      { userId, userRole, staffVendorId }
+    );
     if (result === null) {
       return res.status(404).json({ error: 'Store not found.' });
     }

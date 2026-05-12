@@ -159,9 +159,14 @@ export const getVendorById = async (
 };
 
 
-export const getAllVendors = async (filters: vendorModel.getVendorsFilters, pagination: {page: string, take: string}) => { // Updated signature
+export const getAllVendors = async (filters: vendorModel.getVendorsFilters, pagination: {page: string, take: string}, userRole?: Role) => { // Updated signature
   const { latitude, longitude, ...modelFilters } = filters;
   const isLocationSearch = latitude && longitude;
+
+  // Differentiate: Only Admins can see unpublished stores in the general list.
+  if (userRole !== Role.admin) {
+    modelFilters.isPublished = true;
+  }
 
   // If filtering by location, we must fetch all vendors matching other criteria first,
   // then filter by distance and paginate in memory. This is because distance calculation

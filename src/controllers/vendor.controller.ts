@@ -403,7 +403,7 @@ export const getAllVendors = async (req: AuthenticatedRequest, res: Response) =>
       createdAtStart: createdAtStart as string | undefined,
       createdAtEnd: createdAtEnd as string | undefined,
     };
-    const vendors = await vendorService.getAllVendors(filters, {page, take});
+    const vendors = await vendorService.getAllVendors(filters, {page, take}, req.userRole);
     res.status(200).json(vendors);
   } catch (error: any) {
     await errorLogService.logError({

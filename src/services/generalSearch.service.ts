@@ -1,6 +1,6 @@
 import {  searchByProductName, searchByStoreName, searchByCategoryName, searchStoreProducts, searchByCategoryId, StoreWithProducts as ModelStoreWithProducts } from '../models/generalSearch.model';
 import { getAggregateRatingsForVendorsService } from './rating.service';
-import { VendorProduct } from '@prisma/client';
+import { VendorProduct, Role } from '@prisma/client';
 
 /**
  * Helper to inject effectivePrice into vendor product objects.
@@ -71,10 +71,11 @@ export const searchByCategoryIdService = async (
 export const searchStoreProductsService = async (
   storeId: string,
   searchTerm?: string,
-  categoryId?: string
+  categoryId?: string,
+  requestor?: { userId?: string; userRole?: Role; staffVendorId?: string }
 ) => {
   try {
-    const result = await searchStoreProducts(storeId, searchTerm, categoryId);
+    const result = await searchStoreProducts(storeId, searchTerm, categoryId, requestor);
     if (!result) return null;
 
     if (Array.isArray(result) && (result.length === 0 || 'id' in result[0])) {

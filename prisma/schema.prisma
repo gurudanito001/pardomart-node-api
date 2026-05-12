@@ -88,6 +88,7 @@ model Product {
   isAgeRestricted Boolean         @default(false)
   tags            Tag[]
   isEbtEligible   Boolean         @default(false)
+  isPerishable    Boolean         @default(false)
   isActive        Boolean         @default(true)
   ratings         Rating[]
   bugReports      BugReport[]
@@ -122,6 +123,7 @@ model VendorProduct {
   orderItems             OrderItem[]    @relation("originalProduct")
   replacementFor         OrderItem[]    @relation("replacementFor")
   isEbtEligible          Boolean        @default(false)
+  isPerishable           Boolean        @default(false)
   wishlistItems          WishlistItem[]
   chosenAsReplacementFor OrderItem[]    @relation("chosenReplacement")
   createdAt              DateTime       @default(now())
@@ -341,8 +343,8 @@ model Vendor {
   details              String?
   image                String?
   address              String?
-  longitude            Float?
-  latitude             Float?
+  longitude            Float
+  latitude             Float
   timezone             String?              @default("America/New_York")
   isVerified           Boolean              @default(false)
   isPublished          Boolean              @default(false)

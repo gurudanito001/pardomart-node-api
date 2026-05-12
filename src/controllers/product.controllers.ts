@@ -7,6 +7,12 @@ import { getVendorProductsFilters } from '../models/product.model';
 import { AuthenticatedRequest } from './vendor.controller';
 import { errorLogService } from '../services/errorLog.service';
 
+const parseBoolean = (value: any): boolean | undefined => {
+    if (value === 'true' || value === '1' || value === 1 || value === true) return true;
+    if (value === 'false' || value === '0' || value === 0 || value === false) return false;
+    return undefined;
+};
+
 /**
  * @swagger
  * /product:
@@ -47,6 +53,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         isAlcohol: { type: boolean }
  *         isAgeRestricted: { type: boolean }
  *         isActive: { type: boolean }
+ *         isPerishable: { type: boolean }
  *         createdAt: { type: string, format: date-time }
  *         updatedAt: { type: string, format: date-time }
  *     CategorySummary:
@@ -88,6 +95,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         stock: { type: integer, nullable: true }
  *         isAvailable: { type: boolean }
  *         published: { type: boolean }
+ *         isPerishable: { type: boolean }
  *         isAlcohol: { type: boolean }
  *         isAgeRestricted: { type: boolean }
  *         attributes: { type: object, nullable: true }
@@ -129,6 +137,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         tagIds: { type: array, items: { type: string, format: uuid }, description: "Array of tag IDs to associate with the product." }
  *         isAlcohol: { type: boolean, default: false }
  *         isAgeRestricted: { type: boolean, default: false }
+ *         isPerishable: { type: boolean, default: false }
  *         isEbtEligible: { type: boolean, default: false }
  *         isActive: { type: boolean, default: true }
  *     CreateVendorProductPayload:
@@ -148,6 +157,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         isAvailable: { type: boolean, default: true }
  *         published: { type: boolean, default: false }
  *         isAlcohol: { type: boolean, default: false }
+ *         isPerishable: { type: boolean, default: false }
  *         isAgeRestricted: { type: boolean, default: false }
  *         isEbtEligible: { type: boolean, default: false }
  *         weight: { type: number, format: float, nullable: true }
@@ -170,6 +180,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         isAvailable: { type: boolean, default: true }
  *         stock: { type: integer, nullable: true }
  *         published: { type: boolean, default: false }
+ *         isPerishable: { type: boolean, default: false }
  *         isAlcohol: { type: boolean, default: false }
  *         isAgeRestricted: { type: boolean, default: false }
  *         weight: { type: number, format: float, nullable: true }
@@ -189,6 +200,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         categoryIds: { type: array, items: { type: string, format: uuid } }
  *         tagIds: { type: array, items: { type: string, format: uuid } }
  *         isAlcohol: { type: boolean }
+ *         isPerishable: { type: boolean }
  *         isAgeRestricted: { type: boolean }
  *         isEbtEligible: { type: boolean }
  *         isActive: { type: boolean }
@@ -207,6 +219,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         isAvailable: { type: boolean }
  *         published: { type: boolean }
  *         isAlcohol: { type: boolean }
+ *         isPerishable: { type: boolean }
  *         isAgeRestricted: { type: boolean }
  *         isEbtEligible: { type: boolean }
  *         attributes: { type: object, nullable: true }
@@ -890,21 +903,16 @@ export const getAllProducts = async (req: Request, res: Response) => {
  */
 export const adminGetAllProductsController = async (req: Request, res: Response) => {
     try {
-        const { name, categoryId, isAlcohol, isAgeRestricted } = req.query;
+        const { name, categoryId, isAlcohol, isAgeRestricted, isPerishable } = req.query;
         const page = req.query.page?.toString() || "1";
         const size = req.query.size?.toString() || "20";
-
-        const parseBoolean = (value: any): boolean | undefined => {
-            if (value === 'true') return true;
-            if (value === 'false') return false;
-            return undefined;
-        };
 
         const filters = {
             name: name as string | undefined,
             categoryId: categoryId as string | undefined,
             isAlcohol: parseBoolean(isAlcohol),
             isAgeRestricted: parseBoolean(isAgeRestricted),
+            isPerishable: parseBoolean(isPerishable),
         };
 
         const result = await productService.adminGetAllProductsService(filters, { page, take: size });
@@ -944,6 +952,10 @@ export const adminGetAllProductsController = async (req: Request, res: Response)
  *         schema: { type: string, format: uuid }
  *         description: Filter by base product ID.
  *       - in: query
+ *         name: isPerishable
+ *         schema: { type: boolean }
+ *         description: Filter by perishable status.
+ *       - in: query
  *         name: categoryIds
  *         style: form
  *         explode: true
@@ -971,12 +983,22 @@ export const adminGetAllProductsController = async (req: Request, res: Response)
  *             schema:
  *               $ref: '#/components/schemas/PaginatedVendorProducts'
  */
-export const getAllVendorProducts = async (req: Request, res: Response) => {
-  const {name, vendorId, categoryIds, tagIds, productId}: getVendorProductsFilters = req.query;
+export const getAllVendorProducts = async (req: AuthenticatedRequest, res: Response) => {
+  const { name, vendorId, categoryIds, tagIds, productId, isPerishable }: any = req.query;
+  const { userId, userRole, vendorId: staffVendorId } = req;
   const page = req?.query?.page?.toString() || "1";
   const take = req?.query?.size?.toString() || "20"; 
+
+  // Normalize array parameters (Express query parser returns string if only one item)
+  const normalizedCategoryIds = Array.isArray(categoryIds) ? categoryIds : (categoryIds ? [categoryIds as string] : []);
+  const normalizedTagIds = Array.isArray(tagIds) ? tagIds : (tagIds ? [tagIds as string] : []);
+
   try {
-    const vendorProducts = await productService.getAllVendorProducts({name, vendorId, categoryIds, tagIds, productId}, {page, take});
+    const vendorProducts = await productService.getAllVendorProducts(
+      { name, vendorId, categoryIds: normalizedCategoryIds, tagIds: normalizedTagIds, productId, isPerishable: parseBoolean(isPerishable) },
+      { page, take },
+      { userId, userRole, staffVendorId }
+    );
     res.json(vendorProducts);
   } catch (error: any) {
     await errorLogService.logError({
@@ -1290,15 +1312,17 @@ export const deleteVendorProduct = async (req: AuthenticatedRequest, res: Respon
  *             schema:
  *               $ref: '#/components/schemas/PaginatedTrendingVendorProducts'
  */
-export const getTrendingVendorProducts = async (req: Request, res: Response) => {
+export const getTrendingVendorProducts = async (req: AuthenticatedRequest, res: Response) => {
   const { vendorId } = req.query;
+  const { userId, userRole, vendorId: staffVendorId } = req;
   const page = req.query.page?.toString() || "1";
   const take = req.query.size?.toString() || "5";
 
   try {
     const result = await productService.getTrendingVendorProductsService(
       { vendorId: vendorId as string | undefined },
-      { page, take }
+      { page, take },
+      { userId, userRole, staffVendorId }
     );
     res.json(result);
   } catch (error: any) {

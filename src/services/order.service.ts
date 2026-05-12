@@ -201,6 +201,7 @@ export const recalculateOrderTotal = async (orderId: string, tx?: Prisma.Transac
     vendorId: order.vendorId,
     deliveryAddressId: order.deliveryAddressId || undefined,
     deliveryType: order.deliveryMethod || undefined,
+    allowUnpublishedVendor: true, // Crucial: recalculations should work even if vendor is draft
     skipAvailabilityCheck: true, // Prevent mid-shopping catalog stock changes from crashing the recalculation
   }, db) : { subtotal: 0, shoppingFee: 0, deliveryFee: 0, serviceFee: 0, ebtEligibleSubtotal: 0 };
 
@@ -467,9 +468,10 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
   // We calculate fees before the transaction to get the total amount for the PaymentIntent.
   const fees = await calculateOrderFeesService({
     orderItems,
-    vendorId,
-    deliveryAddressId: shippingAddressId!,
+    vendorId: vendorId,
+    deliveryAddressId: shippingAddressId || undefined,
     deliveryType: deliveryMethod,
+    allowUnpublishedVendor: false, // Initial orders MUST be from published vendors
     useMaxPricesForBudget,
     // IMPORTANT: The calculateOrderFeesService (in fee.service.ts) must also be updated
     // to ensure that it only considers 'published: true' products when validating
@@ -735,7 +737,12 @@ export const updateOrderStatusService = async (
   };
 
   const assertIsShopper = () => {
-    if (order.shopperId !== requestingUserId) {
+    if (
+      order.shopperId !== requestingUserId && 
+      requestingUserRole !== Role.vendor && 
+      requestingUserRole !== Role.store_admin &&
+      requestingUserRole !== Role.admin
+    ) {
       throw new OrderCreationError('You are not the assigned shopper for this order.', 403);
     }
   };
@@ -774,6 +781,20 @@ export const updateOrderStatusService = async (
       assertHasRole([Role.store_shopper, Role.store_admin, Role.delivery_person, Role.vendor]);
       assertPreviousStatus([OrderStatus.currently_shopping]);
       assertIsShopper();
+
+      // Validation: Ensure no items are left PENDING
+      const items = await prisma.orderItem.findMany({ where: { orderId } });
+      if (items.some(i => i.status === OrderItemStatus.PENDING)) {
+        throw new OrderCreationError("Cannot complete shopping while some items are still PENDING. Please mark all items as Found, Not Found, or Replaced.");
+      }
+
+      // Case: All items were marked NOT_FOUND
+      if (items.every(i => i.status === OrderItemStatus.NOT_FOUND)) {
+        const terminalOrder = await prisma.$transaction(async (tx) => {
+          return await handleNoItemsFoundOrder(orderId, requestingUserId, tx);
+        });
+        return terminalOrder;
+      }
       break;
 
     case OrderStatus.ready_for_pickup:
@@ -1048,6 +1069,9 @@ export const getOrdersForVendorDashboard = async (
     OrderStatus.currently_shopping,
     OrderStatus.ready_for_delivery, // Vendor might want to see these to prepare for hand-off
     OrderStatus.ready_for_pickup,   // If applicable for their orders
+    OrderStatus.declined_by_vendor,
+    OrderStatus.cancelled_by_customer,
+    OrderStatus.no_items_found,
   ];
 
   try {
@@ -1060,14 +1084,35 @@ export const getOrdersForVendorDashboard = async (
           { orderStatus: options.status } :
           { orderStatus: { in: defaultStatuses}}
         ),
-        OR: [
-          { shoppingStartTime: null }, // Include ASAP orders (null start times)
+        // Payment Check: Ensure order is fully paid (unless it is a cash order)
+        AND: [
           {
-            shoppingStartTime: {
-              lte: dayjs().add(30, 'minutes').utc().toDate(), // Show overdue and near-future scheduled orders
-            },
+            OR: [
+              { paymentStatus: PaymentStatus.paid },
+              { paymentMethod: PaymentMethods.cash },
+              // Terminal orders should stay visible even if paymentStatus is 'refunded'
+              { orderStatus: { in: [OrderStatus.declined_by_vendor, OrderStatus.cancelled_by_customer, OrderStatus.no_items_found] } }
+            ]
           },
-        ],
+          {
+            // logic: if it's a terminal status, show it regardless of time. 
+            // If it's active, apply the 30-minute look-ahead window.
+            OR: [
+              { orderStatus: { in: [OrderStatus.declined_by_vendor, OrderStatus.cancelled_by_customer, OrderStatus.no_items_found] } },
+              {
+                AND: [
+                  { orderStatus: { notIn: [OrderStatus.declined_by_vendor, OrderStatus.cancelled_by_customer, OrderStatus.no_items_found] } },
+                  {
+                    OR: [
+                      { shoppingStartTime: null },
+                      { shoppingStartTime: { lte: dayjs().add(30, 'minutes').utc().toDate() } },
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       },
       include: {
         user: { select: { id: true, name: true, mobileNumber: true } }, // Customer details
@@ -1403,8 +1448,7 @@ const handleNoItemsFoundOrder = async (orderId: string, shopperId: string, tx: P
       shoppingFee: 0,
       shopperTip: 0,
       deliveryPersonTip: 0,
-      // Unassign staff as the order is no longer actionable
-      shopperId: null, 
+      // Keep shopperId assigned so they can "unmark" items if found later
       deliveryPersonId: null,
     }
   });
@@ -1497,8 +1541,7 @@ export const updateOrderItemShoppingStatusService = async (
     OrderStatus.delivered,
     OrderStatus.picked_up_by_customer,
     OrderStatus.declined_by_vendor,
-    OrderStatus.cancelled_by_customer,
-    OrderStatus.no_items_found
+    OrderStatus.cancelled_by_customer
   ] as OrderStatus[];
   
   if (terminalStatuses.includes(order.orderStatus)) {
@@ -2756,16 +2799,10 @@ export const getActiveOrderForUserService = async (userId: string): Promise<Orde
 /**
  * Actually finds and returns the active order with extras.
  */
-export const getActiveOrderService = async (userId: string, userRole: Role): Promise<OrderWithVendorExtras | null> => {
+export const getActiveOrderService = async (userId: string, userRole: Role, staffVendorId?: string): Promise<OrderWithVendorExtras | null> => {
   const order = await orderModel.findActiveOrderForUser(userId);
   
-  if (!order) {
-    return null;
-  }
+  if (!order) return null;
 
-  // Reuse the logic to attach vendor rating and distance
-  // We can reuse getOrderByIdService logic by calling it with the found ID, 
-  // or just replicate the enrichment logic here for efficiency.
-  // Let's call the existing service to ensure consistent response structure (including distance/rating).
-  return getOrderByIdService(order.id, userId, userRole);
+  return getOrderByIdService(order.id, userId, userRole, staffVendorId);
 };
