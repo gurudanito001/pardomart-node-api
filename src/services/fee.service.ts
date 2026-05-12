@@ -522,3 +522,14 @@ export const calculateOrderFeesService = async (
     throw new Error(`Failed to calculate fees: ${error.message}`);
   }
 };
+
+/**
+ * Retrieves a fee record by its ID.
+ * @param id The ID of the fee to retrieve.
+ * @returns The Fee object, or null if not found.
+ */
+export const getFeeById = async (id: string): Promise<Fee | null> => {
+  return prisma.fee.findUnique({
+    where: { id },
+  });
+};

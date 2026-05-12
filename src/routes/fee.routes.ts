@@ -23,6 +23,7 @@ router.post('/calculate-fees', authenticate, validate(validateCalculateFees), fe
 
 // Admin routes
 router.post('/', authenticate, authorize([Role.admin]), validate(validateCreateFee), feeController.createFeeController);
+router.get('/:id', authenticate, authorize([Role.admin]), validate(validateFeeId), feeController.getFeeByIdController);
 router.patch('/:id', authenticate, authorize([Role.admin]), validate(validateUpdateFee), feeController.updateFeeController);
 router.patch('/deactivate/:type', authenticate, authorize([Role.admin]), validate(validateFeeType), feeController.deactivateFeeController);
 router.delete('/:id', authenticate, authorize([Role.admin]), validate(validateFeeId), feeController.deleteFeeController);

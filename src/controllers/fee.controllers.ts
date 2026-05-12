@@ -1,9 +1,10 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import {
   createFee,
   updateFee,
   deleteFee,
   deactivateFee,
+  getFeeById,
   getCurrentFees,
   CreateFeePayload,
   UpdateFeePayload,
@@ -479,3 +480,42 @@ export const calculateFeesController = async (req: Request, res: Response) => {
     res.status(500).json({ error: error.message || 'Internal server error during fee calculation.' });
   }
 };
+
+/**
+**
+ * @swagger
+ * /fees/{id}:
+ *   get:
+ *     summary: Get a fee by its ID (Admin)
+ *     tags: [Fee]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the fee to retrieve.
+ *     responses:
+ *       200:
+ *         description: The requested fee.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Fee'
+ *       404:
+ *         description: Fee not found.
+ *       500:
+ *         description: Internal server error.
+ */
+export const getFeeByIdController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const fee = await getFeeById(req.params.id);
+    if (!fee) return res.status(404).json({ error: 'Fee not found' });
+    res.status(200).json(fee);
+  } catch (error: any) {
+    next(error);
+  }
+}

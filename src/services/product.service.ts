@@ -81,6 +81,11 @@ export const createVendorProduct = async (payload: productModel.CreateVendorProd
     throw new Error('Unauthorized: You do not own this vendor.');
   }
 
+  // Ensure discounted price is lower than the actual price
+  if (payload.discountedPrice !== undefined && payload.discountedPrice !== null && payload.discountedPrice >= payload.price) {
+    throw new Error('Discounted price must be lower than the original price.');
+  }
+
   // Inherit EBT eligibility from base product if not provided
   if (payload.isEbtEligible === undefined) {
     const baseProduct = await productModel.getProductById(payload.productId);
@@ -160,6 +165,11 @@ export const createVendorProductWithBarcode = async (payload: any, ownerId: stri
   const vendor = await vendorModel.getVendorById(payload.vendorId);
   if (!vendor || vendor.userId !== ownerId) {
     throw new Error('Unauthorized: You do not own this vendor.');
+  }
+
+  // Ensure discounted price is lower than the actual price
+  if (payload.discountedPrice !== undefined && payload.discountedPrice !== null && payload.discountedPrice >= payload.price) {
+    throw new Error('Discounted price must be lower than the original price.');
   }
 
   const { images, barcode, ...productData } = payload;
@@ -304,6 +314,19 @@ export const getVendorProductsByTagIds = async (tagIds: string[]) => {
 };
 export const updateProductBase = (payload: any) => productModel.updateProductBase(payload);
 export const updateVendorProduct = async (payload: any) => {
+  // Fetch current state to validate against new inputs
+  const currentVP = await productModel.getVendorProductById(payload.id);
+  if (!currentVP) {
+    throw new Error('Vendor product not found.');
+  }
+
+  const newPrice = payload.price !== undefined ? payload.price : currentVP.price;
+  const newDiscountedPrice = payload.discountedPrice !== undefined ? payload.discountedPrice : currentVP.discountedPrice;
+
+  if (newDiscountedPrice !== null && newDiscountedPrice !== undefined && newDiscountedPrice >= newPrice) {
+    throw new Error('Discounted price must be lower than the original price.');
+  }
+
   const vp = await productModel.updateVendorProduct(payload);
   return mapEffectivePrice(vp);
 };
