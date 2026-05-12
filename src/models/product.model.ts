@@ -361,21 +361,28 @@ export const getAllVendorProducts = async (
     where.productId = filters.productId;
   }
 
-  // Filter by published status based on role and store ownership
-  if (requestor?.userRole !== Role.admin) {
-    let isPrivilegedForStore = false;
-    if (filters.vendorId) {
+  // Determine if the requestor is privileged for the *specific* vendor being queried
+  let isPrivilegedForThisVendor = false;
+  if (requestor?.userRole === Role.admin) {
+      isPrivilegedForThisVendor = true; // Global admin sees everything
+  } else if (filters.vendorId) { // Only check if a specific vendor is being filtered
       const vendor = await prisma.vendor.findUnique({ where: { id: filters.vendorId } });
-      isPrivilegedForStore = vendor?.userId === requestor?.userId || requestor?.staffVendorId === filters.vendorId;
-    }
+      if (vendor) {
+          if (requestor?.userRole === Role.vendor && vendor.userId === requestor.userId) {
+              isPrivilegedForThisVendor = true; // Vendor owner sees their own store's unpublished products
+          } else if ((requestor?.userRole === Role.store_admin || requestor?.userRole === Role.store_shopper) && requestor.staffVendorId === filters.vendorId) {
+              isPrivilegedForThisVendor = true; // Store staff sees their assigned store's unpublished products
+          }
+      }
+  }
 
-    if (!isPrivilegedForStore) {
+  // Apply published filters ONLY if the user is NOT privileged for this specific vendor
+  if (!isPrivilegedForThisVendor) {
       where.published = true;
       where.vendor = {
-        ...(where.vendor as object),
-        isPublished: true
+          ...(where.vendor as object),
+          isPublished: true
       };
-    }
   }
 
   const vendorProducts = await prisma.vendorProduct.findMany({
@@ -591,23 +598,28 @@ export const getTrendingVendorProducts = async (
     };
   }
 
-  // Apply published filters for non-privileged users
-  if (requestor?.userRole !== Role.admin) {
-    let isPrivilegedForStore = false;
-    if (vendorId) {
+  // Determine if the requestor is privileged for the *specific* vendor being queried
+  let isPrivilegedForThisVendor = false;
+  if (requestor?.userRole === Role.admin) {
+      isPrivilegedForThisVendor = true; // Global admin sees everything
+  } else if (vendorId) { // Only check if a specific vendor is being filtered
       const vendor = await prisma.vendor.findUnique({ where: { id: vendorId } });
-      isPrivilegedForStore = vendor?.userId === requestor?.userId || requestor?.staffVendorId === vendorId;
-    }
+      if (vendor) {
+          if (requestor?.userRole === Role.vendor && vendor.userId === requestor.userId) {
+              isPrivilegedForThisVendor = true; // Vendor owner sees their own store's unpublished products
+          } else if ((requestor?.userRole === Role.store_admin || requestor?.userRole === Role.store_shopper) && requestor.staffVendorId === vendorId) {
+              isPrivilegedForThisVendor = true; // Store staff sees their assigned store's unpublished products
+          }
+      }
+  }
 
-    if (!isPrivilegedForStore) {
+  // Apply published filters ONLY if the user is NOT privileged for this specific vendor
+  if (!isPrivilegedForThisVendor) {
       orderItemWhere.vendorProduct = {
-        ...(orderItemWhere.vendorProduct as object),
-        published: true,
-        vendor: {
-          isPublished: true
-        }
+          ...(orderItemWhere.vendorProduct as object),
+          published: true,
+          vendor: { isPublished: true }
       };
-    }
   }
 
   // 1. Aggregate OrderItems to get the count for each vendorProductId and paginate
