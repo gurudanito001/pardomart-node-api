@@ -985,9 +985,8 @@ export const adminGetAllProductsController = async (req: Request, res: Response)
  *             schema:
  *               $ref: '#/components/schemas/PaginatedVendorProducts'
  */
-export const getAllVendorProducts = async (req: AuthenticatedRequest, res: Response) => {
+export const getAllVendorProducts = async (req: Request, res: Response) => {
   const { name, vendorId, categoryIds, tagIds, productId, isPerishable }: any = req.query;
-  const { userId, userRole, vendorId: staffVendorId } = req;
   const page = req?.query?.page?.toString() || "1";
   const take = req?.query?.size?.toString() || "20"; 
 
@@ -997,9 +996,8 @@ export const getAllVendorProducts = async (req: AuthenticatedRequest, res: Respo
 
   try { // Added try-catch for consistency with other controllers
     const vendorProducts = await productService.getAllVendorProducts(
-      { name, vendorId, categoryIds: normalizedCategoryIds, tagIds: normalizedTagIds, productId, isPerishable: parseBoolean(isPerishable) },
-      { page, take },
-      { userId, userRole, staffVendorId }
+      { name, vendorId, categoryIds: normalizedCategoryIds, tagIds: normalizedTagIds, productId, isPerishable: parseBoolean(isPerishable) }, // No requestor needed
+      { page, take }
     );
     res.json(vendorProducts);
   } catch (error: any) {
@@ -1494,5 +1492,64 @@ export const transferVendorProductsController = async (req: AuthenticatedRequest
       return res.status(404).json({ error: error.message });
     }
     res.status(500).json({ error: 'An unexpected error occurred during product transfer.' });
+  }
+};
+
+/**
+ * @swagger
+ * /product/vendor-app/list:
+ *   get:
+ *     summary: Get products for the vendor app (includes unpublished)
+ *     tags: [Product, Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     description: >
+ *       Dedicated endpoint for the vendor app to list products under a store.
+ *       Allows viewing of unpublished products. Restricted to admin, vendor owners, store admins, and shoppers.
+ *     parameters:
+ *       - in: query
+ *         name: vendorId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: The ID of the store to fetch products for.
+ *       - in: query
+ *         name: name
+ *         schema: { type: string }
+ *         description: Filter by product name.
+ *       - in: query
+ *         name: isPerishable
+ *         schema: { type: boolean }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: size
+ *         schema: { type: integer, default: 20 }
+ *     responses:
+ *       200:
+ *         description: A paginated list of vendor products.
+ *       403:
+ *         description: Forbidden if the user is not authorized for the given store.
+ *       400:
+ *         description: Bad request if vendorId is missing.
+ */
+export const getVendorProductsForVendorAppController = async (req: AuthenticatedRequest, res: Response, next: Function) => {
+  try {
+    const { name, vendorId, categoryIds, tagIds, productId, isPerishable }: any = req.query;
+    const { userId, userRole, vendorId: staffVendorId } = req;
+    const page = req.query.page?.toString() || "1";
+    const take = req.query.size?.toString() || "20";
+
+    const normalizedCategoryIds = Array.isArray(categoryIds) ? categoryIds : (categoryIds ? [categoryIds as string] : []);
+    const normalizedTagIds = Array.isArray(tagIds) ? tagIds : (tagIds ? [tagIds as string] : []);
+
+    const result = await productService.getVendorProductsForVendorAppService(
+      { name, vendorId, categoryIds: normalizedCategoryIds, tagIds: normalizedTagIds, productId, isPerishable: parseBoolean(isPerishable) },
+      { page, take },
+      { userId: userId!, userRole: userRole!, staffVendorId }
+    );
+    res.status(200).json(result);
+  } catch (error: any) {
+    next(error);
   }
 };

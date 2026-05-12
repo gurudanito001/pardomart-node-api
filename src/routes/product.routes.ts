@@ -126,9 +126,16 @@ router.post(
   productController.transferVendorProductsController
 );
 
+router.get(
+    '/vendor-app/list',
+    authenticate,
+    authorize([Role.admin, Role.vendor, Role.store_admin, Role.store_shopper]),
+    productController.getVendorProductsForVendorAppController
+);
+
 // --- Public/General Product Routes ---
 router.get('/', productController.getAllProducts);
-router.get('/vendor', authenticate, validate(validateGetAllVendorProducts), productController.getAllVendorProducts);
+router.get('/vendor', validate(validateGetAllVendorProducts), productController.getAllVendorProducts);
 router.get('/vendor/trending', validate(validateGetTrendingVendorProducts), productController.getTrendingVendorProducts);
 router.get('/vendor/:id', validate(validateGetVendorProductById), productController.getVendorProductById);
 router.get('/barcode', validate(validateGetProductByBarcode), productController.getProductByBarcode);

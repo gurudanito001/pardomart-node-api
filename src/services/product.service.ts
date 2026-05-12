@@ -308,12 +308,11 @@ export const updateVendorProduct = async (payload: any) => {
   return mapEffectivePrice(vp);
 };
 export const getAllProducts = () => productModel.getAllProducts();
-export const getAllVendorProducts = async (
-  filters: any, 
-  pagination: any,
-  requestor?: { userId?: string; userRole?: Role; staffVendorId?: string }
+export const getAllVendorProducts = async ( // Streamlined for customer app
+  filters: productModel.getVendorProductsFilters,
+  pagination: { page: string; take: string }
 ) => {
-  const result = await productModel.getAllVendorProducts(filters, pagination, requestor);
+  const result = await productModel.getAllVendorProducts(filters, pagination);
   return {
     ...result,
     data: mapEffectivePriceList(result.data)
@@ -334,6 +333,37 @@ export const getTrendingVendorProductsService = async (
   requestor?: { userId?: string; userRole?: Role; staffVendorId?: string }
 ) => {
   const result = await productModel.getTrendingVendorProducts(filters, pagination, requestor);
+  return {
+    ...result,
+    data: mapEffectivePriceList(result.data)
+  };
+};
+
+export const getVendorProductsForVendorAppService = async (
+  filters: productModel.getVendorProductsFilters,
+  pagination: { page: string; take: string },
+  requestor: { userId: string; userRole: Role; staffVendorId?: string }
+) => {
+  const { vendorId } = filters;
+  if (!vendorId) {
+    throw new Error('vendorId is required.');
+  }
+
+  // Authorization
+  if (requestor.userRole === Role.vendor) {
+    const vendor = await vendorModel.getVendorById(vendorId);
+    if (!vendor || vendor.userId !== requestor.userId) {
+      throw new Error('Forbidden: You do not own this store.');
+    }
+  } else if (requestor.userRole === Role.store_admin || requestor.userRole === Role.store_shopper) {
+    if (requestor.staffVendorId !== vendorId) {
+      throw new Error('Forbidden: You can only view products for your assigned store.');
+    }
+  } else if (requestor.userRole !== Role.admin) {
+    throw new Error('Forbidden: Access denied.');
+  }
+
+  const result = await productModel.getVendorProductsForVendorApp(filters, pagination);
   return {
     ...result,
     data: mapEffectivePriceList(result.data)

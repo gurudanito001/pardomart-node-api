@@ -313,10 +313,8 @@ export interface getVendorProductsFilters {
 export const getAllVendorProducts = async (
   filters: getVendorProductsFilters, 
   pagination: { page: string, take: string },
-  requestor?: { userId?: string; userRole?: Role; staffVendorId?: string }
 ) => {
 
-  console.log('getAllVendorProducts called with filters:', filters, 'pagination:', pagination, 'requestor:', requestor);
   const skip = ((parseInt(pagination.page)) - 1) * parseInt(pagination.take)
   const takeVal = parseInt(pagination.take)
 
@@ -363,29 +361,12 @@ export const getAllVendorProducts = async (
     where.productId = filters.productId;
   }
 
-  // Determine if the requestor is privileged for the *specific* vendor being queried
-  let isPrivilegedForThisVendor = false;
-  if (requestor?.userRole === Role.admin) {
-      isPrivilegedForThisVendor = true; // Global admin sees everything
-  } else if (filters.vendorId) { // Only check if a specific vendor is being filtered
-      const vendor = await prisma.vendor.findUnique({ where: { id: filters.vendorId } });
-      if (vendor) {
-          if (requestor?.userRole === Role.vendor && vendor.userId === requestor.userId) {
-              isPrivilegedForThisVendor = true; // Vendor owner sees their own store's unpublished products
-          } else if ((requestor?.userRole === Role.store_admin || requestor?.userRole === Role.store_shopper) && requestor.staffVendorId === filters.vendorId) {
-              isPrivilegedForThisVendor = true; // Store staff sees their assigned store's unpublished products
-          }
-      }
-  }
-
-  // Apply published filters ONLY if the user is NOT privileged for this specific vendor
-  if (!isPrivilegedForThisVendor) {
-      where.published = true;
-      where.vendor = {
-          ...(where.vendor as object),
-          isPublished: true
-      };
-  }
+  // For the customer app, always filter for published products from published vendors
+  where.published = true;
+  where.vendor = {
+      ...(where.vendor as object), // Preserve any existing vendor filters
+      isPublished: true
+  };
 
   const vendorProducts = await prisma.vendorProduct.findMany({
     where,
@@ -403,6 +384,77 @@ export const getAllVendorProducts = async (
 
   const totalPages = Math.ceil( totalCount / parseInt(pagination.take));
   return {page: parseInt(pagination.page), totalPages, pageSize: takeVal, totalCount, data: vendorProducts}
+};
+
+/**
+ * Dedicated function for fetching products for the vendor app dashboard/management.
+ * Does NOT filter by published status.
+ */
+export const getVendorProductsForVendorApp = async (
+  filters: getVendorProductsFilters,
+  pagination: { page: string; take: string }
+) => {
+  const page = parseInt(pagination.page, 10) || 1;
+  const take = parseInt(pagination.take, 10) || 20;
+  const skip = (page - 1) * take;
+
+  const where: Prisma.VendorProductWhereInput = {};
+
+  if (filters.vendorId) {
+    where.vendorId = filters.vendorId;
+  }
+
+  if (filters.name) {
+    where.name = {
+      contains: filters.name,
+      mode: 'insensitive',
+    };
+  }
+
+  if (filters.categoryIds && filters.categoryIds.length > 0) {
+    where.product = {
+      categories: {
+        some: {
+          id: { in: filters.categoryIds },
+        },
+      },
+    };
+  }
+
+  if (filters.tagIds && filters.tagIds.length > 0) {
+    where.tags = {
+      some: {
+        id: { in: filters.tagIds },
+      },
+    };
+  }
+
+  if (filters.isPerishable !== undefined) {
+    where.isPerishable = filters.isPerishable;
+  }
+
+  if (filters.productId) {
+    where.productId = filters.productId;
+  }
+
+  const [vendorProducts, totalCount] = await prisma.$transaction([
+    prisma.vendorProduct.findMany({
+      where,
+      include: {
+        product: true,
+        categories: true,
+        tags: true,
+      },
+      skip,
+      take,
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.vendorProduct.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / take);
+
+  return { page, totalPages, pageSize: take, totalCount, data: vendorProducts };
 };
 
 
