@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as productController from '../controllers/product.controllers';
 import { authenticate, authorize } from '../middlewares/auth.middleware'; // Assuming you have validation middleware
 import { validate, validateUpdateVendorProduct, validateCreateVendorProduct } from '../middlewares/validation.middleware'; // Assuming you have validation middleware
+import { optionalAuthenticate } from '../middlewares/optionalAuth.middleware';
 import {
     validateCreateProduct,
     validateUpdateProductBase,
@@ -128,7 +129,7 @@ router.post(
 
 // --- Public/General Product Routes ---
 router.get('/', productController.getAllProducts);
-router.get('/vendor', validate(validateGetAllVendorProducts), productController.getAllVendorProducts);
+router.get('/vendor', optionalAuthenticate, validate(validateGetAllVendorProducts), productController.getAllVendorProducts);
 router.get('/vendor/trending', validate(validateGetTrendingVendorProducts), productController.getTrendingVendorProducts);
 router.get('/vendor/:id', validate(validateGetVendorProductById), productController.getVendorProductById);
 router.get('/barcode', validate(validateGetProductByBarcode), productController.getProductByBarcode);
