@@ -425,10 +425,12 @@ export const getVendorProductsForProductController = async (req: Request, res: R
  *       404:
  *         description: Vendor product not found.
  */
-export const getVendorProductById = async (req: Request, res: Response) => {
+export const getVendorProductById = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const vendorProduct = await productService.getVendorProductById(id);
+    const { userId, userRole, vendorId: staffVendorId } = req;
+
+    const vendorProduct = await productService.getVendorProductByIdService(id, { userId, userRole, staffVendorId });
     if (!vendorProduct) {
       return res.status(404).json({ error: 'Vendor product not found' });
     }
@@ -993,7 +995,7 @@ export const getAllVendorProducts = async (req: AuthenticatedRequest, res: Respo
   const normalizedCategoryIds = Array.isArray(categoryIds) ? categoryIds : (categoryIds ? [categoryIds as string] : []);
   const normalizedTagIds = Array.isArray(tagIds) ? tagIds : (tagIds ? [tagIds as string] : []);
 
-  try {
+  try { // Added try-catch for consistency with other controllers
     const vendorProducts = await productService.getAllVendorProducts(
       { name, vendorId, categoryIds: normalizedCategoryIds, tagIds: normalizedTagIds, productId, isPerishable: parseBoolean(isPerishable) },
       { page, take },

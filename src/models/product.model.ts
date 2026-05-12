@@ -532,6 +532,7 @@ export interface vendorProductWithRelations extends VendorProduct {
   tags: Tag[]
   effectivePrice?: number
 }
+
   
 export const getVendorProductById = async (vendorProductId: string): Promise<vendorProductWithRelations | null> =>{
   return prisma.vendorProduct.findUnique({
@@ -542,6 +543,41 @@ export const getVendorProductById = async (vendorProductId: string): Promise<ven
       tags: true
     },
   });
+};
+
+export const getVendorProductByIdWithPrivilegeCheck = async (
+  vendorProductId: string,
+  requestor?: { userId?: string; userRole?: Role; staffVendorId?: string }
+): Promise<vendorProductWithRelations | null> => {
+  const vendorProduct = await prisma.vendorProduct.findUnique({
+    where: { id: vendorProductId },
+    include: {
+      vendor: true,
+      categories: true,
+      tags: true
+    },
+  });
+
+  if (!vendorProduct) {
+    return null;
+  }
+
+  // Determine if the requestor is privileged for this specific vendor product
+  let isPrivilegedToSeeUnpublished = false;
+  if (requestor?.userRole === Role.admin) {
+      isPrivilegedToSeeUnpublished = true; // Global admin sees everything
+  } else if (requestor?.userRole === Role.vendor && vendorProduct.vendor.userId === requestor.userId) {
+      isPrivilegedToSeeUnpublished = true; // Vendor owner sees their own store's unpublished products
+  } else if ((requestor?.userRole === Role.store_admin || requestor?.userRole === Role.store_shopper) && requestor.staffVendorId === vendorProduct.vendorId) {
+      isPrivilegedToSeeUnpublished = true; // Store staff sees their assigned store's unpublished products
+  }
+
+  // If not privileged, and the product or its vendor is unpublished, return null (or throw 404)
+  if (!isPrivilegedToSeeUnpublished && (!vendorProduct.published || !vendorProduct.vendor.isPublished)) {
+      return null; // Or throw new Error('Product not found or not published.', 404);
+  }
+
+  return vendorProduct;
 };
 
 /**

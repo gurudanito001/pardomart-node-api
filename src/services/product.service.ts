@@ -138,6 +138,16 @@ export const getVendorProductById = async (id: string) => {
   };
 };
 
+export const getVendorProductByIdService = async (
+  id: string,
+  requestor?: { userId?: string; userRole?: Role; staffVendorId?: string }
+) => {
+  const vendorProduct = await productModel.getVendorProductByIdWithPrivilegeCheck(id, requestor);
+  if (!vendorProduct) return null;
+  const rating = await getAggregateRatingService({ ratedProductId: vendorProduct.productId });
+  return { ...vendorProduct, effectivePrice: vendorProduct.discountedPrice ?? vendorProduct.price, rating: rating || { average: 5, count: 0 } };
+};
+
 /**
  * Creates a vendor product from a barcode, handling image uploads.
  * If the base product doesn't exist, it's created.

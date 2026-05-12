@@ -493,8 +493,8 @@ export const getOrderHistoryController = async (req: AuthenticatedRequest, res: 
  */
 export const getActiveOrderController = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { userId, userRole } = req;
-    const order = await getActiveOrderService(userId as string, userRole as Role);
+    const { userId, userRole, vendorId: staffVendorId } = req;
+    const order = await getActiveOrderService(userId as string, userRole as Role, staffVendorId);
     // It's okay to return null if no order is active, frontend should handle it.
     res.status(200).json(order); 
   } catch (error: any) {

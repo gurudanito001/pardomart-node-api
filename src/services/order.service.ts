@@ -1090,7 +1090,7 @@ export const getOrdersForVendorDashboard = async (
             OR: [
               { paymentStatus: PaymentStatus.paid },
               { paymentMethod: PaymentMethods.cash },
-              // Terminal orders should stay visible even if paymentStatus is 'refunded'
+              // Terminal orders should stay visible even if paymentStatus is 'refunded' or 'failed'
               { orderStatus: { in: [OrderStatus.declined_by_vendor, OrderStatus.cancelled_by_customer, OrderStatus.no_items_found] } }
             ]
           },

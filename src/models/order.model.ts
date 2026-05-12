@@ -177,7 +177,7 @@ export const findOrdersForVendors = async (filters: GetOrdersForVendorFilters): 
     OR: [
       { paymentStatus: PaymentStatus.paid },
       { paymentMethod: PaymentMethods.cash },
-      { orderStatus: { in: [
+      { orderStatus: { in: [ // Terminal orders should stay visible even if paymentStatus is 'refunded' or 'failed'
         OrderStatus.declined_by_vendor,
         OrderStatus.cancelled_by_customer,
         OrderStatus.no_items_found
