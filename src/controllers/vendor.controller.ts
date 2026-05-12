@@ -155,7 +155,7 @@ export interface AuthenticatedRequest extends Request {
  *             $ref: '#/components/schemas/VendorListItem'
  *     CreateVendorPayload:
  *       type: object
- *       required: [name]
+ *       required: [name, longitude, latitude]
  *       properties:
  *         name: { type: string, example: "John's Groceries" }
  *         email: { type: string, format: email, nullable: true, example: "contact@johnsgroceries.com" }
@@ -163,8 +163,8 @@ export interface AuthenticatedRequest extends Request {
  *         details: { type: string, nullable: true, example: "Your one-stop shop for fresh produce and daily essentials." }
  *         image: { type: string, format: uri, nullable: true }
  *         address: { type: string, nullable: true, example: "123 Main St, Anytown, USA" }
- *         longitude: { type: number, format: float, nullable: true, example: -73.935242 }
- *         latitude: { type: number, format: float, nullable: true, example: 40.730610 }
+ *         longitude: { type: number, format: float, example: -73.935242 }
+ *         latitude: { type: number, format: float, example: 40.730610 }
  *         mobileNumber: { type: string, nullable: true, example: "+1234567890" }
  *         mobileVerified: { type: boolean, default: false }
  *         availableForShopping: { type: boolean, default: true }

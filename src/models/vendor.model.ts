@@ -13,8 +13,8 @@ export interface CreateVendorPayload {
   details?: string;
   image?: string;
   address?: string;
-  longitude?: number;
-  latitude?: number;
+  longitude: number;
+  latitude: number;
   meta?: any;
 }
 
