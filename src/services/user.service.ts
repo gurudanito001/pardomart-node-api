@@ -100,10 +100,49 @@ export const updateUser = async (id: string, payload: UpdateUserPayload) => {
  * Deletes a user account.
  * Checks for active orders before allowing deletion to prevent orphaned deliveries or shopping sessions.
  */
-export const deleteUser = async (userId: string) => {
-  const activeOrdersCount = await prisma.order.count({
+export const deleteUser = async (userId: string, tx?: Prisma.TransactionClient) => {
+  const db = tx || prisma;
+  const user = await userModel.getUserById(userId);
+  if (!user) throw new Error('User not found.');
+
+  const terminalStatuses = ['delivered', 'picked_up_by_customer', 'cancelled_by_customer', 'declined_by_vendor', 'no_items_found'];
+
+  // Check personal involvement (Customer, Shopper, or Deliverer)
+  const activePersonalOrdersCount = await db.order.count({
     where: {
-      userId: userId,
+      OR: [{ userId: userId }, { shopperId: userId }, { deliveryPersonId: userId }],
+      orderStatus: { notIn: terminalStatuses as any }
+    }
+  });
+
+  if (activePersonalOrdersCount > 0) {
+    throw new Error('Cannot delete account while you have active orders as a customer, shopper, or delivery person.');
+  }
+
+  // Check store involvement for vendors
+  if (user.role === Role.vendor) {
+    const activeVendorOrdersCount = await db.order.count({
+      where: {
+        vendor: { userId: userId },
+        orderStatus: { notIn: terminalStatuses as any }
+      }
+    });
+
+    if (activeVendorOrdersCount > 0) {
+      throw new Error('Cannot delete account while your store(s) have active orders. Please fulfill or cancel them first.');
+    }
+
+    // Deactivate stores
+    await db.vendor.updateMany({
+      where: { userId },
+      data: { isPublished: false, availableForShopping: false }
+    });
+  }
+
+  return userModel.deleteUser(userId, tx);
+};
+
+/**
       orderStatus: {
         notIn: ['delivered', 'picked_up_by_customer', 'cancelled_by_customer', 'declined_by_vendor']
       }
@@ -129,6 +168,7 @@ export const updateUserSettings = async (
     replacementPreference?: ReplacementPreference;
     measurementUnit?: MeasurementUnit;
     biometricEnabled?: boolean;
+    darkMode?: boolean;
   }
 ) => {
   const user = await userModel.getUserById(userId);
@@ -147,6 +187,24 @@ export const initiateAccountDeletion = async (userId: string): Promise<void> => 
   const user = await userModel.getUserById(userId);
   if (!user || !user.email) {
     throw new Error('User not found or email not registered.');
+  }
+
+  // Fail early if account cannot be deleted
+  const terminalStatuses = ['delivered', 'picked_up_by_customer', 'cancelled_by_customer', 'declined_by_vendor', 'no_items_found'];
+  const activeCheck = await prisma.order.count({
+    where: {
+      OR: [
+        { userId },
+        { shopperId: userId },
+        { deliveryPersonId: userId },
+        { vendor: { userId: userId } }
+      ],
+      orderStatus: { notIn: terminalStatuses as any }
+    }
+  });
+
+  if (activeCheck > 0) {
+    throw new Error('Cannot delete account while you have active orders. Please cancel or wait for them to complete.');
   }
 
   const emailBodyTemplate = (otp: string) => `
@@ -178,13 +236,14 @@ export const confirmAccountDeletion = async (userId: string, otp: string): Promi
     throw new Error('User not found or email not registered.');
   }
 
+  // Verify OTP first (outside transaction to avoid unnecessary locking)
   await emailVerificationService.verifyEmailOtp(user.email, otp, 'account_deletion');
 
-  // Delete the OTP record after successful verification
-  await prisma.emailVerification.delete({ where: { email: user.email } });
-
-  // Perform the soft delete (which includes the active order check)
-  return deleteUser(userId);
+  return prisma.$transaction(async (tx) => {
+    // Delete record and deactivate user atomically
+    await tx.emailVerification.delete({ where: { email: user.email } });
+    return deleteUser(userId, tx);
+  });
 };
 
 export const getAdminStatsService = async () => {

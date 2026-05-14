@@ -51,6 +51,7 @@ model User {
   replacementPreference ReplacementPreference @default(send_request)
   measurementUnit       MeasurementUnit       @default(metric)
   biometricEnabled      Boolean               @default(false)
+  darkMode              Boolean               @default(false)
 
   // New fields for ratings
   ratingsGiven        Rating[]             @relation("RatingsGiven")

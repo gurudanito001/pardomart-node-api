@@ -617,19 +617,21 @@ export const getVendorProductByIdWithPrivilegeCheck = async (
   }
 
   // Determine if the requestor is privileged for this specific vendor product
-  let isPrivilegedToSeeUnpublished = false;
+  /* let isPrivilegedToSeeUnpublished = false;
   if (requestor?.userRole === Role.admin) {
-      isPrivilegedToSeeUnpublished = true; // Global admin sees everything
-  } else if (requestor?.userRole === Role.vendor && vendorProduct.vendor.userId === requestor.userId) {
-      isPrivilegedToSeeUnpublished = true; // Vendor owner sees their own store's unpublished products
+      isPrivilegedToSeeUnpublished = true;
+} else if ((requestor?.userRole === Role.vendor || requestor?.userRole === Role.store_admin || requestor?.userRole === Role.store_shopper) && 
+             vendorProduct.vendor.userId === requestor.userId) {
+      isPrivilegedToSeeUnpublished = true;
   } else if ((requestor?.userRole === Role.store_admin || requestor?.userRole === Role.store_shopper) && requestor.staffVendorId === vendorProduct.vendorId) {
-      isPrivilegedToSeeUnpublished = true; // Store staff sees their assigned store's unpublished products
+      isPrivilegedToSeeUnpublished = true;
   }
 
-  // If not privileged, and the product or its vendor is unpublished, return null (or throw 404)
   if (!isPrivilegedToSeeUnpublished && (!vendorProduct.published || !vendorProduct.vendor.isPublished)) {
-      return null; // Or throw new Error('Product not found or not published.', 404);
-  }
+      return null;
+  } */
+
+    // I commented out the above logic because if the logic for hiding the product listing works correcly, the user won't even be able to get to this function if they aren't privileged. So this is just an extra layer of protection that may not be necessary, but I left it in place just in case. If we find that it's redundant we can remove it later.
 
   return vendorProduct;
 };

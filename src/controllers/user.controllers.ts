@@ -138,6 +138,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         replacementPreference: { type: string, enum: [dont_replace, send_request], default: send_request }
  *         measurementUnit: { type: string, enum: [imperial, metric], default: metric }
  *         biometricEnabled: { type: boolean, default: false }
+ *         darkMode: { type: boolean, default: false }
  */
 export const getAllUsers = async (req: Request, res: Response) => {
   // express-validator has already sanitized and converted types
@@ -639,6 +640,10 @@ export const deleteUser = async (req: Request, res: Response) => {
  *                 type: boolean
  *                 default: false
  *                 description: Whether FaceID/Biometrics is enabled for login.
+ *               darkMode:
+ *                 type: boolean
+ *                 default: false
+ *                 description: Whether Dark Mode is enabled.
  *     responses:
  *       200:
  *         description: User settings updated successfully.
@@ -656,12 +661,13 @@ export const deleteUser = async (req: Request, res: Response) => {
 export const updateUserSettingsController = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.userId as string;
-    const { replacementPreference, measurementUnit, biometricEnabled } = req.body;
+    const { replacementPreference, measurementUnit, biometricEnabled, darkMode } = req.body;
 
     const updatedUser = await userService.updateUserSettings(userId, {
       replacementPreference: replacementPreference as ReplacementPreference,
       measurementUnit: measurementUnit as MeasurementUnit,
       biometricEnabled: biometricEnabled !== undefined ? Boolean(biometricEnabled) : undefined,
+      darkMode: darkMode !== undefined ? Boolean(darkMode) : undefined,
     });
 
     res.status(200).json(updatedUser);
@@ -725,6 +731,9 @@ export const initiateAccountDeletionController = async (req: AuthenticatedReques
       errorCode: error.code || 'INITIATE_ACCOUNT_DELETION_ERROR'
     }).catch((logErr: any) => console.error('Failed to log error:', logErr));
 
+    if (error.message.includes('active orders')) {
+      return res.status(400).json({ error: error.message });
+    }
     if (error.message.includes('User not found') || error.message.includes('email not registered')) {
       return res.status(404).json({ error: error.message });
     }
@@ -784,7 +793,7 @@ export const confirmAccountDeletionController = async (req: AuthenticatedRequest
       errorCode: error.code || 'CONFIRM_ACCOUNT_DELETION_ERROR'
     }).catch((logErr: any) => console.error('Failed to log error:', logErr));
 
-    if (error.message.includes('Invalid or expired OTP') || error.message.includes('active orders')) {
+    if (error.message.includes('OTP') || error.message.includes('active orders')) {
       return res.status(400).json({ error: error.message });
     }
     if (error.message.includes('User not found') || error.message.includes('email not registered')) {

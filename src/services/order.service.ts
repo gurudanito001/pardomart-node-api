@@ -244,7 +244,7 @@ export const getOrderHistoryService = async (
     // We should probably check if the order exists first to distinguish 404 from 403 if we weren't reusing logic.
     // Since we reuse it, if it throws, this function throws. If it returns null, we return null.
     // But wait, getOrderByIdService throws 403.
-    // Let's just try to fetch it.
+    // Let's assume getOrderByIdService returned null because it wasn't found.
     throw new OrderCreationError('Order not found or access denied.', 404);
   }
 

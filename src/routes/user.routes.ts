@@ -24,6 +24,11 @@ router.patch('/admin/:id', authorize([Role.admin]), userController.updateAdminCo
 router.patch('/admin/:id/deactivate', authorize([Role.admin]), userController.deactivateAdminController);
 
 router.get('/verificationCodes', userController.getAllVerificationCodes);
+
+router.patch('/me/settings', userController.updateUserSettingsController);
+router.post('/me/delete-account/initiate', userController.initiateAccountDeletionController);
+router.post('/me/delete-account/confirm', userController.confirmAccountDeletionController);
+
 router.get('/', validate(validateGetAllUsers), userController.getAllUsers);
 router.get('/:id', validate(validateUserId), userController.getUserById);
 // router.post('/', userController.createUser); // Create user is handled by /auth/register

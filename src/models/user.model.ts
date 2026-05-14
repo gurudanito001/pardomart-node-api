@@ -136,23 +136,27 @@ export interface UpdateUserPayload {
   replacementPreference?: ReplacementPreference;
   measurementUnit?: MeasurementUnit;
   biometricEnabled?: boolean;
+  darkMode?: boolean;
 }
 
-export const updateUser = async (id: string, payload: Prisma.UserUpdateInput): Promise<User> => {
-  return prisma.user.update({
+export const updateUser = async (id: string, payload: Prisma.UserUpdateInput, tx?: Prisma.TransactionClient): Promise<User> => {
+  const db = tx || prisma;
+  return db.user.update({
     where: { id },
     data: payload,
   });
 };
 
-export const deleteUser = async (userId: string): Promise<User> => {
-  return prisma.user.update({
+export const deleteUser = async (userId: string, tx?: Prisma.TransactionClient): Promise<User> => {
+  const db = tx || prisma;
+  return db.user.update({
     where: {
       id: userId,
     },
     data: {
       active: false,
       deletedAt: new Date(),
+      rememberToken: null,
     },
   });
 };
