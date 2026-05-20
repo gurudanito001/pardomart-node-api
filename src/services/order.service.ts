@@ -954,8 +954,12 @@ export const getAvailableDeliverySlots = async (
   vendorId: string,
   deliveryMethod: DeliveryMethod
 ): Promise<TimeSlot[]> => {
-  const vendor = await getVendorById(vendorId, undefined, undefined, true);
-  if (!vendor) {
+  const vendor = await prisma.vendor.findUnique({
+    where: { id: vendorId },
+    include: { openingHours: true }
+  });
+
+  if (!vendor || !vendor.isPublished || !vendor.availableForShopping) {
     throw new OrderCreationError('Vendor not found.', 404);
   }
   if (!vendor.openingHours || vendor.openingHours.length === 0) {
@@ -964,6 +968,8 @@ export const getAvailableDeliverySlots = async (
 
   const vendorTimezone = vendor.timezone || 'UTC';
   const availableSlotsByDay: TimeSlot[] = [];
+  // Note: All start/end times are returned in UTC ISO format. 
+  // The 'display' field is formatted to the Vendor's local time.
 
   // 1. Anchor 'now' to UTC for absolute comparisons
   const nowUTC = dayjs.utc();
@@ -976,7 +982,7 @@ export const getAvailableDeliverySlots = async (
     const vendorLocalDate = nowInVendorTZ.add(i, 'day');
     const boundaries = getVendorBusinessHoursForDate(vendor, vendorLocalDate);
 
-    if (!boundaries) continue;
+    if (!boundaries || !boundaries.openTimeUTC.isValid() || !boundaries.closeTimeUTC.isValid()) continue;
 
     const { bufferMinutes, latestPossibleEndUTC } = getDeliveryRequirements(deliveryMethod, boundaries.closeTimeUTC);
     const earliestPossibleStartUTC = nowUTC.add(bufferMinutes, 'minutes');
@@ -987,11 +993,14 @@ export const getAvailableDeliverySlots = async (
       firstAvailableTimeUTC = earliestPossibleStartUTC;
     }
 
-    // Align to the start of the next hour for clean slots (e.g., 10:00, 11:00)
-    let currentSlotStartUTC = firstAvailableTimeUTC;
-    if (currentSlotStartUTC.minute() > 0 || currentSlotStartUTC.second() > 0 || currentSlotStartUTC.millisecond() > 0) {
-      currentSlotStartUTC = currentSlotStartUTC.add(1, 'hour').startOf('hour');
-    }
+    // Fail-safe: If the first available time is already past the latest possible end for today, skip.
+    if (firstAvailableTimeUTC.isAfter(latestPossibleEndUTC)) continue;
+
+    // Align to the start of the next 30-minute block for more granular but clean starts
+    let currentSlotStartUTC = firstAvailableTimeUTC.startOf('minute');
+    const minutes = currentSlotStartUTC.minute();
+    const remainder = minutes % 30;
+    currentSlotStartUTC = currentSlotStartUTC.add(remainder === 0 ? 0 : 30 - remainder, 'minute');
 
     const timeSlots: TimeSlot['timeSlots'] = [];
 
@@ -1012,7 +1021,8 @@ export const getAvailableDeliverySlots = async (
       timeSlots.push({
         start: currentSlotStartUTC.toISOString(),
         end: slotEndUTC.toISOString(),
-        display: `${localStart.format('h:mma')} - ${localEnd.format('h:mma')}`.toLowerCase(),
+        // We append the timezone abbreviation to avoid user confusion if they are in a different zone
+        display: `${localStart.format('h:mma')} - ${localEnd.format('h:mma')} (${localStart.format('z')})`.toLowerCase(),
       });
       currentSlotStartUTC = slotEndUTC;
     }
