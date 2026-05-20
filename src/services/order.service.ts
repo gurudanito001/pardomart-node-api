@@ -982,25 +982,30 @@ export const getAvailableDeliverySlots = async (
     const vendorLocalDate = nowInVendorTZ.add(i, 'day');
     const boundaries = getVendorBusinessHoursForDate(vendor, vendorLocalDate);
 
-    if (!boundaries || !boundaries.openTimeUTC.isValid() || !boundaries.closeTimeUTC.isValid()) continue;
+    if (!boundaries || !boundaries.openTimeUTC.isValid() || !boundaries.closeTimeUTC.isValid()){
+      continue;
+    }
 
     const { bufferMinutes, latestPossibleEndUTC } = getDeliveryRequirements(deliveryMethod, boundaries.closeTimeUTC);
     const earliestPossibleStartUTC = nowUTC.add(bufferMinutes, 'minutes');
     
     // Determine the first moment we can start showing slots for this specific day
-    let firstAvailableTimeUTC = boundaries.openTimeUTC;
+    let firstAvailableTimeUTC = boundaries.openTimeUTC.clone();
     if (i === 0 && earliestPossibleStartUTC.isAfter(boundaries.openTimeUTC)) {
       firstAvailableTimeUTC = earliestPossibleStartUTC;
     }
 
-    // Fail-safe: If the first available time is already past the latest possible end for today, skip.
-    if (firstAvailableTimeUTC.isAfter(latestPossibleEndUTC)) continue;
+     if (firstAvailableTimeUTC.isAfter(latestPossibleEndUTC)) continue;
 
-    // Align to the start of the next 30-minute block for more granular but clean starts
-    let currentSlotStartUTC = firstAvailableTimeUTC.startOf('minute');
+    // Align to the start of the next 30-minute block for cleaner start times
+    let currentSlotStartUTC = firstAvailableTimeUTC.clone().startOf('minute');
     const minutes = currentSlotStartUTC.minute();
-    const remainder = minutes % 30;
-    currentSlotStartUTC = currentSlotStartUTC.add(remainder === 0 ? 0 : 30 - remainder, 'minute');
+    if (minutes % 30 !== 0) {
+      currentSlotStartUTC = currentSlotStartUTC.add(30 - (minutes % 30), 'minute');
+    } else if (i === 0) {
+      // Add a small 30-min buffer on 'Today' even if we land exactly on a mark to allow for checkout
+      currentSlotStartUTC = currentSlotStartUTC.add(30, 'minute');
+    }
 
     const timeSlots: TimeSlot['timeSlots'] = [];
 
