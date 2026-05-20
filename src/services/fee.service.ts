@@ -411,6 +411,10 @@ export const calculateOrderFeesService = async (
       if (payload.useMaxPricesForBudget && item.replacementIds && item.replacementIds.length > 0) {
         for (const repId of item.replacementIds) {
           const repDetails = productDetailsMap.get(repId);
+          if (!repDetails) {
+            console.warn(`Replacement product ID ${repId} not found for vendor ${vendorId}. Ignoring this replacement for budget calculation.`);
+            continue; // Skip to the next replacement ID
+          }
           if (repDetails && repDetails.price > effectivePrice) {
             effectivePrice = repDetails.price;
             // CRITICAL: When the price changes to a substitute, 
