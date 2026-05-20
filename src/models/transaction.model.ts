@@ -69,7 +69,7 @@ export const listTransactionsForVendor = async (filters: ListVendorTransactionsF
     },
     // Only include transactions that are relevant to a vendor
     type: {
-      in: ['ORDER_PAYMENT', 'VENDOR_PAYOUT']
+      in: ['ORDER_PAYMENT', 'VENDOR_PAYOUT', 'REFUND']
     }
   };
 

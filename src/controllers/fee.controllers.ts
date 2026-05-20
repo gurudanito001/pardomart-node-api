@@ -441,6 +441,9 @@ export const getCurrentFeesController = async (req: Request, res: Response) => {
 export const calculateFeesController = async (req: Request, res: Response) => {
   try {
     const { orderItems, vendorId, deliveryAddressId, deliveryType, useMaxPricesForBudget } = req.body;
+    
+    // Ensure useMaxPricesForBudget is treated as a boolean if provided
+    const shouldCalculateMaxBudget = useMaxPricesForBudget === true || useMaxPricesForBudget === 'true';
 
     // Call the service to calculate fees
     const feesResult = await calculateOrderFeesService({
@@ -448,7 +451,7 @@ export const calculateFeesController = async (req: Request, res: Response) => {
       vendorId,
       deliveryAddressId,
       deliveryType,
-      useMaxPricesForBudget,
+      useMaxPricesForBudget: shouldCalculateMaxBudget,
     });
 
     res.status(200).json(feesResult);

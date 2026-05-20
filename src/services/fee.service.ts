@@ -405,6 +405,7 @@ export const calculateOrderFeesService = async (
       }
       
       let effectivePrice = baseItemPrice;
+      let effectiveIsEbtEligible = baseIsEbtEligible;
 
       // If we are calculating the max budget, check all replacement prices and take the highest
       if (payload.useMaxPricesForBudget && item.replacementIds && item.replacementIds.length > 0) {
@@ -412,6 +413,9 @@ export const calculateOrderFeesService = async (
           const repDetails = productDetailsMap.get(repId);
           if (repDetails && repDetails.price > effectivePrice) {
             effectivePrice = repDetails.price;
+            // CRITICAL: When the price changes to a substitute, 
+            // we must also use the substitute's EBT eligibility for the budget calculation.
+            effectiveIsEbtEligible = repDetails.isEbtEligible;
           }
         }
       }
@@ -426,9 +430,10 @@ export const calculateOrderFeesService = async (
         price: baseItemPrice, 
         isEbtEligible: baseIsEbtEligible
       }); // Always return the true base price to lock in
-      subtotal += effectivePrice * item.quantity; // Calculate the subtotal using the max budget price
       
-      if (baseIsEbtEligible) {
+      subtotal += effectivePrice * item.quantity; // Calculate the subtotal using the max budget price
+
+      if (effectiveIsEbtEligible) {
         ebtEligibleSubtotal += effectivePrice * item.quantity;
       }
       totalItemCount += item.quantity;

@@ -1314,7 +1314,9 @@ export const declineOrderService = async (
       type: NotificationType.ORDER_DECLINED,
       category: NotificationCategory.ORDER,
       title: 'Your order has been declined',
-      body: `Unfortunately, your order #${orderToDecline.orderCode} was declined. You have been refunded ${orderToDecline.totalAmount} in your wallet.`,
+      body: `Unfortunately, your order #${orderToDecline.orderCode} was declined. Your payment of $${orderToDecline.totalAmount.toFixed(2)} has been ${
+        orderToDecline.paymentMethod === 'credit_card' ? 'reversed to your card' : 'refunded to your wallet balance'
+      }.`,
       meta: { orderId: orderToDecline.id }
     });
     // --- End Notification Logic ---

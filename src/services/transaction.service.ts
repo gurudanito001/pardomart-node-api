@@ -846,6 +846,9 @@ export const processRefundService = async (
   refundType?: RefundType, 
   paymentType: string = 'card'
 ) => {
+  // NOTE: This function refunds to the ORIGINAL payment source.
+  // Card payments are sent back to Stripe; Wallet payments are returned to the internal wallet balance.
+  
   if (refundAmount <= 0) return;
 
   // Guardrail: Prevent Over-Refunding by calculating existing refunds for this order
@@ -904,7 +907,7 @@ export const processRefundService = async (
         type: TransactionType.REFUND, 
         source: TransactionSource.STRIPE, 
         status: TransactionStatus.COMPLETED, 
-        description, 
+        description: `${description} (Refunded to Card)`, 
         orderId: order.id, 
         refundType,
         externalId: stripeRefund.id 
@@ -926,7 +929,7 @@ export const processRefundService = async (
         type: TransactionType.REFUND, 
         source: TransactionSource.WALLET, 
         status: TransactionStatus.COMPLETED, 
-        description,
+        description: `${description} (Refunded to Wallet)`,
         refundType,
         orderId: order.id 
       },
