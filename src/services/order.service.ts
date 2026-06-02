@@ -850,15 +850,39 @@ export const updateOrderStatusService = async (
   // --- Add Notification Logic Here ---
   try {
     const orderDetails = order; // Use the already fetched order
+    const timeStr = dayjs().format('h:mm A');
+
     if (orderDetails) {
       switch (status as OrderStatus) {
+        case OrderStatus.currently_shopping:
+          await notificationService.createNotification({
+            userId: orderDetails.userId,
+            type: NotificationType.ORDER_SHOPPING_STARTED,
+            category: NotificationCategory.ORDER,
+            title: 'Shopping in Progress',
+            body: `We started shopping for your order #${orderDetails.orderCode} at ${timeStr}.`,
+            meta: { orderId }
+          });
+          break;
+
         case OrderStatus.ready_for_pickup:
           await notificationService.createNotification({
             userId: orderDetails.userId,
             type: NotificationType.ORDER_READY_FOR_PICKUP,
             category: NotificationCategory.ORDER,
             title: 'Your order is ready for pickup!',
-            body: `Order #${orderDetails.orderCode} is now ready for pickup at ${orderDetails.vendor.name}.`,
+            body: `Order #${orderDetails.orderCode} was bagged and ready for pickup at ${timeStr}.`,
+            meta: { orderId: orderId }
+          });
+          break;
+
+        case OrderStatus.ready_for_delivery:
+          await notificationService.createNotification({
+            userId: orderDetails.userId,
+            type: NotificationType.ORDER_READY_FOR_DELIVERY,
+            category: NotificationCategory.ORDER,
+            title: 'Shopping Completed',
+            body: `Shopping for order #${orderDetails.orderCode} was finished at ${timeStr}. A delivery person will pick it up shortly.`,
             meta: { orderId: orderId }
           });
           break;
@@ -869,18 +893,19 @@ export const updateOrderStatusService = async (
             type: NotificationType.EN_ROUTE,
             category: NotificationCategory.ORDER,
             title: 'Your order is on the way!',
-            body: `Your delivery person is en route with order #${orderDetails.orderCode}.`,
+            body: `Your delivery person picked up order #${orderDetails.orderCode} at ${timeStr} and is en route to you.`,
             meta: { orderId: orderId }
           });
           break;
 
         case OrderStatus.arrived_at_store:
+          // Notify Vendor that the driver has arrived to pick up
           await notificationService.createNotification({
             userId: orderDetails.vendor.userId,
             type: NotificationType.EN_ROUTE,
             category: NotificationCategory.ORDER,
             title: 'Delivery Person Arrived',
-            body: `The delivery person has arrived at the store for order #${orderDetails.orderCode}.`,
+            body: `The delivery person arrived at your store for order #${orderDetails.orderCode} at ${timeStr}.`,
             meta: { orderId: orderId }
           });
           break;
@@ -891,7 +916,7 @@ export const updateOrderStatusService = async (
             type: NotificationType.EN_ROUTE,
             category: NotificationCategory.ORDER,
             title: 'Delivery Person Arrived',
-            body: `Your delivery person has arrived at your location for order #${orderDetails.orderCode}.`,
+            body: `Your delivery person arrived at your location with order #${orderDetails.orderCode} at ${timeStr}.`,
             meta: { orderId: orderId }
           });
           break;
@@ -1211,6 +1236,7 @@ export const acceptOrderService = async (
       data: {
         orderStatus: OrderStatus.accepted_for_shopping, // Change status to accepted
         shopperId: shoppingHandlerUserId, // Assign the handler (the accepting staff)
+        orderAcceptedAt: new Date(), // Record the time the order was accepted for fulfillment
       },
     });
 
@@ -1223,12 +1249,13 @@ export const acceptOrderService = async (
     });
 
     // --- Add Notification Logic Here ---
+    const timeStr = dayjs().format('h:mm A');
     await notificationService.createNotification({
       userId: acceptedOrder.userId,
       type: NotificationType.ORDER_ACCEPTED,
       category: NotificationCategory.ORDER,
       title: 'Your order has been accepted!',
-      body: `Your order with code #${acceptedOrder.orderCode} has been accepted  and will begin preparing it shortly.`,
+      body: `Your order #${acceptedOrder.orderCode} was accepted at ${timeStr}. We will begin preparing it shortly.`,
       meta: { orderId: acceptedOrder.id }
     });
     // --- End Notification Logic ---
@@ -1391,6 +1418,17 @@ export const startShoppingService = async (
       status: OrderStatus.currently_shopping,
       changedBy: shoppingHandlerUserId,
       notes: 'Shopping started'
+    });
+
+    // Notify Customer that shopping has officially begun
+    const timeStr = dayjs().format('h:mm A');
+    await notificationService.createNotification({
+      userId: order.userId,
+      type: NotificationType.ORDER_SHOPPING_STARTED,
+      category: NotificationCategory.ORDER,
+      title: 'Shopping Started',
+      body: `Your shopper started picking items for order #${order.orderCode} at ${timeStr}.`,
+      meta: { orderId: order.id }
     });
 
     return order;
@@ -1959,6 +1997,7 @@ export const verifyPickupOtpService = async (
     }
 
     // 4. Update the order: set new status, clear OTP, and timestamp verification
+    const timeStr = dayjs().format('h:mm A');
     const updatedOrder = await tx.order.update({
       where: { id: orderId },
       data: {
@@ -2072,17 +2111,26 @@ export const verifyPickupOtpService = async (
         userId: order.userId,
         type: NotificationType.COMPLETED,
         category: NotificationCategory.ORDER,
-        title: 'Order Picked Up',
-        body: `Your order #${order.orderCode} has been picked up. Thank you for shopping with us!`,
+        title: 'Order Successfully Picked Up',
+        body: `Your order #${order.orderCode} was picked up from the store at ${timeStr}. Thank you for shopping with us!`,
         meta: { orderId: order.id }
+      });
+      // Notify Vendor Owner
+      await notificationService.createNotification({
+        userId: order.vendor.userId,
+        type: NotificationType.COMPLETED,
+        category: NotificationCategory.ORDER,
+        title: 'Order Completed',
+        body: `Customer successfully picked up order #${order.orderCode} at ${timeStr}. Payouts have been processed.`,
+        meta: { orderId: order.id },
       });
     } else if (nextStatus === OrderStatus.en_route_to_delivery) {
       await notificationService.createNotification({
         userId: order.userId,
         type: NotificationType.EN_ROUTE,
         category: NotificationCategory.ORDER,
-        title: 'Order En Route',
-        body: `Your order #${order.orderCode} has been picked up by the delivery person and is on its way.`,
+        title: 'Order is En Route!',
+        body: `The delivery person picked up order #${order.orderCode} at ${timeStr} and is on their way to you.`,
         meta: { orderId: order.id }
       });
     }
@@ -2206,6 +2254,13 @@ export const adminUpdateOrderService = async (
     throw new OrderCreationError('Order not found.', 404);
   }
 
+  // If admin is setting an accepted status and it's not already set
+  if (
+    (updates.orderStatus === OrderStatus.accepted_for_shopping || updates.orderStatus === OrderStatus.accepted_for_delivery) &&
+    !order.orderAcceptedAt
+  ) {
+    updates.orderAcceptedAt = new Date();
+  }
   // Special handling for 'delivered' status to trigger payouts
   if (updates.orderStatus === OrderStatus.delivered && order.orderStatus !== OrderStatus.delivered) {
     updates.actualDeliveryTime = new Date(); // Set delivery time
@@ -2541,28 +2596,41 @@ export const acceptOrderForDeliveryService = async (orderId: string, deliveryPer
     }
 
     // Atomic Update: Ensure deliveryPersonId is still null to prevent race conditions
-    const result = await tx.order.updateMany({
-      where: { id: orderId, deliveryPersonId: null },
+    const result = await tx.order.update({
+      where: { id: orderId },
       data: {
         deliveryPersonId: deliveryPersonId,
         orderStatus: nextStatus,
         shopperId: updateShopper ? deliveryPersonId : undefined,
+        ...(updateShopper && { orderAcceptedAt: new Date() })
       },
     });
 
-    if (result.count === 0) {
+    if (!result) {
       throw new OrderCreationError('This order has already been assigned to another delivery person.', 409);
     }
 
     const updatedOrder = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
 
     // Notify Customer
+    const timeStr = dayjs().format('h:mm A');
     await notificationService.createNotification({
       userId: updatedOrder.userId,
       type: NotificationType.ASSIGNED_TO_ORDER,
       category: NotificationCategory.ORDER,
       title: 'Delivery Person Assigned',
-      body: `A delivery person has accepted your order #${updatedOrder.orderCode}.`,
+      body: `A delivery person accepted your order #${updatedOrder.orderCode} at ${timeStr} and is beginning fulfillment.`,
+      meta: { orderId: updatedOrder.id },
+    });
+
+    // Notify Vendor Owner that a driver is now handling this order
+    const vendor = await tx.vendor.findUnique({ where: { id: order.vendorId } });
+    await notificationService.createNotification({
+      userId: vendor!.userId,
+      type: NotificationType.ASSIGNED_TO_ORDER,
+      category: NotificationCategory.ORDER,
+      title: 'Driver Assigned to Order',
+      body: `A delivery person has been assigned to handle order #${updatedOrder.orderCode} as of ${timeStr}.`,
       meta: { orderId: updatedOrder.id },
     });
 
@@ -2792,12 +2860,23 @@ export const completeDeliveryService = async (
   });
 
   // Notifications
+  const timeStr = dayjs().format('h:mm A');
   await notificationService.createNotification({
     userId: order.userId,
     type: NotificationType.DELIVERED,
     category: NotificationCategory.ORDER,
     title: 'Order Delivered',
-    body: `Your order #${order.orderCode} has been delivered. View the proof of delivery in the app.`,
+    body: `Your order #${order.orderCode} was delivered at ${timeStr}. View the proof of delivery in the app.`,
+    meta: { orderId: order.id },
+  });
+
+  // Notify Vendor Owner
+  await notificationService.createNotification({
+    userId: order.vendor.userId,
+    type: NotificationType.COMPLETED,
+    category: NotificationCategory.ORDER,
+    title: 'Order Delivered Successfully',
+    body: `Order #${order.orderCode} was marked as delivered at ${timeStr}.`,
     meta: { orderId: order.id },
   });
 

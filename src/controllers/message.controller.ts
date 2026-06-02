@@ -43,7 +43,9 @@ import { errorLogService } from '../services/errorLog.service';
  *                 description: The ID of the user who is the recipient of the message.
  *               content:
  *                 type: string
- *                 description: The text content of the message.
+ *                 description: The text content of the message or base64 image string.
+ *               type:
+ *                 $ref: '#/components/schemas/MessageType'
  *     responses:
  *       201:
  *         description: The created message.
@@ -67,6 +69,10 @@ import { errorLogService } from '../services/errorLog.service';
  *       properties:
  *         id: { type: string, format: uuid }
  *         content: { type: string }
+ *         type: { $ref: '#/components/schemas/MessageType' }
+ *          MessageType:
+ *          type: string
+ *          enum: [text, image]
  *         senderId: { type: string, format: uuid }
  *         recipientId: { type: string, format: uuid }
  *         orderId: { type: string, format: uuid }
@@ -93,7 +99,7 @@ export const sendMessageController = async (req: AuthenticatedRequest, res: Resp
   try {
     const senderId = req.userId as string;
     const { orderId } = req.params;
-    const { recipientId, content } = req.body;
+    const { recipientId, content, type } = req.body;
 
     // The service would handle validation to ensure sender and recipient are part of the order
     const message = await sendMessageService({
@@ -101,6 +107,7 @@ export const sendMessageController = async (req: AuthenticatedRequest, res: Resp
       senderId,
       recipientId,
       content,
+      type,
     });
 
     res.status(201).json(message);

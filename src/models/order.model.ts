@@ -25,8 +25,10 @@ export interface CreateOrderPayload {
   shoppingMethod?: ShoppingMethod;
   deliveryMethod?: DeliveryMethod;
   shoppingStartTime?: Date;
+  orderAcceptedAt?: Date;
   scheduledDeliveryTime?: Date;
   actualDeliveryTime?: Date;
+  pickupOtpVerifiedAt?: Date;
 }
 
 export const createOrder = async (payload: CreateOrderPayload, tx?: Prisma.TransactionClient): Promise<Order> => {
@@ -118,8 +120,10 @@ export interface UpdateOrderPayload {
   shoppingMethod?: ShoppingMethod;
   deliveryMethod?: DeliveryMethod;
   shoppingStartTime?: Date;
+  orderAcceptedAt?: Date;
   scheduledDeliveryTime?: Date;
   actualDeliveryTime?: Date;
+  pickupOtpVerifiedAt?: Date;
   proofOfDeliveryImageUrl?: string;
 }
 

@@ -170,6 +170,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         shoppingMethod: { $ref: '#/components/schemas/ShoppingMethod' }
  *         deliveryMethod: { $ref: '#/components/schemas/DeliveryMethod' }
  *         shoppingStartTime: { type: string, format: date-time, nullable: true }
+ *         orderAcceptedAt: { type: string, format: date-time, nullable: true }
  *         scheduledDeliveryTime: { type: string, format: date-time, nullable: true }
  *         actualDeliveryTime: { type: string, format: date-time, nullable: true }
  *         pickupOtpVerifiedAt: { type: string, format: date-time, nullable: true }
@@ -204,6 +205,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         shoppingMethod: { $ref: '#/components/schemas/ShoppingMethod' }
  *         deliveryMethod: { $ref: '#/components/schemas/DeliveryMethod' }
  *         shoppingStartTime: { type: string, format: date-time, nullable: true }
+ *         orderAcceptedAt: { type: string, format: date-time, nullable: true }
  *         scheduledDeliveryTime: { type: string, format: date-time, nullable: true }
  *         actualDeliveryTime: { type: string, format: date-time, nullable: true }
  *         pickupOtpVerifiedAt: { type: string, format: date-time, nullable: true }

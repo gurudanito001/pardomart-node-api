@@ -208,6 +208,7 @@ export const adminGetDeliveryHistory = async (
       select: {
         id: true,
         orderCode: true,
+        orderAcceptedAt: true,
         pickupOtpVerifiedAt: true, // This marks the time the order was picked up from the store
         actualDeliveryTime: true,
         vendor: {
@@ -239,6 +240,7 @@ export const adminGetDeliveryHistory = async (
   return {
     data: deliveries.map((d) => ({
       ...d,
+      acceptedAt: d.orderAcceptedAt,
       pickupTime: d.pickupOtpVerifiedAt,
       deliveryTime: d.actualDeliveryTime,
     })),

@@ -31,7 +31,10 @@
  *           description: The user who sent the message (included in responses).
  *         content:
  *           type: string
- *           description: The text content of the message.
+ *           description: The text content of the message or the image URL.
+ *         type:
+ *           type: string
+ *           enum: [text, image]
  *         readAt:
  *           type: string
  *           format: date-time
@@ -50,6 +53,7 @@
  *         senderId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
  *         recipientId: "d4e5f6a7-b8c9-0123-4567-890abcdef"
  *         sender: { id: "c3d4e5f6-a7b8-9012-3456-7890abcdef", name: "John Doe" }
+ *         type: "text"
  *         content: "Hello, I'm running a bit late."
  *         readAt: null
  *         createdAt: "2023-10-27T14:30:00.000Z"

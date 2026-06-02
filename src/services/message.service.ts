@@ -1,6 +1,8 @@
-import { PrismaClient, Message, NotificationCategory, NotificationType } from '@prisma/client';
+import { PrismaClient, Message, NotificationCategory, NotificationType, MessageType, ReferenceType } from '@prisma/client';
 import { getIO, userSocketMap } from '../socket';
 import * as notificationService from './notification.service';
+import { uploadMedia } from './media.service';
+import { Readable } from 'stream';
 
 const prisma = new PrismaClient();
 
@@ -9,6 +11,7 @@ interface SendMessageInput {
   senderId: string;
   recipientId: string;
   content: string;
+  type?: MessageType;
 }
 
 /**
@@ -22,6 +25,7 @@ export const sendMessageService = async ({
   senderId,
   recipientId,
   content,
+  type = MessageType.text,
 }: SendMessageInput): Promise<Message> => {
   // 1. Find the order and verify participants
   const order = await prisma.order.findUnique({
@@ -50,13 +54,47 @@ export const sendMessageService = async ({
     throw new Error('Recipient is not a participant in this order.');
   }
 
+  let messageContent = content;
+
+  // 2b. Handle Image Upload if type is IMAGE
+  if (type === MessageType.image) {
+    let imagePayload = content;
+    // Sanitize base64: remove data URI prefix if it exists
+    if (imagePayload.startsWith('data:')) {
+      const parts = imagePayload.split(',');
+      if (parts.length >= 2) {
+        imagePayload = parts[1];
+      }
+    }
+
+    try {
+      const imageBuffer = Buffer.from(imagePayload, 'base64');
+      const mockFile: any = {
+        fieldname: 'image',
+        originalname: `${orderId}-message-${Date.now()}.jpg`,
+        encoding: '7bit',
+        mimetype: 'image/jpeg',
+        buffer: imageBuffer,
+        size: imageBuffer.length,
+        stream: new Readable(),
+      };
+
+      const uploadResult = await uploadMedia(mockFile, orderId, ReferenceType.other);
+      messageContent = uploadResult.cloudinaryResult.secure_url;
+    } catch (error) {
+      console.error('Error uploading message image:', error);
+      throw new Error('Failed to upload image.');
+    }
+  }
+
   // 3. Create the message
   const message = await prisma.message.create({
     data: {
       orderId,
       senderId,
       recipientId,
-      content,
+      content: messageContent,
+      type,
     },
     include: {
       sender: {
@@ -71,7 +109,7 @@ export const sendMessageService = async ({
     type: NotificationType.NEW_MESSAGE,
     title: `New message from ${message.sender.name}`,
     category: NotificationCategory.ORDER,
-    body: content,
+    body: type === MessageType.image ? 'Sent an image' : content,
     meta: { orderId: orderId, senderId: senderId }
   });
   // --- End Notification Logic ---

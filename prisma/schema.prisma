@@ -238,6 +238,7 @@ model Order {
   deliveryPersonId        String?
   deliveryPerson          User?                    @relation("OrderDeliverer", fields: [deliveryPersonId], references: [id])
   shoppingMethod          ShoppingMethod?          @default(vendor)
+  orderAcceptedAt         DateTime?
   deliveryMethod          DeliveryMethod?          @default(customer_pickup)
   shoppingStartTime       DateTime?
   scheduledDeliveryTime   DateTime?
@@ -462,6 +463,7 @@ model Notification {
 model Message {
   id          String    @id @default(uuid())
   content     String
+  type        MessageType @default(text)
   senderId    String
   sender      User      @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
   recipientId String
@@ -918,4 +920,9 @@ enum MediaType {
   VIDEO
   AUDIO
   OTHER
+}
+
+enum MessageType {
+  text
+  image
 }
