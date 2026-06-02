@@ -70,15 +70,15 @@ import { errorLogService } from '../services/errorLog.service';
  *         id: { type: string, format: uuid }
  *         content: { type: string }
  *         type: { $ref: '#/components/schemas/MessageType' }
- *          MessageType:
- *          type: string
- *          enum: [text, image]
  *         senderId: { type: string, format: uuid }
  *         recipientId: { type: string, format: uuid }
  *         orderId: { type: string, format: uuid }
  *         readAt: { type: string, format: date-time, nullable: true }
  *         createdAt: { type: string, format: date-time }
  *         updatedAt: { type: string, format: date-time }
+ *     MessageType:
+ *       type: string
+ *       enum: [text, image]
  *     UserSummary:
  *       type: object
  *       properties:
