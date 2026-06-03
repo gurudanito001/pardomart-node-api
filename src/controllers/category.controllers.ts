@@ -257,6 +257,7 @@ export const createCategory = async (req: Request, res: Response) => {
   try {
     const payload = { ...req.body };
 
+    delete payload.type; // Remove the 'type' field if present in the request body
     if (payload.imageUrl && payload.imageUrl.startsWith('data:')) {
       payload.imageUrl = payload.imageUrl.split(',')[1];
     }
@@ -444,6 +445,7 @@ export const updateCategory = async (req: Request, res: Response) => {
   try {
     const payload = { id: req.params.id, ...req.body };
 
+    delete payload.type; // Remove the 'type' field if present in the request body
     if (payload.imageUrl && payload.imageUrl.startsWith('data:')) {
       payload.imageUrl = payload.imageUrl.split(',')[1];
     }
