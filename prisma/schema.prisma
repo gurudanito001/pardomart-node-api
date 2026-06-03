@@ -299,6 +299,7 @@ model DeliveryAddress {
 model Fee {
   id                 String               @id @default(uuid())
   type               FeeType
+  description        String?
   amount             Float
   method             FeeCalculationMethod
   unit               String?

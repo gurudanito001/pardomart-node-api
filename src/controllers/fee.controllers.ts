@@ -65,6 +65,7 @@ import { errorLogService } from '../services/errorLog.service';
  *     Fee:
  *       type: object
  *       properties:
+ *         description: { type: string, nullable: true }
  *         id: { type: string, format: uuid }
  *         type: { $ref: '#/components/schemas/FeeType' }
  *         amount: { type: number, format: float }
@@ -88,6 +89,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         maxThreshold: { type: number, format: float, nullable: true }
  *         thresholdAppliesTo: { type: string, nullable: true }
  *         isActive: { type: boolean }
+ *         description: { type: string, nullable: true }
  *     UpdateFeePayload:
  *       type: object
  *       properties:
@@ -98,6 +100,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         maxThreshold: { type: number, format: float, nullable: true }
  *         thresholdAppliesTo: { type: string, nullable: true }
  *         isActive: { type: boolean }
+ *         description: { type: string, nullable: true }
  *     CalculateFeesPayload:
  *       type: object
  *       required: [orderItems, vendorId]
@@ -191,7 +194,7 @@ export const createFeeController = async (req: Request, res: Response) => {
 export const updateFeeController = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const payload: UpdateFeePayload = req.body;
+    const payload: UpdateFeePayload = req.body; // The description field is now part of the payload
 
     const updatedFee = await updateFee(id, payload);
     res.status(200).json(updatedFee);

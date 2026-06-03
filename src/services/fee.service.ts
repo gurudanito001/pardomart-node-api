@@ -8,6 +8,7 @@ const prisma = new PrismaClient();
 
 export interface CreateFeePayload {
   type: FeeType;
+  description?: string;
   amount: number;
   method: FeeCalculationMethod;
   unit?: string;                 // Optional, used with PER_UNIT or PER_DISTANCE
@@ -18,6 +19,7 @@ export interface CreateFeePayload {
 }
 
 export interface UpdateFeePayload {
+  description?: string;
   amount?: number;
   method?: FeeCalculationMethod;
   unit?: string;                 // Optional, used with PER_UNIT or PER_DISTANCE
@@ -55,6 +57,7 @@ export const createFee = async (payload: CreateFeePayload): Promise<Fee> => {
     // Create the new fee with all provided payload data.
     const newFee = await tx.fee.create({
       data: {
+        description: payload.description,
         type: payload.type,
         amount: payload.amount,
         method: payload.method,
