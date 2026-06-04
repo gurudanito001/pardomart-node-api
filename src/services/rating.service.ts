@@ -1,4 +1,4 @@
-import { Rating, RatingType, OrderStatus, Prisma, PrismaClient } from '@prisma/client';
+import { Rating, RatingType, OrderStatus, Prisma, PrismaClient, ShoppingMethod, DeliveryMethod } from '@prisma/client';
 import * as ratingModel from '../models/rating.model';
 import * as orderModel from '../models/order.model';
 
@@ -42,9 +42,6 @@ export const createRatingService = async (
       if (order.userId !== raterId) {
         throw new RatingError('You are not authorized to rate this order.', 403);
       }
-      if (order.orderStatus !== OrderStatus.delivered && order.orderStatus !== OrderStatus.picked_up_by_customer) {
-        throw new RatingError('Order must be completed before it can be rated.', 400);
-      }
     }
   
     // 2. Validate rating value
@@ -68,17 +65,42 @@ export const createRatingService = async (
       case RatingType.VENDOR:
         if (!ratedVendorId && !orderId) throw new RatingError('Vendor ID or Order ID is required to rate a vendor.', 400);
         ratingData.ratedVendorId = order ? order.vendorId : ratedVendorId;
+        
+        // New Logic: Check if vendor has started work
+        if (order) {
+          const isVendorShopping = order.shoppingMethod === ShoppingMethod.vendor && order.orderStatus !== OrderStatus.pending;
+          const isDriverShopping = order.shoppingMethod === ShoppingMethod.delivery_person && ![OrderStatus.pending, OrderStatus.accepted_for_shopping, OrderStatus.accepted_for_delivery].includes(order.orderStatus);
+          
+          if (!isVendorShopping && !isDriverShopping) {
+            throw new RatingError('The store has not started processing this order yet.', 400);
+          }
+        }
         break;
+
       case RatingType.SHOPPER:
         if (!orderId) throw new RatingError('Order ID is required to rate a shopper.', 400);
         if (!order?.shopperId) throw new RatingError('This order does not have an assigned shopper to rate.', 400);
         ratingData.ratedUserId = order.shopperId;
         break;
+
       case RatingType.DELIVERER:
         if (!orderId) throw new RatingError('Order ID is required to rate a deliverer.', 400);
         if (!order?.deliveryPersonId) throw new RatingError('This order does not have an assigned deliverer to rate.', 400);
         ratingData.ratedUserId = order.deliveryPersonId;
+
+        // New Logic: Check if delivery phase has started
+        if (order) {
+          const isOwnShopper = order.shoppingMethod === ShoppingMethod.delivery_person;
+          const hasPickedUp = [OrderStatus.en_route_to_delivery, OrderStatus.arrived_at_customer_location, OrderStatus.delivered].includes(order.orderStatus);
+          
+          // If the driver is also the shopper, they are ratable immediately upon acceptance.
+          // Otherwise, they must have picked up the order.
+          if (!isOwnShopper && !hasPickedUp) {
+            throw new RatingError('The delivery person has not picked up your order yet.', 400);
+          }
+        }
         break;
+
       case RatingType.PRODUCT:
         if (!ratedProductId) throw new RatingError('Product ID is required for a product rating.', 400);
         
