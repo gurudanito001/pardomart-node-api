@@ -65,11 +65,18 @@ export const createRatingService = async (
       case RatingType.VENDOR:
         if (!ratedVendorId && !orderId) throw new RatingError('Vendor ID or Order ID is required to rate a vendor.', 400);
         ratingData.ratedVendorId = order ? order.vendorId : ratedVendorId;
-        
+
         // New Logic: Check if vendor has started work
         if (order) {
-          const isVendorShopping = order.shoppingMethod === ShoppingMethod.vendor && order.orderStatus !== OrderStatus.pending;
-          const isDriverShopping = order.shoppingMethod === ShoppingMethod.delivery_person && ![OrderStatus.pending, OrderStatus.accepted_for_shopping, OrderStatus.accepted_for_delivery].includes(order.orderStatus);
+          const isVendorShopping = 
+            order.shoppingMethod === ShoppingMethod.vendor && 
+            order.orderStatus !== OrderStatus.pending;
+
+          const isDriverShopping = 
+            order.shoppingMethod === ShoppingMethod.delivery_person && 
+            ![OrderStatus.pending, OrderStatus.accepted_for_shopping, OrderStatus.accepted_for_delivery].includes(
+              order.orderStatus as any
+            );
           
           if (!isVendorShopping && !isDriverShopping) {
             throw new RatingError('The store has not started processing this order yet.', 400);
@@ -81,6 +88,10 @@ export const createRatingService = async (
         if (!orderId) throw new RatingError('Order ID is required to rate a shopper.', 400);
         if (!order?.shopperId) throw new RatingError('This order does not have an assigned shopper to rate.', 400);
         ratingData.ratedUserId = order.shopperId;
+
+        if (order && order.orderStatus === OrderStatus.pending) {
+          throw new RatingError('The shopper has not accepted this order yet.', 400);
+        }
         break;
 
       case RatingType.DELIVERER:
@@ -91,10 +102,16 @@ export const createRatingService = async (
         // New Logic: Check if delivery phase has started
         if (order) {
           const isOwnShopper = order.shoppingMethod === ShoppingMethod.delivery_person;
-          const hasPickedUp = [OrderStatus.en_route_to_delivery, OrderStatus.arrived_at_customer_location, OrderStatus.delivered].includes(order.orderStatus);
+          const hasPickedUp = [
+            OrderStatus.en_route_to_delivery, 
+            OrderStatus.arrived_at_customer_location, 
+            OrderStatus.delivered
+          ].includes(order.orderStatus as any);
           
-          // If the driver is also the shopper, they are ratable immediately upon acceptance.
-          // Otherwise, they must have picked up the order.
+          if (isOwnShopper && order.orderStatus === OrderStatus.pending) {
+             throw new RatingError('The delivery person has not accepted this order yet.', 400);
+          }
+
           if (!isOwnShopper && !hasPickedUp) {
             throw new RatingError('The delivery person has not picked up your order yet.', 400);
           }
