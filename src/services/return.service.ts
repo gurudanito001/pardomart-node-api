@@ -1,4 +1,4 @@
-import { PrismaClient, ReturnStatus, Role, NotificationType, NotificationCategory, RefundType } from '@prisma/client';
+import { PrismaClient, ReturnStatus, Role, NotificationType, NotificationCategory, RefundType, TransactionType, TransactionSource, TransactionStatus } from '@prisma/client';
 import { OrderCreationError } from './order.service';
 import * as walletService from './wallet.service';
 import * as notificationService from './notification.service';
@@ -110,7 +110,7 @@ export const updateReturnRequestStatusService = async (requestId: string, status
   return await prisma.$transaction(async (tx) => {
     const returnRequest = await tx.returnRequest.findUnique({ 
       where: { id: requestId },
-      include: { order: true } 
+      include: { order: { include: { vendor: true } } } 
     });
     if (!returnRequest) throw new OrderCreationError('Return request not found.', 404);
 
@@ -134,6 +134,30 @@ export const updateReturnRequestStatusService = async (requestId: string, status
       }
       if (cardTotal > 0) {
         await processRefundService(tx, returnRequest.order, cardTotal, `Card Refund for Return #${returnRequest.id.substring(0, 8)}`, RefundType.PARTIAL_REFUND, 'card');
+      }
+
+      // --- DEBIT VENDOR WALLET ---
+      // Ensure the platform isn't paying for the vendor's return. 
+      // We debit the vendor's wallet for the portion of the payout that is being returned.
+      if (returnRequest.refundAmount > 0 && returnRequest.order.vendor.userId) {
+        await tx.wallet.update({
+          where: { vendorId: returnRequest.vendorId },
+          data: { balance: { decrement: returnRequest.refundAmount } }
+        });
+
+        await tx.transaction.create({
+          data: {
+            vendorId: returnRequest.vendorId,
+            userId: returnRequest.order.vendor.userId,
+            amount: -returnRequest.refundAmount, // Negative amount for debit
+            type: TransactionType.DEBIT,
+            source: TransactionSource.SYSTEM,
+            status: TransactionStatus.COMPLETED,
+            description: `Debit for refunded return #${returnRequest.id.substring(0, 8)} (Order #${returnRequest.order.orderCode})`,
+            orderId: returnRequest.orderId,
+            meta: { returnRequestId: returnRequest.id }
+          }
+        });
       }
     }
 

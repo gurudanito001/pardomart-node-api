@@ -863,76 +863,32 @@ export const processRefundService = async (
     throw new Error(`Cannot process refund of $${refundAmount}. Only $${(maxRefundable - totalRefundedSoFar).toFixed(2)} remains refundable on this order.`);
   }
 
-  if (order.paymentMethod === PaymentMethods.credit_card) {
-    let paymentTx = await tx.transaction.findFirst({
-      where: { 
-        orderId: order.id, 
-        type: TransactionType.ORDER_PAYMENT, 
-        status: TransactionStatus.COMPLETED,
-        source: TransactionSource.STRIPE,
-        meta: {
-          path: ['paymentType'],
-          equals: paymentType
-        }
+  // All refunds now go to the user's wallet
+  // 1. Return funds to the user's internal wallet balance
+  await tx.wallet.upsert({
+    where: { userId: order.userId },
+    create: { userId: order.userId, balance: refundAmount },
+    update: { balance: { increment: refundAmount } }
+  });
+
+  // 2. Record the internal wallet refund transaction
+  await tx.transaction.create({
+    data: { 
+      userId: order.userId, 
+      amount: refundAmount, 
+      type: TransactionType.REFUND, 
+      source: TransactionSource.WALLET, // Always WALLET for refunds now
+      status: TransactionStatus.COMPLETED, 
+      description: `${description} (Refunded to Wallet)`,
+      refundType,
+      orderId: order.id,
+      meta: {
+        originalPaymentType: paymentType, // Keep track of the original payment type
+        // If there was an external ID from a previous payment, you might want to store it here for reference
+        // For example, if a Stripe payment was made, you could store its PaymentIntent ID here.
+        // This would require fetching the original payment transaction.
+        // For simplicity, we're just storing the original paymentType for now.
       }
-    });
-
-    // Fallback for older orders where paymentType wasn't stored in meta
-    if (!paymentTx && paymentType === 'card') {
-      paymentTx = await tx.transaction.findFirst({
-        where: { 
-          orderId: order.id, 
-          type: TransactionType.ORDER_PAYMENT, 
-          status: TransactionStatus.COMPLETED,
-          source: TransactionSource.STRIPE 
-        }
-      });
-    }
-    
-    if (!paymentTx?.externalId) {
-      throw new Error(`CRITICAL: Cannot process Stripe refund. No completed payment transaction found for Order #${order.orderCode}.`);
-    }
-
-    // 1. Process the actual Stripe Refund (converting to cents)
-    const stripeRefund = await stripe.refunds.create({ 
-      payment_intent: paymentTx.externalId, 
-      amount: Math.round(refundAmount * 100) 
-    });
-
-    // 2. Record the refund transaction with the external ID for audit trails
-    await tx.transaction.create({
-      data: { 
-        userId: order.userId, 
-        amount: refundAmount, 
-        type: TransactionType.REFUND, 
-        source: TransactionSource.STRIPE, 
-        status: TransactionStatus.COMPLETED, 
-        description: `${description} (Refunded to Card)`, 
-        orderId: order.id, 
-        refundType,
-        externalId: stripeRefund.id 
-      },
-    });
-  } else if (order.paymentMethod === PaymentMethods.wallet) {
-    // 1. Return funds to the user's internal wallet balance
-    await tx.wallet.upsert({
-      where: { userId: order.userId },
-      create: { userId: order.userId, balance: refundAmount },
-      update: { balance: { increment: refundAmount } }
-    });
-
-    // 2. Record the internal wallet refund transaction
-    await tx.transaction.create({
-      data: { 
-        userId: order.userId, 
-        amount: refundAmount, 
-        type: TransactionType.REFUND, 
-        source: TransactionSource.WALLET, 
-        status: TransactionStatus.COMPLETED, 
-        description: `${description} (Refunded to Wallet)`,
-        refundType,
-        orderId: order.id 
-      },
-    });
-  }
+    },
+  });
 };

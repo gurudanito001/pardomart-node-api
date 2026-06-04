@@ -753,6 +753,36 @@ export const updateOrderStatusService = async (
     }
   };
 
+  const handleCustomerCancellation = async (tx: Prisma.TransactionClient) => {
+    // Allow cancellation only before active shopping has progressed significantly
+    const cancellableStatuses = [OrderStatus.pending, OrderStatus.accepted_for_shopping, OrderStatus.accepted_for_delivery] as OrderStatus[];
+    if (!cancellableStatuses.includes(order.orderStatus)) {
+      throw new OrderCreationError('Cannot cancel order once shopping or delivery has started. Please contact support.', 400);
+    }
+
+    // Process Refund if paid
+    if (order.paymentStatus === PaymentStatus.paid) {
+      const successfulTxs = await tx.transaction.findMany({
+        where: { orderId: order.id, status: TransactionStatus.COMPLETED, type: TransactionType.ORDER_PAYMENT }
+      });
+      for (const t of successfulTxs) {
+        const tPaymentType = (t.meta as any)?.paymentType || 'card';
+        await processRefundService(tx, order, Math.abs(t.amount), `Customer cancelled order #${order.orderCode}`, RefundType.FULL_REVERSAL, tPaymentType);
+      }
+      updates.paymentStatus = PaymentStatus.refunded;
+    }
+
+    // Notify Vendor
+    await notificationService.createNotification({
+      userId: order.vendor.userId,
+      type: NotificationType.ORDER_CANCELLED,
+      category: NotificationCategory.ORDER,
+      title: 'Order Cancelled by Customer',
+      body: `Order #${order.orderCode} has been cancelled by the customer at ${dayjs().format('h:mm A')}.`,
+      meta: { orderId: order.id }
+    })
+  };
+
   switch (status) {
     // --- Phase 1: Pickup & Shop ---
     case OrderStatus.en_route_to_pickup:
@@ -832,9 +862,13 @@ export const updateOrderStatusService = async (
       // Add more specific previous status checks for return flow if needed
       break;
 
+    case OrderStatus.cancelled_by_customer:
+      // Authorization and state validation for customer cancellation are handled later.
+      assertHasRole([Role.customer, Role.admin]);
+      break;
+
     default:
-      // For other statuses like 'cancelled_by_customer', we might need different logic.
-      // For now, we block any unhandled transitions.
+      // For any other statuses not explicitly handled above, block the transition.
       throw new OrderCreationError(`Status transition to '${status}' is not handled by this service.`, 400);
   }
 
@@ -885,6 +919,18 @@ export const updateOrderStatusService = async (
             body: `Shopping for order #${orderDetails.orderCode} was finished at ${timeStr}. A delivery person will pick it up shortly.`,
             meta: { orderId: orderId }
           });
+
+          // If a driver is already assigned, notify them to head to the store
+          if (orderDetails.deliveryPersonId) {
+            await notificationService.createNotification({
+              userId: orderDetails.deliveryPersonId,
+              type: NotificationType.ORDER_READY_FOR_DELIVERY,
+              category: NotificationCategory.ORDER,
+              title: 'Order Ready for Pickup',
+              body: `Order #${orderDetails.orderCode} is ready! Please head to the store for pickup.`,
+              meta: { orderId: orderId }
+            });
+          }
           break;
 
         case OrderStatus.en_route_to_delivery:
@@ -944,6 +990,16 @@ export const updateOrderStatusService = async (
           });
           break;
       }
+    }
+
+    if (status === OrderStatus.cancelled_by_customer) {
+      assertHasRole([Role.customer, Role.admin]);
+      // Use a transaction for the cancellation logic to ensure refund + status change are atomic
+      return await prisma.$transaction(async (tx) => {
+        await handleCustomerCancellation(tx);
+        await orderHistoryModel.createOrderHistory(historyPayload, tx);
+        return orderModel.updateOrder(orderId, updates, tx);
+      });
     }
   } catch (error) {
     console.error('Error sending notification during order status update:', error);
