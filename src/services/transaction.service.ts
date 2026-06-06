@@ -65,7 +65,7 @@ export const createPaymentIntentService = async (userId: string, orderId: string
   // During the payment intent phase (usually while pending), we want to recalculate using the 
   // replacement budget logic if a budget was authorized (budgetAmount > 0).
   const shouldAuthorizeBudget = !!order.budgetAmount && order.orderStatus === OrderStatus.pending;
-  const recalculatedOrder = await recalculateOrderTotal(order.id, undefined, shouldAuthorizeBudget);
+  const recalculatedOrder = await recalculateOrderTotal(order.id, undefined, true);
   
   // 1. Get existing completed payments to handle split-payments (EBT + Card) correctly
   const existingPayments = await prisma.transaction.findMany({
@@ -93,7 +93,7 @@ export const createPaymentIntentService = async (userId: string, orderId: string
 
   const totalAmountNeeded = recalculatedOrder.budgetAmount ?? recalculatedOrder.totalAmount;
 
-  console.log("total amount needed for order:", totalAmountNeeded);
+  console.log("total amount needed for order:", recalculatedOrder);
   // 2. Determine the exact amount to charge based on backend calculations
   let chargeAmount: number;
   if (paymentType === 'ebt') {
