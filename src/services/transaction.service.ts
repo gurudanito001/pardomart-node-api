@@ -76,16 +76,24 @@ export const createPaymentIntentService = async (userId: string, orderId: string
     }
   });
 
+  console.log("existing payments for order:", existingPayments);
+
   const totalEbtPaid = existingPayments
     .filter(t => (t.meta as any)?.paymentType === 'ebt')
     .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+    console.log("total EBT paid so far:", totalEbtPaid);
 
   const totalCardPaid = existingPayments
     .filter(t => (t.meta as any)?.paymentType !== 'ebt')
     .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
+    console.log("total card paid so far:", totalCardPaid);
+
+
   const totalAmountNeeded = recalculatedOrder.budgetAmount ?? recalculatedOrder.totalAmount;
 
+  console.log("total amount needed for order:", totalAmountNeeded);
   // 2. Determine the exact amount to charge based on backend calculations
   let chargeAmount: number;
   if (paymentType === 'ebt') {
@@ -96,6 +104,8 @@ export const createPaymentIntentService = async (userId: string, orderId: string
     chargeAmount = totalAmountNeeded - (totalEbtPaid + totalCardPaid);
     if (chargeAmount <= 0) throw new OrderCreationError('This order is already fully paid.', 400);
   }
+
+  console.log(`Charge amount for this payment intent: $${chargeAmount} (Payment type: ${paymentType || 'card'})`);
   const amountInCents = Math.round(chargeAmount * 100);
 
   const intentParams: Stripe.PaymentIntentCreateParams = {
