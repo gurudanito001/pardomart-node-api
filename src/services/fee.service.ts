@@ -427,11 +427,6 @@ export const calculateOrderFeesService = async (
         }
       }
 
-      // Check availability only if we are doing a strict checkout (skipAvailabilityCheck = false)
-      if (!payload.skipAvailabilityCheck && productDetails && !productDetails.isAvailable) {
-        throw new Error(`Product is currently out of stock: ${item.vendorProductId}`);
-      }
-      
       itemPrices.push({ 
         vendorProductId: item.vendorProductId, 
         price: baseItemPrice, 
@@ -453,10 +448,23 @@ export const calculateOrderFeesService = async (
 
     // Shopping Fee (based on number of items)
     const shoppingFeeConfig = feeConfigMap.get(FeeType.shopping);
-    if (shoppingFeeConfig && shoppingFeeConfig.method === FeeCalculationMethod.per_unit) {
-      shoppingFee = totalItemCount * shoppingFeeConfig.amount;
-    }
+    if (shoppingFeeConfig) {
+      if (shoppingFeeConfig.method === FeeCalculationMethod.per_unit) {
+        shoppingFee = totalItemCount * shoppingFeeConfig.amount;
+      } else if (shoppingFeeConfig.method === FeeCalculationMethod.percentage) {
+        shoppingFee = subtotal * (shoppingFeeConfig.amount / 100);
+      } else if (shoppingFeeConfig.method === FeeCalculationMethod.flat) {
+        shoppingFee = shoppingFeeConfig.amount;
+      }
 
+      // Apply thresholds to shopping fee
+      if (shoppingFeeConfig.minThreshold !== null && shoppingFee < shoppingFeeConfig.minThreshold) {
+        shoppingFee = shoppingFeeConfig.minThreshold;
+      }
+      if (shoppingFeeConfig.maxThreshold !== null && shoppingFee > shoppingFeeConfig.maxThreshold) {
+        shoppingFee = shoppingFeeConfig.maxThreshold;
+      }
+    }
     // Delivery Fee (based on distance)
     const deliveryFeeConfig = feeConfigMap.get(FeeType.delivery);
     if (deliveryType !== 'customer_pickup' && deliveryFeeConfig) {
@@ -481,6 +489,8 @@ export const calculateOrderFeesService = async (
         deliveryFee = distanceInConfigUnit * deliveryFeeConfig.amount;
       } else if (deliveryFeeConfig.method === FeeCalculationMethod.flat) {
         deliveryFee = deliveryFeeConfig.amount;
+      } else if (deliveryFeeConfig.method === FeeCalculationMethod.percentage) {
+        deliveryFee = subtotal * (deliveryFeeConfig.amount / 100);
       }
 
       // Apply thresholds to delivery fee (e.g., Minimum delivery charge or cap)
@@ -495,15 +505,18 @@ export const calculateOrderFeesService = async (
     // Service Fee (based on total cost of items purchased - subtotal)
     const serviceFeeConfig = feeConfigMap.get(FeeType.service);
     if (serviceFeeConfig) {
-      const meetsMin = serviceFeeConfig.minThreshold === null || subtotal >= serviceFeeConfig.minThreshold;
-      const meetsMax = serviceFeeConfig.maxThreshold === null || subtotal <= serviceFeeConfig.maxThreshold;
+      if (serviceFeeConfig.method === FeeCalculationMethod.percentage) {
+        serviceFee = subtotal * (serviceFeeConfig.amount / 100);
+      } else if (serviceFeeConfig.method === FeeCalculationMethod.flat) {
+        serviceFee = serviceFeeConfig.amount;
+      }
 
-      if (meetsMin && meetsMax) {
-        if (serviceFeeConfig.method === FeeCalculationMethod.percentage) {
-          serviceFee = subtotal * serviceFeeConfig.amount;
-        } else if (serviceFeeConfig.method === FeeCalculationMethod.flat) {
-          serviceFee = serviceFeeConfig.amount;
-        }
+      // Apply thresholds to service fee
+      if (serviceFeeConfig.minThreshold !== null && serviceFee < serviceFeeConfig.minThreshold) {
+        serviceFee = serviceFeeConfig.minThreshold;
+      }
+      if (serviceFeeConfig.maxThreshold !== null && serviceFee > serviceFeeConfig.maxThreshold) {
+        serviceFee = serviceFeeConfig.maxThreshold;
       }
     }
 
