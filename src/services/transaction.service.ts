@@ -61,8 +61,11 @@ export const createPaymentIntentService = async (userId: string, orderId: string
 
   const stripeCustomerId = await findOrCreateStripeCustomer(user);
   
-  // Recalculate order totals to get the current ebtEligibleSubtotal
-  const recalculatedOrder = await recalculateOrderTotal(order.id);
+  // Recalculate order totals to get the current ebtEligibleSubtotal.
+  // During the payment intent phase (usually while pending), we want to recalculate using the 
+  // replacement budget logic if a budget was authorized (budgetAmount > 0).
+  const shouldAuthorizeBudget = !!order.budgetAmount && order.orderStatus === OrderStatus.pending;
+  const recalculatedOrder = await recalculateOrderTotal(order.id, undefined, shouldAuthorizeBudget);
   
   // Determine the amount to charge based on the payment type and provided amount
   let chargeAmount: number;

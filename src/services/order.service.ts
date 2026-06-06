@@ -157,16 +157,20 @@ export const getOrderByIdService = async (
  * @param tx Optional Prisma transaction client.
  * @returns The updated Order object.
  */
-export const recalculateOrderTotal = async (orderId: string, tx?: Prisma.TransactionClient): Promise<Order & { ebtEligibleSubtotal: number }> => {
+export const recalculateOrderTotal = async (
+  orderId: string, 
+  tx?: Prisma.TransactionClient,
+  useMaxPricesForBudget: boolean = false
+): Promise<Order & { ebtEligibleSubtotal: number }> => {
   const db = tx || prisma;
   const order = await db.order.findUnique({
     where: { id: orderId },
-    include: { orderItems: true }
+    include: { orderItems: { include: { replacements: { select: { id: true } } } } }
   });
 
   if (!order) throw new OrderCreationError('Order not found for recalculation.', 404);
 
-  const activeItems: { vendorProductId: string; quantity: number; price?: number; isEbtEligible?: boolean }[] = [];
+  const activeItems: { vendorProductId: string; quantity: number; price?: number; isEbtEligible?: boolean; replacementIds?: string[] }[] = [];
 
   for (const item of order.orderItems) {
     if (item.status === OrderItemStatus.NOT_FOUND) {
@@ -180,7 +184,8 @@ export const recalculateOrderTotal = async (orderId: string, tx?: Prisma.Transac
           vendorProductId: item.chosenReplacementId,
           quantity: item.quantityFound ?? item.quantity,
           price: lockedRepPrice, // Use the locked replacement price from the JSON map
-          isEbtEligible: item.isEbtEligible
+          isEbtEligible: item.isEbtEligible,
+          replacementIds: [] // Substitutions don't cascade further replacement math
         });
       }
       // If REPLACED but rejected or pending approval, we omit it to prevent overcharging
@@ -190,7 +195,8 @@ export const recalculateOrderTotal = async (orderId: string, tx?: Prisma.Transac
         vendorProductId: item.vendorProductId,
         quantity: item.quantityFound ?? item.quantity,
         price: item.purchasedPrice ?? undefined, // Pass the locked price back to the fee service
-        isEbtEligible: item.isEbtEligible
+        isEbtEligible: item.isEbtEligible,
+        replacementIds: item.replacements.map(r => r.id)
       });
     }
   }
@@ -203,6 +209,7 @@ export const recalculateOrderTotal = async (orderId: string, tx?: Prisma.Transac
     deliveryType: order.deliveryMethod || undefined,
     allowUnpublishedVendor: true, // Crucial: recalculations should work even if vendor is draft
     skipAvailabilityCheck: true, // Prevent mid-shopping catalog stock changes from crashing the recalculation
+    useMaxPricesForBudget
   }, db) : { subtotal: 0, shoppingFee: 0, deliveryFee: 0, serviceFee: 0, ebtEligibleSubtotal: 0 };
 
   const finalTotalAmount = feesResult.subtotal + feesResult.shoppingFee + feesResult.deliveryFee + feesResult.serviceFee + (order.shopperTip || 0) + (order.deliveryPersonTip || 0);
