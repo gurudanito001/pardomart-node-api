@@ -40,7 +40,7 @@ const findOrCreateStripeCustomer = async (user: User): Promise<string> => {
  * @param paymentType Optional payment type (e.g., 'card', 'ebt')
  * @returns An object containing the client_secret for the Payment Intent.
  */
-export const createPaymentIntentService = async (userId: string, orderId: string, paymentType?: string, amount?: number) => {
+export const createPaymentIntentService = async (userId: string, orderId: string, paymentType?: string) => {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) {
     throw new OrderCreationError('User not found.', 404);
@@ -67,34 +67,34 @@ export const createPaymentIntentService = async (userId: string, orderId: string
   const shouldAuthorizeBudget = !!order.budgetAmount && order.orderStatus === OrderStatus.pending;
   const recalculatedOrder = await recalculateOrderTotal(order.id, undefined, shouldAuthorizeBudget);
   
-  // Determine the amount to charge based on the payment type and provided amount
-  let chargeAmount: number;
-  if (amount !== undefined) {
-    chargeAmount = amount;
-  } else if (paymentType === 'ebt') {
-    // Default to the maximum EBT-eligible amount if not specified
-    chargeAmount = recalculatedOrder.ebtEligibleSubtotal;
-  } else {
-    // Default to the full order total for standard card payments
-    chargeAmount = (recalculatedOrder.budgetAmount ?? recalculatedOrder.totalAmount);
-  }
+  // 1. Get existing completed payments to handle split-payments (EBT + Card) correctly
+  const existingPayments = await prisma.transaction.findMany({
+    where: { 
+      orderId: order.id, 
+      status: TransactionStatus.COMPLETED, 
+      type: TransactionType.ORDER_PAYMENT 
+    }
+  });
 
-  if (chargeAmount <= 0) {
-    throw new OrderCreationError(paymentType === 'ebt' ? 'No EBT-eligible items found in this order.' : 'Payment amount must be greater than zero.', 400);
-  }
-  
-  // Validation check for card payments
-  if (paymentType === 'card') {
-    const nonEbtAmountRequired = recalculatedOrder.totalAmount - recalculatedOrder.ebtEligibleSubtotal;
-    // Use a small tolerance for floating point comparisons
-    if (chargeAmount < nonEbtAmountRequired - 0.01) {
-      throw new OrderCreationError(`Card payment amount must cover all non-EBT eligible items, fees, and tips. Required: $${nonEbtAmountRequired.toFixed(2)}`, 400);
-    }
-  } else if (paymentType === 'ebt') {
-    // EBT payment amount should not exceed the ebtEligibleSubtotal
-    if (chargeAmount > recalculatedOrder.ebtEligibleSubtotal + 0.01) {
-      throw new OrderCreationError(`EBT payment amount cannot exceed the EBT eligible subtotal. Max: $${recalculatedOrder.ebtEligibleSubtotal.toFixed(2)}`, 400);
-    }
+  const totalEbtPaid = existingPayments
+    .filter(t => (t.meta as any)?.paymentType === 'ebt')
+    .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+  const totalCardPaid = existingPayments
+    .filter(t => (t.meta as any)?.paymentType !== 'ebt')
+    .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+  const totalAmountNeeded = recalculatedOrder.budgetAmount ?? recalculatedOrder.totalAmount;
+
+  // 2. Determine the exact amount to charge based on backend calculations
+  let chargeAmount: number;
+  if (paymentType === 'ebt') {
+    chargeAmount = recalculatedOrder.ebtEligibleSubtotal - totalEbtPaid;
+    if (chargeAmount <= 0) throw new OrderCreationError('EBT portion of this order is already paid or no EBT items exist.', 400);
+  } else {
+    // Standard or remaining balance after EBT
+    chargeAmount = totalAmountNeeded - (totalEbtPaid + totalCardPaid);
+    if (chargeAmount <= 0) throw new OrderCreationError('This order is already fully paid.', 400);
   }
   const amountInCents = Math.round(chargeAmount * 100);
 

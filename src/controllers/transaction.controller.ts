@@ -45,11 +45,6 @@ import { stripe } from '../services/transaction.service';
  *             type: object
  *             required: [orderId]
  *             properties:
- *               amount:
- *                 type: number
- *                 format: float
- *                 nullable: true
- *                 description: "Optional. The specific amount to charge for this payment intent. If not provided, the full order budget will be used. Useful for partial payments (e.g., EBT)."
  *               orderId:
  *                 type: string
  *                 format: uuid
@@ -142,9 +137,9 @@ import { stripe } from '../services/transaction.service';
 export const createPaymentIntentController = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.userId as string;
-    const { orderId, paymentType, amount } = req.body;
+    const { orderId, paymentType } = req.body;
 
-    const paymentIntent = await createPaymentIntentService(userId, orderId, paymentType, amount);
+    const paymentIntent = await createPaymentIntentService(userId, orderId, paymentType);
     res.status(200).json(paymentIntent);
   } catch (error: any) {
     await errorLogService.logError({
