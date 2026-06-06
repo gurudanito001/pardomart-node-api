@@ -2,9 +2,10 @@ import { PrismaClient, User, SavedPaymentMethod, Transaction, TransactionStatus,
 import Stripe from 'stripe';
 import { OrderCreationError, recalculateOrderTotal } from './order.service';
 import * as transactionModel from '../models/transaction.model';
-
+import { calculateOrderFeesService } from './fee.service';
 import { sendEmail } from '../utils/email.util';
 import { RefundType } from '@prisma/client';
+
 const prisma = new PrismaClient();
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-08-27.basil', // Standard stable Stripe API Version
@@ -61,13 +62,29 @@ export const createPaymentIntentService = async (userId: string, orderId: string
 
   const stripeCustomerId = await findOrCreateStripeCustomer(user);
   
-  // Recalculate order totals to get the current ebtEligibleSubtotal.
-  // During the payment intent phase (usually while pending), we want to recalculate using the 
-  // replacement budget logic if a budget was authorized (budgetAmount > 0).
-  const shouldAuthorizeBudget = !!order.budgetAmount && order.orderStatus === OrderStatus.pending;
-  const recalculatedOrder = await recalculateOrderTotal(order.id, undefined, true);
+  // 1. Fetch order items with their replacements to pass to the fee service
+  const orderWithItems = await prisma.order.findUniqueOrThrow({
+    where: { id: orderId },
+    include: { orderItems: { include: { replacements: { select: { id: true } } } } }
+  });
+
+  // 2. Calculate fees using the primary fee service. 
+  // We pass the snapshotted prices from the database to ensure the calculation matches the checkout snapshot.
+  const feesResult = await calculateOrderFeesService({
+    orderItems: orderWithItems.orderItems.map(oi => ({
+      vendorProductId: oi.vendorProductId,
+      quantity: oi.quantity,
+      price: oi.purchasedPrice ?? undefined, // Respect the locked price from order creation
+      isEbtEligible: oi.isEbtEligible,
+      replacementIds: oi.replacements.map(r => r.id)
+    })),
+    vendorId: order.vendorId,
+    deliveryAddressId: order.deliveryAddressId || undefined,
+    deliveryType: order.deliveryMethod || undefined,
+    useMaxPricesForBudget: true // Always authorize for the maximum potential replacement budget
+  });
   
-  // 1. Get existing completed payments to handle split-payments (EBT + Card) correctly
+  // 3. Get existing completed payments to handle split-payments (EBT + Card) correctly
   const existingPayments = await prisma.transaction.findMany({
     where: { 
       orderId: order.id, 
@@ -91,13 +108,12 @@ export const createPaymentIntentService = async (userId: string, orderId: string
     console.log("total card paid so far:", totalCardPaid);
 
 
-  const totalAmountNeeded = recalculatedOrder.budgetAmount ?? recalculatedOrder.totalAmount;
+   const totalAmountNeeded = feesResult.totalEstimatedCost + (order.shopperTip || 0) + (order.deliveryPersonTip || 0);
 
-  console.log("total amount needed for order:", recalculatedOrder);
-  // 2. Determine the exact amount to charge based on backend calculations
+  // 4. Determine the exact amount to charge based on backend calculations
   let chargeAmount: number;
   if (paymentType === 'ebt') {
-    chargeAmount = recalculatedOrder.ebtEligibleSubtotal - totalEbtPaid;
+    chargeAmount = feesResult.ebtEligibleSubtotal - totalEbtPaid;
     if (chargeAmount <= 0) throw new OrderCreationError('EBT portion of this order is already paid or no EBT items exist.', 400);
   } else {
     // Standard or remaining balance after EBT
