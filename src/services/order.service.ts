@@ -160,7 +160,7 @@ export const getOrderByIdService = async (
 export const recalculateOrderTotal = async (
   orderId: string, 
   tx?: Prisma.TransactionClient,
-  useMaxPricesForBudget: boolean = true
+  useMaxPricesForBudget: boolean = false
 ): Promise<Order & { ebtEligibleSubtotal: number }> => {
   const db = tx || prisma;
   const order = await db.order.findUnique({
