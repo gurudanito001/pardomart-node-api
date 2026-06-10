@@ -1,6 +1,7 @@
 // controllers/vendor.controller.ts
 import { Request, Response } from 'express';
 import * as vendorService from '../services/vendor.service';
+import * as vendorOpeningHoursService from '../services/vendorOpeningHours.service';
 import { getVendorsFilters } from '../models/vendor.model';
 import { PrismaClient, Role } from '@prisma/client';
 import { errorLogService } from '../services/errorLog.service';
@@ -170,6 +171,10 @@ export interface AuthenticatedRequest extends Request {
  *         mobileVerified: { type: boolean, default: false }
  *         availableForShopping: { type: boolean, default: true }
  *         meta: { type: object, nullable: true }
+ *         openingHours:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/UpdateOpeningHoursPayload'
  *     UpdateVendorPayload:
  *       type: object
  *       properties:
@@ -187,17 +192,53 @@ export interface AuthenticatedRequest extends Request {
  *         mobileVerified: { type: boolean }
  *         availableForShopping: { type: boolean }
  *         meta: { type: object }
+ *         openingHours:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/UpdateOpeningHoursPayload'
  */
 export const createVendor = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const payload = req.body;
+
+    // Extract and parse openingHours to prevent Prisma validation error and update them separately
+    let openingHoursData = payload.openingHours;
+    if (openingHoursData && typeof openingHoursData === 'string') {
+      try {
+        openingHoursData = JSON.parse(openingHoursData);
+      } catch (e) {
+        openingHoursData = null;
+      }
+    }
+    delete payload.openingHours;
+
     // Sanitize image data: remove data URI prefix if it exists.
     if (payload.image && payload.image.startsWith('data:')) {
       payload.image = payload.image.split(',')[1];
     }
 
     const vendor = await vendorService.createVendor({ ...payload, userId: req.userId as string });
-    res.status(201).json(vendor);
+
+    // If openingHours were provided, update the default records created by the model
+    if (openingHoursData && Array.isArray(openingHoursData)) {
+      for (const oh of openingHoursData) {
+        if (oh.day) {
+          const day = oh.day.toLowerCase() as any;
+          const existing = await vendorOpeningHoursService.getVendorOpeningHoursByVendorIdAndDay(vendor.id, day);
+          if (existing) {
+            await vendorOpeningHoursService.updateVendorOpeningHours({
+              id: existing.id,
+              open: oh.open,
+              close: oh.close,
+            });
+          }
+        }
+      }
+    }
+
+    // Refetch to include updated opening hours in the response
+    const finalVendor = await vendorService.getVendorById(vendor.id);
+    res.status(201).json(finalVendor);
   } catch (error: any) {
     await errorLogService.logError({
       message: error.message || 'Failed to create vendor',
@@ -580,18 +621,52 @@ export const updateVendor = async (req: AuthenticatedRequest, res: Response) => 
     if (payload.meta && typeof payload.meta === 'string') {
       payload.meta = JSON.parse(payload.meta);
     }
+
+    // Extract and parse openingHours to prevent Prisma validation error and update them separately
+    let openingHoursData = payload.openingHours;
+    if (openingHoursData && typeof openingHoursData === 'string') {
+      try {
+        openingHoursData = JSON.parse(openingHoursData);
+      } catch (e) {
+        openingHoursData = null;
+      }
+    }
+    delete payload.openingHours;
+
     // Sanitize image data: remove data URI prefix if it exists.
     if (payload.image && payload.image.startsWith('data:')) {
       payload.image = payload.image.split(',')[1];
     }
+
     if (payload.longitude && typeof payload.longitude === 'string') {
       payload.longitude = parseFloat(payload.longitude);
     }
     if (payload.latitude && typeof payload.latitude === 'string') {
       payload.latitude = parseFloat(payload.latitude);
     }
+
     const vendor = await vendorService.updateVendor(id, payload);
-    res.status(200).json(vendor);
+
+    // If openingHours were provided, update them record by record
+    if (openingHoursData && Array.isArray(openingHoursData)) {
+      for (const oh of openingHoursData) {
+        if (oh.day) {
+          const day = oh.day.toLowerCase() as any;
+          const existing = await vendorOpeningHoursService.getVendorOpeningHoursByVendorIdAndDay(id, day);
+          if (existing) {
+            await vendorOpeningHoursService.updateVendorOpeningHours({
+              id: existing.id,
+              open: oh.open,
+              close: oh.close,
+            });
+          }
+        }
+      }
+    }
+
+    // Refetch to include updated opening hours in the response
+    const finalVendor = await vendorService.getVendorById(id);
+    res.status(200).json(finalVendor);
   } catch (error: any) {
     await errorLogService.logError({
       message: error.message || 'Failed to update vendor',
