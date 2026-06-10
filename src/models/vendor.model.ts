@@ -15,6 +15,7 @@ export interface CreateVendorPayload {
   address?: string;
   longitude: number;
   latitude: number;
+  timezone?: string;
   meta?: any;
 }
 
@@ -27,6 +28,7 @@ export interface UpdateVendorPayload {
   address?: string;
   longitude?: number;
   latitude?: number;
+  timezone?: string;
   isVerified?: boolean;
   isPublished?: boolean;
   availableForShopping?: boolean;

@@ -120,11 +120,12 @@ export const registerUser = async (req: Request, res: Response) => {
 export const getTimeZones = async (req: Request, res: Response) => {
   try {
     const timezones = Timezones;
-    let utcs: string[] = [];
-    timezones.forEach( zone =>{
-      utcs = [...utcs, ...zone.utc ];
+    let allUtcs: string[] = [];
+    timezones.forEach(zone => {
+      allUtcs = [...allUtcs, ...zone.utc];
     });
-    res.status(200).json({ message: 'List of time zones', data: utcs });
+    const uniqueAndSortedUtcs = Array.from(new Set(allUtcs)).sort();
+    res.status(200).json({ message: 'List of time zones', data: uniqueAndSortedUtcs });
   } catch (error: any) {
     await errorLogService.logError({
       message: error.message || 'Failed to get time zones',

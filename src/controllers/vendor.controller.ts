@@ -165,6 +165,7 @@ export interface AuthenticatedRequest extends Request {
  *         address: { type: string, nullable: true, example: "123 Main St, Anytown, USA" }
  *         longitude: { type: number, format: float, example: -73.935242 }
  *         latitude: { type: number, format: float, example: 40.730610 }
+ *         timezone: { type: string, nullable: true, example: "America/New_York" }
  *         mobileNumber: { type: string, nullable: true, example: "+1234567890" }
  *         mobileVerified: { type: boolean, default: false }
  *         availableForShopping: { type: boolean, default: true }
@@ -180,6 +181,7 @@ export interface AuthenticatedRequest extends Request {
  *         address: { type: string }
  *         longitude: { type: number, format: float }
  *         latitude: { type: number, format: float }
+ *         timezone: { type: string, example: "America/New_York" }
  *         isVerified: { type: boolean }
  *         mobileNumber: { type: string }
  *         mobileVerified: { type: boolean }
@@ -553,10 +555,25 @@ export const exportVendors = async (req: AuthenticatedRequest, res: Response) =>
  *       500:
  *         description: Internal server error.
  */
-export const updateVendor = async (req: Request, res: Response) => {
+export const updateVendor = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const id = req.params.id;
     const payload = { ...req.body };
+    const { userId, userRole, vendorId: staffVendorId } = req;
+
+    // --- Authorization Check ---
+    if (userRole === Role.vendor) {
+      const existingVendor = await vendorService.getVendorById(id);
+      if (!existingVendor || existingVendor.userId !== userId) {
+        return res.status(403).json({ error: 'Forbidden: You do not own this store.' });
+      }
+    } else if (userRole === Role.store_admin) {
+      if (staffVendorId !== id) {
+        return res.status(403).json({ error: 'Forbidden: You can only update your assigned store.' });
+      }
+    } else if (userRole !== Role.admin) {
+      return res.status(403).json({ error: 'Forbidden: You are not authorized to perform this action.' });
+    }
 
     // When using formData, nested objects, booleans, and numbers might be sent as strings.
     // We need to parse them back before sending to the service layer.

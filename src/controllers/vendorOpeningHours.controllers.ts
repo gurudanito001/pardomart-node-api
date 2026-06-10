@@ -1,8 +1,10 @@
 // controllers/vendorOpeningHours.controller.ts
 import { Request, Response } from 'express';
 import * as vendorOpeningHoursService from '../services/vendorOpeningHours.service';
-import { Prisma } from '@prisma/client'; // Import Prisma
+import * as vendorService from '../services/vendor.service';
+import { Prisma, Role } from '@prisma/client'; // Import Prisma
 import { errorLogService } from '../services/errorLog.service';
+import { AuthenticatedRequest } from './vendor.controller';
 
 /**
  * @swagger
@@ -69,12 +71,30 @@ import { errorLogService } from '../services/errorLog.service';
  *           description: "The closing time in 24-hour format (e.g., '18:00'). Set to null to mark as closed."
  *           example: "18:00"
  */
-export const updateVendorOpeningHours = async (req: Request, res: Response) => {
+export const updateVendorOpeningHours = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { vendorId, day, open, close } = req.body;
+    const { userId, userRole, vendorId: staffVendorId } = req;
 
     if (!vendorId || !day) {
       return res.status(400).json({ error: 'Vendor ID and Day are required for updating' });
+    }
+
+    // --- Authorization Check ---
+    if (userRole === Role.vendor) {
+      const vendor = await vendorService.getVendorById(vendorId);
+      if (!vendor || vendor.userId !== userId) {
+        return res.status(403).json({ error: 'Forbidden: You do not have permission to update opening hours for this store.' });
+      }
+    } else if (userRole === Role.store_admin || userRole === Role.store_shopper) {
+      if (userRole === Role.store_shopper) {
+        return res.status(403).json({ error: 'Forbidden: Your role does not allow updating store hours.' });
+      }
+      if (staffVendorId !== vendorId) {
+        return res.status(403).json({ error: 'Forbidden: You can only update opening hours for your assigned store.' });
+      }
+    } else if (userRole !== Role.admin) {
+      return res.status(403).json({ error: 'Forbidden: You are not authorized to perform this action.' });
     }
 
     // Find the existing record by vendorId and day
