@@ -1,5 +1,6 @@
 import { PrismaClient, Role, User, Prisma } from '@prisma/client';
 import jwt from 'jsonwebtoken';
+import { countries } from '../utils/countries'; // Import the local countries data
 
 const prisma = new PrismaClient();
 
@@ -125,4 +126,77 @@ export const verifyCodeAndLogin = async (mobileNumber: string, verificationCode:
 export const checkUserExistence = async (params: { mobileNumber: string, role: Role }): Promise<boolean> => {
     const user = await findUserForLogin(params.mobileNumber, params.role);
     return !!user;
+};
+
+export interface Country {
+  name: string;
+  iso2: string; // ISO 3166-1 alpha-2
+  dialCode: string; // E.164 country calling code with leading +
+  flagPng?: string;
+  flagSvg?: string;
+}
+
+/**
+ * Retrieves country data from the local static JSON file.
+ * Extracts and transforms raw country data into a simplified format containing
+ * names, ISO codes, calling codes, and flag URLs. The result is sorted alphabetically.
+ * 
+ * @returns {Country[]} An array of simplified Country objects.
+ */
+export const getStaticCountriesData = (): Country[] => {
+  if (!countries || !Array.isArray(countries.objects)) {
+    console.warn('Local countries data is not in the expected format.');
+    return [];
+  }
+
+  return countries.objects.map((country: any) => {
+    return {
+      name: country.names?.common || '',
+      iso2: country.codes?.alpha_2 || '',
+      dialCode: country.calling_codes?.[0] || '',
+      flagPng: country.flag?.url_png || undefined,
+      flagSvg: country.flag?.url_svg || undefined,
+    };
+  }).sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically by name
+};
+
+/**
+ * Fetches country data from the Rest Countries API.
+ * @param search Optional search term (e.g., 'canada').
+ * @param page Optional page number (defaults to 1).
+ * @returns A promise that resolves to the country data.
+ */
+export const getCountriesFromRestCountries = async (search?: string, page: number = 3) => {
+  const baseUrl = 'https://api.restcountries.com/countries/v5';
+  const fields = 'names,codes,telecom,links,flag,currencies,calling_codes';
+  const token = 'rc_live_c928316070224caba010c366385718dc';
+  const limit = 100; // The maximum limit allowed in v5
+  const offset = (page - 1) * limit;
+
+  let url = `${baseUrl}?response_fields=${fields}&offset=${offset}&limit=${limit}`;
+  if (search) {
+    url += `&q=${search}`;
+  }
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`REST Countries v5 error: ${response.statusText}`);
+    }
+
+    const payload = await response.json();
+    
+    // Extract data safely based on standard JSON:API structures or flat arrays
+    return payload.data
+
+  } catch (error) {
+    console.error('Failed to fetch countries:', error);
+    throw error;
+  }
 };

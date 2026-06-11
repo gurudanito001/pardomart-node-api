@@ -64,7 +64,7 @@ export const registerUser = async (req: Request, res: Response) => {
 
       const verificationCode = generateVerificationCode();
       await authService.storeVerificationCode(newUser?.mobileNumber, verificationCode, tx);
-      //await sendVerificationCode(newUser?.mobileNumber, verificationCode, newUser?.email);
+      await sendVerificationCode(newUser?.mobileNumber, verificationCode, newUser?.email);
     });
 
     res.status(201).json({ message: 'Verification code sent' });
@@ -145,6 +145,115 @@ export const getTimeZones = async (req: Request, res: Response) => {
 
 /**
  * @swagger
+ * components:
+ *   schemas:
+ *     Country:
+ *       type: object
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: The common name of the country.
+ *           example: "Nigeria"
+ *         iso2:
+ *           type: string
+ *           description: The ISO 3166-1 alpha-2 country code.
+ *           example: "NG"
+ *         dialCode:
+ *           type: string
+ *           description: The country's international calling code (e.g., +234).
+ *           example: "+234"
+ *         flagPng:
+ *           type: string
+ *           format: uri
+ *           description: URL to the country's flag in PNG format.
+ *           nullable: true
+ *         flagSvg:
+ *           type: string
+ *           format: uri
+ *           description: URL to the country's flag in SVG format.
+ *           nullable: true
+ * /auth/static-countries:
+ *   get:
+ *     summary: Get a list of static country data
+ *     tags: [General]
+ *     description: Returns a list of simplified country objects (name, iso2, dialCode, flagPng, flagSvg) from a local static file. This endpoint is completely open and does not require authentication.
+ *     responses:
+ *       200:
+ *         description: A list of static country data, sorted alphabetically by name.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Country'
+ *       500:
+ *         description: Internal server error.
+ */
+/**
+ * Controller to retrieve a list of static country data from the local utility.
+ * @param {Request} req - The Express request object.
+ * @param {Response} res - The Express response object.
+ * @returns {Promise<void>} Sends a JSON array of simplified country objects.
+ */
+export const getStaticCountries = async (req: Request, res: Response) => {
+  try {
+    const countriesData = authService.getStaticCountriesData();
+    res.status(200).json(countriesData);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get static countries data',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_STATIC_COUNTRIES_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
+ * /auth/countries:
+ *   get:
+ *     summary: Get countries from Rest Countries API
+ *     tags: [General]
+ *     description: Returns a list of countries or searches for a specific one. This endpoint is completely open.
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Optional search term (e.g., 'canada').
+ *     responses:
+ *       200:
+ *         description: A list of countries.
+ *       500:
+ *         description: Internal server error.
+ */
+export const getCountries = async (req: Request, res: Response) => {
+  try {
+    const { search } = req.query;
+    const countries = await authService.getCountriesFromRestCountries(search as string);
+    res.status(200).json(countries);
+  } catch (error: any) {
+    await errorLogService.logError({
+      message: error.message || 'Failed to get countries',
+      stackTrace: error.stack,
+      metaData: { body: req.body, query: req.query, params: req.params },
+      requestMethod: req.method,
+      requestPath: req.originalUrl || req.path,
+      statusCode: error.statusCode || 500,
+      errorCode: error.code || 'GET_COUNTRIES_ERROR'
+    }).catch((logErr: any) => console.error('Failed to log error:', logErr));
+
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * @swagger
  * /auth/initiate-login:
  *   post:
  *     summary: Initiate user login or resend verification code
@@ -197,7 +306,7 @@ export const initiateLogin = async (req: Request, res: Response) => {
     await prisma.$transaction(async (tx) => {
       const verificationCode = generateVerificationCode();
       await authService.storeVerificationCode(mobileNumber, verificationCode, tx);
-      // await sendVerificationCode(mobileNumber, verificationCode, user.email);
+      await sendVerificationCode(mobileNumber, verificationCode, user.email);
     });
 
     // Return the actual role found for the user

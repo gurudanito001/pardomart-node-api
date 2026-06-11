@@ -3,7 +3,8 @@ import { Notification, NotificationCategory, NotificationType, Role } from '@pri
 import * as notificationModel from '../models/notification.model';
 import * as deviceModel from '../models/device.model';
 import * as userModel from '../models/user.model';
-import { sendPushNotification } from '../utils/fcm.util';
+import { sendPushNotification } from '../utils/fcm.util'; // Assuming this utility exists
+import { sendNotificationEmail } from '../utils/sendEmail'; // Import the new email function
 
 interface CreateNotificationArgs {
   userId: string;
@@ -49,6 +50,26 @@ export const createNotification = async (args: CreateNotificationArgs) => {
     },
   });
 
+  // 4. Send email notification to the user
+  try {
+    const user = await userModel.getUserById(userId); // Assuming a getUserById function exists
+    if (user && user.email) {
+      const emailHtml = `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6;">
+          <h2 style="color: #333;">${title}</h2>
+          <p>${body}</p>
+          <p>Category: <strong>${category}</strong></p>
+          ${meta ? `<p>Details: ${JSON.stringify(meta, null, 2)}</p>` : ''}
+          <p>Thank you for using Pardomart!</p>
+        </div>
+      `;
+      await sendNotificationEmail({ to: user.email, subject: title, html: emailHtml, meta: { notificationId: notification.id, ...meta } });
+    }
+  } catch (emailError) {
+    console.error(`Failed to send email notification for user ${userId}:`, emailError);
+    // Log this error, but don't block the main notification flow
+  }
+
   return notification;
 };
 
@@ -68,7 +89,7 @@ export const notifyVendorOfNewOrder = async (vendorId: string, orderId: string) 
   });
 
   if (vendorUsers.length === 0) return;
-
+  
   const title = 'New Order Received!';
   const body = `A new order has been placed. Tap to view.`;
 

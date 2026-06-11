@@ -1,14 +1,21 @@
 import * as Nodemailer from 'nodemailer';
 
-interface SendEmailParams {
+interface SendVerificationEmailParams {
     email: string,
-    code: number,
+    code: string,
     title?: string,
     message?: string,
     buttonText?: string
 }
-// async..await is not allowed in global scope, must use a wrapper
-export default async function sendEmail({ email, code, title= "Verify Email", message = "verify your email address"  }: SendEmailParams ) : Promise<any> {
+
+interface SendNotificationEmailParams {
+  to: string;
+  subject: string;
+  html: string;
+  meta?: object; // Optional metadata for logging or context
+}
+
+export async function sendVerificationEmail({ email, code, title= "Verify Email", message = "verify your email address"  }: SendVerificationEmailParams ) : Promise<any> {
 
     let transporter = Nodemailer.createTransport({
         name: "Loose Application",  //www.agronigeria.ng
@@ -52,4 +59,33 @@ export default async function sendEmail({ email, code, title= "Verify Email", me
         console.log('Message sent: ' + info.response);
     });
 
+}
+
+export async function sendNotificationEmail({ to, subject, html, meta }: SendNotificationEmailParams): Promise<any> {
+    let transporter = Nodemailer.createTransport({
+        name: "Pardomart Notifications",
+        host: "smtp.zoho.com",
+        port: 465,
+        secure: true,
+        auth: {
+            user: process.env.email_username,
+            pass: process.env.email_password,
+        },
+    });
+
+    const mailOptions = {
+        from: process.env.email_username,
+        to: to,
+        subject: subject,
+        html: html,
+    };
+
+    try {
+        const info = await transporter.sendMail(mailOptions);
+        console.log('Notification email sent: ' + info.response);
+        return info;
+    } catch (error) {
+        console.error('Error sending notification email:', error);
+        throw error;
+    }
 }

@@ -2,7 +2,7 @@
 
 import nodemailer from 'nodemailer';
 import sgMail from '@sendgrid/mail';
-
+import { sendVerificationEmail } from './sendEmail'; // Import the new function
 export const generateVerificationCode = (): string => {
   return '123456'
   //return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
@@ -52,7 +52,7 @@ export const sendVerificationCode = async (mobileNumber: string, verificationCod
             } else {
                 // Fallback to Ethereal for development if no real SMTP is configured
                 console.log('SendGrid/SMTP environment variables not set. Falling back to Ethereal transport.');
-                let transporter;
+                let transporter; // This transporter is not used if sendVerificationEmail is called
                 const testAccount = await nodemailer.createTestAccount();
                 transporter = nodemailer.createTransport({
                     host: "smtp.ethereal.email",
@@ -70,7 +70,7 @@ export const sendVerificationCode = async (mobileNumber: string, verificationCod
                     text: `Your verification code is: ${verificationCode}`, // plain text body
                     html: `<b>Your verification code is: ${verificationCode}</b>`, // html body
                 });
-                console.log("Message sent: %s", info.messageId);
+                console.log("Message sent: %s", info.messageId); // This log will be for Ethereal
                 if (nodemailer.getTestMessageUrl(info)) {
                     console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
                 }
