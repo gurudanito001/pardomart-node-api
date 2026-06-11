@@ -64,7 +64,7 @@ export const registerUser = async (req: Request, res: Response) => {
 
       const verificationCode = generateVerificationCode();
       await authService.storeVerificationCode(newUser?.mobileNumber, verificationCode, tx);
-      await sendVerificationCode(newUser?.mobileNumber, verificationCode, newUser?.email);
+      //await sendVerificationCode(newUser?.mobileNumber, verificationCode, newUser?.email);
     });
 
     res.status(201).json({ message: 'Verification code sent' });
@@ -306,7 +306,7 @@ export const initiateLogin = async (req: Request, res: Response) => {
     await prisma.$transaction(async (tx) => {
       const verificationCode = generateVerificationCode();
       await authService.storeVerificationCode(mobileNumber, verificationCode, tx);
-      await sendVerificationCode(mobileNumber, verificationCode, user.email);
+      //await sendVerificationCode(mobileNumber, verificationCode, user.email);
     });
 
     // Return the actual role found for the user

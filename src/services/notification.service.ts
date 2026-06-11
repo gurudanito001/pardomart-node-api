@@ -4,7 +4,7 @@ import * as notificationModel from '../models/notification.model';
 import * as deviceModel from '../models/device.model';
 import * as userModel from '../models/user.model';
 import { sendPushNotification } from '../utils/fcm.util'; // Assuming this utility exists
-import { sendNotificationEmail } from '../utils/sendEmail'; // Import the new email function
+//import { sendNotificationEmail } from '../utils/sendEmail'; // Import the new email function
 
 interface CreateNotificationArgs {
   userId: string;
@@ -63,7 +63,7 @@ export const createNotification = async (args: CreateNotificationArgs) => {
           <p>Thank you for using Pardomart!</p>
         </div>
       `;
-      await sendNotificationEmail({ to: user.email, subject: title, html: emailHtml, meta: { notificationId: notification.id, ...meta } });
+      //await sendNotificationEmail({ to: user.email, subject: title, html: emailHtml, meta: { notificationId: notification.id, ...meta } });
     }
   } catch (emailError) {
     console.error(`Failed to send email notification for user ${userId}:`, emailError);
