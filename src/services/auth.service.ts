@@ -149,15 +149,25 @@ export const getStaticCountriesData = (): Country[] => {
     return [];
   }
 
-  return countries.objects.map((country: any) => {
-    return {
-      name: country.names?.common || '',
-      iso2: country.codes?.alpha_2 || '',
-      dialCode: country.calling_codes?.[0] || '',
-      flagPng: country.flag?.url_png || undefined,
-      flagSvg: country.flag?.url_svg || undefined,
-    };
-  }).sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically by name
+  const uniqueCountriesMap = new Map<string, Country>();
+
+  countries.objects.forEach((country: any) => {
+    const name = country.names?.common || '';
+    if (!name) return;
+
+    // Deduplicate by common name to ensure no repeated entries for the same country
+    if (!uniqueCountriesMap.has(name)) {
+      uniqueCountriesMap.set(name, {
+        name,
+        iso2: country.codes?.alpha_2 || '',
+        dialCode: country.calling_codes?.[0] || '',
+        flagPng: country.flag?.url_png || undefined,
+        flagSvg: country.flag?.url_svg || undefined,
+      });
+    }
+  });
+
+  return Array.from(uniqueCountriesMap.values()).sort((a, b) => a.name.localeCompare(b.name));
 };
 
 /**
