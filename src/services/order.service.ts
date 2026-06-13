@@ -479,10 +479,9 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
     deliveryAddressId: shippingAddressId || undefined,
     deliveryType: deliveryMethod,
     allowUnpublishedVendor: false, // Initial orders MUST be from published vendors
-    useMaxPricesForBudget,
-    // IMPORTANT: The calculateOrderFeesService (in fee.service.ts) must also be updated
-    // to ensure that it only considers 'published: true' products when validating
-    // the initial orderItems and fetching their prices.
+    // We force useMaxPricesForBudget to true here because the payment intent logic 
+    // (in transaction.service.ts) also forces it to true to secure the maximum possible authorization.
+    useMaxPricesForBudget: true, 
   });
 
   const { subtotal, deliveryFee, serviceFee, shoppingFee } = fees;
