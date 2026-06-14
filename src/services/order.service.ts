@@ -1751,7 +1751,7 @@ export const updateOrderItemShoppingStatusService = async (
     throw new OrderCreationError('quantityFound is required when status is FOUND.');
   }
 
-  const { updatedItem, updatedOrder, shouldNotifyOriginalFound } = await prisma.$transaction(async (tx) => {
+  const { updatedItem, updatedOrder, shouldNotifyOriginalFound, shouldNotifyReplacementSuggested } = await prisma.$transaction(async (tx) => {
     // Automatically update order status to currently_shopping if it isn't already
     if (order.orderStatus !== OrderStatus.currently_shopping) {
       await tx.order.update({
@@ -1875,7 +1875,8 @@ export const updateOrderItemShoppingStatusService = async (
     return { 
       updatedItem: item, 
       updatedOrder: recalculatedOrder, 
-      shouldNotifyOriginalFound: wasPreviouslyMissing && isFindingOriginal 
+      shouldNotifyOriginalFound: wasPreviouslyMissing && isFindingOriginal,
+      shouldNotifyReplacementSuggested: actualChosenReplacementId && !isPreApproved
     };
   });
 
@@ -1893,6 +1894,17 @@ export const updateOrderItemShoppingStatusService = async (
         category: NotificationCategory.ORDER,
         title: 'Original Item Found!',
         body: `Good news! Your shopper found the original item: ${updatedItem.vendorProduct.name}.`,
+        meta: { orderId, itemId }
+      });
+    }
+
+    if (shouldNotifyReplacementSuggested) {
+      await notificationService.createNotification({
+        userId: order.userId,
+        type: NotificationType.ACCOUNT_UPDATE, // You might want to add REPLACEMENT_SUGGESTED to your enum
+        category: NotificationCategory.ORDER,
+        title: 'Replacement Suggested',
+        body: `Your shopper suggested ${updatedItem.chosenReplacement?.name} as a replacement. Please approve or reject it.`,
         meta: { orderId, itemId }
       });
     }
