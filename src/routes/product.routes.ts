@@ -135,11 +135,11 @@ router.get(
 
 // --- Public/General Product Routes ---
 router.get('/', productController.getAllProducts);
+router.get('/vendor/barcode', validate(validateGetVendorProductByBarcode), productController.getVendorProductByBarcode);
 router.get('/vendor', validate(validateGetAllVendorProducts), productController.getAllVendorProducts);
 router.get('/vendor/trending', validate(validateGetTrendingVendorProducts), productController.getTrendingVendorProducts);
 router.get('/vendor/:id', validate(validateGetVendorProductById), productController.getVendorProductById);
 router.get('/barcode', validate(validateGetProductByBarcode), productController.getProductByBarcode);
-router.get('/vendor/barcode', validate(validateGetVendorProductByBarcode), productController.getVendorProductByBarcode);
 router.get('/tags/ids', validate(validateGetProductsByTagIds), productController.getProductsByTagIds);
 router.get('/vendor/tags/ids', validate(validateGetVendorProductsByTagIds), productController.getVendorProductsByTagIds);
 router.get('/vendor/category', validate(validateGetVendorProductsByCategory), productController.getVendorProductsByCategory);
