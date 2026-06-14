@@ -295,6 +295,41 @@ const generatePickupOtp = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+/**
+ * Internal helper to process proof of delivery image.
+ * If base64, uploads to media service and returns the URL.
+ */
+const handleProofOfDeliveryImage = async (orderId: string, image: string): Promise<string> => {
+  if (image && !image.startsWith('http')) {
+    let base64Data = image;
+    // Strip data URI prefix if present
+    if (base64Data.startsWith('data:')) {
+      const parts = base64Data.split(',');
+      if (parts.length >= 2) base64Data = parts[1];
+    }
+
+    try {
+      const imageBuffer = Buffer.from(base64Data, 'base64');
+      const mockFile: any = {
+        fieldname: 'image',
+        originalname: `${orderId}-proof-of-delivery.jpg`,
+        encoding: '7bit',
+        mimetype: 'image/jpeg',
+        buffer: imageBuffer,
+        size: imageBuffer.length,
+        stream: new Readable(),
+      };
+
+      const uploadResult = await uploadMedia(mockFile, orderId, ReferenceType.other);
+      return uploadResult.cloudinaryResult.secure_url;
+    } catch (error) {
+      console.error('Error uploading proof of delivery image:', error);
+      throw new OrderCreationError('Failed to upload proof of delivery image.');
+    }
+  }
+  return image;
+};
+
 
 
 /**
@@ -687,14 +722,44 @@ export const updateOrderTipService = async (
  */
 export const updateOrderService = async (
   orderId: string,
-  updates: orderModel.UpdateOrderPayload
+  updates: any, // Use any here to handle incoming raw body fields like proofOfDeliveryImage
+  requestingUserId: string,
+  requestingUserRole?: Role,
+  staffVendorId?: string
 ): Promise<Order> => {
   try {
-    // 1. Check if the order exists
-    const existingOrder = await orderModel.getOrderById(orderId);
+    // 1. Check if the order exists and include vendor for auth check
+    const existingOrder = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { vendor: { select: { userId: true } } }
+    });
 
     if (!existingOrder) {
       throw new Error('Order not found');
+    }
+
+    // --- Authorization Check ---
+    const isCustomer = requestingUserRole === Role.customer && existingOrder.userId === requestingUserId;
+    const isVendorOwner = requestingUserRole === Role.vendor && existingOrder.vendor.userId === requestingUserId;
+    const isStoreStaff =
+      (requestingUserRole === Role.store_admin || requestingUserRole === Role.store_shopper) &&
+      staffVendorId === existingOrder.vendorId;
+    const isAdmin = requestingUserRole === Role.admin;
+    const isDeliveryPerson = requestingUserRole === Role.delivery_person && existingOrder.deliveryPersonId === requestingUserId;
+
+    if (!isCustomer && !isVendorOwner && !isStoreStaff && !isAdmin && !isDeliveryPerson) {
+      throw new OrderCreationError('You are not authorized to update this order.', 403);
+    }
+
+    // Support both field names for convenience
+    if (updates.proofOfDeliveryImage && !updates.proofOfDeliveryImageUrl) {
+      updates.proofOfDeliveryImageUrl = updates.proofOfDeliveryImage;
+      delete updates.proofOfDeliveryImage;
+    }
+
+    // Handle base64 image upload if provided for proof of delivery
+    if (updates.proofOfDeliveryImageUrl) {
+      updates.proofOfDeliveryImageUrl = await handleProofOfDeliveryImage(orderId, updates.proofOfDeliveryImageUrl);
     }
 
     // 2. Perform the update
@@ -2316,6 +2381,11 @@ export const adminUpdateOrderService = async (
     throw new OrderCreationError('Order not found.', 404);
   }
 
+  // Handle base64 image upload if provided for proof of delivery
+  if (updates.proofOfDeliveryImageUrl) {
+    updates.proofOfDeliveryImageUrl = await handleProofOfDeliveryImage(orderId, updates.proofOfDeliveryImageUrl);
+  }
+
   // If admin is setting an accepted status and it's not already set
   if (
     (updates.orderStatus === OrderStatus.accepted_for_shopping || updates.orderStatus === OrderStatus.accepted_for_delivery) &&
@@ -2736,32 +2806,8 @@ export const completeDeliveryService = async (
     throw new OrderCreationError('Order must be at the customer location before completing delivery.', 400);
   }
 
-  let proofOfDeliveryImageUrl = proofOfDeliveryImage;
-
-  // Handle Base64 Image Upload
-  if (proofOfDeliveryImage && !proofOfDeliveryImage.startsWith('http')) {
-    try {
-      const imageBuffer = Buffer.from(proofOfDeliveryImage, 'base64');
-      const mockFile: Express.Multer.File = {
-        fieldname: 'image',
-        originalname: `${orderId}-proof-of-delivery.jpg`,
-        encoding: '7bit',
-        mimetype: 'image/jpeg',
-        buffer: imageBuffer,
-        size: imageBuffer.length,
-        stream: new Readable(),
-        destination: '',
-        filename: '',
-        path: '',
-      };
-
-      const uploadResult = await uploadMedia(mockFile, orderId, ReferenceType.other);
-      proofOfDeliveryImageUrl = uploadResult.cloudinaryResult.secure_url;
-    } catch (error) {
-      console.error('Error uploading proof of delivery image:', error);
-      throw new OrderCreationError('Failed to upload proof of delivery image.');
-    }
-  }
+  // Handle Base64 Image Upload using helper
+  const proofOfDeliveryImageUrl = await handleProofOfDeliveryImage(orderId, proofOfDeliveryImage);
 
   const updates: orderModel.UpdateOrderPayload = {
     orderStatus: OrderStatus.delivered,

@@ -653,12 +653,14 @@ export const updateOrderStatusController = async (req: AuthenticatedRequest, res
  *       404:
  *         description: Order not found.
  */
-export const updateOrderController = async (req: Request, res: Response) => {
+export const updateOrderController = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const orderId = req.params.id;
     const updates = req.body;
+    const { userId, userRole, vendorId: staffVendorId } = req;
+
     console.log(`Updating order ${orderId} with data:`, JSON.stringify(updates, null, 2));
-    const updatedOrder = await updateOrderService(orderId, updates);
+    const updatedOrder = await updateOrderService(orderId, updates, userId as string, userRole, staffVendorId);
     res.status(200).json(updatedOrder);
   } catch (error: any) {
     await errorLogService.logError({
@@ -1532,23 +1534,11 @@ export const completeDeliveryController = async (req: AuthenticatedRequest, res:
     const deliveryPersonId = req.userId as string;
     const { proofOfDeliveryImage } = req.body;
 
-    console.log(req.body);
-
     if (!proofOfDeliveryImage) {
       return res.status(400).json({ error: 'Proof of delivery image is required.' });
     }
 
-    // Sanitize base64: remove data URI prefix if it exists
-    let imagePayload = proofOfDeliveryImage;
-    if (imagePayload.startsWith('data:')) {
-      const parts = imagePayload.split(',');
-      if (parts.length < 2) {
-        return res.status(400).json({ error: 'Invalid proof of delivery image format.' });
-      }
-      imagePayload = parts[1];
-    }
-
-    const completedOrder = await completeDeliveryService(orderId, deliveryPersonId, imagePayload);
+    const completedOrder = await completeDeliveryService(orderId, deliveryPersonId, proofOfDeliveryImage);
     res.status(200).json(completedOrder);
   } catch (error: any) {
     await errorLogService.logError({
