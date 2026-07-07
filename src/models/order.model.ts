@@ -20,6 +20,7 @@ export interface CreateOrderPayload {
   paymentMethod?: PaymentMethods;
   deliveryAddressId?: string | null;
   deliveryInstructions?: string;
+  shopperInstructions?: string;
   replacementPreference?: ReplacementPreference;
   measurementUnit?: MeasurementUnit;
   shoppingMethod?: ShoppingMethod;
@@ -115,6 +116,7 @@ export interface UpdateOrderPayload {
   orderStatus?: OrderStatus;
   deliveryAddressId?: string;
   deliveryInstructions?: string;
+  shopperInstructions?: string;
   shopperId?: string;
   deliveryPersonId?: string;
   shoppingMethod?: ShoppingMethod;
