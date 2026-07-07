@@ -402,6 +402,7 @@ interface CreateOrderFromClientPayload {
   paymentMethod: PaymentMethods; // Consider using an enum if you have fixed payment methods
   shippingAddressId?: string | null;
   stripePaymentMethodId?: string; // Added for Stripe integration
+  shopperInstructions?: string;
   deliveryInstructions?: string;
   orderItems: {
     vendorProductId: string;
@@ -424,6 +425,7 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
     paymentMethod,
     shippingAddressId,
     stripePaymentMethodId,
+    shopperInstructions,
     deliveryInstructions,
     orderItems,
     shoppingMethod,
@@ -551,7 +553,7 @@ export const createOrderFromClient = async (userId: string, payload: CreateOrder
       replacementPreference: user.replacementPreference,
       measurementUnit: user.measurementUnit,
       shopperTip, deliveryPersonTip,
-      paymentMethod, shoppingMethod, deliveryMethod, scheduledDeliveryTime,
+      paymentMethod, shoppingMethod, deliveryMethod, scheduledDeliveryTime, shopperInstructions,
       shoppingStartTime, deliveryAddressId: shippingAddressId, deliveryInstructions,
     }, tx);
 
@@ -844,12 +846,13 @@ export const updateOrderStatusService = async (
     }
 
     // Notify Vendor
+    const vendorTimezone = order.vendor.timezone || 'UTC';
     await notificationService.createNotification({
       userId: order.vendor.userId,
       type: NotificationType.ORDER_CANCELLED,
       category: NotificationCategory.ORDER,
       title: 'Order Cancelled by Customer',
-      body: `Order #${order.orderCode} has been cancelled by the customer at ${dayjs().format('h:mm A')}.`,
+      body: `Order #${order.orderCode} has been cancelled by the customer at ${dayjs().tz(vendorTimezone).format('h:mm A')}.`,
       meta: { orderId: order.id }
     })
   };
@@ -955,7 +958,8 @@ export const updateOrderStatusService = async (
   // --- Add Notification Logic Here ---
   try {
     const orderDetails = order; // Use the already fetched order
-    const timeStr = dayjs().format('h:mm A');
+    const vendorTimezone = orderDetails.vendor.timezone || 'UTC';
+    const timeStr = dayjs().tz(vendorTimezone).format('h:mm A');
 
     if (orderDetails) {
       switch (status as OrderStatus) {
@@ -1329,7 +1333,7 @@ export const acceptOrderService = async (
     // 1. Fetch the order first to get its vendorId for authorization
     const orderToUpdate = await prisma.order.findUnique({
       where: { id: orderId },
-      select: { vendorId: true, vendor: { select: { userId: true } } },
+      select: { vendorId: true, vendor: { select: { userId: true, timezone: true } } },
     });
 
     if (!orderToUpdate) {
@@ -1376,7 +1380,8 @@ export const acceptOrderService = async (
     });
 
     // --- Add Notification Logic Here ---
-    const timeStr = dayjs().format('h:mm A');
+    const vendorTimezone = orderToUpdate.vendor.timezone || 'UTC';
+    const timeStr = dayjs().tz(vendorTimezone).format('h:mm A');
     await notificationService.createNotification({
       userId: acceptedOrder.userId,
       type: NotificationType.ORDER_ACCEPTED,
@@ -1500,7 +1505,7 @@ export const startShoppingService = async (
   // 1. Fetch the order first to get its details for authorization
   const orderToUpdate = await prisma.order.findUnique({
     where: { id: orderId },
-    select: { vendorId: true, orderStatus: true, shoppingMethod: true, shopperId: true },
+    select: { vendorId: true, orderStatus: true, shoppingMethod: true, shopperId: true, vendor: { select: { timezone: true } } },
   });
 
   if (!orderToUpdate) {
@@ -1548,7 +1553,8 @@ export const startShoppingService = async (
     });
 
     // Notify Customer that shopping has officially begun
-    const timeStr = dayjs().format('h:mm A');
+    const vendorTimezone = orderToUpdate.vendor?.timezone || 'UTC';
+    const timeStr = dayjs().tz(vendorTimezone).format('h:mm A');
     await notificationService.createNotification({
       userId: order.userId,
       type: NotificationType.ORDER_SHOPPING_STARTED,
@@ -1941,7 +1947,7 @@ export const respondToReplacementService = async (
 
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    select: { userId: true },
+    select: { userId: true, orderStatus: true },
   });
 
   if (!order) {
@@ -1951,6 +1957,28 @@ export const respondToReplacementService = async (
   // Authorize: only the customer who placed the order can respond
   if (order.userId !== customerId) {
     throw new OrderCreationError('You are not authorized to respond to this item.', 403);
+  }
+
+  // Prevent responding after shopping is complete
+  const postShoppingStatuses: OrderStatus[] = [
+    OrderStatus.completed_bagging,
+    OrderStatus.ready_for_pickup,
+    OrderStatus.ready_for_delivery,
+    OrderStatus.en_route_to_delivery,
+    OrderStatus.arrived_at_customer_location,
+    OrderStatus.delivered,
+    OrderStatus.picked_up_by_customer,
+    OrderStatus.cancelled_by_customer,
+    OrderStatus.declined_by_vendor,
+    OrderStatus.no_items_found,
+    OrderStatus.returned_to_store,
+  ];
+
+  if (postShoppingStatuses.includes(order.orderStatus)) {
+    throw new OrderCreationError(
+      'Cannot respond to replacements after shopping is complete.',
+      403
+    );
   }
 
   const itemToUpdate = await prisma.orderItem.findFirst({
@@ -2097,7 +2125,7 @@ export const verifyPickupOtpService = async (
     // 1. Fetch the order to verify against
     const order = await tx.order.findUnique({
       where: { id: orderId },
-      include: { vendor: { select: { userId: true } } },
+      include: { vendor: { select: { userId: true, timezone: true } } },
     });
 
     if (!order) {
@@ -2136,7 +2164,8 @@ export const verifyPickupOtpService = async (
     }
 
     // 4. Update the order: set new status, clear OTP, and timestamp verification
-    const timeStr = dayjs().format('h:mm A');
+    const vendorTimezone = order.vendor.timezone || 'UTC';
+    const timeStr = dayjs().tz(vendorTimezone).format('h:mm A');
     const updatedOrder = await tx.order.update({
       where: { id: orderId },
       data: {
@@ -2667,6 +2696,7 @@ export const getAvailableOrdersForDeliveryService = async (pagination: { page: n
         id: true,
         shoppingMethod: true,
         deliveryMethod: true,
+        shopperInstructions: true,
         totalAmount: true,
         scheduledDeliveryTime: true,
         user: { select: { name: true } },
@@ -2685,6 +2715,7 @@ export const getAvailableOrdersForDeliveryService = async (pagination: { page: n
     id: order.id,
     shoppingMethod: order.shoppingMethod,
     deliveryMethod: order.deliveryMethod,
+    shopperInstructions: order.shopperInstructions,
     totalAmount: order.totalAmount,
     customerName: order.user?.name || 'Unknown',
     scheduledDeliveryTime: order.scheduledDeliveryTime,
@@ -2756,8 +2787,12 @@ export const acceptOrderForDeliveryService = async (orderId: string, deliveryPer
 
     const updatedOrder = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
 
+    // Fetch vendor for timezone
+    const vendor = await tx.vendor.findUnique({ where: { id: order.vendorId } });
+    const vendorTimezone = vendor?.timezone || 'UTC';
+    const timeStr = dayjs().tz(vendorTimezone).format('h:mm A');
+
     // Notify Customer
-    const timeStr = dayjs().format('h:mm A');
     await notificationService.createNotification({
       userId: updatedOrder.userId,
       type: NotificationType.ASSIGNED_TO_ORDER,
@@ -2768,7 +2803,6 @@ export const acceptOrderForDeliveryService = async (orderId: string, deliveryPer
     });
 
     // Notify Vendor Owner that a driver is now handling this order
-    const vendor = await tx.vendor.findUnique({ where: { id: order.vendorId } });
     await notificationService.createNotification({
       userId: vendor!.userId,
       type: NotificationType.ASSIGNED_TO_ORDER,
@@ -2980,7 +3014,8 @@ export const completeDeliveryService = async (
   });
 
   // Notifications
-  const timeStr = dayjs().format('h:mm A');
+  const vendorTimezone = order.vendor.timezone || 'UTC';
+  const timeStr = dayjs().tz(vendorTimezone).format('h:mm A');
   await notificationService.createNotification({
     userId: order.userId,
     type: NotificationType.DELIVERED,

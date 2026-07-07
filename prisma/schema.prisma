@@ -232,6 +232,7 @@ model Order {
   measurementUnit         MeasurementUnit          @default(metric)
   deliveryAddressId       String?
   deliveryAddress         DeliveryAddress?         @relation(fields: [deliveryAddressId], references: [id])
+  shopperInstructions     String?
   deliveryInstructions    String?
   shopperId               String?
   shopper                 User?                    @relation("OrderShopper", fields: [shopperId], references: [id])
