@@ -77,8 +77,7 @@ export const creditWallet = async ({ userId, amount, description, meta }: Credit
   }
 
   const wallet = await findOrCreateWalletByUserId(userId, tx);
-
-  await tx.wallet.update({
+  const updatedWallet = await tx.wallet.update({
     where: { id: wallet.id },
     data: { balance: { increment: amount } },
   });
@@ -92,7 +91,8 @@ export const creditWallet = async ({ userId, amount, description, meta }: Credit
     status: TransactionStatus.COMPLETED,
     description,
     meta: meta || {},
-  });
+    walletBalanceAtTransaction: updatedWallet.balance,
+  }, tx);
 };
 
 interface DebitWalletPayload {
@@ -120,7 +120,7 @@ export const debitWallet = async ({ userId, amount, description, meta }: DebitWa
     throw new WalletError('Insufficient wallet balance.', 402); // 402 Payment Required
   }
 
-  await tx.wallet.update({
+  const updatedWallet = await tx.wallet.update({
     where: { id: wallet.id },
     data: { balance: { decrement: amount } },
   });
@@ -134,7 +134,8 @@ export const debitWallet = async ({ userId, amount, description, meta }: DebitWa
     status: TransactionStatus.COMPLETED,
     description,
     meta: meta || {},
-  });
+    walletBalanceAtTransaction: updatedWallet.balance,
+  }, tx);
 };
 
 /**
@@ -154,7 +155,7 @@ export const requestWithdrawalService = async (userId: string, amount: number): 
     }
 
     // Deduct the requested amount immediately so it can't be withdrawn twice
-    await tx.wallet.update({
+    const updatedWallet = await tx.wallet.update({
       where: { id: wallet.id },
       data: { balance: { decrement: amount } }
     });
@@ -168,6 +169,7 @@ export const requestWithdrawalService = async (userId: string, amount: number): 
         source: TransactionSource.BANK_TRANSFER,
         status: TransactionStatus.PENDING, // Remains pending until admin/Stripe Connect processes it
         description: 'Withdrawal to bank account',
+        walletBalanceAtTransaction: updatedWallet.balance,
       }
     });
   });

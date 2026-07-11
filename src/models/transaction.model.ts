@@ -14,6 +14,7 @@ export interface CreateTransactionPayload {
   externalId?: string;
   meta?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput | undefined;
   walletId?: string;
+  walletBalanceAtTransaction?: number;
 }
 
 export const createTransaction = (payload: CreateTransactionPayload, tx?: Prisma.TransactionClient) => {

@@ -607,6 +607,7 @@ model Transaction {
   orderId    String?
   order      Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
   externalId String? // For stripePaymentIntentId, etc.
+  walletBalanceAtTransaction Float? // Balance of the wallet *after* this transaction completed. Only set for wallet transactions.
   meta       Json? // For paymentMethodDetails, etc.
 
   createdAt DateTime @default(now())

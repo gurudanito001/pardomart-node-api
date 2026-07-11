@@ -894,10 +894,10 @@ export const processRefundService = async (
 
   // All refunds now go to the user's wallet
   // 1. Return funds to the user's internal wallet balance
-  await tx.wallet.upsert({
+  const updatedWallet = await tx.wallet.upsert({
     where: { userId: order.userId },
     create: { userId: order.userId, balance: refundAmount },
-    update: { balance: { increment: refundAmount } }
+    update: { balance: { increment: refundAmount } },
   });
 
   // 2. Record the internal wallet refund transaction
@@ -917,7 +917,8 @@ export const processRefundService = async (
         // For example, if a Stripe payment was made, you could store its PaymentIntent ID here.
         // This would require fetching the original payment transaction.
         // For simplicity, we're just storing the original paymentType for now.
-      }
+      },
+      walletBalanceAtTransaction: updatedWallet.balance,
     },
   });
 };
