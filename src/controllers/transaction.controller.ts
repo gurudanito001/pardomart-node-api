@@ -109,6 +109,11 @@ import { stripe } from '../services/transaction.service';
  *           type: object
  *           nullable: true
  *           description: "Additional technical metadata. For refunds, display the `description` field to the user."
+ *         walletBalanceAtTransaction:
+ *           type: number
+ *           format: float
+ *           nullable: true
+ *           description: "The balance of the wallet *after* this transaction completed. Only set for wallet-related transactions."
  *         createdAt: { type: string, format: date-time }
  *         updatedAt: { type: string, format: date-time }
  *     TransactionWithRelations:
