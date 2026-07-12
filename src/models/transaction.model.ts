@@ -26,7 +26,12 @@ export const createTransaction = (payload: CreateTransactionPayload, tx?: Prisma
 
 export const listTransactionsForUser = (userId: string) => {
   return prisma.transaction.findMany({
-    where: { userId },
+    where: {
+      userId,
+      type: {
+        not: TransactionType.PLATFORM_FEE_COLLECTED,
+      },
+    },
     orderBy: { createdAt: 'desc' },
     include: {
       order: {
