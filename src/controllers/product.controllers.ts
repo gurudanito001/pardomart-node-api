@@ -89,6 +89,7 @@ const parseBoolean = (value: any): boolean | undefined => {
  *         name: { type: string }
  *         description: { type: string, nullable: true }
  *         discountedPrice: { type: number, format: float, nullable: true }
+ *         effectivePrice: { type: number, format: float, readOnly: true, description: "The actual price to be paid (prioritizes discountedPrice)." }
  *         images: { type: array, items: { type: string, format: uri } }
  *         weight: { type: number, format: float, nullable: true }
  *         weightUnit: { type: string, nullable: true }
@@ -210,7 +211,6 @@ const parseBoolean = (value: any): boolean | undefined => {
  *         price: { type: number, format: float }
  *         name: { type: string }
  *         description: { type: string, nullable: true }
- *         effectivePrice: { type: number, format: float, description: "The actual price to be paid (prioritizes discountedPrice)." }
  *         discountedPrice: { type: number, format: float, nullable: true }
  *         images: { type: array, items: { type: string, format: uri } }
  *         weight: { type: number, format: float, nullable: true }

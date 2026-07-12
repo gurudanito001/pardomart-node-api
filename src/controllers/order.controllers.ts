@@ -177,7 +177,8 @@ import { errorLogService } from '../services/errorLog.service';
  *         reasonForDecline: { type: string, nullable: true }
  *         createdAt: { type: string, format: date-time }
  *         updatedAt: { type: string, format: date-time }
- *     OrderWithRelations:
+ *         proofOfDeliveryImageUrl: { type: string, format: uri, nullable: true, description: "URL of the image taken as proof of delivery." }
+ *     OrderWithRelations: 
  *       type: object
  *       properties:
  *         id: { type: string, format: uuid }
@@ -212,6 +213,7 @@ import { errorLogService } from '../services/errorLog.service';
  *         reasonForDecline: { type: string, nullable: true }
  *         createdAt: { type: string, format: date-time }
  *         updatedAt: { type: string, format: date-time }
+ *         proofOfDeliveryImageUrl: { type: string, format: uri, nullable: true, description: "URL of the image taken as proof of delivery." }
  *         user: { $ref: '#/components/schemas/UserSummary', nullable: true }
  *         shopper: { $ref: '#/components/schemas/UserSummary', nullable: true }
  *         deliveryPerson: { $ref: '#/components/schemas/UserSummary', nullable: true }
