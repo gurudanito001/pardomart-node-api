@@ -28,7 +28,7 @@ const attachRatingsToStores = async (stores: ModelStoreWithProducts[]): Promise<
 
   return stores.map(store => ({
     ...store,
-    products: mapEffectivePrice(store.products),
+    products: mapEffectivePrice(store.products as VendorProduct[]),
     vendor: {
       ...store.vendor, 
       rating: ratingsMap.get(store.vendor.id) || { average: 5, count: 0 },
@@ -40,10 +40,11 @@ const attachRatingsToStores = async (stores: ModelStoreWithProducts[]): Promise<
 export const searchProductsService = async (
   searchTerm: string,
   userLatitude: number,
-  userLongitude: number
+  userLongitude: number,
+  productLimit: number
 ) => {
   try {
-    const searchResult = await searchByProductName(searchTerm, userLatitude, userLongitude);
+    const searchResult = await searchByProductName(searchTerm, userLatitude, userLongitude, productLimit);
     const storesWithRatings = await attachRatingsToStores(searchResult.stores);
     return { stores: storesWithRatings };
   } catch (error: any) {
@@ -56,10 +57,11 @@ export const searchProductsService = async (
 export const searchByCategoryIdService = async (
   categoryId: string,
   latitude: number,
-  longitude: number
+  longitude: number,
+  productLimit: number
 ) => {
   try {
-    const searchResult = await searchByCategoryId(categoryId, latitude, longitude);
+    const searchResult = await searchByCategoryId(categoryId, latitude, longitude, productLimit);
     const storesWithRatings = await attachRatingsToStores(searchResult.stores);
     return { stores: storesWithRatings };
   } catch (error: any) {
@@ -98,10 +100,11 @@ export const searchStoreProductsService = async (
 export const searchStoreService = async (
   searchTerm: string,
   userLatitude: number,
-  userLongitude: number
+  userLongitude: number,
+  productLimit: number
 ) => {
   try {
-    const searchResult = await searchByStoreName(searchTerm, userLatitude, userLongitude);
+    const searchResult = await searchByStoreName(searchTerm, userLatitude, userLongitude, productLimit);
     const storesWithRatings = await attachRatingsToStores(searchResult.stores);
     return { stores: storesWithRatings };
   } catch (error: any) {
@@ -115,10 +118,11 @@ export const searchStoreService = async (
 export const searchByCategoryService = async (
   searchTerm: string, 
   latitude: number, 
-  longitude: number
+  longitude: number,
+  productLimit: number
 ) => {
   try {
-    const searchResult = await searchByCategoryName(searchTerm, latitude, longitude);
+    const searchResult = await searchByCategoryName(searchTerm, latitude, longitude, productLimit);
     const storesWithRatings = await attachRatingsToStores(searchResult.stores);
     return { stores: storesWithRatings };
   } catch (error: any) {

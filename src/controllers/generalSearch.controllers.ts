@@ -31,6 +31,12 @@ import { AuthenticatedRequest } from '../middlewares/auth.middleware';
  *           type: number
  *           format: float
  *         description: User's current longitude.
+ *       - in: query
+ *         name: productLimit
+ *         schema:
+ *           type: integer
+ *           default: 4
+ *         description: The maximum number of product samples to return per store.
  *     responses:
  *       200:
  *         description: A list of stores selling the product, sorted by distance.
@@ -187,14 +193,15 @@ import { AuthenticatedRequest } from '../middlewares/auth.middleware';
  *             $ref: '#/components/schemas/StoreWithProducts'
  */
 export const searchByProductController = async (req: Request, res: Response) => {
-  const {search, latitude, longitude } = req.query;
+  const {search, latitude, longitude, productLimit } = req.query;
 
   const userSearchTerm = search as string; // Already validated
   const userLatitude = latitude as unknown as number; // Validated and converted by middleware
   const userLongitude = longitude as unknown as number; // Validated and converted by middleware
+  const limit = productLimit ? parseInt(productLimit as string, 10) : 4;
 
   try {
-    const result = await searchProductsService(userSearchTerm, userLatitude, userLongitude);
+    const result = await searchProductsService(userSearchTerm, userLatitude, userLongitude, limit);
     res.json(result);
   } catch (error: any) {
     await errorLogService.logError({
@@ -241,6 +248,12 @@ export const searchByProductController = async (req: Request, res: Response) => 
  *           type: number
  *           format: float
  *         description: User's current longitude.
+ *       - in: query
+ *         name: productLimit
+ *         schema:
+ *           type: integer
+ *           default: 4
+ *         description: The maximum number of product samples to return per store.
  *     responses:
  *       200:
  *         description: A list of stores matching the search, sorted by distance.
@@ -252,14 +265,15 @@ export const searchByProductController = async (req: Request, res: Response) => 
  *         description: Bad request due to missing or invalid parameters.
  */
 export const searchByStoreController = async (req: Request, res: Response) => {
-  const {search, latitude, longitude } = req.query;
+  const {search, latitude, longitude, productLimit } = req.query;
 
   const userSearchTerm = search as string; // Already validated
   const userLatitude = latitude as unknown as number; // Validated and converted by middleware
   const userLongitude = longitude as unknown as number; // Validated and converted by middleware
+  const limit = productLimit ? parseInt(productLimit as string, 10) : 4;
 
   try {
-    const result = await searchStoreService(userSearchTerm, userLatitude, userLongitude);
+    const result = await searchStoreService(userSearchTerm, userLatitude, userLongitude, limit);
     res.json(result);
   } catch (error: any) {
     await errorLogService.logError({
@@ -306,6 +320,12 @@ export const searchByStoreController = async (req: Request, res: Response) => {
  *           type: number
  *           format: float
  *         description: User's current longitude.
+ *       - in: query
+ *         name: productLimit
+ *         schema:
+ *           type: integer
+ *           default: 4
+ *         description: The maximum number of product samples to return per store.
  *     responses:
  *       200:
  *         description: A list of stores matching the category search, sorted by distance.
@@ -317,14 +337,15 @@ export const searchByStoreController = async (req: Request, res: Response) => {
  *         description: Bad request due to missing or invalid parameters.
  */
 export const searchByCategoryController = async (req: Request, res: Response) => {
-  const { search, latitude, longitude } = req.query;
+  const { search, latitude, longitude, productLimit } = req.query;
 
   const userSearchTerm = search as string; // Already validated
   const userLatitude = latitude as unknown as number; // Validated and converted by middleware
   const userLongitude = longitude as unknown as number; // Validated and converted by middleware
+  const limit = productLimit ? parseInt(productLimit as string, 10) : 4;
 
   try {
-    const result = await searchByCategoryService(userSearchTerm, userLatitude, userLongitude);
+    const result = await searchByCategoryService(userSearchTerm, userLatitude, userLongitude, limit);
     res.json(result);
   } catch (error: any) {
     await errorLogService.logError({
@@ -372,6 +393,12 @@ export const searchByCategoryController = async (req: Request, res: Response) =>
  *           type: number
  *           format: float
  *         description: User's current longitude.
+ *       - in: query
+ *         name: productLimit
+ *         schema:
+ *           type: integer
+ *           default: 4
+ *         description: The maximum number of product samples to return per store.
  *     responses:
  *       200:
  *         description: A list of stores matching the category search, sorted by distance.
@@ -384,10 +411,11 @@ export const searchByCategoryController = async (req: Request, res: Response) =>
  */
 export const searchByCategoryIdController = async (req: Request, res: Response) => {
   const { categoryId } = req.params;
-  const { latitude, longitude } = req.query;
+  const { latitude, longitude, productLimit } = req.query;
+  const limit = productLimit ? parseInt(productLimit as string, 10) : 4;
 
   try {
-    const result = await searchByCategoryIdService(categoryId, latitude as unknown as number, longitude as unknown as number);
+    const result = await searchByCategoryIdService(categoryId, latitude as unknown as number, longitude as unknown as number, limit);
     res.json(result);
   } catch (error: any) {
     await errorLogService.logError({

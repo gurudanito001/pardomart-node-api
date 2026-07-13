@@ -2,20 +2,25 @@ import { VendorProduct, Vendor, Category, Prisma, Role } from '@prisma/client';
 import getDistance from 'geolib/es/getPreciseDistance';
 import { prisma } from '../config/prisma';
 
+// Lean product for search results
+type LeanVendorProduct = Pick<VendorProduct, 'id' | 'name' | 'price' | 'discountedPrice' | 'images' | 'weight' | 'weightUnit'>;
 
+// Lean vendor for search results
+type LeanVendor = Pick<Vendor, 'id' | 'name' | 'latitude' | 'longitude' | 'image'>;
 
 
 
 export interface StoreWithProducts {
-  vendor: Vendor & { distance?: number }; // Embed distance in Vendor
-  products: VendorProduct[];
+  vendor: LeanVendor & { distance?: number }; // Embed distance in Vendor
+  products: LeanVendorProduct[];
   totalProducts: number;
 }
 
 export const searchByProductName = async (
   searchTerm: string,
   userLatitude: number,
-  userLongitude: number
+  userLongitude: number,
+  productLimit: number
 ): Promise<{ stores: StoreWithProducts[] }> => {
   try {
     // 1. Find vendors that have products matching the search term.
@@ -34,55 +39,52 @@ export const searchByProductName = async (
           },
         },
       },
+      select: {
+        id: true,
+        name: true,
+        latitude: true,
+        longitude: true,
+        image: true,
+      },
     });
 
     if (!vendors || vendors.length === 0) {
       return { stores: [] };
     }
 
-    // 2. For each vendor, fetch matching products and count total matching products.
-    const storesWithProducts: StoreWithProducts[] = await Promise.all(
-      vendors.map(async (vendor) => {
-        const [products, totalProducts] = await prisma.$transaction([
-          prisma.vendorProduct.findMany({
-            where: {
-              vendorId: vendor.id,
-              published: true,
-              product: {
-                name: {
-                  contains: searchTerm,
-                  mode: 'insensitive',
-                },
-              },
-            },
-            take: 10, // Fetch up to 10 matching products
-          }),
-          prisma.vendorProduct.count({
-            where: {
-              vendorId: vendor.id,
-              published: true,
-              product: {
-                name: {
-                  contains: searchTerm,
-                  mode: 'insensitive',
-                },
-              },
-            },
-          }),
-        ]);
+    const vendorIds = vendors.map((v) => v.id);
 
-        const distance = getDistance(
-          { latitude: userLatitude, longitude: userLongitude },
-          { latitude: vendor.latitude || 0, longitude: vendor.longitude || 0 }
-        );
+    const [totalProductCounts, products] = await prisma.$transaction([
+      prisma.vendorProduct.groupBy({
+        by: ['vendorId'],
+        where: { vendorId: { in: vendorIds }, published: true, product: { name: { contains: searchTerm, mode: 'insensitive' } } },
+        _count: { _all: true },
+        orderBy: { vendorId: 'asc' },
+      }),
+      prisma.vendorProduct.findMany({
+        where: { vendorId: { in: vendorIds }, published: true, product: { name: { contains: searchTerm, mode: 'insensitive' } } },
+        select: { id: true, name: true, price: true, discountedPrice: true, images: true, weight: true, weightUnit: true, vendorId: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
 
-        return {
-          vendor: { ...vendor, distance: distance / 1000 },
-          products,
-          totalProducts,
-        };
-      })
-    );
+    const totalProductCountMap = new Map(totalProductCounts.map((item) => [item.vendorId, typeof item._count === 'object' ? item._count?._all ?? 0 : 0]));
+    const productsByVendor = new Map<string, LeanVendorProduct[]>();
+    products.forEach(p => {
+        if (!productsByVendor.has(p.vendorId!)) productsByVendor.set(p.vendorId!, []);
+        if (productsByVendor.get(p.vendorId!)!.length < productLimit) {
+            productsByVendor.get(p.vendorId!)!.push(p);
+        }
+    });
+
+    const storesWithProducts: StoreWithProducts[] = vendors.map((vendor) => {
+      const distance = getDistance({ latitude: userLatitude, longitude: userLongitude }, { latitude: vendor.latitude || 0, longitude: vendor.longitude || 0 });
+      return {
+        vendor: { ...vendor, distance: distance / 1000 },
+        products: productsByVendor.get(vendor.id) || [],
+        totalProducts: totalProductCountMap.get(vendor.id) || 0,
+      };
+    });
 
     // 3. Sort stores by distance
     storesWithProducts.sort((a, b) => a.vendor.distance! - b.vendor.distance!);
@@ -97,7 +99,8 @@ export const searchByProductName = async (
 export const searchByStoreName = async (
   searchTerm: string,
   userLatitude: number,
-  userLongitude: number
+  userLongitude: number,
+  productLimit: number
 ): Promise<{ stores: StoreWithProducts[] }> => {
   try {
     // 1. Find vendors whose name matches the search term.
@@ -109,43 +112,53 @@ export const searchByStoreName = async (
           mode: 'insensitive',
         },
       },
+      select: {
+        id: true,
+        name: true,
+        latitude: true,
+        longitude: true,
+        image: true,
+      },
     });
 
     if (!vendors || vendors.length === 0) {
       return { stores: [] };
     }
 
-    // 2. Calculate distance for each vendor.
-    const vendorsWithDistance = vendors.map((vendor) => {
-      const distance = getDistance(
-        { latitude: userLatitude, longitude: userLongitude },
-        { latitude: vendor.latitude || 0, longitude: vendor.longitude || 0 }
-      );
-      return { ...vendor, distance: distance / 1000 };
+    const vendorIds = vendors.map((v) => v.id);
+
+    const [totalProductCounts, products] = await prisma.$transaction([
+      prisma.vendorProduct.groupBy({
+        by: ['vendorId'],
+        where: { vendorId: { in: vendorIds }, published: true },
+        _count: { _all: true },
+        orderBy: { vendorId: 'asc' },
+      }),
+      prisma.vendorProduct.findMany({
+        where: { vendorId: { in: vendorIds }, published: true },
+        select: { id: true, name: true, price: true, discountedPrice: true, images: true, weight: true, weightUnit: true, vendorId: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    const totalProductCountMap = new Map(totalProductCounts.map((item) =>  [item.vendorId, typeof item._count === 'object' ? item._count?._all ?? 0 : 0]));
+    const productsByVendor = new Map<string, LeanVendorProduct[]>();
+    products.forEach(p => {
+        if (!productsByVendor.has(p.vendorId!)) productsByVendor.set(p.vendorId!, []);
+        if (productsByVendor.get(p.vendorId!)!.length < productLimit) {
+            productsByVendor.get(p.vendorId!)!.push(p);
+        }
     });
 
-    // 3. Sort vendors by distance (closest first).
-    vendorsWithDistance.sort((a, b) => a.distance - b.distance);
-
-    // 4. For each vendor, fetch up to 10 of their products and get the total product count.
-    const storesWithProducts: StoreWithProducts[] = await Promise.all(
-      vendorsWithDistance.map(async (vendor) => {
-        const [products, totalProducts] = await prisma.$transaction([
-          prisma.vendorProduct.findMany({
-            where: { vendorId: vendor.id, published: true },
-            take: 10,
-            orderBy: { createdAt: 'desc' },
-          }),
-          prisma.vendorProduct.count({
-            where: { vendorId: vendor.id, published: true },
-          }),
-        ]);
-
-
-        return { vendor, products, totalProducts };
-      })
-    );
-
+    const storesWithProducts: StoreWithProducts[] = vendors.map((vendor) => {
+      const distance = getDistance({ latitude: userLatitude, longitude: userLongitude }, { latitude: vendor.latitude || 0, longitude: vendor.longitude || 0 });
+      return {
+        vendor: { ...vendor, distance: distance / 1000 },
+        products: productsByVendor.get(vendor.id) || [],
+        totalProducts: totalProductCountMap.get(vendor.id) || 0,
+      };
+    }).sort((a, b) => a.vendor.distance! - b.vendor.distance!);
+    
     return { stores: storesWithProducts };
   } catch (error) {
     console.error('Error in searchByStoreName:', error);
@@ -156,7 +169,8 @@ export const searchByStoreName = async (
 export const searchByCategoryName = async (
   searchTerm: string,
   userLatitude: number,
-  userLongitude: number
+  userLongitude: number,
+  productLimit: number
 ): Promise<{ stores: StoreWithProducts[] }> => {
   try {
     // 1. Find categories that match the search term, including their children.
@@ -185,7 +199,7 @@ export const searchByCategoryName = async (
     const allCategoryIds = Array.from(categoryIds);
 
     // 3. Find vendors that have products in any of the matched categories.
-    const vendorsWithProducts = await prisma.vendor.findMany({
+    const vendors = await prisma.vendor.findMany({
       where: {
         isPublished: true,
         vendorProducts: {
@@ -199,42 +213,45 @@ export const searchByCategoryName = async (
           },
         },
       },
-      include: {
-        vendorProducts: {
-          where: {
-            published: true,
-            categories: { some: { id: { in: allCategoryIds } } },
-          },
-          take: 10,
-          orderBy: { createdAt: 'desc' },
-        },
-      },
+      select: { id: true, name: true, latitude: true, longitude: true, image: true },
     });
 
+    if (!vendors.length) return { stores: [] };
+
+    const vendorIds = vendors.map(v => v.id);
+
+    const [totalProductCounts, products] = await prisma.$transaction([
+        prisma.vendorProduct.groupBy({
+            by: ['vendorId'],
+            where: { vendorId: { in: vendorIds }, published: true, categories: { some: { id: { in: allCategoryIds } } } },
+            _count: { _all: true },
+            orderBy: { vendorId: 'asc' },
+        }),
+        prisma.vendorProduct.findMany({
+            where: { vendorId: { in: vendorIds }, published: true, categories: { some: { id: { in: allCategoryIds } } } },
+            select: { id: true, name: true, price: true, discountedPrice: true, images: true, weight: true, weightUnit: true, vendorId: true },
+            orderBy: { createdAt: 'desc' },
+        }),
+    ]);
+
+    const totalProductCountMap = new Map(totalProductCounts.map((item) => [item.vendorId, typeof item._count === 'object' ? item._count?._all ?? 0 : 0]));
+    const productsByVendor = new Map<string, LeanVendorProduct[]>();
+    products.forEach(p => {
+        if (!productsByVendor.has(p.vendorId!)) productsByVendor.set(p.vendorId!, []);
+        if (productsByVendor.get(p.vendorId!)!.length < productLimit) {
+            productsByVendor.get(p.vendorId!)!.push(p);
+        }
+    });
+    
     // 4. Calculate distance, format the output, and sort by proximity.
-    const storesWithProducts: StoreWithProducts[] = await Promise.all(
-      vendorsWithProducts.map(async (vendor) => {
-        const distance = getDistance(
-          { latitude: userLatitude, longitude: userLongitude },
-          { latitude: vendor.latitude || 0, longitude: vendor.longitude || 0 }
-        );
-        const { vendorProducts, ...storeDetails } = vendor;
-
-        const totalProducts = await prisma.vendorProduct.count({
-          where: {
-            vendorId: vendor.id,
-            published: true,
-            categories: { some: { id: { in: allCategoryIds } } },
-          },
-        });
-
-        return {
-          vendor: { ...storeDetails, distance: distance / 1000 },
-          products: vendorProducts,
-          totalProducts,
-        };
-      })
-    );
+    const storesWithProducts: StoreWithProducts[] = vendors.map((vendor) => {
+      const distance = getDistance({ latitude: userLatitude, longitude: userLongitude }, { latitude: vendor.latitude || 0, longitude: vendor.longitude || 0 });
+      return {
+        vendor: { ...vendor, distance: distance / 1000 },
+        products: productsByVendor.get(vendor.id) || [],
+        totalProducts: totalProductCountMap.get(vendor.id) || 0,
+      };
+    });
 
     storesWithProducts.sort((a, b) => a.vendor.distance! - b.vendor.distance!);
     return { stores: storesWithProducts };
@@ -247,7 +264,8 @@ export const searchByCategoryName = async (
 export const searchByCategoryId = async (
   categoryId: string,
   userLatitude: number,
-  userLongitude: number
+  userLongitude: number,
+  productLimit: number
 ): Promise<{ stores: StoreWithProducts[] }> => {
   try {
     // This logic to find descendants can be expensive. Remember to review performance.
@@ -303,43 +321,47 @@ export const searchByCategoryId = async (
           },
         },
       },
+      select: { id: true, name: true, latitude: true, longitude: true, image: true },
     });
 
     if (!vendors || vendors.length === 0) {
       return { stores: [] };
     }
 
-    // For each vendor, fetch products and calculate distance.
-    const storesWithProducts: StoreWithProducts[] = await Promise.all(
-      vendors.map(async (vendor) => {
-        const [products, totalProducts] = await prisma.$transaction([
-          prisma.vendorProduct.findMany({
-            where: {
-              vendorId: vendor.id,
-              published: true,
-              categories: {
-                some: { id: { in: allCategoryIds } },
-              },
-            },
-            take: 10,
+    const vendorIds = vendors.map(v => v.id);
+
+    const [totalProductCounts, products] = await prisma.$transaction([
+        prisma.vendorProduct.groupBy({
+            by: ['vendorId'],
+            where: { vendorId: { in: vendorIds }, published: true, categories: { some: { id: { in: allCategoryIds } } } },
+            _count: { _all: true },
+            orderBy: { vendorId: 'asc' },
+        }),
+        prisma.vendorProduct.findMany({
+            where: { vendorId: { in: vendorIds }, published: true, categories: { some: { id: { in: allCategoryIds } } } },
+            select: { id: true, name: true, price: true, discountedPrice: true, images: true, weight: true, weightUnit: true, vendorId: true },
             orderBy: { createdAt: 'desc' },
-          }),
-          prisma.vendorProduct.count({
-            where: {
-              vendorId: vendor.id,
-              published: true,
-              categories: {
-                some: { id: { in: allCategoryIds } },
-              },
-            },
-          }),
-        ]);
+        }),
+    ]);
 
-        const distance = getDistance({ latitude: userLatitude, longitude: userLongitude }, { latitude: vendor.latitude || 0, longitude: vendor.longitude || 0 });
+    const totalProductCountMap = new Map(totalProductCounts.map((item) => [item.vendorId, typeof item._count === 'object' ? item._count?._all ?? 0 : 0]));
+    const productsByVendor = new Map<string, LeanVendorProduct[]>();
+    products.forEach(p => {
+        if (!productsByVendor.has(p.vendorId!)) productsByVendor.set(p.vendorId!, []);
+        if (productsByVendor.get(p.vendorId!)!.length < productLimit) {
+            productsByVendor.get(p.vendorId!)!.push(p);
+        }
+    });
 
-        return { vendor: { ...vendor, distance: distance / 1000 }, products, totalProducts };
-      })
-    );
+    // For each vendor, fetch products and calculate distance.
+    const storesWithProducts: StoreWithProducts[] = vendors.map((vendor) => {
+      const distance = getDistance({ latitude: userLatitude, longitude: userLongitude }, { latitude: vendor.latitude || 0, longitude: vendor.longitude || 0 });
+      return {
+        vendor: { ...vendor, distance: distance / 1000 },
+        products: productsByVendor.get(vendor.id) || [],
+        totalProducts: totalProductCountMap.get(vendor.id) || 0,
+      };
+    });
 
     // Sort stores by distance
     storesWithProducts.sort((a, b) => a.vendor.distance! - b.vendor.distance!);
