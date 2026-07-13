@@ -1,7 +1,68 @@
 // models/category.model.ts
-import { PrismaClient, Category } from '@prisma/client';
+import { PrismaClient, Category, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
+
+// --- Category Cache ---
+// This simple in-memory cache stores the category hierarchy to speed up searches.
+// For a multi-instance production environment, a distributed cache like Redis would be better.
+let categoryChildrenMap: Map<string, string[]> | null = null;
+
+/**
+ * Builds the category children map from the database and caches it.
+ */
+const buildCategoryCache = async (): Promise<Map<string, string[]>> => {
+  console.log('Building category cache...');
+  const allCategories = await prisma.category.findMany({
+    select: { id: true, parentId: true },
+  });
+
+  const map = new Map<string, string[]>();
+  allCategories.forEach(c => {
+    if (c.parentId) {
+      if (!map.has(c.parentId)) {
+        map.set(c.parentId, []);
+      }
+      map.get(c.parentId)!.push(c.id);
+    }
+  });
+  categoryChildrenMap = map;
+  return categoryChildrenMap;
+};
+
+/**
+ * Invalidates the category cache. Should be called on any CUD operation on categories.
+ */
+export const invalidateCategoryCache = () => {
+  console.log('Category cache invalidated.');
+  categoryChildrenMap = null;
+};
+
+/**
+ * Gets all descendant IDs for a given category ID using an in-memory cache.
+ * @param categoryId The starting category ID.
+ * @returns An array of all descendant category IDs.
+ */
+export const getDescendantIds = async (categoryId: string): Promise<string[]> => {
+  const map = categoryChildrenMap ?? (await buildCategoryCache());
+  const descendants: string[] = [];
+  const queue: string[] = [categoryId];
+  const visited = new Set<string>();
+
+  while (queue.length > 0) {
+    const currentId = queue.shift()!;
+    if (visited.has(currentId)) continue;
+    visited.add(currentId);
+
+    const children = map.get(currentId) || [];
+    for (const childId of children) {
+      descendants.push(childId);
+      queue.push(childId);
+    }
+  }
+  // The first ID processed is the parent itself, which we don't want in the descendants list.
+  return descendants.filter(id => id !== categoryId);
+};
 
 interface CreateCategoryPayload {
   name: string;
@@ -90,9 +151,11 @@ export const createCategoriesBulk = async (categories: { name: string; descripti
 };
 
 export const createCategory = async (payload: CreateCategoryPayload): Promise<Category> => {
-  return prisma.category.create({
+  const category = await prisma.category.create({
     data: payload,
   });
+  invalidateCategoryCache();
+  return category;
 };
 
 export const getCategoryById = async (id: string): Promise<Category | null> => {
@@ -134,17 +197,21 @@ export const getAllCategories = async (filters: CategoryFilters): Promise<Catego
 };
 
 export const updateCategory = async (payload: UpdateCategoryPayload): Promise<Category> => {
-  return prisma.category.update({
+  const category = await prisma.category.update({
     where: { id: payload.id },
     data: payload,
     include: {
       products: true,
     },
   });
+  invalidateCategoryCache();
+  return category;
 };
 
 export const deleteCategory = async (id: string): Promise<Category> => {
-  return prisma.category.delete({
+  const category = await prisma.category.delete({
     where: { id },
   });
+  invalidateCategoryCache();
+  return category;
 };

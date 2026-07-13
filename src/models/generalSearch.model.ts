@@ -1,6 +1,7 @@
 import { VendorProduct, Vendor, Category, Prisma, Role } from '@prisma/client';
 import getDistance from 'geolib/es/getPreciseDistance';
 import { prisma } from '../config/prisma';
+import { getDescendantIds } from './category.model';
 
 // Lean product for search results
 type LeanVendorProduct = Pick<VendorProduct, 'id' | 'name' | 'price' | 'discountedPrice' | 'images' | 'weight' | 'weightUnit'>;
@@ -173,32 +174,32 @@ export const searchByCategoryName = async (
   productLimit: number
 ): Promise<{ stores: StoreWithProducts[] }> => {
   try {
-    // 1. Find categories that match the search term, including their children.
-    const categories = await prisma.category.findMany({
-      where: {
-        name: {
-          contains: searchTerm,
-          mode: 'insensitive',
-        },
-      },
-      include: {
-        children: true,
-      },
+    // 1. Find initial categories matching the search term.
+    const initialCategories = await prisma.category.findMany({
+      where: { name: { contains: searchTerm, mode: 'insensitive' } },
+      select: { id: true },
     });
 
-    if (!categories.length) {
+    if (initialCategories.length === 0) {
       return { stores: [] };
     }
 
-    // 2. Collect all relevant category IDs (parent and children).
-    const categoryIds = new Set<string>();
-    categories.forEach(category => {
-      categoryIds.add(category.id);
-      category.children.forEach(child => categoryIds.add(child.id));
-    });
-    const allCategoryIds = Array.from(categoryIds);
+    // 2. For each initial category, get its descendants from the cache and collect all unique IDs.
+    const allCategoryIds = new Set<string>();
+    for (const cat of initialCategories) {
+      allCategoryIds.add(cat.id);
+      const descendantIds = await getDescendantIds(cat.id);
+      descendantIds.forEach(id => allCategoryIds.add(id));
+    }
 
-    // 3. Find vendors that have products in any of the matched categories.
+    const allCategoryIdsArray = Array.from(allCategoryIds);
+
+    if (allCategoryIdsArray.length === 0) {
+      return { stores: [] };
+    }
+
+
+    // 3. Find vendors that have products in any of the matched categories. (No change from here on in this function)
     const vendors = await prisma.vendor.findMany({
       where: {
         isPublished: true,
@@ -207,7 +208,7 @@ export const searchByCategoryName = async (
             published: true,
             categories: {
               some: {
-                id: { in: allCategoryIds },
+                id: { in: allCategoryIdsArray },
               },
             },
           },
@@ -223,12 +224,12 @@ export const searchByCategoryName = async (
     const [totalProductCounts, products] = await prisma.$transaction([
         prisma.vendorProduct.groupBy({
             by: ['vendorId'],
-            where: { vendorId: { in: vendorIds }, published: true, categories: { some: { id: { in: allCategoryIds } } } },
+            where: { vendorId: { in: vendorIds }, published: true, categories: { some: { id: { in: allCategoryIdsArray } } } },
             _count: { _all: true },
             orderBy: { vendorId: 'asc' },
         }),
         prisma.vendorProduct.findMany({
-            where: { vendorId: { in: vendorIds }, published: true, categories: { some: { id: { in: allCategoryIds } } } },
+            where: { vendorId: { in: vendorIds }, published: true, categories: { some: { id: { in: allCategoryIdsArray } } } },
             select: { id: true, name: true, price: true, discountedPrice: true, images: true, weight: true, weightUnit: true, vendorId: true },
             orderBy: { createdAt: 'desc' },
         }),
@@ -268,44 +269,11 @@ export const searchByCategoryId = async (
   productLimit: number
 ): Promise<{ stores: StoreWithProducts[] }> => {
   try {
-    // This logic to find descendants can be expensive. Remember to review performance.
-    // For a production system with many categories, consider a recursive CTE in raw SQL
-    // or denormalizing the category tree.
-    const allCategories = await prisma.category.findMany({
-      select: { id: true, parentId: true },
-    });
-    const childrenMap = new Map<string, string[]>();
-    allCategories.forEach(c => {
-      if (c.parentId) {
-        if (!childrenMap.has(c.parentId)) {
-          childrenMap.set(c.parentId, []);
-        }
-        childrenMap.get(c.parentId)!.push(c.id);
-      }
-    });
-
-    const getDescendantIds = (catId: string): string[] => {
-      const descendants: string[] = [];
-      const queue: string[] = [...(childrenMap.get(catId) || [])];
-      const visited = new Set<string>(queue);
-
-      while (queue.length > 0) {
-        const currentId = queue.shift()!;
-        descendants.push(currentId);
-        const children = childrenMap.get(currentId) || [];
-        for (const childId of children) {
-          if (!visited.has(childId)) {
-            visited.add(childId);
-            queue.push(childId);
-          }
-        }
-      }
-      return descendants;
-    };
-
-    const descendantIds = getDescendantIds(categoryId);
+    // 1. Use the cached category tree to find all descendants.
+    const descendantIds = await getDescendantIds(categoryId);
     const allCategoryIds = [categoryId, ...descendantIds];
 
+    // 2. Find vendors that have products in any of the matched categories.
     // Find vendors that have products in any of the matched categories.
     const vendors = await prisma.vendor.findMany({
       where: {
