@@ -45,23 +45,23 @@ export const invalidateCategoryCache = () => {
  */
 export const getDescendantIds = async (categoryId: string): Promise<string[]> => {
   const map = categoryChildrenMap ?? (await buildCategoryCache());
-  const descendants: string[] = [];
+  const descendants = new Set<string>();
   const queue: string[] = [categoryId];
-  const visited = new Set<string>();
+  const visited = new Set<string>([categoryId]);
 
   while (queue.length > 0) {
     const currentId = queue.shift()!;
-    if (visited.has(currentId)) continue;
-    visited.add(currentId);
 
     const children = map.get(currentId) || [];
     for (const childId of children) {
-      descendants.push(childId);
-      queue.push(childId);
+      if (!visited.has(childId)) {
+        visited.add(childId);
+        descendants.add(childId);
+        queue.push(childId);
+      }
     }
   }
-  // The first ID processed is the parent itself, which we don't want in the descendants list.
-  return descendants.filter(id => id !== categoryId);
+  return Array.from(descendants);
 };
 
 interface CreateCategoryPayload {
